@@ -1,8 +1,10 @@
 use std::collections::{HashSet, HashMap};
 
-struct TypeVar(u32);
+#[derive(Debug)]
+pub struct TypeVar(u32);
 
-enum SimpleType {
+#[derive(Debug)]
+pub enum SimpleType {
     Var(TypeVar),
     Bool,
     Int,
@@ -13,12 +15,14 @@ enum SimpleType {
     Fun(Box<SimpleType>, Box<SimpleType>),
 }
 
-enum Type {
+#[derive(Debug)]
+pub enum Type {
     Simple(SimpleType),
     ForAll(TypeVar, Box<Type>),
 }
 
-enum Value {
+#[derive(Debug)]
+pub enum Value {
     Bool(bool),
     // TODO: Should be a bigint.
     Int(i64),
@@ -30,16 +34,18 @@ enum Value {
     Map(HashMap<Value, Value>),
 }
 
-type Ident = &'static str;
+pub type Ident = &'static str;
 
 /// A unary operator.
-enum UnOp {
+#[derive(Debug)]
+pub enum UnOp {
     /// Negate a boolean.
     Neg
 }
 
 /// A binary operator.
-enum BinOp {
+#[derive(Debug)]
+pub enum BinOp {
     /// `|`: Union two collections
     Union,
 
@@ -47,7 +53,8 @@ enum BinOp {
     Add,
 }
 
-enum Expr {
+#[derive(Debug)]
+pub enum Expr {
     /// A map or set literal, depending on the element types.
     MapLit(Vec<Seq>),
 
@@ -79,8 +86,9 @@ enum Expr {
     BinOp(BinOp, Box<Expr>),
 }
 
-/// An element of a sequence.
-enum Seq {
+/// One or more elements of a sequence.
+#[derive(Debug)]
+pub enum Seq {
     /// A single element.
     Elem(Expr),
     
@@ -95,10 +103,11 @@ enum Seq {
 }
 
 /// A for-comprehension.
-enum Compr {
+#[derive(Debug)]
+pub enum Compr {
     /// Loop over the collection.
     For {
-        collection: Ident,
+        collection: Box<Expr>,
         element: Ident,
         body: Box<Seq>,
     },
