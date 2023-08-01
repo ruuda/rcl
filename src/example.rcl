@@ -52,3 +52,15 @@ type S3Bucket = {
   name: String,
 };
 let countObjects: S3Bucket -> { count: Int | S3Bucket } = ...;
+
+// Type definitions can be recursive.
+type Null = Unit;
+type Json
+  = Unit
+  | Int
+  | String
+  | Map String Json
+  | List Json
+  ;
+
+let parse_json: String -> Json = builtins.parse_json;
