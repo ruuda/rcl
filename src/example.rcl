@@ -1,0 +1,14 @@
+tags = {
+  for host in var.hosts:
+  if !var.excluded_devices.contains(host):
+  host => {
+    let device_tags = var.device_tags.get(host, []);
+    let group_tags = {
+      for group, tags in var.group_tags:
+      if var.group_devices.get(group, {}).contains(host):
+      for tag in tags:
+      tag
+    };
+    group_tags | device_tags
+  }
+};
