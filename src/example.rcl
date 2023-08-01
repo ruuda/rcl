@@ -1,7 +1,7 @@
-tags = {
-  for host in var.hosts:
-  if !var.excluded_devices.contains(host):
-  host =>
+{
+  tags = {
+    for host in var.hosts:
+    if !var.excluded_devices.contains(host):
     let device_tags = var.device_tags.get(host, []);
     let group_tags = {
       for group, tags in var.group_tags:
@@ -9,5 +9,46 @@ tags = {
       for tag in tags:
       tag
     };
-    group_tags | device_tags
+    host: group_tags | device_tags
+  };
+}
+
+// Note, we can write record fields in two ways: With `:` or with `=`. In the
+// former case, both sides are expressions. This means that the keys can be
+// determined at runtime, for example in a comprehension. In the latter case,
+// the left-hand side must be an identifier, and we save one character on the
+// quotes. It also looks a bit less cluttered.
+// The following lines are therefore identical.
+{ "foo": 32, "bar": "xyz" }
+{ foo = 32, bar = "xyz" }
+{ foo = 32, "bar": "xyz" }
+let key = "foo"; { key: 32, bar = "xyz" }
+
+// TODO: How to terminate lets? let ...  in, or let ...; ?
+
+// Some terminology to decide on:
+// - record (more or less implies typed)
+// - object (more or less implies typed)
+// - dict, dictionary (implies untyped fields)
+// - map (implies untyped fields)
+
+// Defining a function.
+let concat = (xs, ys) => [for x in xs: x, for y in ys: y];
+concat([1, 2, 3], [4, 5, 6])
+
+let fib = x => if x < 2 then 1 else fib(x - 1) + fib(x - 2); fib(100)
+
+// We could support type annotations in let bindings and arguments.
+let fib: Int -> Int = (x: Int) => ...;
+let concat
+  : List a -> List a -> List a
+  = (xs, ys)
+  => ...;
+let concat = (xs: List a, ys: List a) => ...;
+
+// Row types like in PureScript
+type S3Bucket = {
+  region: String,
+  name: String,
 };
+let countObjects: S3Bucket -> { count: Int | S3Bucket } = ...;
