@@ -1,5 +1,3 @@
-use std::collections::{HashSet, HashMap};
-
 #[derive(Debug)]
 pub struct TypeVar(u32);
 
@@ -19,19 +17,6 @@ pub enum SimpleType {
 pub enum Type {
     Simple(SimpleType),
     ForAll(TypeVar, Box<Type>),
-}
-
-#[derive(Debug)]
-pub enum Value {
-    Bool(bool),
-    // TODO: Should be a bigint.
-    Int(i64),
-    String(String),
-    List(Vec<Value>),
-    // TODO: Should preserve insertion order.
-    Set(HashSet<Value>),
-    // TODO: Should preserve insertion order.
-    Map(HashMap<Value, Value>),
 }
 
 pub type Ident = &'static str;
