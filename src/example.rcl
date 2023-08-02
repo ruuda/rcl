@@ -116,3 +116,54 @@ let rec Json = Map(String, Json) | List(Json) | Int | String | Null;
 // syntactically we can *can* mix types and values without them polluting each
 // other's namespaces:
 let people: List(Person) = load("people.json") as List(Person);
+
+// Hmm, if I call it "as", then it suddenly does not feel so ad-hoc any more,
+// maybe this is actually pretty nice. Loading json in a format that you expect
+// matches some schema, but then the typechecker complains ... that happens a
+// lot. Now we could outsource this part to the language, built-in validation.
+// At typecheck time we assume it works, at runtime if it doesn't it generates
+// an error there, so it fails early instead of with some KeyError deep inside
+// the code. This may be pretty nice!
+
+// But then if we have union types, but the only way to get back from an `a | b`
+// to just an `a` is through this runtime cast, that's not very nice, then you
+// still don't get the power of ADTs and such. So what if next to this "as", we
+// also introduce an "is"? But wait no, then you get control flow-dependent
+// types like in Mypy, that is going to be a huge mess. Do we need match
+// instead?
+let names = match json_doc {
+  case ps: List(Person) => ps.map(p => p.name)
+  case ps: Map(String, Person) => ps.values().map(p => p.name)
+  case p: Person => [p.name]
+  case unexpected: _ => error(f"Unexpected json document: {unexpected}")
+};
+
+let people = match load("people.json") {
+  case ps: List(Person) => ps
+  case err: _ => error("File people.json has the wrong schema.")
+};
+
+// So syntax matters again ... how do we know where the end of the match
+// statement is? Curly brackets after all? But then we are overloading them.
+// If we do this, shouln't we also use them for if-then-else?
+// Alternatively, some end token? "match ... endmatch"? But that would be first
+// time so far that we do something like that.
+
+// String literals can be types whose only allowed value is that string.
+// Then we can build ADTs by manually tagging them, though it's not pretty:
+type None = { tag: "none" };
+type Some = T => { tag: "some", value: T };
+type Option = T => None | Some(T);
+
+match collection.get("key") {
+  case x: Some(Int) => x.value
+  case _: None => 0
+}
+
+// What about higher-kinded types? Probably we should stay away from this, the
+// config language should remain simple. (But of course, if it's a useful
+// language, people will use it for other things than just config ...)
+let fmap:
+  forall M: formall T: forall U:
+  (T -> U) -> (M(T) -> M(U))
+  = (f, xs) => builtins.map(f, xs);
