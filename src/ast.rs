@@ -61,6 +61,9 @@ pub enum Expr {
     /// A list literal.
     ListLit(Vec<Seq>),
 
+    /// A string literal.
+    StringLit(String),
+
     /// A for-comprehension.
     Compr(Box<Compr>),
 
@@ -70,8 +73,14 @@ pub enum Expr {
     /// Access a variable.
     Var(Ident),
 
+    /// A let-binding. First is the bound value, then the result expression.
+    Let(Ident, Box<Expr>, Box<Expr>),
+
     /// Access a field or key.
-    Field(Box<Expr>, Ident),
+    Field(Ident, Box<Expr>),
+
+    /// A `key: value` mapping.
+    Assoc(Box<Expr>, Box<Expr>),
 
     /// Call a function.
     Call(Box<Expr>, Vec<Expr>),
@@ -83,7 +92,7 @@ pub enum Expr {
     UnOp(UnOp, Box<Expr>),
 
     /// Apply a binary operator.
-    BinOp(BinOp, Box<Expr>),
+    BinOp(BinOp, Box<Expr>, Box<Expr>),
 }
 
 /// One or more elements of a sequence.
@@ -91,12 +100,6 @@ pub enum Expr {
 pub enum Seq {
     /// A single element.
     Elem(Expr),
-    
-    /// A `key = value` mapping, where the key is syntactially an identifier.
-    Field(Ident, Expr),
-
-    /// A `key: value` mapping, where the key is an expression.
-    Assoc(Expr, Expr),
 
     /// A comprehension that yields elements or mappings.
     Compr(Compr),
@@ -108,7 +111,7 @@ pub enum Compr {
     /// Loop over the collection.
     For {
         collection: Box<Expr>,
-        element: Ident,
+        elements: Vec<Ident>,
         body: Box<Seq>,
     },
 
