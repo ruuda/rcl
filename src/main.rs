@@ -41,8 +41,24 @@ pub fn assoc(key: Expr, value: Expr) -> Expr {
 
 fn example() -> Expr {
     let inner_if = Compr::If {
-        condition: Box::new(var("TODO")),
-        body: Box::new(Seq::Elem(var("TODO"))),
+        condition: Box::new(call(
+            field(
+                "contains",
+                call(
+                    field("get", field("group_devices", var("var"))),
+                    vec![
+                        var("group"),
+                        Expr::MapLit(vec![]),
+                    ],
+                ),
+            ),
+            vec![var("host")],
+        )),
+        body: Box::new(Seq::Compr(Compr::For {
+            collection: Box::new(var("tags")),
+            elements: vec!["tag"],
+            body: Box::new(Seq::Elem(var("tag"))),
+        })),
     };
 
     let body = let_(
