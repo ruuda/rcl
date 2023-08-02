@@ -75,3 +75,44 @@ let fib = x =>
 
 // Should if-then-else be with blocks as in Rust?
 // No, curly brackes are already used for object literals.
+
+// How to treat loading json?
+// The following would work as long as we don't specify types. We could even
+// infer a type for the data.
+let data = load("data.json");
+
+// But if we do that, then what is the type of `load`?
+let load: String -> Json = builtins.load;
+
+// The above would not work if we expect something more strict. Is it okay to
+// only return Json and then return a type error? I think it is, because json
+// data could change under our feet, we don't look inside it, or treat it as
+// part of the config. Other rcl files on the other hand, they would have a
+// definite type. But that is not something we can give a signature for, maybe
+// that needs to be a built-in construct. So the following would in fact treat
+// the json file as if it were an rcl file.
+let data = import "data.json";
+
+// So this may be valid:
+type Person = { age: Int, xp: Int, name: String };
+let people: List Person = import "data.json";
+
+// But this would fail to typecheck.
+let people: List Person = load("people.json")
+
+// How could we make it typecheck? It would have to be something like
+let people: List Person = validate(List Person, load("people.json"))
+
+// but then we are lowering types to the value level ... that opens up an entire
+// can of worms. Also how do we import types from other files? If types were
+// values then at least that part is clear, although it would also be tedious.
+// But maybe? Then it also resolves the syntax difference for generics, we could
+// say that types can be called like functions (so we have kinds too).
+let PersonList = List(Person);
+let rec Json = Map(String, Json) | List(Json) | Int | String | Null;
+
+// But putting that aside for now, a solution that does not open the can of
+// worms is to introduce yet another special ad-hoc construct, so that
+// syntactically we can *can* mix types and values without them polluting each
+// other's namespaces:
+let people: List(Person) = load("people.json") as List(Person);
