@@ -16,6 +16,7 @@ pub enum Value {
     Map(BTreeMap<Rc<Value>, Rc<Value>>),
 }
 
+#[derive(Debug)]
 pub struct Env {
     bindings: Vec<(Ident, Rc<Value>)>,
 }

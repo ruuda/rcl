@@ -122,9 +122,7 @@ fn val_list(vs: &[&Rc<Value>]) -> Rc<Value> {
     Rc::new(Value::List(vs.iter().copied().cloned().collect()))
 }
 
-fn example_input() -> Env {
-    let mut env = Env::new();
-
+fn example_env() -> Env {
     let ams01 = val_string("ams01");
     let ams02 = val_string("ams02");
     let fra01 = val_string("fra01");
@@ -134,10 +132,10 @@ fn example_input() -> Env {
     let zrh01 = val_string("zrh01");
     let zrh02 = val_string("zrh02");
 
-    let tag_ch = val_string("tag:ch");
-    let tag_de = val_string("tag:de");
-    let tag_nl = val_string("tag:nl");
-    let tag_us = val_string("tag:us");
+    let group_ch = val_string("group:ch");
+    let group_de = val_string("group:de");
+    let group_nl = val_string("group:nl");
+    let group_us = val_string("group:us");
 
     let icelake = val_string("tag:icelake");
     let skylake = val_string("tag:skylake");
@@ -145,6 +143,9 @@ fn example_input() -> Env {
     let znver3 = val_string("tag:znver3");
     let primary = val_string("tag:primary");
     let standby = val_string("tag:standby");
+    let expensive = val_string("tag:expensive");
+    let high_latency = val_string("tag:high_latency");
+    let colocated = val_string("tag:colocated");
 
     let hosts = val_list(&[
         &ams01,
@@ -156,10 +157,8 @@ fn example_input() -> Env {
         &zrh01,
         &zrh02,
     ]);
-    env.push("hosts", hosts);
 
     let excluded_devices = val_list(&[&lax01]);
-    env.push("excluded_devices", excluded_devices);
 
     let mut device_tags = BTreeMap::new();
     device_tags.insert(ams01.clone(), val_list(&[&znver2, &primary]));
@@ -170,11 +169,32 @@ fn example_input() -> Env {
     device_tags.insert(lax01.clone(), val_list(&[&skylake]));
     device_tags.insert(zrh01.clone(), val_list(&[&znver3, &standby]));
     device_tags.insert(zrh02.clone(), val_list(&[&znver3, &primary]));
-    env.push("device_tags", Rc::new(Value::Map(device_tags)));
+
+    let mut group_devices = BTreeMap::new();
+    group_devices.insert(group_ch.clone(), val_list(&[&zrh01, &zrh02]));
+    group_devices.insert(group_de.clone(), val_list(&[&fra01, &fra02, &fra03]));
+    group_devices.insert(group_nl.clone(), val_list(&[&ams01, &ams02]));
+    group_devices.insert(group_us.clone(), val_list(&[&lax01]));
+
+    let mut group_tags = BTreeMap::new();
+    group_tags.insert(group_ch.clone(), val_list(&[&expensive, &colocated]));
+    group_tags.insert(group_nl.clone(), val_list(&[&colocated]));
+    group_tags.insert(group_us.clone(), val_list(&[&high_latency]));
+
+    let mut vars = BTreeMap::new();
+    vars.insert(val_string("hosts"), hosts);
+    vars.insert(val_string("excluded_devices"), excluded_devices);
+    vars.insert(val_string("device_tags"), Rc::new(Value::Map(device_tags)));
+    vars.insert(val_string("group_devices"), Rc::new(Value::Map(group_devices)));
+    vars.insert(val_string("group_tags"), Rc::new(Value::Map(group_tags)));
+
+    let mut env = Env::new();
+    env.push("var", Rc::new(Value::Map(vars)));
 
     env
 }
 
 fn main() {
     println!("{:#?}", example_ast());
+    println!("{:#?}", example_env());
 }
