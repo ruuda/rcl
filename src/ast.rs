@@ -25,7 +25,7 @@ pub type Ident = &'static str;
 #[derive(Debug, Copy, Clone)]
 pub enum UnOp {
     /// Negate a boolean.
-    Neg
+    Neg,
 }
 
 /// A binary operator.
@@ -54,7 +54,6 @@ pub enum Expr {
     // the user to wrap them in [] or {}.
     // /// A for-comprehension.
     // Compr(Box<Compr>),
-
     /// An conditional choice (if, then, else).
     IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
 
@@ -119,5 +118,5 @@ pub enum Compr {
         name: Ident,
         value: Box<Expr>,
         body: Box<Seq>,
-    }
+    },
 }

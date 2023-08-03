@@ -2,8 +2,8 @@ mod ast;
 mod eval;
 mod runtime;
 
-use std::rc::Rc;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use ast::{BinOp, Compr, Expr, Ident, Seq, UnOp};
 use runtime::{Env, Value};
@@ -56,10 +56,7 @@ fn example_ast() -> Expr {
                 "contains",
                 call(
                     field("get", field("group_devices", var("var"))),
-                    vec![
-                        var("group"),
-                        Expr::MapLit(vec![]),
-                    ],
+                    vec![var("group"), Expr::MapLit(vec![])],
                 ),
             ),
             vec![var("host")],
@@ -79,43 +76,28 @@ fn example_ast() -> Expr {
         ),
         Seq::Compr(let_compr(
             "group_tags",
-            Expr::MapLit(vec![
-                Seq::Compr(
-                    Compr::For {
-                        collection: Box::new(field("group_tags", var("var"))),
-                        elements: vec!["group", "tags"],
-                        body: Box::new(Seq::Compr(inner_if)),
-                    }
-                )
-            ]),
-            assoc(
-                var("host"),
-                union(var("group_tags"), var("device_tags")),
-            ),
-        ))
+            Expr::MapLit(vec![Seq::Compr(Compr::For {
+                collection: Box::new(field("group_tags", var("var"))),
+                elements: vec!["group", "tags"],
+                body: Box::new(Seq::Compr(inner_if)),
+            })]),
+            assoc(var("host"), union(var("group_tags"), var("device_tags"))),
+        )),
     );
 
     Expr::MapLit(singleton(
         "tags",
-        Expr::MapLit(vec![
-            Seq::Compr(
-                Compr::For {
-                    collection: Box::new(field("hosts", var("var"))),
-                    elements: vec!["host"],
-                    body: Box::new(Seq::Compr(
-                        Compr::If {
-                            condition: Box::new(neg(
-                                call(
-                                    field("contains", field("excluded_devices", var("var"))),
-                                    vec![var("host")],
-                                )
-                            )),
-                            body: Box::new(Seq::Compr(body)),
-                        }
-                    ))
-                }
-            )
-        ]),
+        Expr::MapLit(vec![Seq::Compr(Compr::For {
+            collection: Box::new(field("hosts", var("var"))),
+            elements: vec!["host"],
+            body: Box::new(Seq::Compr(Compr::If {
+                condition: Box::new(neg(call(
+                    field("contains", field("excluded_devices", var("var"))),
+                    vec![var("host")],
+                ))),
+                body: Box::new(Seq::Compr(body)),
+            })),
+        })]),
     ))
 }
 
@@ -153,14 +135,7 @@ fn example_env() -> Env {
     let colocated = val_string("tag:colocated");
 
     let hosts = val_list(&[
-        &ams01,
-        &ams02,
-        &fra01,
-        &fra02,
-        &fra03,
-        &lax01,
-        &zrh01,
-        &zrh02,
+        &ams01, &ams02, &fra01, &fra02, &fra03, &lax01, &zrh01, &zrh02,
     ]);
 
     let excluded_devices = val_list(&[&lax01]);
@@ -190,7 +165,10 @@ fn example_env() -> Env {
     vars.insert(val_string("hosts"), hosts);
     vars.insert(val_string("excluded_devices"), excluded_devices);
     vars.insert(val_string("device_tags"), Rc::new(Value::Map(device_tags)));
-    vars.insert(val_string("group_devices"), Rc::new(Value::Map(group_devices)));
+    vars.insert(
+        val_string("group_devices"),
+        Rc::new(Value::Map(group_devices)),
+    );
     vars.insert(val_string("group_tags"), Rc::new(Value::Map(group_tags)));
 
     let mut env = Env::new();

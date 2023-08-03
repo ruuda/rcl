@@ -68,8 +68,7 @@ impl Env {
     }
 
     pub fn lookup(&self, name: Ident) -> Option<&Rc<Value>> {
-        self
-            .bindings
+        self.bindings
             .iter()
             .rev()
             .find(|(k, _v)| *k == name)
@@ -84,4 +83,3 @@ impl Env {
         self.bindings.pop().expect("Environment stack underflow.");
     }
 }
-

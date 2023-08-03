@@ -40,9 +40,9 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     let result = keys.into_iter().collect();
                     Ok(Rc::new(Value::Set(result)))
                 }
-                _ => {
-                    Err(Error::new("Should not mix `k: v` and values in one comprehension."))
-                }
+                _ => Err(Error::new(
+                    "Should not mix `k: v` and values in one comprehension.",
+                )),
             }
         }
         Expr::ListLit(seqs) => {
@@ -53,31 +53,27 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             }
 
             if !values.is_empty() {
-                return Err(Error::new("`k: v` can only be used inside {}, not []."))
+                return Err(Error::new("`k: v` can only be used inside {}, not []."));
             }
 
             Ok(Rc::new(Value::List(keys)))
         }
 
-        Expr::StringLit(s) => {
-            Ok(Rc::new(Value::String(s.clone())))
-        }
+        Expr::StringLit(s) => Ok(Rc::new(Value::String(s.clone()))),
 
         Expr::IfThenElse(if_, then, else_) => {
             let cond = eval(env, if_)?;
             match cond.as_ref() {
                 Value::Bool(true) => eval(env, then),
                 Value::Bool(false) => eval(env, else_),
-                _ => Err(Error::new("Condition should be boolean."))
+                _ => Err(Error::new("Condition should be boolean.")),
             }
         }
 
-        Expr::Var(var) => {
-            match env.lookup(var) {
-                Some(value) => Ok(value.clone()),
-                None => Err(Error::new("Variable not found."))
-            }
-        }
+        Expr::Var(var) => match env.lookup(var) {
+            Some(value) => Ok(value.clone()),
+            None => Err(Error::new("Variable not found.")),
+        },
 
         Expr::Field(field_name, value_expr) => {
             let value = eval(env, value_expr)?;
@@ -115,7 +111,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                 not_map => {
                     println!("Trying to access {} on:\n{:#?}", field_name, not_map);
                     Err(Error::new("Can only do field access on maps for now."))
-                },
+                }
             }
         }
 
@@ -133,7 +129,10 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             // We do strict evaluation, all arguments get evaluated before we go
             // into the call.
             let fun = eval(env, fun_expr)?;
-            let args = args_exprs.iter().map(|a| eval(env, a)).collect::<Result<Vec<_>>>()?;
+            let args = args_exprs
+                .iter()
+                .map(|a| eval(env, a))
+                .collect::<Result<Vec<_>>>()?;
 
             match fun.as_ref() {
                 Value::Builtin(f) => (f.f)(&args[..]),
@@ -199,7 +198,11 @@ fn eval_seq(
             out_values.push(value);
             Ok(())
         }
-        Seq::Compr(Compr::For { collection, elements, body }) => {
+        Seq::Compr(Compr::For {
+            collection,
+            elements,
+            body,
+        }) => {
             let collection_value = eval(env, collection)?;
             match (&elements[..], collection_value.as_ref()) {
                 (&[name], Value::List(xs)) => {
@@ -228,9 +231,7 @@ fn eval_seq(
                     }
                     Ok(())
                 }
-                _ => {
-                    Err(Error::new("Iteration is not supported like this."))
-                }
+                _ => Err(Error::new("Iteration is not supported like this.")),
             }
         }
         Seq::Compr(Compr::If { condition, body }) => {
@@ -238,7 +239,7 @@ fn eval_seq(
             match cond.as_ref() {
                 Value::Bool(true) => eval_seq(env, body, out_keys, out_values),
                 Value::Bool(false) => Ok(()),
-                _ => Err(Error::new("Comprehension condition should be boolean."))
+                _ => Err(Error::new("Comprehension condition should be boolean.")),
             }
         }
         Seq::Compr(Compr::Let { name, value, body }) => {
