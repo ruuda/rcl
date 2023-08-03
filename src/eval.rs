@@ -27,6 +27,11 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                 eval_seq(env, seq, &mut keys, &mut values)?;
             }
             match values.len() {
+                // If we have no values, it’s a set.
+                0 => {
+                    let result = keys.into_iter().collect();
+                    Ok(Rc::new(Value::Set(result)))
+                }
                 // If we have a value for every key, this is a map.
                 n if n == keys.len() => {
                     let mut result = BTreeMap::new();
@@ -34,11 +39,6 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                         result.insert(k, v);
                     }
                     Ok(Rc::new(Value::Map(result)))
-                }
-                // If we have no values, it’s a set.
-                0 => {
-                    let result = keys.into_iter().collect();
-                    Ok(Rc::new(Value::Set(result)))
                 }
                 _ => Err(Error::new(
                     "Should not mix `k: v` and values in one comprehension.",
@@ -84,6 +84,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     // if there are any values.
                     let builtin = match *field_name {
                         "contains" => Some(builtin_map_contains(value.clone())),
+                        "get" => Some(builtin_map_get(value.clone())),
                         _ => None,
                     };
                     if let Some(b) = builtin {
@@ -159,7 +160,10 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
 fn eval_unop(op: UnOp, v: Rc<Value>) -> Result<Rc<Value>> {
     match (op, v.as_ref()) {
         (UnOp::Neg, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
-        _ => Err(Error::new("The operator is not supported for this value.")),
+        (op, val) => {
+            println!("Trying to apply {:?} to:\n{:#?}", op, val);
+            Err(Error::new("The unary operator is not supported for this value."))
+        },
     }
 }
 
@@ -171,11 +175,19 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
         (BinOp::Union, Value::Set(_xs), Value::Set(_ys)) => {
             unimplemented!("TODO: Implement set union.")
         }
+        (BinOp::Union, Value::Set(xs), Value::List(ys)) => {
+            let mut result = xs.clone();
+            result.extend(ys.iter().map(|v_rc| v_rc.clone()));
+            Ok(Rc::new(Value::Set(result)))
+        }
         (BinOp::Add, Value::Int(x), Value::Int(y)) => {
             // TODO: Make this a checked add.
             Ok(Rc::new(Value::Int(x + y)))
         }
-        _ => Err(Error::new("The operator is not supported for this value.")),
+        _ => {
+            println!("Trying to apply {:?} to:\n{:#?}\n{:#?}", op, lhs, rhs);
+            Err(Error::new("The binary operator is not supported for this value."))
+        },
     }
 }
 
@@ -288,6 +300,28 @@ fn builtin_list_contains(v: Rc<Value>) -> Builtin {
     };
     Builtin {
         name: "List.contains",
+        f: Box::new(f),
+    }
+}
+
+fn builtin_map_get(v: Rc<Value>) -> Builtin {
+    let f = move |args: &[Rc<Value>]| {
+        let (k, default) = match args {
+            [k, default] => (k, default),
+            _ => return Err(Error::new("Map.get takes two arguments.")),
+        };
+        match v.as_ref() {
+            Value::Map(m) => {
+                match m.get(k) {
+                    Some(v) => Ok(v.clone()),
+                    None => Ok(default.clone()),
+                }
+            }
+            _not_map => panic!("Should not have made a Map.get for this value."),
+        }
+    };
+    Builtin {
+        name: "Map.get",
         f: Box::new(f),
     }
 }
