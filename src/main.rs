@@ -1,4 +1,5 @@
 mod ast;
+mod eval;
 mod runtime;
 
 use std::rc::Rc;

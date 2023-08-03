@@ -2,6 +2,38 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::Ident;
+use crate::eval::Result;
+
+/// A built-in function.
+pub struct Builtin {
+    pub name: &'static str,
+    pub f: Box<dyn Fn(&mut Env, &[Rc<Value>]) -> Result<Rc<Value>>>,
+}
+
+impl std::fmt::Debug for Builtin {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+impl PartialEq for Builtin {
+    fn eq(&self, other: &Self) -> bool {
+        self.name.eq(other.name)
+    }
+}
+
+impl PartialOrd for Builtin {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.name.partial_cmp(other.name)
+    }
+}
+
+impl Eq for Builtin {}
+impl Ord for Builtin {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(other.name)
+    }
+}
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Value {
@@ -14,6 +46,7 @@ pub enum Value {
     Set(BTreeSet<Rc<Value>>),
     // TODO: Should preserve insertion order.
     Map(BTreeMap<Rc<Value>, Rc<Value>>),
+    Builtin(Builtin),
 }
 
 #[derive(Debug)]

@@ -22,14 +22,14 @@ pub enum Type {
 pub type Ident = &'static str;
 
 /// A unary operator.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum UnOp {
     /// Negate a boolean.
     Neg
 }
 
 /// A binary operator.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum BinOp {
     /// `|`: Union two collections
     Union,
@@ -52,20 +52,20 @@ pub enum Expr {
     /// A for-comprehension.
     Compr(Box<Compr>),
 
+    /// A `key: value` mapping.
+    Assoc(Box<Expr>, Box<Expr>),
+
     /// An conditional choice (if, then, else).
     IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
 
     /// Access a variable.
     Var(Ident),
 
-    /// A let-binding. First is the bound value, then the result expression.
-    Let(Ident, Box<Expr>, Box<Expr>),
-
     /// Access a field or key.
     Field(Ident, Box<Expr>),
 
-    /// A `key: value` mapping.
-    Assoc(Box<Expr>, Box<Expr>),
+    /// A let-binding. First is the bound value, then the result expression.
+    Let(Ident, Box<Expr>, Box<Expr>),
 
     /// Call a function.
     Call(Box<Expr>, Vec<Expr>),
