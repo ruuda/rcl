@@ -1,9 +1,10 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Expr, UnOp};
+use crate::ast::{BinOp, Compr, Expr, Seq, UnOp};
 use crate::runtime::{Env, Value};
 
+#[derive(Debug)]
 pub struct Error {
     message: &'static str,
 }
@@ -19,16 +20,48 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
     match expr {
-        Expr::MapLit(_seqs) => unimplemented!("TODO: Map literals"),
-        Expr::ListLit(_seqs) => unimplemented!("TODO: List literals"),
+        Expr::MapLit(seqs) => {
+            let mut keys = Vec::new();
+            let mut values = Vec::new();
+            for seq in seqs {
+                eval_seq(env, seq, &mut keys, &mut values)?;
+            }
+            match values.len() {
+                // If we have a value for every key, this is a map.
+                n if n == keys.len() => {
+                    let mut result = BTreeMap::new();
+                    for (k, v) in keys.into_iter().zip(values) {
+                        result.insert(k, v);
+                    }
+                    Ok(Rc::new(Value::Map(result)))
+                }
+                // If we have no values, it’s a set.
+                0 => {
+                    let result = keys.into_iter().collect();
+                    Ok(Rc::new(Value::Set(result)))
+                }
+                _ => {
+                    Err(Error::new("Should not mix `k: v` and values in one comprehension."))
+                }
+            }
+        }
+        Expr::ListLit(seqs) => {
+            let mut keys = Vec::new();
+            let mut values = Vec::new();
+            for seq in seqs {
+                eval_seq(env, seq, &mut keys, &mut values)?;
+            }
+
+            if !values.is_empty() {
+                return Err(Error::new("`k: v` can only be used inside {}, not []."))
+            }
+
+            Ok(Rc::new(Value::List(keys)))
+        }
 
         Expr::StringLit(s) => {
             Ok(Rc::new(Value::String(s.clone())))
         }
-
-        Expr::Compr(s) => unimplemented!("TODO: Comprehensions"),
-
-        Expr::Assoc(k, v) => unimplemented!("TODO: Implement assoc"),
 
         Expr::IfThenElse(if_, then, else_) => {
             let cond = eval(env, if_)?;
@@ -56,7 +89,10 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                         None => Err(Error::new("No such field in this value.")),
                     }
                 }
-                _not_map => Err(Error::new("Can only do field access on maps for now.")),
+                not_map => {
+                    println!("Trying to access {} on:\n{:#?}", field_name, not_map);
+                    Err(Error::new("Can only do field access on maps for now."))
+                },
             }
         }
 
@@ -118,5 +154,76 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
             Ok(Rc::new(Value::Int(x + y)))
         }
         _ => Err(Error::new("The operator is not supported for this value.")),
+    }
+}
+
+fn eval_seq(
+    env: &mut Env,
+    seq: &Seq,
+    out_keys: &mut Vec<Rc<Value>>,
+    out_values: &mut Vec<Rc<Value>>,
+) -> Result<()> {
+    match seq {
+        Seq::Elem(elem_expr) => {
+            let value = eval(env, elem_expr)?;
+            out_keys.push(value);
+            Ok(())
+        }
+        Seq::Assoc(key_expr, value_expr) => {
+            let key = eval(env, key_expr)?;
+            let value = eval(env, value_expr)?;
+            out_keys.push(key);
+            out_values.push(value);
+            Ok(())
+        }
+        Seq::Compr(Compr::For { collection, elements, body }) => {
+            let collection_value = eval(env, collection)?;
+            match (&elements[..], collection_value.as_ref()) {
+                (&[name], Value::List(xs)) => {
+                    for x in xs {
+                        env.push(name, x.clone());
+                        eval_seq(env, body, out_keys, out_values)?;
+                        env.pop();
+                    }
+                    Ok(())
+                }
+                (&[name], Value::Set(xs)) => {
+                    for x in xs {
+                        env.push(name, x.clone());
+                        eval_seq(env, body, out_keys, out_values)?;
+                        env.pop();
+                    }
+                    Ok(())
+                }
+                (&[k_name, v_name], Value::Map(xs)) => {
+                    for (k, v) in xs {
+                        env.push(k_name, k.clone());
+                        env.push(v_name, v.clone());
+                        eval_seq(env, body, out_keys, out_values)?;
+                        env.pop();
+                        env.pop();
+                    }
+                    Ok(())
+                }
+                _ => {
+                    Err(Error::new("Iteration is not supported like this."))
+                }
+            }
+        }
+        Seq::Compr(Compr::If { condition, body }) => {
+            let cond = eval(env, condition)?;
+            match cond.as_ref() {
+                Value::Bool(true) => eval_seq(env, body, out_keys, out_values),
+                Value::Bool(false) => Ok(()),
+                _ => Err(Error::new("Comprehension condition should be boolean."))
+            }
+        }
+        Seq::Compr(Compr::Let { name, value, body }) => {
+            let v = eval(env, value)?;
+            env.push(name, v);
+            eval_seq(env, body, out_keys, out_values)?;
+            env.pop();
+            Ok(())
+        }
     }
 }

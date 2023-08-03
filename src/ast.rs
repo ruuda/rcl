@@ -49,11 +49,11 @@ pub enum Expr {
     /// A string literal.
     StringLit(String),
 
-    /// A for-comprehension.
-    Compr(Box<Compr>),
-
-    /// A `key: value` mapping.
-    Assoc(Box<Expr>, Box<Expr>),
+    // TODO: Having those would require an explicit type for them.
+    // It may be nice for some function calls, but for now we can just require
+    // the user to wrap them in [] or {}.
+    // /// A for-comprehension.
+    // Compr(Box<Compr>),
 
     /// An conditional choice (if, then, else).
     IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
@@ -84,7 +84,10 @@ pub enum Expr {
 #[derive(Debug)]
 pub enum Seq {
     /// A single element.
-    Elem(Expr),
+    Elem(Box<Expr>),
+
+    /// A `key: value` mapping.
+    Assoc(Box<Expr>, Box<Expr>),
 
     /// A comprehension that yields elements or mappings.
     Compr(Compr),
@@ -105,4 +108,16 @@ pub enum Compr {
         condition: Box<Expr>,
         body: Box<Seq>,
     },
+
+    /// Let in the middle of a comprehension.
+    ///
+    /// This is syntactically different from a let before an expression, because
+    /// the `Seq::Assoc` is not a first-class value. Not sure if duplicating the
+    /// let or making `Assoc` a value is the best way to go about it, but let's
+    /// try this way for now.
+    Let {
+        name: Ident,
+        value: Box<Expr>,
+        body: Box<Seq>,
+    }
 }

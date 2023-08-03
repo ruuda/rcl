@@ -38,14 +38,20 @@ impl Ord for Builtin {
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Value {
     Bool(bool),
+
     // TODO: Should be a bigint.
     Int(i64),
+
     String(String),
+
     List(Vec<Rc<Value>>),
+
     // TODO: Should preserve insertion order.
     Set(BTreeSet<Rc<Value>>),
+
     // TODO: Should preserve insertion order.
     Map(BTreeMap<Rc<Value>, Rc<Value>>),
+
     Builtin(Builtin),
 }
 
@@ -66,8 +72,8 @@ impl Env {
             .bindings
             .iter()
             .rev()
-            .find(|(k, v)| *k == name)
-            .map(|(k, v)| v)
+            .find(|(k, _v)| *k == name)
+            .map(|(_k, v)| v)
     }
 
     pub fn push(&mut self, name: Ident, value: Rc<Value>) {

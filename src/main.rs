@@ -22,7 +22,7 @@ pub fn field(field: Ident, obj: Expr) -> Expr {
 }
 
 pub fn singleton(key: Ident, value: Expr) -> Vec<Seq> {
-    vec![Seq::Elem(Expr::Assoc(Box::new(string(key)), Box::new(value)))]
+    vec![Seq::Assoc(Box::new(string(key)), Box::new(value))]
 }
 
 pub fn neg(x: Expr) -> Expr {
@@ -37,12 +37,16 @@ pub fn call(f: Expr, args: Vec<Expr>) -> Expr {
     Expr::Call(Box::new(f), args)
 }
 
-pub fn let_(name: Ident, value: Expr, in_: Expr) -> Expr {
-    Expr::Let(name, Box::new(value), Box::new(in_))
+pub fn let_compr(name: Ident, value: Expr, in_: Seq) -> Compr {
+    Compr::Let {
+        name,
+        value: Box::new(value),
+        body: Box::new(in_),
+    }
 }
 
-pub fn assoc(key: Expr, value: Expr) -> Expr {
-    Expr::Assoc(Box::new(key), Box::new(value))
+pub fn assoc(key: Expr, value: Expr) -> Seq {
+    Seq::Assoc(Box::new(key), Box::new(value))
 }
 
 fn example_ast() -> Expr {
@@ -63,17 +67,17 @@ fn example_ast() -> Expr {
         body: Box::new(Seq::Compr(Compr::For {
             collection: Box::new(var("tags")),
             elements: vec!["tag"],
-            body: Box::new(Seq::Elem(var("tag"))),
+            body: Box::new(Seq::Elem(Box::new(var("tag")))),
         })),
     };
 
-    let body = let_(
+    let body = let_compr(
         "device_tags",
         call(
             field("get", field("device_tags", var("var"))),
             vec![var("host"), Expr::ListLit(vec![])],
         ),
-        let_(
+        Seq::Compr(let_compr(
             "group_tags",
             Expr::MapLit(vec![
                 Seq::Compr(
@@ -88,7 +92,7 @@ fn example_ast() -> Expr {
                 var("host"),
                 union(var("group_tags"), var("device_tags")),
             ),
-        )
+        ))
     );
 
     Expr::MapLit(singleton(
@@ -106,7 +110,7 @@ fn example_ast() -> Expr {
                                     vec![var("host")],
                                 )
                             )),
-                            body: Box::new(Seq::Elem(body)),
+                            body: Box::new(Seq::Compr(body)),
                         }
                     ))
                 }
@@ -196,6 +200,10 @@ fn example_env() -> Env {
 }
 
 fn main() {
-    println!("{:#?}", example_ast());
-    println!("{:#?}", example_env());
+    let expr = example_ast();
+    let mut env = example_env();
+    println!("{:#?}", expr);
+    println!("{:#?}", env);
+    let result = eval::eval(&mut env, &expr).expect("Failed to evaluate.");
+    println!("{:#?}", result);
 }
