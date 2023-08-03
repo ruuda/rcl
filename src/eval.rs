@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Compr, Expr, Seq, UnOp};
-use crate::runtime::{Env, Value};
+use crate::runtime::{Builtin, Env, Value};
 
 #[derive(Debug)]
 pub struct Error {
@@ -84,9 +84,32 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             let field_name_value = Value::String(field_name.to_string());
             match value.as_ref() {
                 Value::Map(fields) => {
+                    // First test for the builtin names, they shadow the values,
+                    // if there are any values.
+                    let builtin = match *field_name {
+                        "contains" => Some(builtin_map_contains(value.clone())),
+                        _ => None,
+                    };
+                    if let Some(b) = builtin {
+                        return Ok(Rc::new(Value::Builtin(b)));
+                    }
+                    // If it wasn't a builtin, look for a key in the map.
                     match fields.get(&field_name_value) {
                         Some(v) => Ok(v.clone()),
-                        None => Err(Error::new("No such field in this value.")),
+                        None => {
+                            println!("Trying to access {} on:\n{:#?}", field_name, fields);
+                            Err(Error::new("No such field in this value."))
+                        }
+                    }
+                }
+                Value::List(..) => {
+                    let builtin = match *field_name {
+                        "contains" => Some(builtin_list_contains(value.clone())),
+                        _ => None,
+                    };
+                    match builtin {
+                        Some(b) => Ok(Rc::new(Value::Builtin(b))),
+                        None => Err(Error::new("No such field in this list.")),
                     }
                 }
                 not_map => {
@@ -113,7 +136,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             let args = args_exprs.iter().map(|a| eval(env, a)).collect::<Result<Vec<_>>>()?;
 
             match fun.as_ref() {
-                Value::Builtin(f) => (f.f)(env, &args[..]),
+                Value::Builtin(f) => (f.f)(&args[..]),
                 // TODO: Define a value for lambdas, implement the call.
                 _ => Err(Error::new("Can only call functions.")),
             }
@@ -225,5 +248,45 @@ fn eval_seq(
             env.pop();
             Ok(())
         }
+    }
+}
+
+fn builtin_map_contains(v: Rc<Value>) -> Builtin {
+    let f = move |args: &[Rc<Value>]| {
+        let arg = match args {
+            [a] => a,
+            _ => return Err(Error::new("Map.contains takes a single argument.")),
+        };
+        match v.as_ref() {
+            Value::Map(m) => {
+                let contains = m.contains_key(arg);
+                Ok(Rc::new(Value::Bool(contains)))
+            }
+            _not_map => panic!("Should not have made a Map.contains for this value."),
+        }
+    };
+    Builtin {
+        name: "Map.contains",
+        f: Box::new(f),
+    }
+}
+
+fn builtin_list_contains(v: Rc<Value>) -> Builtin {
+    let f = move |args: &[Rc<Value>]| {
+        let arg = match args {
+            [a] => a,
+            _ => return Err(Error::new("List.contains takes a single argument.")),
+        };
+        match v.as_ref() {
+            Value::List(m) => {
+                let contains = m.contains(arg);
+                Ok(Rc::new(Value::Bool(contains)))
+            }
+            _not_map => panic!("Should not have made a List.contains for this value."),
+        }
+    };
+    Builtin {
+        name: "List.contains",
+        f: Box::new(f),
     }
 }

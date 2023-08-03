@@ -7,7 +7,7 @@ use crate::eval::Result;
 /// A built-in function.
 pub struct Builtin {
     pub name: &'static str,
-    pub f: Box<dyn Fn(&mut Env, &[Rc<Value>]) -> Result<Rc<Value>>>,
+    pub f: Box<dyn Fn(&[Rc<Value>]) -> Result<Rc<Value>>>,
 }
 
 impl std::fmt::Debug for Builtin {
