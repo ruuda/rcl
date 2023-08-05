@@ -1,24 +1,3 @@
-#[derive(Debug)]
-pub struct TypeVar(u32);
-
-#[derive(Debug)]
-pub enum SimpleType {
-    Var(TypeVar),
-    Bool,
-    Int,
-    String,
-    Vec(Box<SimpleType>),
-    Set(Box<SimpleType>),
-    Map(Box<SimpleType>, Box<SimpleType>),
-    Fun(Box<SimpleType>, Box<SimpleType>),
-}
-
-#[derive(Debug)]
-pub enum Type {
-    Simple(SimpleType),
-    ForAll(TypeVar, Box<Type>),
-}
-
 pub type Ident = &'static str;
 
 /// A unary operator.
