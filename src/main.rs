@@ -1,6 +1,7 @@
 mod ast;
 mod error;
 mod eval;
+mod json;
 mod runtime;
 
 use std::collections::BTreeMap;
@@ -181,8 +182,10 @@ fn example_env() -> Env {
 fn main() {
     let expr = example_ast();
     let mut env = example_env();
-    println!("{:#?}", expr);
-    println!("{:#?}", env);
+    eprintln!("{:#?}", expr);
+    eprintln!("{:#?}", env);
     let result = eval::eval(&mut env, &expr).expect("Failed to evaluate.");
-    println!("{:#?}", result);
+    let mut result_json = String::new();
+    json::format_json(result.as_ref(), &mut result_json).expect("Failed to format json.");
+    println!("{}", result_json);
 }
