@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::Ident;
-use crate::eval::Result;
+use crate::error::Result;
 
 /// A built-in function.
 pub struct Builtin {

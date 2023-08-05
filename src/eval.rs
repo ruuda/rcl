@@ -3,20 +3,7 @@ use std::rc::Rc;
 
 use crate::ast::{BinOp, Compr, Expr, Seq, UnOp};
 use crate::runtime::{Builtin, Env, Value};
-
-#[derive(Debug)]
-pub struct Error {
-    message: &'static str,
-}
-
-impl Error {
-    // TODO: Add a better error type which records source span info etc.
-    pub fn new(message: &'static str) -> Error {
-        Error { message }
-    }
-}
-
-pub type Result<T> = std::result::Result<T, Error>;
+use crate::error::{Error, Result};
 
 pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
     match expr {
@@ -40,9 +27,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     }
                     Ok(Rc::new(Value::Map(result)))
                 }
-                _ => Err(Error::new(
-                    "Should not mix `k: v` and values in one comprehension.",
-                )),
+                _ => Err("Should not mix `k: v` and values in one comprehension.".into()),
             }
         }
         Expr::ListLit(seqs) => {
@@ -53,7 +38,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             }
 
             if !values.is_empty() {
-                return Err(Error::new("`k: v` can only be used inside {}, not []."));
+                return Err("`k: v` can only be used inside {}, not [].".into());
             }
 
             Ok(Rc::new(Value::List(keys)))
@@ -66,13 +51,13 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             match cond.as_ref() {
                 Value::Bool(true) => eval(env, then),
                 Value::Bool(false) => eval(env, else_),
-                _ => Err(Error::new("Condition should be boolean.")),
+                _ => Err("Condition should be boolean.".into()),
             }
         }
 
         Expr::Var(var) => match env.lookup(var) {
             Some(value) => Ok(value.clone()),
-            None => Err(Error::new("Variable not found.")),
+            None => Err("Variable not found.".into()),
         },
 
         Expr::Field(field_name, value_expr) => {
@@ -95,7 +80,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                         Some(v) => Ok(v.clone()),
                         None => {
                             println!("Trying to access {} on:\n{:#?}", field_name, fields);
-                            Err(Error::new("No such field in this value."))
+                            Err("No such field in this value.".into())
                         }
                     }
                 }
@@ -111,7 +96,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                 }
                 not_map => {
                     println!("Trying to access {} on:\n{:#?}", field_name, not_map);
-                    Err(Error::new("Can only do field access on maps for now."))
+                    Err("Can only do field access on maps for now.".into())
                 }
             }
         }
@@ -138,7 +123,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             match fun.as_ref() {
                 Value::Builtin(f) => (f.f)(&args[..]),
                 // TODO: Define a value for lambdas, implement the call.
-                _ => Err(Error::new("Can only call functions.")),
+                _ => Err("Can only call functions.".into()),
             }
         }
 
@@ -162,7 +147,7 @@ fn eval_unop(op: UnOp, v: Rc<Value>) -> Result<Rc<Value>> {
         (UnOp::Neg, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
         (op, val) => {
             println!("Trying to apply {:?} to:\n{:#?}", op, val);
-            Err(Error::new("The unary operator is not supported for this value."))
+            Err("The unary operator is not supported for this value.".into())
         },
     }
 }
@@ -186,7 +171,7 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
         }
         _ => {
             println!("Trying to apply {:?} to:\n{:#?}\n{:#?}", op, lhs, rhs);
-            Err(Error::new("The binary operator is not supported for this value."))
+            Err("The binary operator is not supported for this value.".into())
         },
     }
 }
@@ -243,7 +228,7 @@ fn eval_seq(
                     }
                     Ok(())
                 }
-                _ => Err(Error::new("Iteration is not supported like this.")),
+                _ => Err("Iteration is not supported like this.".into()),
             }
         }
         Seq::Compr(Compr::If { condition, body }) => {
@@ -251,7 +236,7 @@ fn eval_seq(
             match cond.as_ref() {
                 Value::Bool(true) => eval_seq(env, body, out_keys, out_values),
                 Value::Bool(false) => Ok(()),
-                _ => Err(Error::new("Comprehension condition should be boolean.")),
+                _ => Err("Comprehension condition should be boolean.".into()),
             }
         }
         Seq::Compr(Compr::Let { name, value, body }) => {
@@ -268,7 +253,7 @@ fn builtin_map_contains(v: Rc<Value>) -> Builtin {
     let f = move |args: &[Rc<Value>]| {
         let arg = match args {
             [a] => a,
-            _ => return Err(Error::new("Map.contains takes a single argument.")),
+            _ => return Err("Map.contains takes a single argument.".into()),
         };
         match v.as_ref() {
             Value::Map(m) => {
@@ -288,7 +273,7 @@ fn builtin_list_contains(v: Rc<Value>) -> Builtin {
     let f = move |args: &[Rc<Value>]| {
         let arg = match args {
             [a] => a,
-            _ => return Err(Error::new("List.contains takes a single argument.")),
+            _ => return Err("List.contains takes a single argument.".into()),
         };
         match v.as_ref() {
             Value::List(m) => {
@@ -308,7 +293,7 @@ fn builtin_map_get(v: Rc<Value>) -> Builtin {
     let f = move |args: &[Rc<Value>]| {
         let (k, default) = match args {
             [k, default] => (k, default),
-            _ => return Err(Error::new("Map.get takes two arguments.")),
+            _ => return Err("Map.get takes two arguments.".into()),
         };
         match v.as_ref() {
             Value::Map(m) => {
