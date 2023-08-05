@@ -162,7 +162,7 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
         }
         (BinOp::Union, Value::Set(xs), Value::List(ys)) => {
             let mut result = xs.clone();
-            result.extend(ys.iter().map(|v_rc| v_rc.clone()));
+            result.extend(ys.iter().cloned());
             Ok(Rc::new(Value::Set(result)))
         }
         (BinOp::Add, Value::Int(x), Value::Int(y)) => {

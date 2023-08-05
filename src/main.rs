@@ -112,6 +112,8 @@ fn val_list(vs: &[&Rc<Value>]) -> Rc<Value> {
 }
 
 fn example_env() -> Env {
+    #![allow(clippy::redundant_clone)]
+
     let ams01 = val_string("ams01");
     let ams02 = val_string("ams02");
     let fra01 = val_string("fra01");

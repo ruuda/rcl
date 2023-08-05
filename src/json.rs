@@ -8,7 +8,7 @@ pub fn format_json(v: &Value, into: &mut String) -> Result<()> {
     match v {
         Value::Bool(true) => into.push_str("true"),
         Value::Bool(false) => into.push_str("false"),
-        Value::Int(i) => into.extend(i.to_string().chars()),
+        Value::Int(i) => into.push_str(&i.to_string()),
         Value::String(s) => {
             into.push('"');
             // TODO: Implement proper json escaping.
