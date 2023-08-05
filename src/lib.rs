@@ -10,3 +10,4 @@ pub mod error;
 pub mod eval;
 pub mod json;
 pub mod runtime;
+pub mod source;
