@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Compr, Expr, Seq, UnOp};
-use crate::runtime::{Builtin, Env, Value};
 use crate::error::{Error, Result};
+use crate::runtime::{Builtin, Env, Value};
 
 pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
     match expr {
@@ -148,7 +148,7 @@ fn eval_unop(op: UnOp, v: Rc<Value>) -> Result<Rc<Value>> {
         (op, val) => {
             println!("Trying to apply {:?} to:\n{:#?}", op, val);
             Err("The unary operator is not supported for this value.".into())
-        },
+        }
     }
 }
 
@@ -172,7 +172,7 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
         _ => {
             println!("Trying to apply {:?} to:\n{:#?}\n{:#?}", op, lhs, rhs);
             Err("The binary operator is not supported for this value.".into())
-        },
+        }
     }
 }
 
@@ -296,12 +296,10 @@ fn builtin_map_get(v: Rc<Value>) -> Builtin {
             _ => return Err("Map.get takes two arguments.".into()),
         };
         match v.as_ref() {
-            Value::Map(m) => {
-                match m.get(k) {
-                    Some(v) => Ok(v.clone()),
-                    None => Ok(default.clone()),
-                }
-            }
+            Value::Map(m) => match m.get(k) {
+                Some(v) => Ok(v.clone()),
+                None => Ok(default.clone()),
+            },
             _not_map => panic!("Should not have made a Map.get for this value."),
         }
     };
