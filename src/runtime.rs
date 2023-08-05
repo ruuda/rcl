@@ -5,6 +5,8 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+//! Representations of values and scopes at runtime.
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
@@ -42,6 +44,7 @@ impl Ord for Builtin {
     }
 }
 
+/// A value.
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Value {
     Bool(bool),
@@ -62,6 +65,7 @@ pub enum Value {
     Builtin(Builtin),
 }
 
+/// An environment binds names to values.
 #[derive(Debug)]
 pub struct Env {
     bindings: Vec<(Ident, Rc<Value>)>,
@@ -88,5 +92,11 @@ impl Env {
 
     pub fn pop(&mut self) {
         self.bindings.pop().expect("Environment stack underflow.");
+    }
+}
+
+impl Default for Env {
+    fn default() -> Self {
+        Self::new()
     }
 }

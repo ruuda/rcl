@@ -1,21 +1,8 @@
-// RCL -- A sane configuration language.
-// Copyright 2023 Ruud van Asseldonk
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// A copy of the License has been included in the root of the repository.
-
-mod ast;
-mod error;
-mod eval;
-mod json;
-mod runtime;
-
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use ast::{BinOp, Compr, Expr, Ident, Seq, UnOp};
-use runtime::{Env, Value};
+use rcl::ast::{BinOp, Compr, Expr, Ident, Seq, UnOp};
+use rcl::runtime::{Env, Value};
 
 /// Helpers for constructing AST in code.
 pub fn var(name: Ident) -> Expr {
@@ -193,8 +180,8 @@ fn main() {
     let mut env = example_env();
     eprintln!("{:#?}", expr);
     eprintln!("{:#?}", env);
-    let result = eval::eval(&mut env, &expr).expect("Failed to evaluate.");
+    let result = rcl::eval::eval(&mut env, &expr).expect("Failed to evaluate.");
     let mut result_json = String::new();
-    json::format_json(result.as_ref(), &mut result_json).expect("Failed to format json.");
+    rcl::json::format_json(result.as_ref(), &mut result_json).expect("Failed to format json.");
     println!("{}", result_json);
 }
