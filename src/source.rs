@@ -36,10 +36,29 @@ impl Span {
         self.start + self.len as usize
     }
 
-    /// Return the slice from the input that this span spans.
-    pub fn resolve<'a>(&self, inputs: &Inputs<'a>) -> &'a str {
-        let doc = inputs[self.doc.0 as usize];
-        &doc[self.start..self.end()]
+    /// Return the slice from the input that the span spans.
+    pub fn resolve<'a>(&self, input: impl Source<'a>) -> &'a str {
+        input.resolve(*self)
+    }
+}
+
+pub trait Source<'a> {
+    /// Return the slice from the input that the span spans.
+    fn resolve(self, span: Span) -> &'a str;
+}
+
+/// If we resolve against a string, then we assume that this string is the
+/// right document for this span, and we ignore the document id in the span.
+impl<'a> Source<'a> for &'a str {
+    fn resolve(self, span: Span) -> &'a str {
+        &self[span.start..span.end()]
+    }
+}
+
+impl<'a> Source<'a> for &Inputs<'a> {
+    fn resolve(self, span: Span) -> &'a str {
+        let doc = self[span.doc.0 as usize];
+        &doc[span.start..span.end()]
     }
 }
 

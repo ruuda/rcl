@@ -26,6 +26,15 @@ pub enum Token {
     /// A string enclosed in double quotes.
     DoubleQuoted,
 
+    /// `for`
+    KwFor,
+
+    /// `if`
+    KwIf,
+
+    /// `let`
+    KwLet,
+
     /// `(`
     LParen,
 
@@ -189,10 +198,15 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_in_ident(&mut self) -> Lexeme {
-        (
-            Token::Ident,
-            self.take_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_'),
-        )
+        let span = self.take_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_');
+        let ident = span.resolve(self.input);
+        let token = match ident {
+            "for" => Token::KwFor,
+            "if" => Token::KwIf,
+            "let" => Token::KwLet,
+            _ => Token::Ident,
+        };
+        (token, span)
     }
 
     fn lex_in_line_comment(&mut self) -> Lexeme {
