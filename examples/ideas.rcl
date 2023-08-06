@@ -159,3 +159,23 @@ let fmap:
   forall M: formall T: forall U:
   (T -> U) -> (M(T) -> M(U))
   = (f, xs) => builtins.map(f, xs);
+
+
+// Separators and whitespace ... what if we just don't require any separators?
+// I think it would work in the grammar ...
+// And optionally allow a comma as separator maybe, to make it compatible with
+// json?
+let xs = [1, 2, 3, for i in range(1, 10): 2*i, 4, 5, 6]
+// Still unambiguous but illegible for humans.
+let xs = [1 2 3 for i in range(1, 10): 2 * i 4 5 6]
+// Let's do:
+// * Semicolon terminates things assigned by `=`, so `let` and ident assoc.
+// * Comma terminates single elements and expr assoc.
+// The last terminator in a collection is optional.
+let xs = { a = 10; b = 11; };
+let ys = { a: 10, b: 11 };
+let zs = [1, 2, 3, for i in range(1, 10): 2 * i, 4, 5, 6];
+let ws = {for i in range(1, 10): i: "uninit", 100: "uninit"};
+// Do we really need comprehensions and elements to mix? Can just do this:
+let zs = {for i in range(1, 10): i: "uninit"} | {100: "uninit"};
+// It does simplify the AST though, so let's keep it.
