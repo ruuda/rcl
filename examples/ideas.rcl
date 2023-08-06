@@ -179,3 +179,35 @@ let ws = {for i in range(1, 10): i: "uninit", 100: "uninit"};
 // Do we really need comprehensions and elements to mix? Can just do this:
 let zs = {for i in range(1, 10): i: "uninit"} | {100: "uninit"};
 // It does simplify the AST though, so let's keep it.
+
+// About the types and imports, they should be completely separate constructs.
+// Types live completely separately, and they act as let-bindings in the file,
+// respecting the scopes though.
+type X = { a: Int, b: Bool };
+type Z = X | Null;
+// To import values, we use the `import` keyword:
+let xs = import "deps/data.rcl";
+// To import types, we use the `use` keyword:
+use "deps/types.rcl" as Types;
+// After this we can do:
+let x: Types.X = ...;
+// Or, instead of an alias, we can import specific types:
+use "deps/types.rcl" (X, Z);
+
+// Normally types follow the same scoping rules as expressions: they are only
+// available after you define them, if you define one inside a comprehension
+// then it doesn't leak, etc. Or maybe they should just be disallowed inside
+// comprehensions ... but then you can have one inside a let inside a
+// comprehension, which would be a weird distinction. But what about recursive
+// types? We'll need a "let rec" equivalent:
+type rec Json = Null | Bool | Int | String | List(Json) | Dict(String, Json);
+// How to format lists with separators when there is no terminating one ...
+// this is always a mess ... something like this?
+type rec Json
+  = Null
+  | Bool
+  | Int
+  | String
+  | List(Json)
+  | Dict(String, Json)
+  ;
