@@ -5,8 +5,8 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::source::{DocId, Span};
 use crate::error::SyntaxError;
+use crate::source::{DocId, Span};
 
 pub type Result<T> = std::result::Result<T, SyntaxError>;
 
@@ -70,13 +70,19 @@ struct Lexer<'a> {
     input: &'a str,
     doc: DocId,
     start: usize,
-    tokens: Vec<(Token, Span)>,
 }
 
-/// Lex a document.
+/// Lex an input document into tokens.
 pub fn lex(doc: DocId, input: &str) -> Result<Vec<(Token, Span)>> {
-    Lexer::new(doc, input).run()
+    let mut tokens = Vec::new();
+    let mut lexer = Lexer::new(doc, input);
+    while lexer.start < lexer.input.len() {
+        tokens.push(lexer.next()?);
+    }
+    Ok(tokens)
 }
+
+type Lexeme = (Token, usize);
 
 impl<'a> Lexer<'a> {
     pub fn new(doc: DocId, input: &'a str) -> Lexer<'a> {
@@ -84,7 +90,6 @@ impl<'a> Lexer<'a> {
             input,
             doc,
             start: 0,
-            tokens: Vec::new(),
         }
     }
 
@@ -107,10 +112,6 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn push(&mut self, token: Token, len: usize) {
-        self.tokens.push((token, self.span(len)));
-    }
-
     /// Build a parse error at the current cursor location.
     fn error_while<F: FnMut(u8) -> bool, T>(
         &self,
@@ -127,34 +128,22 @@ impl<'a> Lexer<'a> {
         Err(error)
     }
 
-    /// Include the first `n_prefix` bytes, then until `include` returns false.
-    fn lex_prefix_while<F: FnMut(u8) -> bool>(
-        &mut self,
-        n_prefix: usize,
-        mut include: F,
-        token: Token,
-    ) -> usize {
+    /// Count until `include` returns false.
+    fn count_while<F: FnMut(u8) -> bool>(&mut self, mut include: F) -> usize {
         let input = &self.input.as_bytes()[self.start..];
-        let len = input[n_prefix..].iter().take_while(|ch| include(**ch)).count();
-        self.push(token, len + n_prefix);
-        self.start + len + n_prefix
+        input.iter().take_while(|ch| include(**ch)).count()
     }
 
-    /// Lex until `include` returns false.
-    fn lex_while<F: FnMut(u8) -> bool>(&mut self, include: F, token: Token) -> usize {
-        let n_prefix = 0;
-        self.lex_prefix_while(n_prefix, include, token)
+    /// Lex the next token. The input must not be empty.
+    pub fn next(&mut self) -> Result<(Token, Span)> {
+        let (token, len) = self.lex_one()?;
+        let span = self.span(len);
+        self.start += len;
+        Ok((token, span))
     }
 
-    /// Lex the entire input document, return the tokens.
-    fn run(mut self) -> Result<Vec<(Token, Span)>> {
-        while self.start < self.input.len() {
-            self.start = self.lex_base()?;
-        }
-        Ok(self.tokens)
-    }
-
-    fn lex_base(&mut self) -> Result<usize> {
+    /// Lex one token. The input must not be empty.
+    fn lex_one(&mut self) -> Result<Lexeme> {
         let input = &self.input.as_bytes()[self.start..];
 
         debug_assert!(input.len() > 0, "Must have input before continuing to lex.");
@@ -203,19 +192,25 @@ impl<'a> Lexer<'a> {
         );
     }
 
-    fn lex_in_space(&mut self) -> usize {
-        self.lex_while(|ch| ch.is_ascii_whitespace(), Token::Space)
+    fn lex_in_space(&mut self) -> Lexeme {
+        (
+            Token::Space,
+            self.count_while(|ch| ch.is_ascii_whitespace()),
+        )
     }
 
-    fn lex_in_ident(&mut self) -> usize {
-        self.lex_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_', Token::Ident)
+    fn lex_in_ident(&mut self) -> Lexeme {
+        (
+            Token::Ident,
+            self.count_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_'),
+        )
     }
 
-    fn lex_in_line_comment(&mut self) -> usize {
-        self.lex_while(|ch| ch != b'\n', Token::LineComment)
+    fn lex_in_line_comment(&mut self) -> Lexeme {
+        (Token::LineComment, self.count_while(|ch| ch != b'\n'))
     }
 
-    fn lex_in_double_quote(&mut self) -> Result<usize> {
+    fn lex_in_double_quote(&mut self) -> Result<Lexeme> {
         let input = &self.input.as_bytes()[self.start..];
 
         // Skip over the initial opening quote.
@@ -226,8 +221,7 @@ impl<'a> Lexer<'a> {
                 continue;
             }
             if ch == b'"' {
-                self.push(Token::DoubleQuoted, i + 1);
-                return Ok(self.start + i + 1);
+                return Ok((Token::DoubleQuoted, i + 1));
             }
         }
 
@@ -239,7 +233,7 @@ impl<'a> Lexer<'a> {
         Err(error)
     }
 
-    fn lex_in_punct(&mut self) -> Result<usize> {
+    fn lex_in_punct(&mut self) -> Result<Lexeme> {
         debug_assert!(self.start < self.input.len());
 
         let token = match self.input.as_bytes()[self.start] {
@@ -267,7 +261,6 @@ impl<'a> Lexer<'a> {
                 return Err(error);
             }
         };
-        self.push(token, 1);
-        Ok(self.start + 1)
+        Ok((token, 1))
     }
 }
