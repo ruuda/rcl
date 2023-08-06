@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use rcl::ast::{BinOp, Compr, Expr, Ident, Seq, UnOp};
 use rcl::runtime::{Env, Value};
+use rcl::source::DocId;
 
 /// Helpers for constructing AST in code.
 pub fn var(name: Ident) -> Expr {
@@ -184,4 +185,10 @@ fn main() {
     let mut result_json = String::new();
     rcl::json::format_json(result.as_ref(), &mut result_json).expect("Failed to format json.");
     println!("{}", result_json);
+
+    let data = std::fs::read_to_string("examples/tags.rcl").expect("Failed to load example.");
+    let tokens = rcl::lexer::lex(DocId(0), &data).expect("Failed to parse.");
+    for (token, span) in &tokens {
+        eprintln!("{span:?} {token:?}");
+    }
 }

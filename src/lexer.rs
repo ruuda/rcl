@@ -15,11 +15,55 @@ pub enum Token {
     /// A sequence of ascii whitespace.
     Space,
 
+    /// A comment that starts with `//` and runs until the end of the line.
+    ///
+    /// Excludes the newline itself.
+    LineComment,
+
     /// A sequence of ascii alphanumeric or _, not starting with a digit.
     Ident,
 
     /// A string enclosed in double quotes.
     DoubleQuoted,
+
+    /// `(`
+    LParen,
+
+    /// `)`
+    RParen,
+
+    /// `[`
+    LBracket,
+
+    /// `]`
+    RBracket,
+
+    /// `{`
+    LBrace,
+
+    /// `}`
+    RBrace,
+
+    /// `!`
+    Bang,
+
+    /// `,`
+    Comma,
+
+    /// `.`
+    Dot,
+
+    /// `:`
+    Colon,
+
+    /// `;`
+    Semicolon,
+
+    /// `=`
+    Eq,
+
+    /// `|`
+    Pipe,
 }
 
 #[derive(Debug)]
@@ -27,6 +71,7 @@ enum State {
     Base,
     InSpace,
     InIdent,
+    InPunct,
     InLineComment,
     InDoubleQuote,
     Done,
@@ -93,15 +138,35 @@ impl<'a> Lexer<'a> {
         Err(error)
     }
 
+    /// Include the first `n_prefix` bytes, then until `include` returns false.
+    fn lex_prefix_while<F: FnMut(u8) -> bool>(
+        &mut self,
+        n_prefix: usize,
+        mut include: F,
+        token: Token,
+    ) -> (usize, State) {
+        let input = &self.input.as_bytes()[self.start..];
+        let len = input[n_prefix..].iter().take_while(|ch| include(**ch)).count();
+        self.push(token, len + n_prefix);
+        (self.start + len + n_prefix, State::Base)
+    }
+
+    /// Lex until `include` returns false.
+    fn lex_while<F: FnMut(u8) -> bool>(&mut self, include: F, token: Token) -> (usize, State) {
+        let n_prefix = 0;
+        self.lex_prefix_while(n_prefix, include, token)
+    }
+
     /// Lex the entire input document, return the tokens.
     fn run(mut self) -> Result<Vec<(Token, Span)>> {
         let mut state = State::Base;
         loop {
             let (start, next_state) = match state {
                 State::Base => self.lex_base()?,
-                State::InSpace => self.lex_in_space()?,
-                State::InIdent => self.lex_in_ident()?,
-                State::InLineComment => self.lex_in_line_comment()?,
+                State::InSpace => self.lex_in_space(),
+                State::InIdent => self.lex_in_ident(),
+                State::InPunct => self.lex_in_punct()?,
+                State::InLineComment => self.lex_in_line_comment(),
                 State::InDoubleQuote => self.lex_in_double_quote()?,
                 State::Done => break,
             };
@@ -135,6 +200,10 @@ impl<'a> Lexer<'a> {
             return Ok((self.start, State::InIdent));
         }
 
+        if input[0].is_ascii_punctuation() {
+            return Ok((self.start, State::InPunct));
+        }
+
         if input[0].is_ascii_control() {
             return self.error_while(
                 |ch| ch.is_ascii_control(),
@@ -157,5 +226,73 @@ impl<'a> Lexer<'a> {
             char::from_u32(input[0] as u32).unwrap(),
             input[0],
         );
+    }
+
+    fn lex_in_space(&mut self) -> (usize, State) {
+        self.lex_while(|ch| ch.is_ascii_whitespace(), Token::Space)
+    }
+
+    fn lex_in_ident(&mut self) -> (usize, State) {
+        self.lex_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_', Token::Ident)
+    }
+
+    fn lex_in_line_comment(&mut self) -> (usize, State) {
+        self.lex_while(|ch| ch != b'\n', Token::LineComment)
+    }
+
+    fn lex_in_double_quote(&mut self) -> Result<(usize, State)> {
+        let input = &self.input.as_bytes()[self.start..];
+
+        // Skip over the initial opening quote.
+        for (i, &ch) in input.iter().enumerate().skip(1) {
+            // Indexing does not go out of bounds here because we start at 1.
+            if ch == b'"' && input[i - 1] == b'\\' {
+                // An escaped quote should not end the token.
+                continue;
+            }
+            if ch == b'"' {
+                self.push(Token::DoubleQuoted, i + 1);
+                return Ok((self.start + i + 1, State::Base));
+            }
+        }
+
+        let error = SyntaxError {
+            span: self.span(input.len()),
+            message: "Unexpected end of input, string literal is not closed.",
+            note: None,
+        };
+        Err(error)
+    }
+
+    fn lex_in_punct(&mut self) -> Result<(usize, State)> {
+        debug_assert!(self.start < self.input.len());
+
+        let token = match self.input.as_bytes()[self.start] {
+            // For those characters, we have single-character tokens.
+            b'(' => Token::LParen,
+            b')' => Token::RParen,
+            b'[' => Token::LBracket,
+            b']' => Token::RBracket,
+            b'{' => Token::LBrace,
+            b'}' => Token::RBrace,
+            b'!' => Token::Bang,
+            b',' => Token::Comma,
+            b'.' => Token::Dot,
+            b':' => Token::Colon,
+            b';' => Token::Semicolon,
+            b'=' => Token::Eq,
+            b'|' => Token::Pipe,
+            q => {
+                eprintln!("TODO: {}", q);
+                let error = SyntaxError {
+                    span: self.span(1),
+                    message: "Unrecognized punctuation here.",
+                    note: None,
+                };
+                return Err(error);
+            }
+        };
+        self.push(token, 1);
+        Ok((self.start + 1, State::Base))
     }
 }
