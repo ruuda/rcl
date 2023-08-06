@@ -66,17 +66,6 @@ pub enum Token {
     Pipe,
 }
 
-#[derive(Debug)]
-enum State {
-    Base,
-    InSpace,
-    InIdent,
-    InPunct,
-    InLineComment,
-    InDoubleQuote,
-    Done,
-}
-
 struct Lexer<'a> {
     input: &'a str,
     doc: DocId,
@@ -144,64 +133,50 @@ impl<'a> Lexer<'a> {
         n_prefix: usize,
         mut include: F,
         token: Token,
-    ) -> (usize, State) {
+    ) -> usize {
         let input = &self.input.as_bytes()[self.start..];
         let len = input[n_prefix..].iter().take_while(|ch| include(**ch)).count();
         self.push(token, len + n_prefix);
-        (self.start + len + n_prefix, State::Base)
+        self.start + len + n_prefix
     }
 
     /// Lex until `include` returns false.
-    fn lex_while<F: FnMut(u8) -> bool>(&mut self, include: F, token: Token) -> (usize, State) {
+    fn lex_while<F: FnMut(u8) -> bool>(&mut self, include: F, token: Token) -> usize {
         let n_prefix = 0;
         self.lex_prefix_while(n_prefix, include, token)
     }
 
     /// Lex the entire input document, return the tokens.
     fn run(mut self) -> Result<Vec<(Token, Span)>> {
-        let mut state = State::Base;
-        loop {
-            let (start, next_state) = match state {
-                State::Base => self.lex_base()?,
-                State::InSpace => self.lex_in_space(),
-                State::InIdent => self.lex_in_ident(),
-                State::InPunct => self.lex_in_punct()?,
-                State::InLineComment => self.lex_in_line_comment(),
-                State::InDoubleQuote => self.lex_in_double_quote()?,
-                State::Done => break,
-            };
-            self.start = start;
-            state = next_state;
+        while self.start < self.input.len() {
+            self.start = self.lex_base()?;
         }
-
         Ok(self.tokens)
     }
 
-    fn lex_base(&mut self) -> Result<(usize, State)> {
+    fn lex_base(&mut self) -> Result<usize> {
         let input = &self.input.as_bytes()[self.start..];
 
-        if input.len() == 0 {
-            return Ok((self.start, State::Done));
-        }
+        debug_assert!(input.len() > 0, "Must have input before continuing to lex.");
 
         if input.starts_with(b"\"") {
-            return Ok((self.start, State::InDoubleQuote));
+            return self.lex_in_double_quote();
         }
 
         if input.starts_with(b"//") {
-            return Ok((self.start, State::InLineComment));
+            return Ok(self.lex_in_line_comment());
         }
 
         if input[0].is_ascii_whitespace() {
-            return Ok((self.start, State::InSpace));
+            return Ok(self.lex_in_space());
         }
 
         if input[0].is_ascii_alphabetic() || input[0].is_ascii_digit() {
-            return Ok((self.start, State::InIdent));
+            return Ok(self.lex_in_ident());
         }
 
         if input[0].is_ascii_punctuation() {
-            return Ok((self.start, State::InPunct));
+            return self.lex_in_punct();
         }
 
         if input[0].is_ascii_control() {
@@ -228,19 +203,19 @@ impl<'a> Lexer<'a> {
         );
     }
 
-    fn lex_in_space(&mut self) -> (usize, State) {
+    fn lex_in_space(&mut self) -> usize {
         self.lex_while(|ch| ch.is_ascii_whitespace(), Token::Space)
     }
 
-    fn lex_in_ident(&mut self) -> (usize, State) {
+    fn lex_in_ident(&mut self) -> usize {
         self.lex_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_', Token::Ident)
     }
 
-    fn lex_in_line_comment(&mut self) -> (usize, State) {
+    fn lex_in_line_comment(&mut self) -> usize {
         self.lex_while(|ch| ch != b'\n', Token::LineComment)
     }
 
-    fn lex_in_double_quote(&mut self) -> Result<(usize, State)> {
+    fn lex_in_double_quote(&mut self) -> Result<usize> {
         let input = &self.input.as_bytes()[self.start..];
 
         // Skip over the initial opening quote.
@@ -252,7 +227,7 @@ impl<'a> Lexer<'a> {
             }
             if ch == b'"' {
                 self.push(Token::DoubleQuoted, i + 1);
-                return Ok((self.start + i + 1, State::Base));
+                return Ok(self.start + i + 1);
             }
         }
 
@@ -264,7 +239,7 @@ impl<'a> Lexer<'a> {
         Err(error)
     }
 
-    fn lex_in_punct(&mut self) -> Result<(usize, State)> {
+    fn lex_in_punct(&mut self) -> Result<usize> {
         debug_assert!(self.start < self.input.len());
 
         let token = match self.input.as_bytes()[self.start] {
@@ -293,6 +268,6 @@ impl<'a> Lexer<'a> {
             }
         };
         self.push(token, 1);
-        Ok((self.start + 1, State::Base))
+        Ok(self.start + 1)
     }
 }
