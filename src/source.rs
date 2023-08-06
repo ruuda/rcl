@@ -8,7 +8,11 @@
 //! Types for dealing with input source code.
 
 /// A list of input documents.
-type Inputs<'a> = [&'a str];
+pub type Inputs<'a> = [&'a str];
+
+/// The index of a document in the list of input files.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct DocId(pub u32);
 
 /// Marks a location in a source file by byte offset.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -23,7 +27,7 @@ pub struct Span {
     pub len: u32,
 
     /// Index of the document that contains the span.
-    pub doc: u32,
+    pub doc: DocId,
 }
 
 impl Span {
@@ -34,7 +38,7 @@ impl Span {
 
     /// Return the slice from the input that this span spans.
     pub fn resolve<'a>(&self, inputs: &Inputs<'a>) -> &'a str {
-        let doc = inputs[self.doc as usize];
+        let doc = inputs[self.doc.0 as usize];
         &doc[self.start..self.end()]
     }
 }

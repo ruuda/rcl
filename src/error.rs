@@ -7,6 +7,8 @@
 
 //! Error types.
 
+use crate::source::Span;
+
 #[derive(Debug)]
 pub struct Error {
     // Not dead, used in the debug impl.
@@ -27,4 +29,12 @@ impl From<&'static str> for Error {
     fn from(message: &'static str) -> Error {
         Error { message }
     }
+}
+
+/// A syntax error that causes lexing or parsing to fail.
+#[derive(Debug)]
+pub struct SyntaxError {
+    pub span: Span,
+    pub message: &'static str,
+    pub note: Option<(&'static str, Span)>,
 }
