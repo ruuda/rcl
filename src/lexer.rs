@@ -66,14 +66,10 @@ pub enum Token {
     Pipe,
 }
 
-struct Lexer<'a> {
-    input: &'a str,
-    doc: DocId,
-    start: usize,
-}
+pub type Lexeme = (Token, Span);
 
 /// Lex an input document into tokens.
-pub fn lex(doc: DocId, input: &str) -> Result<Vec<(Token, Span)>> {
+pub fn lex(doc: DocId, input: &str) -> Result<Vec<Lexeme>> {
     let mut tokens = Vec::new();
     let mut lexer = Lexer::new(doc, input);
     while lexer.start < lexer.input.len() {
@@ -82,7 +78,11 @@ pub fn lex(doc: DocId, input: &str) -> Result<Vec<(Token, Span)>> {
     Ok(tokens)
 }
 
-type Lexeme = (Token, usize);
+struct Lexer<'a> {
+    input: &'a str,
+    doc: DocId,
+    start: usize,
+}
 
 impl<'a> Lexer<'a> {
     pub fn new(doc: DocId, input: &'a str) -> Lexer<'a> {
@@ -93,8 +93,8 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Return a span from the current cursor location.
-    fn span(&self, len: usize) -> Span {
+    /// Return a span from the current cursor location and advance the cursor.
+    fn span(&mut self, len: usize) -> Span {
         // We could turn this into a proper error and report it, but it would
         // make things really tedious. It's one of those things where if you
         // don't fix it a fuzzer will force you to, except in this case we need
@@ -105,8 +105,10 @@ impl<'a> Lexer<'a> {
             "The lexer does not support spans longer than 4 GiB. Byte offset: {}",
             self.start,
         );
+        let start = self.start;
+        self.start += len;
         Span {
-            start: self.start,
+            start,
             len: len as u32,
             doc: self.doc,
         }
@@ -114,14 +116,12 @@ impl<'a> Lexer<'a> {
 
     /// Build a parse error at the current cursor location.
     fn error_while<F: FnMut(u8) -> bool, T>(
-        &self,
-        mut include: F,
+        &mut self,
+        include: F,
         message: &'static str,
     ) -> Result<T> {
-        let input = &self.input.as_bytes()[self.start..];
-        let len = input.iter().take_while(|ch| include(**ch)).count();
         let error = SyntaxError {
-            span: self.span(len),
+            span: self.take_while(include),
             message: message,
             note: None,
         };
@@ -129,31 +129,23 @@ impl<'a> Lexer<'a> {
     }
 
     /// Count until `include` returns false.
-    fn count_while<F: FnMut(u8) -> bool>(&mut self, mut include: F) -> usize {
+    fn take_while<F: FnMut(u8) -> bool>(&mut self, mut include: F) -> Span {
         let input = &self.input.as_bytes()[self.start..];
-        input.iter().take_while(|ch| include(**ch)).count()
-    }
-
-    /// Lex the next token. The input must not be empty.
-    pub fn next(&mut self) -> Result<(Token, Span)> {
-        let (token, len) = self.lex_one()?;
-        let span = self.span(len);
-        self.start += len;
-        Ok((token, span))
+        self.span(input.iter().take_while(|ch| include(**ch)).count())
     }
 
     /// Lex one token. The input must not be empty.
-    fn lex_one(&mut self) -> Result<Lexeme> {
+    fn next(&mut self) -> Result<Lexeme> {
         let input = &self.input.as_bytes()[self.start..];
 
         debug_assert!(input.len() > 0, "Must have input before continuing to lex.");
 
-        if input.starts_with(b"\"") {
-            return self.lex_in_double_quote();
-        }
-
         if input.starts_with(b"//") {
             return Ok(self.lex_in_line_comment());
+        }
+
+        if input[0] == b'"' {
+            return self.lex_in_double_quote();
         }
 
         if input[0].is_ascii_whitespace() {
@@ -193,21 +185,18 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_in_space(&mut self) -> Lexeme {
-        (
-            Token::Space,
-            self.count_while(|ch| ch.is_ascii_whitespace()),
-        )
+        (Token::Space, self.take_while(|ch| ch.is_ascii_whitespace()))
     }
 
     fn lex_in_ident(&mut self) -> Lexeme {
         (
             Token::Ident,
-            self.count_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_'),
+            self.take_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_'),
         )
     }
 
     fn lex_in_line_comment(&mut self) -> Lexeme {
-        (Token::LineComment, self.count_while(|ch| ch != b'\n'))
+        (Token::LineComment, self.take_while(|ch| ch != b'\n'))
     }
 
     fn lex_in_double_quote(&mut self) -> Result<Lexeme> {
@@ -221,7 +210,7 @@ impl<'a> Lexer<'a> {
                 continue;
             }
             if ch == b'"' {
-                return Ok((Token::DoubleQuoted, i + 1));
+                return Ok((Token::DoubleQuoted, self.span(i + 1)));
             }
         }
 
@@ -261,6 +250,6 @@ impl<'a> Lexer<'a> {
                 return Err(error);
             }
         };
-        Ok((token, 1))
+        Ok((token, self.span(1)))
     }
 }
