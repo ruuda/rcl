@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::cst::{Expr, NonCode, Prefixed};
+use crate::cst::{Expr, NonCode, Prefixed, Seq};
 use crate::error::ParseError;
 use crate::lexer::{self, Token};
 use crate::source::{DocId, Span};
@@ -110,20 +110,21 @@ impl<'a> Parser<'a> {
     /// Push an opening bracket onto the stack of brackets when inside a query.
     ///
     /// Consumes the token under the cursor.
-    fn push_bracket(&mut self) {
+    fn push_bracket(&mut self) -> Span {
         let start_token = self.tokens[self.cursor];
-        self.consume();
+        let result = self.consume();
         self.bracket_stack.push(start_token);
         match start_token.0 {
             Token::LBrace | Token::LParen | Token::LBracket => {}
             invalid => unreachable!("Invalid token for `push_bracket`: {:?}", invalid),
         };
+        result
     }
 
     /// Pop a closing bracket while verifying that it is the right one.
     ///
     /// Consumes the token under the cursor.
-    fn pop_bracket(&mut self) -> Result<()> {
+    fn pop_bracket(&mut self) -> Result<Span> {
         let actual_end_token = self.tokens[self.cursor].0;
         let top = match self.bracket_stack.pop() {
             None => match actual_end_token {
@@ -142,8 +143,7 @@ impl<'a> Parser<'a> {
         };
 
         if actual_end_token == expected_end_token {
-            self.consume();
-            return Ok(());
+            return Ok(self.consume());
         }
 
         match expected_end_token {
@@ -217,14 +217,39 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_prefixed_expr(&mut self) -> Result<Prefixed<Expr>> {
+    /// Consume the given token, report an error otherwise.
+    fn parse_token(&mut self, expected: Token, error: &'static str) -> Result<Span> {
+        match self.peek() {
+            Some(token) if token == expected => Ok(self.consume()),
+            _ => self.error(error),
+        }
+    }
+
+    /// Consume the given token, report an error with note otherwise.
+    fn parse_token_with_note(
+        &mut self,
+        expected: Token,
+        error: &'static str,
+        note_span: Span,
+        note: &'static str,
+    ) -> Result<Span> {
+        match self.peek() {
+            Some(token) if token == expected => Ok(self.consume()),
+            _ => self.error_with_note(error, note_span, note),
+        }
+    }
+
+    fn parse_prefixed<T, F>(&mut self, parse_inner: F) -> Result<Prefixed<T>>
+        where F: Fn(&mut Self) -> Result<T>
+    {
         let prefix = self.parse_non_code();
-        let expr = self.parse_expr()?;
-        let result = Prefixed {
-            prefix,
-            inner: expr,
-        };
+        let inner = parse_inner(self)?;
+        let result = Prefixed { prefix, inner };
         Ok(result)
+    }
+
+    pub fn parse_prefixed_expr(&mut self) -> Result<Prefixed<Expr>> {
+        self.parse_prefixed(|s| s.parse_expr())
     }
 
     fn parse_expr(&mut self) -> Result<Expr> {
@@ -244,24 +269,17 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
 
         self.skip_non_code()?;
-        match self.peek() {
-            Some(Token::Eq) => self.consume(),
-            _ => return self.error("Expected '=' here."),
-        };
+        self.parse_token(Token::Eq, "Expected '=' here.")?;
 
         let value = self.parse_expr()?;
 
         self.skip_non_code()?;
-        match self.peek() {
-            Some(Token::Semicolon) => self.consume(),
-            _ => {
-                return self.error_with_note(
-                    "Expected ';' here to close the let-binding.",
-                    let_,
-                    "Let-binding opened here.",
-                );
-            }
-        };
+        self.parse_token_with_note(
+            Token::Semicolon,
+            "Expected ';' here to close the let-binding.",
+            let_,
+            "Let-binding opened here.",
+        )?;
 
         let body = self.parse_prefixed_expr()?;
 
@@ -270,10 +288,46 @@ impl<'a> Parser<'a> {
             value: Box::new(value),
             body: Box::new(body),
         };
+
         Ok(result)
     }
 
     fn parse_expr_brace_lit(&mut self) -> Result<Expr> {
-        unimplemented!("TODO; cursor is at {:?}", self.peek());
+        let open = self.push_bracket();
+        let seqs = self.parse_prefixed_seqs()?;
+        let close = self.pop_bracket()?;
+
+        let result = Expr::BraceLit {
+            open,
+            close,
+            elements: seqs,
+        };
+
+        Ok(result)
+    }
+
+    fn parse_prefixed_seqs(&mut self) -> Result<Box<[Prefixed<Seq>]>> {
+        let result = Vec::new();
+        let mut ok_terminator = None;
+
+        loop {
+            let prefix = self.parse_non_code();
+            match self.peek() {
+                Some(Token::RBrace | Token::RBracket) => break,
+                tok if Some(tok) == ok_terminator => {
+                    self.consume();
+                    continue;
+                }
+                _ => {
+                    let seq = self.parse_seq()?;
+                }
+            }
+        }
+
+        Ok(result.into_boxed_slice())
+    }
+
+    fn parse_seq(&mut self) -> Result<Seq> {
+
     }
 }
