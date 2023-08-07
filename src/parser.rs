@@ -307,19 +307,34 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_prefixed_seqs(&mut self) -> Result<Box<[Prefixed<Seq>]>> {
-        let result = Vec::new();
-        let mut ok_terminator = None;
+        let mut result = Vec::new();
+        let mut expected_terminator = None;
 
         loop {
             let prefix = self.parse_non_code();
             match self.peek() {
-                Some(Token::RBrace | Token::RBracket) => break,
-                tok if Some(tok) == ok_terminator => {
+                Some(Token::RBrace | Token::RBracket) => {
+                    // TODO: In this case we lose the prefix that we parsed. So
+                    // comments in an empty collection literal do not survive,
+                    // need to find a way to disallow this in the first place.
+                    break;
+                }
+                tok if tok == expected_terminator => {
                     self.consume();
                     continue;
                 }
                 _ => {
                     let seq = self.parse_seq()?;
+                    expected_terminator = match seq {
+                        Seq::Elem { .. } => Some(Token::Comma),
+                        Seq::AssocExpr { .. } => Some(Token::Comma),
+                        Seq::AssocIdent { .. } => Some(Token::Semicolon),
+                        Seq::Compr { .. } => Some(Token::Comma),
+                    };
+                    let prefixed = Prefixed {
+                        prefix, inner: seq
+                    };
+                    result.push(prefixed);
                 }
             }
         }
@@ -328,6 +343,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_seq(&mut self) -> Result<Seq> {
-
+        unimplemented!("TODO");
     }
 }
