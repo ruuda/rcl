@@ -83,14 +83,7 @@ pub enum Seq {
     /// A `key = value` mapping, where the key is an identifier.
     AssocIdent { field: Span, value: Box<Expr> },
 
-    /// A comprehension that yields elements or mappings.
-    Compr(Compr),
-}
-
-/// A for-comprehension.
-#[derive(Debug)]
-pub enum Compr {
-    /// Let in the middle of a comprehension.
+    /// Let in the middle of a sequence literal.
     ///
     /// This is syntactically different from a let before an expression, because
     /// associations are not first-class values.

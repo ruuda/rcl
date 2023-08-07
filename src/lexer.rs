@@ -12,8 +12,14 @@ pub type Result<T> = std::result::Result<T, ParseError>;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Token {
-    /// A sequence of ascii whitespace.
+    /// A sequence of ascii whitespace not significant for reformatting.
+    ///
+    /// Note, this token gets discarded from the result, it is there for
+    /// internal use in the lexer on only.
     Space,
+
+    /// A sequence of ascii whitespace that contains at least two newlines.
+    Blank,
 
     /// A comment that starts with `//` and runs until the end of the line.
     ///
@@ -82,7 +88,13 @@ pub fn lex(doc: DocId, input: &str) -> Result<Vec<Lexeme>> {
     let mut tokens = Vec::new();
     let mut lexer = Lexer::new(doc, input);
     while lexer.start < lexer.input.len() {
-        tokens.push(lexer.next()?);
+        match lexer.next()? {
+            // We drop non-significant whitespace in the lexer to simplify the
+            // parser. Blank lines we do keep, because we want to preserve them
+            // when autoformatting.
+            (Token::Space, _) => continue,
+            lexeme => tokens.push(lexeme),
+        };
     }
     Ok(tokens)
 }
@@ -194,7 +206,20 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_in_space(&mut self) -> Lexeme {
-        (Token::Space, self.take_while(|ch| ch.is_ascii_whitespace()))
+        let span = self.take_while(|ch| ch.is_ascii_whitespace());
+        let is_blank = span
+            .resolve(self.input)
+            .as_bytes()
+            .iter()
+            .filter(|ch| **ch == b'\n')
+            .skip(1)
+            .next()
+            .is_some();
+        if is_blank {
+            (Token::Blank, span)
+        } else {
+            (Token::Space, span)
+        }
     }
 
     fn lex_in_ident(&mut self) -> Lexeme {
