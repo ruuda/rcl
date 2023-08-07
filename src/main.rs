@@ -191,4 +191,7 @@ fn main() {
     for (token, span) in &tokens {
         eprintln!("{span:?} {token:?}");
     }
+
+    let cst = rcl::parser::parse(DocId(0), &data).expect("Failed to parse.");
+    eprintln!("{cst:#?}");
 }

@@ -33,7 +33,7 @@ impl From<&'static str> for Error {
 
 /// A syntax error that causes lexing or parsing to fail.
 #[derive(Debug)]
-pub struct SyntaxError {
+pub struct ParseError {
     pub span: Span,
     pub message: &'static str,
     pub note: Option<(&'static str, Span)>,

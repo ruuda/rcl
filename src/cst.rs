@@ -11,6 +11,12 @@
 //! Tree (AST). It represents the input document more precisely, which makes it
 //! less suitable to feed into a typechecker or evaluator, but more suitable for
 //! to feed into an autoformatter. For instance, it preserves comments.
+//!
+//! The CST does not account for every byte in the input document. For example,
+//! it does not record whitespace that it would not respect anyway when
+//! formatting, and it does not record the spans for some keywords that are
+//! implied by the structure of the tree. For example, for a let-binding, it
+//! does not store the span of the `let` keyword nor of the `=` after the name.
 
 use crate::source::Span;
 
@@ -24,39 +30,50 @@ pub enum NonCode {
     LineComment(Span),
 }
 
+/// An inner node that might be preceded by non-code.
+#[derive(Debug)]
+pub struct Prefixed<T> {
+    /// Non-code that precedes the tree node.
+    pub prefix: Box<[NonCode]>,
+
+    /// The tree node itself.
+    pub inner: T,
+}
+
 #[derive(Debug)]
 pub enum Expr {
-    /// Non-code that precedes the body.
-    NonCode { skip: NonCode, body: Box<Expr> },
-
     /// A let-binding that binds `value` to the name `ident` in `body`.
     Let {
         ident: Span,
         value: Box<Expr>,
-        body: Box<Expr>,
+        body: Box<Prefixed<Expr>>,
     },
 
     /// A `{}`-enclosed collection literal.
     BraceLit {
         open: Span,
         close: Span,
-        elements: Vec<Seq>,
+        elements: Box<[Prefixed<Seq>]>,
     },
 
     /// A `[]`-encosed collection literal.
     BracketLit {
         open: Span,
         close: Span,
-        elements: Vec<Seq>,
+        elements: Box<[Prefixed<Seq>]>,
+    },
+
+    /// An expression enclosed in `()`.
+    Parens {
+        open: Span,
+        close: Span,
+        body: Box<Expr>,
     },
 }
 
 /// An inner element of a collection literal.
 #[derive(Debug)]
 pub enum Seq {
-    /// Non-code that precedes an element.
-    NonCode { skip: NonCode },
-
     /// A single element.
     Elem { value: Box<Expr> },
 
@@ -73,9 +90,6 @@ pub enum Seq {
 /// A for-comprehension.
 #[derive(Debug)]
 pub enum Compr {
-    /// Non-code that precedes a clause of the comprehension.
-    NonCode { skip: NonCode },
-
     /// Let in the middle of a comprehension.
     ///
     /// This is syntactically different from a let before an expression, because
@@ -83,19 +97,19 @@ pub enum Compr {
     Let {
         ident: Span,
         value: Box<Expr>,
-        body: Box<Seq>,
+        body: Box<Prefixed<Seq>>,
     },
 
     /// Loop over the collection, binding the values to `idents`.
     For {
-        idents: Vec<Span>,
+        idents: Box<[Span]>,
         collection: Box<Expr>,
-        body: Box<Seq>,
+        body: Box<Prefixed<Seq>>,
     },
 
     /// Enter the loop only if the condition is true.
     If {
         condition: Box<Expr>,
-        body: Box<Seq>,
+        body: Box<Prefixed<Seq>>,
     },
 }

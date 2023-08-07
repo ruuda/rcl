@@ -5,10 +5,10 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::error::SyntaxError;
+use crate::error::ParseError;
 use crate::source::{DocId, Span};
 
-pub type Result<T> = std::result::Result<T, SyntaxError>;
+pub type Result<T> = std::result::Result<T, ParseError>;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Token {
@@ -129,7 +129,7 @@ impl<'a> Lexer<'a> {
         include: F,
         message: &'static str,
     ) -> Result<T> {
-        let error = SyntaxError {
+        let error = ParseError {
             span: self.take_while(include),
             message: message,
             note: None,
@@ -228,7 +228,7 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        let error = SyntaxError {
+        let error = ParseError {
             span: self.span(input.len()),
             message: "Unexpected end of input, string literal is not closed.",
             note: None,
@@ -256,7 +256,7 @@ impl<'a> Lexer<'a> {
             b'|' => Token::Pipe,
             q => {
                 eprintln!("TODO: {}", q);
-                let error = SyntaxError {
+                let error = ParseError {
                     span: self.span(1),
                     message: "Unrecognized punctuation here.",
                     note: None,
