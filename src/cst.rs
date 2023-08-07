@@ -20,6 +20,23 @@
 
 use crate::source::Span;
 
+/// A unary operator.
+#[derive(Debug, Copy, Clone)]
+pub enum UnOp {
+    /// Negate a boolean.
+    Neg,
+}
+
+/// A binary operator.
+#[derive(Debug, Copy, Clone)]
+pub enum BinOp {
+    /// `|`: Union two collections
+    Union,
+
+    /// `+`: Add two numbers.
+    Add,
+}
+
 /// Not code, but a piece of the document relevant to preserve for formatting.
 #[derive(Debug)]
 pub enum NonCode {
@@ -70,7 +87,31 @@ pub enum Expr {
         body: Box<Expr>,
     },
 
-    String(Span),
+    /// Read a variable.
+    Var(Span),
+
+    Field {
+        inner: Box<Expr>,
+        field: Span,
+    },
+
+    /// A string literal.
+    StringLit(Span),
+
+    /// A unary operator.
+    UnOp {
+        op: UnOp,
+        op_span: Span,
+        body: Box<Expr>,
+    },
+
+    /// A binary operator.
+    BinOp {
+        op: BinOp,
+        op_span: Span,
+        lhs: Box<Prefixed<Expr>>,
+        rhs: Box<Prefixed<Expr>>,
+    },
 }
 
 /// An inner element of a collection literal.

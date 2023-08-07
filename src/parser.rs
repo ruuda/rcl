@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::cst::{Expr, NonCode, Prefixed, Seq};
+use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, UnOp};
 use crate::error::ParseError;
 use crate::lexer::{self, Token};
 use crate::source::{DocId, Span};
@@ -77,7 +77,14 @@ impl<'a> Parser<'a> {
 
     /// Return the token under the cursor, if there is one.
     fn peek(&self) -> Option<Token> {
-        self.tokens.get(self.cursor).map(|t| t.0)
+        // TODO: Peek should ignore whitespace and comments for most cases,
+        // probably it should be the default.
+        self.peek_n(0)
+    }
+
+    /// Return the token `offset` tokens after the cursor, if there is one.
+    fn peek_n(&self, offset: usize) -> Option<Token> {
+        self.tokens.get(self.cursor + offset).map(|t| t.0)
     }
 
     /// Return the span under the cursor, or end of document otherwise.
@@ -248,12 +255,39 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> Result<Expr> {
+        let result = match self.peek() {
+            Some(Token::KwLet) => self.parse_expr_let()?,
+            Some(Token::LBrace) => self.parse_expr_brace_lit()?,
+            Some(Token::LBracket) => self.parse_expr_bracket_lit()?,
+            Some(Token::DoubleQuoted) => Expr::StringLit(self.consume()),
+            Some(Token::Ident) => Expr::Var(self.consume()),
+            Some(Token::Bang) => self.parse_expr_unop(UnOp::Neg)?,
+            _ => return self.error("Expected an expression here."),
+        };
+
+        // TODO: Define the expr grammar with precedence and such.
+        self.skip_non_code()?;
+        self.parse_after_expr(result)
+    }
+
+    fn parse_after_expr(&mut self, inner: Expr) -> Result<Expr> {
         match self.peek() {
-            Some(Token::KwLet) => self.parse_expr_let(),
-            Some(Token::LBrace) => self.parse_expr_brace_lit(),
-            Some(Token::LBracket) => self.parse_expr_bracket_lit(),
-            Some(Token::DoubleQuoted) => Ok(Expr::String(self.consume())),
-            _ => self.error("Expected an expression here."),
+            Some(Token::Dot) => {
+                self.consume();
+                self.skip_non_code()?;
+                let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
+                let result = Expr::Field {
+                    inner: Box::new(inner),
+                    field,
+                };
+                Ok(result)
+            }
+            Some(Token::LParen) => {
+                self.push_bracket();
+                unimplemented!("TODO: Parse args list.");
+                self.pop_bracket();
+            }
+            _ => Ok(inner),
         }
     }
 
@@ -317,6 +351,20 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
+    fn parse_expr_unop(&mut self, op: UnOp) -> Result<Expr> {
+        let op_span = self.consume();
+        self.skip_non_code()?;
+        let inner = self.parse_expr()?;
+
+        let result = Expr::UnOp {
+            op,
+            op_span,
+            body: Box::new(inner),
+        };
+
+        Ok(result)
+    }
+
     fn parse_prefixed_seqs(&mut self) -> Result<Box<[Prefixed<Seq>]>> {
         let mut result = Vec::new();
         let mut expected_terminator = None;
@@ -364,7 +412,7 @@ impl<'a> Parser<'a> {
         // keep the grammar simple, but for making the syntax prettier it is
         // worth some complications to allow { a = b; p = q } notation.
         let next1 = self.peek();
-        let next2 = self.tokens.get(self.cursor + 1).map(|t| t.0);
+        let next2 = self.peek_n(1);
 
         match (next1, next2) {
             // TODO: Would need to skip noncode here ... maybe it's better to
@@ -460,6 +508,21 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_seq_if(&mut self) -> Result<Seq> {
-        unimplemented!("TODO: If");
+        let _for = self.consume();
+
+        self.skip_non_code()?;
+        let condition = self.parse_expr()?;
+
+        self.skip_non_code()?;
+        self.parse_token(Token::Colon, "Expected ':' here.")?;
+
+        let body = self.parse_prefixed_seq()?;
+
+        let result = Seq::If {
+            condition: Box::new(condition),
+            body: Box::new(body),
+        };
+
+        Ok(result)
     }
 }

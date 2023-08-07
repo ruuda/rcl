@@ -7,25 +7,10 @@
 
 //! The Abstract Syntax Tree.
 
+pub use crate::cst::{BinOp, UnOp};
+
 /// An identifier.
 pub type Ident = &'static str;
-
-/// A unary operator.
-#[derive(Debug, Copy, Clone)]
-pub enum UnOp {
-    /// Negate a boolean.
-    Neg,
-}
-
-/// A binary operator.
-#[derive(Debug, Copy, Clone)]
-pub enum BinOp {
-    /// `|`: Union two collections
-    Union,
-
-    /// `+`: Add two numbers.
-    Add,
-}
 
 /// An expression.
 #[derive(Debug)]
