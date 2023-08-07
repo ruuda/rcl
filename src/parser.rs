@@ -251,6 +251,8 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some(Token::KwLet) => self.parse_expr_let(),
             Some(Token::LBrace) => self.parse_expr_brace_lit(),
+            Some(Token::LBracket) => self.parse_expr_bracket_lit(),
+            Some(Token::DoubleQuoted) => Ok(Expr::String(self.consume())),
             _ => self.error("Expected an expression here."),
         }
     }
@@ -301,6 +303,20 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
+    fn parse_expr_bracket_lit(&mut self) -> Result<Expr> {
+        let open = self.push_bracket();
+        let seqs = self.parse_prefixed_seqs()?;
+        let close = self.pop_bracket()?;
+
+        let result = Expr::BracketLit {
+            open,
+            close,
+            elements: seqs,
+        };
+
+        Ok(result)
+    }
+
     fn parse_prefixed_seqs(&mut self) -> Result<Box<[Prefixed<Seq>]>> {
         let mut result = Vec::new();
         let mut expected_terminator = None;
@@ -337,6 +353,10 @@ impl<'a> Parser<'a> {
         }
 
         Ok(result.into_boxed_slice())
+    }
+
+    pub fn parse_prefixed_seq(&mut self) -> Result<Prefixed<Seq>> {
+        self.parse_prefixed(|s| s.parse_seq())
     }
 
     fn parse_seq(&mut self) -> Result<Seq> {
@@ -400,7 +420,43 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_seq_for(&mut self) -> Result<Seq> {
-        unimplemented!("TODO: For");
+        let _for = self.consume();
+
+        // Parse the loop variables. Here a trailing comma is not allowed.
+        let mut idents = Vec::new();
+        loop {
+            self.skip_non_code()?;
+            let ident = self.parse_token(Token::Ident, "Expected identifier here.")?;
+            idents.push(ident);
+
+            self.skip_non_code()?;
+            match self.peek() {
+                Some(Token::Comma) => {
+                    self.consume();
+                    continue;
+                }
+                _ => break,
+            }
+        }
+
+        self.skip_non_code()?;
+        self.parse_token(Token::KwIn, "Expected 'in' here.")?;
+
+        self.skip_non_code()?;
+        let collection = self.parse_expr()?;
+
+        self.skip_non_code()?;
+        self.parse_token(Token::Colon, "Expected ':' here.")?;
+
+        let body = self.parse_prefixed_seq()?;
+
+        let result = Seq::For {
+            idents: idents.into_boxed_slice(),
+            collection: Box::new(collection),
+            body: Box::new(body),
+        };
+
+        Ok(result)
     }
 
     fn parse_seq_if(&mut self) -> Result<Seq> {

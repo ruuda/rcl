@@ -69,6 +69,8 @@ pub enum Expr {
         close: Span,
         body: Box<Expr>,
     },
+
+    String(Span),
 }
 
 /// An inner element of a collection literal.

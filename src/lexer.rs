@@ -38,6 +38,9 @@ pub enum Token {
     /// `if`
     KwIf,
 
+    /// `in`
+    KwIn,
+
     /// `let`
     KwLet,
 
@@ -228,6 +231,7 @@ impl<'a> Lexer<'a> {
         let token = match ident {
             "for" => Token::KwFor,
             "if" => Token::KwIf,
+            "in" => Token::KwIn,
             "let" => Token::KwLet,
             _ => Token::Ident,
         };
