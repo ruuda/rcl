@@ -430,7 +430,7 @@ impl<'a> Parser<'a> {
             }
             Some(Token::DoubleQuoted) => Ok(Expr::StringLit(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),
-            _ => self.error("Unexpected token, expected a term."),
+            _ => self.error("Expected a term here."),
         }
     }
 
@@ -586,7 +586,34 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_seq_let(&mut self) -> Result<Seq> {
-        unimplemented!("TODO: Let");
+        let let_ = self.consume();
+
+        self.skip_non_code()?;
+        let ident = self.parse_token(Token::Ident, "Expected identifier here.")?;
+
+        self.skip_non_code()?;
+        self.parse_token(Token::Eq, "Expected '=' here.")?;
+
+        self.skip_non_code()?;
+        let value = self.parse_expr()?;
+
+        self.skip_non_code()?;
+        self.parse_token_with_note(
+            Token::Semicolon,
+            "Expected ';' here to close the let-binding.",
+            let_,
+            "Let-binding opened here.",
+        )?;
+
+        let body = self.parse_prefixed_seq()?;
+
+        let result = Seq::Let {
+            ident,
+            value: Box::new(value),
+            body: Box::new(body),
+        };
+
+        Ok(result)
     }
 
     fn parse_seq_for(&mut self) -> Result<Seq> {
