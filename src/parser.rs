@@ -301,7 +301,7 @@ impl<'a> Parser<'a> {
         let body = self.parse_prefixed_expr()?;
 
         let result = Expr::Let {
-            ident: ident,
+            ident,
             value: Box::new(value),
             body: Box::new(body),
         };
@@ -311,19 +311,16 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_op(&mut self) -> Result<Expr> {
         // First we check all the rules for prefix unary operators.
-        match self.peek().and_then(to_unop) {
-            Some(op) => {
-                let span = self.consume();
-                self.skip_non_code()?;
-                let body = self.parse_expr_notop()?;
-                let result = Expr::UnOp {
-                    op,
-                    op_span: span,
-                    body: Box::new(body),
-                };
-                return Ok(result);
-            }
-            _ => {}
+        if let Some(op) = self.peek().and_then(to_unop) {
+            let span = self.consume();
+            self.skip_non_code()?;
+            let body = self.parse_expr_notop()?;
+            let result = Expr::UnOp {
+                op,
+                op_span: span,
+                body: Box::new(body),
+            };
+            return Ok(result);
         }
 
         // If it was not a prefix unary operator, then we certainly have one

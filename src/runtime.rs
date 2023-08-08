@@ -13,10 +13,12 @@ use std::rc::Rc;
 use crate::ast::Ident;
 use crate::error::Result;
 
+pub type BuiltinFnBox = Box<dyn Fn(&[Rc<Value>]) -> Result<Rc<Value>>>;
+
 /// A built-in function.
 pub struct Builtin {
     pub name: &'static str,
-    pub f: Box<dyn Fn(&[Rc<Value>]) -> Result<Rc<Value>>>,
+    pub f: BuiltinFnBox,
 }
 
 impl std::fmt::Debug for Builtin {

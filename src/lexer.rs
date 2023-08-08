@@ -152,7 +152,7 @@ impl<'a> Lexer<'a> {
     ) -> Result<T> {
         let error = ParseError {
             span: self.take_while(include),
-            message: message,
+            message,
             note: None,
         };
         Err(error)
@@ -168,7 +168,10 @@ impl<'a> Lexer<'a> {
     fn next(&mut self) -> Result<Lexeme> {
         let input = &self.input.as_bytes()[self.start..];
 
-        debug_assert!(input.len() > 0, "Must have input before continuing to lex.");
+        debug_assert!(
+            !input.is_empty(),
+            "Must have input before continuing to lex."
+        );
 
         if input.starts_with(b"//") {
             return Ok(self.lex_in_line_comment());
@@ -221,8 +224,7 @@ impl<'a> Lexer<'a> {
             .as_bytes()
             .iter()
             .filter(|ch| **ch == b'\n')
-            .skip(1)
-            .next()
+            .nth(1)
             .is_some();
         if is_blank {
             (Token::Blank, span)
