@@ -217,7 +217,7 @@ impl<'a> Parser<'a> {
                     return self.error_with_note(
                         "A comment is not allowed here.",
                         self.comment_anchor,
-                        "Try inserting the comment before this instead.",
+                        "Try inserting the comment above this instead.",
                     );
                 }
                 _ => return Ok(()),
@@ -512,10 +512,10 @@ impl<'a> Parser<'a> {
                     continue;
                 }
                 Some(Token::Semicolon) if expected_terminator == Token::Comma => {
-                    return self.error("Expected a ',' rather than a ';' here.");
+                    return self.error("Expected ',' instead of ';' here.");
                 }
                 Some(Token::Comma) if expected_terminator == Token::Semicolon => {
-                    return self.error("Expected a ';' rather than a ',' here.");
+                    return self.error("Expected ';' instead of ',' here.");
                 }
                 // If we don't find a separator, nor the end of the collection
                 // literal, that's an error. We can report an unmatched bracket
