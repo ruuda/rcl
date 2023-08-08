@@ -87,16 +87,22 @@ pub enum Expr {
         body: Box<Expr>,
     },
 
+    /// A string literal.
+    StringLit(Span),
+
     /// Read a variable.
     Var(Span),
 
-    Field {
-        inner: Box<Expr>,
-        field: Span,
-    },
+    /// Access a field on some expression.
+    Field { inner: Box<Expr>, field: Span },
 
-    /// A string literal.
-    StringLit(Span),
+    /// Call a function.
+    Call {
+        open: Span,
+        close: Span,
+        function: Box<Expr>,
+        args: Box<[Prefixed<Expr>]>,
+    },
 
     /// A unary operator.
     UnOp {

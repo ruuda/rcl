@@ -369,7 +369,15 @@ impl<'a> Parser<'a> {
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::LParen) => {
-                    unimplemented!("TODO: Parse call.");
+                    let open = self.push_bracket();
+                    let args = self.parse_call_args()?;
+                    let close = self.pop_bracket()?;
+                    result = Expr::Call {
+                        open,
+                        close,
+                        args,
+                        function: Box::new(result),
+                    };
                 }
                 Some(Token::Dot) => {
                     self.consume();
@@ -423,6 +431,43 @@ impl<'a> Parser<'a> {
             Some(Token::DoubleQuoted) => Ok(Expr::StringLit(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),
             _ => self.error("Unexpected token, expected a term."),
+        }
+    }
+
+    /// Parse arguments in a function call.
+    fn parse_call_args(&mut self) -> Result<Box<[Prefixed<Expr>]>> {
+        let mut result = Vec::new();
+
+        loop {
+            let prefix = self.parse_non_code();
+            if self.peek() == Some(Token::RParen) {
+                // TODO: In this case we lose the prefix that we parsed.
+                // See also the comment in `parse_seqs` below.
+                return Ok(result.into_boxed_slice());
+            }
+
+            let expr = self.parse_expr()?;
+            let prefixed = Prefixed {
+                prefix,
+                inner: expr,
+            };
+            result.push(prefixed);
+
+            self.skip_non_code()?;
+            match self.peek() {
+                Some(Token::RParen) => continue,
+                Some(Token::Comma) => {
+                    self.consume();
+                    continue;
+                }
+                _ => {
+                    // If we don't find a separator, nor the end of the args,
+                    // that's an error. We can report an unmatched bracket
+                    // as the problem, because it is.
+                    self.pop_bracket()?;
+                    unreachable!("pop_bracket should have failed.");
+                }
+            }
         }
     }
 

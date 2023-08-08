@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use rcl::ast::{BinOp, Compr, Expr, Ident, Seq, UnOp};
-use rcl::error::Result;
 use rcl::runtime::{Env, Value};
 use rcl::source::{DocId, Document, Inputs};
 

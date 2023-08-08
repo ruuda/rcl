@@ -49,10 +49,14 @@ expr_ops_or:   expr_notop | expr_notop "or"  expr_notop;
 // of an operator are "not operator", "notop" for short.
 expr_notop
   : expr_term
-  | expr_notop '(' ')'
-  // TODO: Accept list.
-  | expr_notop '(' expr ')'
+  | expr_notop '(' call_args ')'
   | expr_notop '.' IDENT
+  ;
+
+call_args
+  : %empty
+  | expr
+  | expr ',' call_args
   ;
 
 expr_term
