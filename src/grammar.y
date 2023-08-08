@@ -5,6 +5,11 @@
 // to have the grammar in a concise format that is readable by humans and
 // machines. In particular, Bison will warn about ambiguities.
 
+// The grammar aims to be parsable with a recursive descent parser, but it's not
+// strictly LL(k) because some rules contain left recursion. All of the cases
+// that do though, have a clear token immediately following to still decide the
+// production.
+
 // Inspect with: bison --feature=syntax-only -Wcounterexamples src/grammar.y
 %}
 
@@ -27,22 +32,25 @@ expr_if: "if" expr "then" expr "else" expr;
 // to be written as "(a + b) + c". But "a + b * c" does need to be written as
 // "a + (b * c)".
 expr_op
-  : expr_notop
-  | UNOP expr_notop
-  | expr_ops_pipe '|' expr_notop
-  | expr_ops_plus '+' expr_notop
-  | expr_ops_and  "and" expr_notop
-  | expr_ops_or   "or"  expr_notop
+  : UNOP expr_notop
+  | expr_notop '|'   expr_ops_pipe
+  | expr_notop '+'   expr_ops_plus
+  | expr_notop "and" expr_ops_and
+  | expr_notop "or"  expr_ops_or
+  | expr_notop
   ;
 
-expr_ops_pipe: expr_notop | expr_ops_pipe '|'   expr_notop;
-expr_ops_plus: expr_notop | expr_ops_plus '+'   expr_notop;
-expr_ops_and:  expr_notop | expr_ops_and  "and" expr_notop;
-expr_ops_or:   expr_notop | expr_ops_or   "or"  expr_notop;
+expr_ops_pipe: expr_notop | expr_notop '|'   expr_notop;
+expr_ops_plus: expr_notop | expr_notop '+'   expr_notop;
+expr_ops_and:  expr_notop | expr_notop "and" expr_notop;
+expr_ops_or:   expr_notop | expr_notop "or"  expr_notop;
 
 expr_notop
   : expr_term
-  | expr_call
+  | expr_notop '(' ')'
+  // TODO: Accept list.
+  | expr_notop '(' expr ')'
+  | expr_notop '.' IDENT
   ;
 
 expr_term
@@ -51,15 +59,6 @@ expr_term
   | '(' expr ')'
   | STRING
   | IDENT
-  | expr_field
-  ;
-
-expr_field: expr_notop '.' IDENT;
-
-expr_call
-  : expr_term '(' ')'
-  // TODO: Accept list.
-  | expr_term '(' expr ')'
   ;
 
 seqs
