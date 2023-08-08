@@ -19,6 +19,21 @@ pub fn parse(doc: DocId, input: &str) -> Result<Prefixed<Expr>> {
     parser.parse_prefixed_expr()
 }
 
+fn to_unop(token: Token) -> Option<UnOp> {
+    match token {
+        Token::KwNot => Some(UnOp::Neg),
+        _ => None,
+    }
+}
+
+fn to_binop(token: Token) -> Option<BinOp> {
+    match token {
+        Token::Pipe => Some(BinOp::Union),
+        Token::Plus => Some(BinOp::Add),
+        _ => None,
+    }
+}
+
 struct Parser<'a> {
     doc: DocId,
     input: &'a str,
@@ -255,39 +270,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> Result<Expr> {
-        let result = match self.peek() {
-            Some(Token::KwLet) => self.parse_expr_let()?,
-            Some(Token::LBrace) => self.parse_expr_brace_lit()?,
-            Some(Token::LBracket) => self.parse_expr_bracket_lit()?,
-            Some(Token::DoubleQuoted) => Expr::StringLit(self.consume()),
-            Some(Token::Ident) => Expr::Var(self.consume()),
-            Some(Token::Bang) => self.parse_expr_unop(UnOp::Neg)?,
-            _ => return self.error("Expected an expression here."),
-        };
-
-        // TODO: Define the expr grammar with precedence and such.
-        self.skip_non_code()?;
-        self.parse_after_expr(result)
-    }
-
-    fn parse_after_expr(&mut self, inner: Expr) -> Result<Expr> {
         match self.peek() {
-            Some(Token::Dot) => {
-                self.consume();
-                self.skip_non_code()?;
-                let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
-                let result = Expr::Field {
-                    inner: Box::new(inner),
-                    field,
-                };
-                Ok(result)
-            }
-            Some(Token::LParen) => {
-                self.push_bracket();
-                unimplemented!("TODO: Parse args list.");
-                self.pop_bracket();
-            }
-            _ => Ok(inner),
+            Some(Token::KwLet) => self.parse_expr_let(),
+            Some(Token::KwIf) => unimplemented!("TODO: parse_expr_if"),
+            _ => self.parse_expr_op(),
         }
     }
 
@@ -323,84 +309,180 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    fn parse_expr_brace_lit(&mut self) -> Result<Expr> {
-        let open = self.push_bracket();
-        let seqs = self.parse_prefixed_seqs()?;
-        let close = self.pop_bracket()?;
+    fn parse_expr_op(&mut self) -> Result<Expr> {
+        // First we check all the rules for prefix unary operators.
+        match self.peek().and_then(to_unop) {
+            Some(op) => {
+                let span = self.consume();
+                self.skip_non_code()?;
+                let body = self.parse_expr_notop()?;
+                let result = Expr::UnOp {
+                    op,
+                    op_span: span,
+                    body: Box::new(body),
+                };
+                return Ok(result);
+            }
+            _ => {}
+        }
 
-        let result = Expr::BraceLit {
-            open,
-            close,
-            elements: seqs,
-        };
+        // If it was not a prefix unary operator, then we certainly have one
+        // notop, but we may have an operator afterwards.
+        let mut result = self.parse_expr_notop()?;
 
-        Ok(result)
+        // We might have binary operators following. If we find one, then
+        // all the other ones must be of the same type, to avoid unclear
+        // situations like whether "a and b or c" means "(a and b) or c"
+        // or "a and (b or c)".
+        let mut allowed_op = None;
+        let mut allowed_span = None;
+        loop {
+            self.skip_non_code()?;
+            match self.peek().and_then(to_binop) {
+                Some(op) if allowed_op.is_none() || allowed_op == Some(op) => {
+                    let span = self.consume();
+                    self.skip_non_code()?;
+                    let rhs = self.parse_expr_notop()?;
+                    allowed_span = Some(span);
+                    allowed_op = Some(op);
+                    result = Expr::BinOp {
+                        op,
+                        op_span: span,
+                        lhs: Box::new(result),
+                        rhs: Box::new(rhs),
+                    };
+                }
+                Some(_op) => {
+                    return self.error_with_note(
+                        "Operator with ambiguous precedence is not allowed here. Add parentheses to clarify.",
+                        allowed_span.expect("If we are here, allowed_span must be set."),
+                        "Without parenthesis, it is not clear whether this operator would take precedence.",
+                    );
+                }
+                _ => return Ok(result),
+            }
+        }
     }
 
-    fn parse_expr_bracket_lit(&mut self) -> Result<Expr> {
-        let open = self.push_bracket();
-        let seqs = self.parse_prefixed_seqs()?;
-        let close = self.pop_bracket()?;
-
-        let result = Expr::BracketLit {
-            open,
-            close,
-            elements: seqs,
-        };
-
-        Ok(result)
+    fn parse_expr_notop(&mut self) -> Result<Expr> {
+        // TODO: check for operators before, and report a pretty error
+        // to clarify that parens must be used to disambiguate.
+        let mut result = self.parse_expr_term()?;
+        loop {
+            self.skip_non_code()?;
+            match self.peek() {
+                Some(Token::LParen) => {
+                    unimplemented!("TODO: Parse call.");
+                }
+                Some(Token::Dot) => {
+                    self.skip_non_code()?;
+                    let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
+                    result = Expr::Field {
+                        field,
+                        inner: Box::new(result),
+                    };
+                }
+                _ => return Ok(result),
+            }
+        }
     }
 
-    fn parse_expr_unop(&mut self, op: UnOp) -> Result<Expr> {
-        let op_span = self.consume();
-        self.skip_non_code()?;
-        let inner = self.parse_expr()?;
-
-        let result = Expr::UnOp {
-            op,
-            op_span,
-            body: Box::new(inner),
-        };
-
-        Ok(result)
+    fn parse_expr_term(&mut self) -> Result<Expr> {
+        match self.peek() {
+            Some(Token::LBrace) => {
+                let open = self.push_bracket();
+                let elements = self.parse_seqs()?;
+                let close = self.pop_bracket()?;
+                let result = Expr::BraceLit {
+                    open,
+                    close,
+                    elements,
+                };
+                Ok(result)
+            }
+            Some(Token::LBracket) => {
+                let open = self.push_bracket();
+                let elements = self.parse_seqs()?;
+                let close = self.pop_bracket()?;
+                let result = Expr::BracketLit {
+                    open,
+                    close,
+                    elements,
+                };
+                Ok(result)
+            }
+            Some(Token::LParen) => {
+                let open = self.push_bracket();
+                let body = self.parse_expr()?;
+                let close = self.pop_bracket()?;
+                let result = Expr::Parens {
+                    open,
+                    close,
+                    body: Box::new(body),
+                };
+                Ok(result)
+            }
+            Some(Token::DoubleQuoted) => Ok(Expr::StringLit(self.consume())),
+            Some(Token::Ident) => Ok(Expr::Var(self.consume())),
+            _ => self.error("Unexpected token, expected a term."),
+        }
     }
 
-    fn parse_prefixed_seqs(&mut self) -> Result<Box<[Prefixed<Seq>]>> {
+    /// Parse sequence elements.
+    ///
+    /// This corresponds to `seqs` in the grammar, but it is slightly different
+    /// from the rule there to be able to incorporate noncode, and also to be
+    /// slightly more precise about which separator we allow after a particular
+    /// seq, which is easy to do here but difficult to express in the grammar.
+    fn parse_seqs(&mut self) -> Result<Box<[Prefixed<Seq>]>> {
         let mut result = Vec::new();
-        let mut expected_terminator = None;
 
         loop {
             let prefix = self.parse_non_code();
+            if matches!(self.peek(), Some(Token::RBrace | Token::RBracket)) {
+                // TODO: In this case we lose the prefix that we parsed. So
+                // comments in an empty collection literal do not survive,
+                // need to find a way to disallow this in the first place.
+                // Maybe we could validate that the prefix does not contain
+                // comments, and error out if it does?
+                return Ok(result.into_boxed_slice());
+            }
+
+            let seq = self.parse_seq()?;
+            let expected_terminator = match seq {
+                Seq::Elem { .. } => Token::Comma,
+                Seq::AssocExpr { .. } => Token::Comma,
+                Seq::AssocIdent { .. } => Token::Semicolon,
+                Seq::Let { .. } => Token::Comma,
+                Seq::For { .. } => Token::Comma,
+                Seq::If { .. } => Token::Comma,
+            };
+
+            let prefixed = Prefixed { prefix, inner: seq };
+            result.push(prefixed);
+
+            self.skip_non_code()?;
             match self.peek() {
-                Some(Token::RBrace | Token::RBracket) => {
-                    // TODO: In this case we lose the prefix that we parsed. So
-                    // comments in an empty collection literal do not survive,
-                    // need to find a way to disallow this in the first place.
-                    // Maybe we could validate that the prefix does not contain
-                    // comments, and error out if it does?
-                    break;
-                }
-                tok if tok == expected_terminator => {
+                Some(Token::RBrace | Token::RBracket) => continue,
+                tok if tok == Some(expected_terminator) => {
                     self.consume();
                     continue;
                 }
+                Some(Token::Semicolon) if expected_terminator == Token::Comma => {
+                    return self.error("Expected a ',' rather than a ';' here.");
+                }
+                Some(Token::Comma) if expected_terminator == Token::Semicolon => {
+                    return self.error("Expected a ';' rather than a ',' here.");
+                }
+                // If we don't find a separator, nor the end of the collection
+                // literal, that's an error. We can report an unmatched bracket
+                // as the problem, because it is. The pop will fail.
                 _ => {
-                    let seq = self.parse_seq()?;
-                    expected_terminator = match seq {
-                        Seq::Elem { .. } => Some(Token::Comma),
-                        Seq::AssocExpr { .. } => Some(Token::Comma),
-                        Seq::AssocIdent { .. } => Some(Token::Semicolon),
-                        Seq::Let { .. } => Some(Token::Comma),
-                        Seq::For { .. } => Some(Token::Comma),
-                        Seq::If { .. } => Some(Token::Comma),
-                    };
-                    let prefixed = Prefixed { prefix, inner: seq };
-                    result.push(prefixed);
+                    self.pop_bracket()?;
+                    unreachable!("pop_bracket should have failed.");
                 }
             }
         }
-
-        Ok(result.into_boxed_slice())
     }
 
     pub fn parse_prefixed_seq(&mut self) -> Result<Prefixed<Seq>> {
@@ -421,12 +503,9 @@ impl<'a> Parser<'a> {
             (Some(Token::Ident), Some(Token::Eq)) => self.parse_seq_assoc_ident(),
             (Some(Token::KwLet), _) => self.parse_seq_let(),
             (Some(Token::KwFor), _) => self.parse_seq_for(),
-            // Note, we can't distinguish an if seq from element seq with if
-            // expr inside here, but that's acceptable. If you want an if
-            // expr, you can put it in parentheses.
             (Some(Token::KwIf), _) => self.parse_seq_if(),
             _ => {
-                let expr = self.parse_expr()?;
+                let expr = self.parse_expr_op()?;
                 self.skip_non_code()?;
                 let result = match self.peek() {
                     Some(Token::Colon) => {

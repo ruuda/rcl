@@ -21,14 +21,14 @@
 use crate::source::Span;
 
 /// A unary operator.
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum UnOp {
     /// Negate a boolean.
     Neg,
 }
 
 /// A binary operator.
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BinOp {
     /// `|`: Union two collections
     Union,
@@ -107,10 +107,23 @@ pub enum Expr {
 
     /// A binary operator.
     BinOp {
+        // TODO: How to handle noncode in binops? It is somewhat reasonable to
+        // expect people to write
+        //     let x = foo +
+        //       // Add trailing newline.
+        //       "\n";
+        // But also to write
+        //     let x = foo
+        //       // Add trailing newline.
+        //       + "\n";
+        // Personally I prefer the second form, but maybe we should support the
+        // first form and reformat it to the second. We could store one NonCode
+        // with the operator, but then we need to concatenate the noncode from
+        // before and after, strip duplicate blanks, etc ... it would be messy.
         op: BinOp,
         op_span: Span,
-        lhs: Box<Prefixed<Expr>>,
-        rhs: Box<Prefixed<Expr>>,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
     },
 }
 

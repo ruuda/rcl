@@ -46,7 +46,7 @@ let var = {
 {
   tags = {
     for host in var.hosts:
-    if !var.excluded_devices.contains(host):
+    if not var.excluded_devices.contains(host):
     let device_tags = var.device_tags.get(host, []);
     let group_tags = {
       for group, tags in var.group_tags:

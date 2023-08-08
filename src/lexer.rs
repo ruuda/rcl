@@ -44,6 +44,9 @@ pub enum Token {
     /// `let`
     KwLet,
 
+    /// `not`
+    KwNot,
+
     /// `(`
     LParen,
 
@@ -82,6 +85,9 @@ pub enum Token {
 
     /// `|`
     Pipe,
+
+    /// `+`
+    Plus,
 }
 
 pub type Lexeme = (Token, Span);
@@ -233,6 +239,7 @@ impl<'a> Lexer<'a> {
             "if" => Token::KwIf,
             "in" => Token::KwIn,
             "let" => Token::KwLet,
+            "not" => Token::KwNot,
             _ => Token::Ident,
         };
         (token, span)
@@ -283,6 +290,7 @@ impl<'a> Lexer<'a> {
             b';' => Token::Semicolon,
             b'=' => Token::Eq,
             b'|' => Token::Pipe,
+            b'+' => Token::Plus,
             q => {
                 eprintln!("TODO: {}", q);
                 let error = ParseError {

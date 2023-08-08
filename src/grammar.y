@@ -45,6 +45,8 @@ expr_ops_plus: expr_notop | expr_notop '+'   expr_notop;
 expr_ops_and:  expr_notop | expr_notop "and" expr_notop;
 expr_ops_or:   expr_notop | expr_notop "or"  expr_notop;
 
+// Because we disallow confusing operator combinations without parens, the nodes
+// of an operator are "not operator", "notop" for short.
 expr_notop
   : expr_term
   | expr_notop '(' ')'
@@ -63,14 +65,20 @@ expr_term
 
 seqs
   : %empty
-  // Note, here we use expr_op instead of expr to avoid a conflict with the let
-  // and for from the comprehension.
-  | expr_op ',' seqs
-  | expr_op ':' expr ',' seqs
-  | IDENT '=' expr ';' seqs
-  | "let" IDENT '=' expr ';' seqs
-  | "for" idents "in" expr ':' seqs
-  | "if" expr ':' seqs
+  | seq
+  | seq ',' seqs
+  | seq ';' seqs
+  ;
+
+// Note, here we use expr_op instead of expr to avoid a conflict with the let
+// and for from the comprehension.
+seq
+  : expr_op
+  | expr_op ':' expr
+  | IDENT '=' expr ';' seq
+  | "let" IDENT '=' expr ';' seq
+  | "for" idents "in" expr ':' seq
+  | "if" expr ':' seq
   ;
 
 idents: IDENT | idents ',' IDENT;
