@@ -552,6 +552,7 @@ impl<'a> Parser<'a> {
                 self.skip_non_code()?;
                 let result = match self.peek() {
                     Some(Token::Colon) => {
+                        self.consume();
                         self.skip_non_code()?;
                         let value = self.parse_expr()?;
                         Seq::AssocExpr {
