@@ -10,7 +10,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Compr, Expr, Seq, UnOp};
+use crate::ast::{BinOp, Expr, Seq, UnOp};
 use crate::error::Result;
 use crate::runtime::{Builtin, Env, Value};
 
@@ -204,11 +204,11 @@ fn eval_seq(
             out_values.push(value);
             Ok(())
         }
-        Seq::Compr(Compr::For {
+        Seq::For {
             collection,
             elements,
             body,
-        }) => {
+        } => {
             let collection_value = eval(env, collection)?;
             match (&elements[..], collection_value.as_ref()) {
                 (&[name], Value::List(xs)) => {
@@ -240,7 +240,7 @@ fn eval_seq(
                 _ => Err("Iteration is not supported like this.".into()),
             }
         }
-        Seq::Compr(Compr::If { condition, body }) => {
+        Seq::If { condition, body } => {
             let cond = eval(env, condition)?;
             match cond.as_ref() {
                 Value::Bool(true) => eval_seq(env, body, out_keys, out_values),
@@ -248,7 +248,7 @@ fn eval_seq(
                 _ => Err("Comprehension condition should be boolean.".into()),
             }
         }
-        Seq::Compr(Compr::Let { name, value, body }) => {
+        Seq::Let { name, value, body } => {
             let v = eval(env, value)?;
             env.push(name, v);
             eval_seq(env, body, out_keys, out_values)?;

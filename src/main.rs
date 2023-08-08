@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use rcl::ast::{BinOp, Compr, Expr, Ident, Seq, UnOp};
+use rcl::ast::{BinOp, Expr, Ident, Seq, UnOp};
 use rcl::runtime::{Env, Value};
 use rcl::source::{DocId, Document, Inputs};
 
@@ -34,8 +34,8 @@ pub fn call(f: Expr, args: Vec<Expr>) -> Expr {
     Expr::Call(Box::new(f), args)
 }
 
-pub fn let_compr(name: Ident, value: Expr, in_: Seq) -> Compr {
-    Compr::Let {
+pub fn let_compr(name: Ident, value: Expr, in_: Seq) -> Seq {
+    Seq::Let {
         name,
         value: Box::new(value),
         body: Box::new(in_),
@@ -47,7 +47,7 @@ pub fn assoc(key: Expr, value: Expr) -> Seq {
 }
 
 fn example_ast() -> Expr {
-    let inner_if = Compr::If {
+    let inner_if = Seq::If {
         condition: Box::new(call(
             field(
                 "contains",
@@ -58,11 +58,11 @@ fn example_ast() -> Expr {
             ),
             vec![var("host")],
         )),
-        body: Box::new(Seq::Compr(Compr::For {
+        body: Box::new(Seq::For {
             collection: Box::new(var("tags")),
             elements: vec!["tag"],
             body: Box::new(Seq::Elem(Box::new(var("tag")))),
-        })),
+        }),
     };
 
     let body = let_compr(
@@ -71,30 +71,30 @@ fn example_ast() -> Expr {
             field("get", field("device_tags", var("var"))),
             vec![var("host"), Expr::ListLit(vec![])],
         ),
-        Seq::Compr(let_compr(
+        let_compr(
             "group_tags",
-            Expr::MapLit(vec![Seq::Compr(Compr::For {
+            Expr::MapLit(vec![Seq::For {
                 collection: Box::new(field("group_tags", var("var"))),
                 elements: vec!["group", "tags"],
-                body: Box::new(Seq::Compr(inner_if)),
-            })]),
+                body: Box::new(inner_if),
+            }]),
             assoc(var("host"), union(var("group_tags"), var("device_tags"))),
-        )),
+        ),
     );
 
     Expr::MapLit(singleton(
         "tags",
-        Expr::MapLit(vec![Seq::Compr(Compr::For {
+        Expr::MapLit(vec![Seq::For {
             collection: Box::new(field("hosts", var("var"))),
             elements: vec!["host"],
-            body: Box::new(Seq::Compr(Compr::If {
+            body: Box::new(Seq::If {
                 condition: Box::new(neg(call(
                     field("contains", field("excluded_devices", var("var"))),
                     vec![var("host")],
                 ))),
-                body: Box::new(Seq::Compr(body)),
-            })),
-        })]),
+                body: Box::new(body),
+            }),
+        }]),
     ))
 }
 

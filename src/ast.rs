@@ -63,14 +63,7 @@ pub enum Seq {
     /// A `key: value` mapping.
     Assoc(Box<Expr>, Box<Expr>),
 
-    /// A comprehension that yields elements or mappings.
-    Compr(Compr),
-}
-
-/// A for-comprehension.
-#[derive(Debug)]
-pub enum Compr {
-    /// Loop over the collection.
+    /// A comprehension that loops over the collection.
     For {
         collection: Box<Expr>,
         elements: Vec<Ident>,
@@ -86,9 +79,7 @@ pub enum Compr {
     /// Let in the middle of a comprehension.
     ///
     /// This is syntactically different from a let before an expression, because
-    /// the `Seq::Assoc` is not a first-class value. Not sure if duplicating the
-    /// let or making `Assoc` a value is the best way to go about it, but let's
-    /// try this way for now.
+    /// associations are not first-class values.
     Let {
         name: Ident,
         value: Box<Expr>,
