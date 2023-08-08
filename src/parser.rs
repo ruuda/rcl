@@ -351,9 +351,9 @@ impl<'a> Parser<'a> {
                 }
                 Some(_op) => {
                     return self.error_with_note(
-                        "Operator with ambiguous precedence is not allowed here. Add parentheses to clarify.",
+                        "Parentheses are needed to clarify the precedence of this operator.",
                         allowed_span.expect("If we are here, allowed_span must be set."),
-                        "Without parenthesis, it is not clear whether this operator would take precedence.",
+                        "Without parentheses, it is not clear whether this operator should take precedence.",
                     );
                 }
                 _ => return Ok(result),
