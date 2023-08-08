@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Compr, Expr, Seq, UnOp};
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::runtime::{Builtin, Env, Value};
 
 pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
@@ -100,7 +100,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     };
                     match builtin {
                         Some(b) => Ok(Rc::new(Value::Builtin(b))),
-                        None => Err(Error::new("No such field in this list.")),
+                        None => Err("No such field in this list.".into()),
                     }
                 }
                 not_map => {

@@ -4,3 +4,6 @@ version = "0.0.0"
 authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
 edition = "2021"
 license = "Apache-2.0"
+
+[dependencies]
+unicode-width = "0.1.10"

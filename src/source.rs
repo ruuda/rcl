@@ -7,8 +7,17 @@
 
 //! Types for dealing with input source code.
 
+/// A named input document.
+pub struct Document<'a> {
+    /// Path can be a file path, but also a name such as "stdin".
+    pub path: &'a str,
+
+    /// The contents of the file.
+    pub data: &'a str,
+}
+
 /// A list of input documents.
-pub type Inputs<'a> = [&'a str];
+pub type Inputs<'a> = [Document<'a>];
 
 /// The index of a document in the list of input files.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -57,7 +66,7 @@ impl<'a> Source<'a> for &'a str {
 
 impl<'a> Source<'a> for &Inputs<'a> {
     fn resolve(self, span: Span) -> &'a str {
-        let doc = self[span.doc.0 as usize];
+        let doc = self[span.doc.0 as usize].data;
         &doc[span.start..span.end()]
     }
 }

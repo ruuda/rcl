@@ -2,8 +2,9 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use rcl::ast::{BinOp, Compr, Expr, Ident, Seq, UnOp};
+use rcl::error::Result;
 use rcl::runtime::{Env, Value};
-use rcl::source::DocId;
+use rcl::source::{DocId, Document, Inputs};
 
 /// Helpers for constructing AST in code.
 pub fn var(name: Ident) -> Expr {
@@ -176,6 +177,21 @@ fn example_env() -> Env {
     env
 }
 
+fn main_tags(inputs: &Inputs) -> rcl::error::Result<()> {
+    for (i, doc) in inputs.iter().enumerate() {
+        let id = DocId(i as u32);
+        let tokens = rcl::lexer::lex(id, doc.data)?;
+        for (token, span) in &tokens {
+            eprintln!("{span:?} {token:?}");
+        }
+
+        let cst = rcl::parser::parse(id, doc.data)?;
+        eprintln!("{cst:#?}");
+    }
+
+    Ok(())
+}
+
 fn main() {
     let expr = example_ast();
     let mut env = example_env();
@@ -186,12 +202,14 @@ fn main() {
     rcl::json::format_json(result.as_ref(), &mut result_json).expect("Failed to format json.");
     println!("{}", result_json);
 
-    let data = std::fs::read_to_string("examples/tags.rcl").expect("Failed to load example.");
-    let tokens = rcl::lexer::lex(DocId(0), &data).expect("Failed to parse.");
-    for (token, span) in &tokens {
-        eprintln!("{span:?} {token:?}");
+    let fname = "examples/tags.rcl";
+    let data = std::fs::read_to_string(fname).expect("Failed to load example.");
+    let doc = Document {
+        path: fname,
+        data: &data,
+    };
+    let inputs = [doc];
+    if let Err(err) = main_tags(&inputs) {
+        err.print(&inputs);
     }
-
-    let cst = rcl::parser::parse(DocId(0), &data).expect("Failed to parse.");
-    eprintln!("{cst:#?}");
 }
