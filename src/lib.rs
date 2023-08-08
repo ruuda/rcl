@@ -5,6 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+pub mod abstraction;
 pub mod ast;
 pub mod cst;
 pub mod error;
