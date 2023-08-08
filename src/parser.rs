@@ -372,6 +372,7 @@ impl<'a> Parser<'a> {
                     unimplemented!("TODO: Parse call.");
                 }
                 Some(Token::Dot) => {
+                    self.consume();
                     self.skip_non_code()?;
                     let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
                     result = Expr::Field {
