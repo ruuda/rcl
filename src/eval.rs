@@ -16,7 +16,7 @@ use crate::runtime::{Builtin, Env, Value};
 
 pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
     match expr {
-        Expr::MapLit(seqs) => {
+        Expr::BraceLit(seqs) => {
             let mut keys = Vec::new();
             let mut values = Vec::new();
             for seq in seqs {
@@ -71,7 +71,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
 
         Expr::Field(field_name, value_expr) => {
             let value = eval(env, value_expr)?;
-            let field_name_value = Value::String(field_name.to_string());
+            let field_name_value = Value::String(field_name.0.clone());
             match value.as_ref() {
                 Value::Map(fields) => {
                     // First test for the builtin names, they shadow the values,
@@ -197,7 +197,10 @@ fn eval_seq(
             out_keys.push(value);
             Ok(())
         }
-        Seq::Assoc(key_expr, value_expr) => {
+        Seq::Assoc {
+            key: key_expr,
+            value: value_expr,
+        } => {
             let key = eval(env, key_expr)?;
             let value = eval(env, value_expr)?;
             out_keys.push(key);

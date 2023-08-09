@@ -54,7 +54,7 @@ pub enum Value {
     // TODO: Should be a bigint.
     Int(i64),
 
-    String(String),
+    String(Rc<str>),
 
     List(Vec<Rc<Value>>),
 

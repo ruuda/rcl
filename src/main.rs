@@ -11,7 +11,7 @@ pub fn var(name: &'static str) -> Expr {
 }
 
 pub fn string(value: &'static str) -> Expr {
-    Expr::StringLit(value.to_string())
+    Expr::StringLit(value.into())
 }
 
 pub fn field(field: &'static str, obj: Expr) -> Expr {
@@ -19,7 +19,10 @@ pub fn field(field: &'static str, obj: Expr) -> Expr {
 }
 
 pub fn singleton(key: &'static str, value: Expr) -> Vec<Seq> {
-    vec![Seq::Assoc(Box::new(string(key.into())), Box::new(value))]
+    vec![Seq::Assoc {
+        key: Box::new(string(key.into())),
+        value: Box::new(value),
+    }]
 }
 
 pub fn neg(x: Expr) -> Expr {
@@ -43,7 +46,10 @@ pub fn let_compr(name: &'static str, value: Expr, in_: Seq) -> Seq {
 }
 
 pub fn assoc(key: Expr, value: Expr) -> Seq {
-    Seq::Assoc(Box::new(key), Box::new(value))
+    Seq::Assoc {
+        key: Box::new(key),
+        value: Box::new(value),
+    }
 }
 
 fn example_ast() -> Expr {
@@ -53,7 +59,7 @@ fn example_ast() -> Expr {
                 "contains",
                 call(
                     field("get", field("group_devices", var("var"))),
-                    vec![var("group"), Expr::MapLit(vec![])],
+                    vec![var("group"), Expr::BraceLit(vec![])],
                 ),
             ),
             vec![var("host")],
@@ -73,7 +79,7 @@ fn example_ast() -> Expr {
         ),
         let_compr(
             "group_tags",
-            Expr::MapLit(vec![Seq::For {
+            Expr::BraceLit(vec![Seq::For {
                 collection: Box::new(field("group_tags", var("var"))),
                 elements: vec!["group".into(), "tags".into()],
                 body: Box::new(inner_if),
@@ -82,9 +88,9 @@ fn example_ast() -> Expr {
         ),
     );
 
-    Expr::MapLit(singleton(
+    Expr::BraceLit(singleton(
         "tags",
-        Expr::MapLit(vec![Seq::For {
+        Expr::BraceLit(vec![Seq::For {
             collection: Box::new(field("hosts", var("var"))),
             elements: vec!["host".into()],
             body: Box::new(Seq::If {
@@ -99,7 +105,7 @@ fn example_ast() -> Expr {
 }
 
 fn val_string(v: &str) -> Rc<Value> {
-    Rc::new(Value::String(v.to_string()))
+    Rc::new(Value::String(v.into()))
 }
 
 fn val_list(vs: &[&Rc<Value>]) -> Rc<Value> {
@@ -186,6 +192,9 @@ fn main_tags(inputs: &Inputs) -> rcl::error::Result<()> {
 
         let cst = rcl::parser::parse(id, doc.data)?;
         eprintln!("{cst:#?}");
+
+        let ast = rcl::abstraction::abstract_expr(doc.data, &cst);
+        eprintln!("{ast:#?}");
     }
 
     Ok(())

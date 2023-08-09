@@ -17,7 +17,7 @@ pub use crate::cst::{BinOp, UnOp};
 // Should they be slices into the source document? For now the easy thing is to
 // just make them strings, we can optimize later.
 #[derive(Clone, Eq, PartialEq)]
-pub struct Ident(Rc<str>);
+pub struct Ident(pub Rc<str>);
 
 impl fmt::Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -54,13 +54,13 @@ pub enum Expr {
     },
 
     /// A map or set literal, depending on the element types.
-    MapLit(Vec<Seq>),
+    BraceLit(Vec<Seq>),
 
     /// A list literal.
     ListLit(Vec<Seq>),
 
     /// A string literal.
-    StringLit(String),
+    StringLit(Rc<str>),
 
     /// An conditional choice (if, then, else).
     IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
@@ -91,7 +91,7 @@ pub enum Seq {
     Elem(Box<Expr>),
 
     /// A `key: value` mapping.
-    Assoc(Box<Expr>, Box<Expr>),
+    Assoc { key: Box<Expr>, value: Box<Expr> },
 
     /// A comprehension that loops over the collection.
     For {
