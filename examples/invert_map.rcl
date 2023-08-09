@@ -15,5 +15,10 @@ let memberships = [
   for d in devices:
   { d: [group] }
 ];
+let devices = {
+  for _group, devices in group_devices:
+  for device in devices:
+  device
+};
 // TODO: Add support for some form of group_by.
-memberships
+devices

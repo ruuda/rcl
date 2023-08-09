@@ -181,6 +181,10 @@ impl<'a> Lexer<'a> {
             return self.lex_in_double_quote();
         }
 
+        if input[0] == b'_' {
+            return Ok(self.lex_in_ident());
+        }
+
         if input[0].is_ascii_whitespace() {
             return Ok(self.lex_in_space());
         }
