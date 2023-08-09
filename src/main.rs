@@ -26,14 +26,22 @@ fn main_tags(inputs: &Inputs) -> rcl::error::Result<()> {
     Ok(())
 }
 
+struct Data {
+    path: String,
+    data: String,
+}
+
 fn main() {
-    let fname = "examples/tags.rcl";
-    let data = std::fs::read_to_string(fname).expect("Failed to load example.");
-    let doc = Document {
-        path: fname,
-        data: &data,
+    let mut inputs_owned = Vec::new();
+    for fname in std::env::args().skip(1) {
+        let data = std::fs::read_to_string(&fname).expect("Failed to load example.");
+        let doc = Data {
+            path: fname,
+            data: data,
+        };
+        inputs_owned.push(doc);
     };
-    let inputs = [doc];
+    let inputs: Vec<_> = inputs_owned.iter().map(|d| Document { path: &d.path, data: &d.data }).collect();
     if let Err(err) = main_tags(&inputs) {
         err.print(&inputs);
     }
