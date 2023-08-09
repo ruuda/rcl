@@ -110,12 +110,12 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             }
         }
 
-        Expr::Let(var, value_expr, cont) => {
+        Expr::Let { ident, value, body } => {
             // Note, this is not a recursive let, the variable is not bound when
             // we evaluate the expression.
-            let value = eval(env, value_expr)?;
-            env.push(var.clone(), value);
-            let result = eval(env, cont)?;
+            let v_value = eval(env, value)?;
+            env.push(ident.clone(), v_value);
+            let result = eval(env, body)?;
             env.pop();
             Ok(result)
         }

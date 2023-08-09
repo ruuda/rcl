@@ -46,6 +46,13 @@ impl From<&str> for Ident {
 /// An expression.
 #[derive(Debug)]
 pub enum Expr {
+    /// A let-binding. First is the bound value, then the result expression.
+    Let {
+        ident: Ident,
+        value: Box<Expr>,
+        body: Box<Expr>,
+    },
+
     /// A map or set literal, depending on the element types.
     MapLit(Vec<Seq>),
 
@@ -63,9 +70,6 @@ pub enum Expr {
 
     /// Access a field or key.
     Field(Ident, Box<Expr>),
-
-    /// A let-binding. First is the bound value, then the result expression.
-    Let(Ident, Box<Expr>, Box<Expr>),
 
     /// Call a function.
     Call(Box<Expr>, Vec<Expr>),

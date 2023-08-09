@@ -16,15 +16,25 @@
 use crate::ast::Expr as AExpr;
 use crate::cst::Expr as CExpr;
 
-pub fn abstract_expr(expr: &CExpr) -> AExpr {
-    match expr {
-        CExpr::Let { ident, value, body } => {
-            // TODO: Now we need to start plucking the strings out of the source
-            // and into the runtime ...
-            unimplemented!("TODO");
-        }
-        _ => {
-            unimplemented!("TODO");
+pub struct Abstractor<'a> {
+    input: &'a str,
+}
+
+impl<'a> Abstractor<'a> {
+    pub fn new(input: &'a str) -> Self {
+        Self { input }
+    }
+
+    pub fn expr(&self, expr: &CExpr) -> AExpr {
+        match expr {
+            CExpr::Let { ident, value, body } => AExpr::Let {
+                ident: ident.resolve(self.input).into(),
+                value: Box::new(self.expr(&value)),
+                body: Box::new(self.expr(&body.inner)),
+            },
+            _ => {
+                unimplemented!("TODO");
+            }
         }
     }
 }
