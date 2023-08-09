@@ -53,11 +53,11 @@ pub enum Expr {
         body: Box<Expr>,
     },
 
-    /// A map or set literal, depending on the element types.
+    /// A dict or set literal (depending on the element types) enclosed in `{}`.
     BraceLit(Vec<Seq>),
 
-    /// A list literal.
-    ListLit(Vec<Seq>),
+    /// A list literal enclosed in `[]`.
+    BracketLit(Vec<Seq>),
 
     /// A string literal.
     StringLit(Rc<str>),
@@ -95,8 +95,8 @@ pub enum Seq {
 
     /// A comprehension that loops over the collection.
     For {
+        idents: Vec<Ident>,
         collection: Box<Expr>,
-        elements: Vec<Ident>,
         body: Box<Seq>,
     },
 
@@ -111,7 +111,7 @@ pub enum Seq {
     /// This is syntactically different from a let before an expression, because
     /// associations are not first-class values.
     Let {
-        name: Ident,
+        ident: Ident,
         value: Box<Expr>,
         body: Box<Seq>,
     },

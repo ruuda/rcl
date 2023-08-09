@@ -39,7 +39,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                 _ => Err("Should not mix `k: v` and values in one comprehension.".into()),
             }
         }
-        Expr::ListLit(seqs) => {
+        Expr::BracketLit(seqs) => {
             let mut keys = Vec::new();
             let mut values = Vec::new();
             for seq in seqs {
@@ -208,12 +208,12 @@ fn eval_seq(
             Ok(())
         }
         Seq::For {
+            idents,
             collection,
-            elements,
             body,
         } => {
             let collection_value = eval(env, collection)?;
-            match (&elements[..], collection_value.as_ref()) {
+            match (&idents[..], collection_value.as_ref()) {
                 (&[ref name], Value::List(xs)) => {
                     for x in xs {
                         env.push(name.clone(), x.clone());
@@ -251,9 +251,9 @@ fn eval_seq(
                 _ => Err("Comprehension condition should be boolean.".into()),
             }
         }
-        Seq::Let { name, value, body } => {
+        Seq::Let { ident, value, body } => {
             let v = eval(env, value)?;
-            env.push(name.clone(), v);
+            env.push(ident.clone(), v);
             eval_seq(env, body, out_keys, out_values)?;
             env.pop();
             Ok(())

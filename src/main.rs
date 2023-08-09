@@ -39,7 +39,7 @@ pub fn call(f: Expr, args: Vec<Expr>) -> Expr {
 
 pub fn let_compr(name: &'static str, value: Expr, in_: Seq) -> Seq {
     Seq::Let {
-        name: name.into(),
+        ident: name.into(),
         value: Box::new(value),
         body: Box::new(in_),
     }
@@ -65,8 +65,8 @@ fn example_ast() -> Expr {
             vec![var("host")],
         )),
         body: Box::new(Seq::For {
+            idents: vec!["tag".into()],
             collection: Box::new(var("tags")),
-            elements: vec!["tag".into()],
             body: Box::new(Seq::Elem(Box::new(var("tag")))),
         }),
     };
@@ -75,13 +75,13 @@ fn example_ast() -> Expr {
         "device_tags",
         call(
             field("get", field("device_tags", var("var"))),
-            vec![var("host"), Expr::ListLit(vec![])],
+            vec![var("host"), Expr::BracketLit(vec![])],
         ),
         let_compr(
             "group_tags",
             Expr::BraceLit(vec![Seq::For {
+                idents: vec!["group".into(), "tags".into()],
                 collection: Box::new(field("group_tags", var("var"))),
-                elements: vec!["group".into(), "tags".into()],
                 body: Box::new(inner_if),
             }]),
             assoc(var("host"), union(var("group_tags"), var("device_tags"))),
@@ -91,8 +91,8 @@ fn example_ast() -> Expr {
     Expr::BraceLit(singleton(
         "tags",
         Expr::BraceLit(vec![Seq::For {
+            idents: vec!["host".into()],
             collection: Box::new(field("hosts", var("var"))),
-            elements: vec!["host".into()],
             body: Box::new(Seq::If {
                 condition: Box::new(neg(call(
                     field("contains", field("excluded_devices", var("var"))),

@@ -40,9 +40,16 @@ impl<'a> Abstractor<'a> {
                 value: Box::new(self.expr(&value)),
                 body: Box::new(self.expr(&body.inner)),
             },
+
             CExpr::BraceLit { elements, .. } => {
                 AExpr::BraceLit(elements.iter().map(|elem| self.seq(&elem.inner)).collect())
             }
+
+            CExpr::BracketLit { elements, .. } => {
+                AExpr::BracketLit(elements.iter().map(|elem| self.seq(&elem.inner)).collect())
+            }
+
+            CExpr::StringLit(span) => AExpr::StringLit(span.resolve(self.input).into()),
             todo => unimplemented!("{:?}", todo),
         }
     }
@@ -51,6 +58,12 @@ impl<'a> Abstractor<'a> {
     pub fn seq(&self, seq: &CSeq) -> ASeq {
         match seq {
             CSeq::Elem { value } => ASeq::Elem(Box::new(self.expr(value))),
+
+            CSeq::AssocExpr { field, value } => ASeq::Assoc {
+                key: Box::new(self.expr(field)),
+                value: Box::new(self.expr(value)),
+            },
+
             CSeq::AssocIdent { field, value } => {
                 // We convert the `key = value` as if it had been written
                 // `"key": value` so we can treat them uniformly from here on.
@@ -61,6 +74,20 @@ impl<'a> Abstractor<'a> {
                     value: Box::new(self.expr(value)),
                 }
             }
+
+            CSeq::For {
+                idents,
+                collection,
+                body,
+            } => ASeq::For {
+                idents: idents
+                    .iter()
+                    .map(|span| span.resolve(self.input).into())
+                    .collect(),
+                collection: Box::new(self.expr(collection)),
+                body: Box::new(self.seq(&body.inner)),
+            },
+
             todo => unimplemented!("{:?}", todo),
         }
     }
