@@ -8,17 +8,18 @@ let group_devices = {
 };
 
 // We want to construct the inverse mapping of devices to group memberships.
-// We can do that by first building a collection of memberships, and then
-// grouping that collection on device.
-let memberships = [
-  for group, devices in group_devices:
-  for d in devices:
-  { d: [group] }
-];
+// This is a bit inefficient because it computes the full cross product of
+// devices and groups, but it will suffice for now.
 let devices = {
   for _group, devices in group_devices:
   for device in devices:
   device
 };
-// TODO: Add support for some form of group_by.
-devices
+{
+  for device in devices:
+  device: [
+    for group, g_devs in group_devices:
+    if g_devs.contains(device):
+    group
+  ]
+}
