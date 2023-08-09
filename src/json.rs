@@ -28,8 +28,8 @@ pub fn format_json(v: &Value, into: &mut String) -> Result<()> {
             for v in vs {
                 if !is_first {
                     into.push(',');
-                    format_json(v, into)?;
                 }
+                format_json(v, into)?;
                 is_first = false;
             }
             into.push(']');
