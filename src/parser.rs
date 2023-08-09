@@ -16,7 +16,9 @@ pub type Result<T> = std::result::Result<T, ParseError>;
 pub fn parse(doc: DocId, input: &str) -> Result<Prefixed<Expr>> {
     let tokens = lexer::lex(doc, input)?;
     let mut parser = Parser::new(doc, input, &tokens);
-    parser.parse_prefixed_expr()
+    let result = parser.parse_prefixed_expr()?;
+    parser.parse_eof()?;
+    Ok(result)
 }
 
 fn to_unop(token: Token) -> Option<UnOp> {
@@ -674,5 +676,14 @@ impl<'a> Parser<'a> {
         };
 
         Ok(result)
+    }
+
+    /// Confirm that there is no trailing content left to parse.
+    fn parse_eof(&mut self) -> Result<()> {
+        self.skip_non_code()?;
+        if self.peek().is_some() {
+            return self.error("Unexpected content after the main expression.");
+        }
+        Ok(())
     }
 }
