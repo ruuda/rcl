@@ -7,6 +7,8 @@
 
 //! Types for dealing with input source code.
 
+use std::fmt;
+
 /// A named input document.
 pub struct Document<'a> {
     /// Path can be a file path, but also a name such as "stdin".
@@ -20,8 +22,14 @@ pub struct Document<'a> {
 pub type Inputs<'a> = [Document<'a>];
 
 /// The index of a document in the list of input files.
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct DocId(pub u32);
+
+impl fmt::Debug for DocId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 /// Marks a location in a source file by byte offset.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]

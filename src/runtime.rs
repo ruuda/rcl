@@ -80,11 +80,11 @@ impl Env {
         }
     }
 
-    pub fn lookup(&self, name: Ident) -> Option<&Rc<Value>> {
+    pub fn lookup(&self, name: &Ident) -> Option<&Rc<Value>> {
         self.bindings
             .iter()
             .rev()
-            .find(|(k, _v)| *k == name)
+            .find(|(k, _v)| k == name)
             .map(|(_k, v)| v)
     }
 

@@ -76,7 +76,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                 Value::Map(fields) => {
                     // First test for the builtin names, they shadow the values,
                     // if there are any values.
-                    let builtin = match *field_name {
+                    let builtin = match field_name.as_ref() {
                         "contains" => Some(builtin_map_contains(value.clone())),
                         "get" => Some(builtin_map_get(value.clone())),
                         _ => None,
@@ -94,7 +94,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     }
                 }
                 Value::List(..) => {
-                    let builtin = match *field_name {
+                    let builtin = match field_name.as_ref() {
                         "contains" => Some(builtin_list_contains(value.clone())),
                         _ => None,
                     };
@@ -114,7 +114,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             // Note, this is not a recursive let, the variable is not bound when
             // we evaluate the expression.
             let value = eval(env, value_expr)?;
-            env.push(var, value);
+            env.push(var.clone(), value);
             let result = eval(env, cont)?;
             env.pop();
             Ok(result)
@@ -211,26 +211,26 @@ fn eval_seq(
         } => {
             let collection_value = eval(env, collection)?;
             match (&elements[..], collection_value.as_ref()) {
-                (&[name], Value::List(xs)) => {
+                (&[ref name], Value::List(xs)) => {
                     for x in xs {
-                        env.push(name, x.clone());
+                        env.push(name.clone(), x.clone());
                         eval_seq(env, body, out_keys, out_values)?;
                         env.pop();
                     }
                     Ok(())
                 }
-                (&[name], Value::Set(xs)) => {
+                (&[ref name], Value::Set(xs)) => {
                     for x in xs {
-                        env.push(name, x.clone());
+                        env.push(name.clone(), x.clone());
                         eval_seq(env, body, out_keys, out_values)?;
                         env.pop();
                     }
                     Ok(())
                 }
-                (&[k_name, v_name], Value::Map(xs)) => {
+                (&[ref k_name, ref v_name], Value::Map(xs)) => {
                     for (k, v) in xs {
-                        env.push(k_name, k.clone());
-                        env.push(v_name, v.clone());
+                        env.push(k_name.clone(), k.clone());
+                        env.push(v_name.clone(), v.clone());
                         eval_seq(env, body, out_keys, out_values)?;
                         env.pop();
                         env.pop();
@@ -250,7 +250,7 @@ fn eval_seq(
         }
         Seq::Let { name, value, body } => {
             let v = eval(env, value)?;
-            env.push(name, v);
+            env.push(name.clone(), v);
             eval_seq(env, body, out_keys, out_values)?;
             env.pop();
             Ok(())

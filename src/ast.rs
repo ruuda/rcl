@@ -7,10 +7,41 @@
 
 //! The Abstract Syntax Tree.
 
+use std::fmt;
+use std::rc::Rc;
+
 pub use crate::cst::{BinOp, UnOp};
 
 /// An identifier.
-pub type Ident = &'static str;
+// TODO: Should we deduplicate idents, or even all strings, in a hash table?
+// Should they be slices into the source document? For now the easy thing is to
+// just make them strings, we can optimize later.
+#[derive(Clone, Eq, PartialEq)]
+pub struct Ident(Rc<str>);
+
+impl fmt::Debug for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl AsRef<str> for Ident {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
+impl From<&str> for Ident {
+    fn from(s: &str) -> Ident {
+        Ident(s.to_string().into())
+    }
+}
 
 /// An expression.
 #[derive(Debug)]
@@ -24,11 +55,6 @@ pub enum Expr {
     /// A string literal.
     StringLit(String),
 
-    // TODO: Having those would require an explicit type for them.
-    // It may be nice for some function calls, but for now we can just require
-    // the user to wrap them in [] or {}.
-    // /// A for-comprehension.
-    // Compr(Box<Compr>),
     /// An conditional choice (if, then, else).
     IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
 

@@ -1,25 +1,25 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use rcl::ast::{BinOp, Expr, Ident, Seq, UnOp};
+use rcl::ast::{BinOp, Expr, Seq, UnOp};
 use rcl::runtime::{Env, Value};
 use rcl::source::{DocId, Document, Inputs};
 
 /// Helpers for constructing AST in code.
-pub fn var(name: Ident) -> Expr {
-    Expr::Var(name)
+pub fn var(name: &'static str) -> Expr {
+    Expr::Var(name.into())
 }
 
 pub fn string(value: &'static str) -> Expr {
     Expr::StringLit(value.to_string())
 }
 
-pub fn field(field: Ident, obj: Expr) -> Expr {
-    Expr::Field(field, Box::new(obj))
+pub fn field(field: &'static str, obj: Expr) -> Expr {
+    Expr::Field(field.into(), Box::new(obj))
 }
 
-pub fn singleton(key: Ident, value: Expr) -> Vec<Seq> {
-    vec![Seq::Assoc(Box::new(string(key)), Box::new(value))]
+pub fn singleton(key: &'static str, value: Expr) -> Vec<Seq> {
+    vec![Seq::Assoc(Box::new(string(key.into())), Box::new(value))]
 }
 
 pub fn neg(x: Expr) -> Expr {
@@ -34,9 +34,9 @@ pub fn call(f: Expr, args: Vec<Expr>) -> Expr {
     Expr::Call(Box::new(f), args)
 }
 
-pub fn let_compr(name: Ident, value: Expr, in_: Seq) -> Seq {
+pub fn let_compr(name: &'static str, value: Expr, in_: Seq) -> Seq {
     Seq::Let {
-        name,
+        name: name.into(),
         value: Box::new(value),
         body: Box::new(in_),
     }
@@ -60,7 +60,7 @@ fn example_ast() -> Expr {
         )),
         body: Box::new(Seq::For {
             collection: Box::new(var("tags")),
-            elements: vec!["tag"],
+            elements: vec!["tag".into()],
             body: Box::new(Seq::Elem(Box::new(var("tag")))),
         }),
     };
@@ -75,7 +75,7 @@ fn example_ast() -> Expr {
             "group_tags",
             Expr::MapLit(vec![Seq::For {
                 collection: Box::new(field("group_tags", var("var"))),
-                elements: vec!["group", "tags"],
+                elements: vec!["group".into(), "tags".into()],
                 body: Box::new(inner_if),
             }]),
             assoc(var("host"), union(var("group_tags"), var("device_tags"))),
@@ -86,7 +86,7 @@ fn example_ast() -> Expr {
         "tags",
         Expr::MapLit(vec![Seq::For {
             collection: Box::new(field("hosts", var("var"))),
-            elements: vec!["host"],
+            elements: vec!["host".into()],
             body: Box::new(Seq::If {
                 condition: Box::new(neg(call(
                     field("contains", field("excluded_devices", var("var"))),
@@ -171,7 +171,7 @@ fn example_env() -> Env {
     vars.insert(val_string("group_tags"), Rc::new(Value::Map(group_tags)));
 
     let mut env = Env::new();
-    env.push("var", Rc::new(Value::Map(vars)));
+    env.push("var".into(), Rc::new(Value::Map(vars)));
 
     env
 }

@@ -13,8 +13,8 @@
 //! * Converting literals in the source code into values in the runtime.
 //! * Removing syntactical differences (e.g. converting `k = v;` into `"k": v`).
 
-use crate::ast::{Expr as AExpr};
-use crate::cst::{Expr as CExpr};
+use crate::ast::Expr as AExpr;
+use crate::cst::Expr as CExpr;
 
 pub fn abstract_expr(expr: &CExpr) -> AExpr {
     match expr {
