@@ -201,6 +201,13 @@ fn main_tags(inputs: &Inputs) -> rcl::error::Result<()> {
 
         let ast = rcl::abstraction::abstract_expr(doc.data, &cst);
         eprintln!("{ast:#?}");
+
+        let mut env = Env::new();
+        let val = rcl::eval::eval(&mut env, &ast)?;
+
+        let mut val_json = String::new();
+        rcl::json::format_json(val.as_ref(), &mut val_json)?;
+        println!("{}", val_json);
     }
 
     Ok(())
