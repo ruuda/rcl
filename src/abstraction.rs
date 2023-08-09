@@ -49,7 +49,13 @@ impl<'a> Abstractor<'a> {
                 AExpr::BracketLit(elements.iter().map(|elem| self.seq(&elem.inner)).collect())
             }
 
-            CExpr::StringLit(span) => AExpr::StringLit(span.resolve(self.input).into()),
+            CExpr::StringLit(span) => {
+                // Cut off the string literal quotes.
+                // TODO: Write a proper parser for string literals that handles
+                // escape codes.
+                let span_inner = span.trim_start(1).trim_end(1);
+                AExpr::StringLit(span_inner.resolve(self.input).into())
+            }
 
             CExpr::Var(span) => AExpr::Var(span.resolve(self.input).into()),
 
@@ -94,6 +100,12 @@ impl<'a> Abstractor<'a> {
                 }
             }
 
+            CSeq::Let { ident, value, body } => ASeq::Let {
+                ident: ident.resolve(self.input).into(),
+                value: Box::new(self.expr(value)),
+                body: Box::new(self.seq(&body.inner)),
+            },
+
             CSeq::For {
                 idents,
                 collection,
@@ -111,8 +123,6 @@ impl<'a> Abstractor<'a> {
                 condition: Box::new(self.expr(condition)),
                 body: Box::new(self.seq(&body.inner)),
             },
-
-            todo => unimplemented!("{:?}", todo),
         }
     }
 }

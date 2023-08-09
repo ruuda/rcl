@@ -57,6 +57,26 @@ impl Span {
     pub fn resolve<'a>(&self, input: impl Source<'a>) -> &'a str {
         input.resolve(*self)
     }
+
+    /// Delete n bytes from the start of the span.
+    pub fn trim_start(&self, n: u32) -> Span {
+        let n_trim = self.len.min(n);
+        Span {
+            doc: self.doc,
+            start: self.start + n_trim as usize,
+            len: self.len - n_trim,
+        }
+    }
+
+    /// Delete n bytes from the end of the span.
+    pub fn trim_end(&self, n: u32) -> Span {
+        let n_trim = self.len.min(n);
+        Span {
+            doc: self.doc,
+            start: self.start,
+            len: self.len - n_trim,
+        }
+    }
 }
 
 pub trait Source<'a> {
