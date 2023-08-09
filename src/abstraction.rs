@@ -50,6 +50,25 @@ impl<'a> Abstractor<'a> {
             }
 
             CExpr::StringLit(span) => AExpr::StringLit(span.resolve(self.input).into()),
+
+            CExpr::Var(span) => AExpr::Var(span.resolve(self.input).into()),
+
+            CExpr::Field { inner, field } => AExpr::Field {
+                inner: Box::new(self.expr(inner)),
+                field: field.resolve(self.input).into(),
+            },
+
+            CExpr::Call { function, args, .. } => AExpr::Call {
+                function: Box::new(self.expr(function)),
+                args: args.iter().map(|a| self.expr(&a.inner)).collect(),
+            },
+
+            CExpr::UnOp { op, body, .. } => AExpr::UnOp(*op, Box::new(self.expr(body))),
+
+            CExpr::BinOp { op, lhs, rhs, .. } => {
+                AExpr::BinOp(*op, Box::new(self.expr(lhs)), Box::new(self.expr(rhs)))
+            }
+
             todo => unimplemented!("{:?}", todo),
         }
     }
@@ -85,6 +104,11 @@ impl<'a> Abstractor<'a> {
                     .map(|span| span.resolve(self.input).into())
                     .collect(),
                 collection: Box::new(self.expr(collection)),
+                body: Box::new(self.seq(&body.inner)),
+            },
+
+            CSeq::If { condition, body } => ASeq::If {
+                condition: Box::new(self.expr(condition)),
                 body: Box::new(self.seq(&body.inner)),
             },
 

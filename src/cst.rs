@@ -90,10 +90,10 @@ pub enum Expr {
     /// A string literal.
     StringLit(Span),
 
-    /// Read a variable.
+    /// Access a variable.
     Var(Span),
 
-    /// Access a field on some expression.
+    /// Access a field on the inner expression.
     Field { inner: Box<Expr>, field: Span },
 
     /// Call a function.

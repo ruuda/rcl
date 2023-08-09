@@ -14,8 +14,11 @@ pub fn string(value: &'static str) -> Expr {
     Expr::StringLit(value.into())
 }
 
-pub fn field(field: &'static str, obj: Expr) -> Expr {
-    Expr::Field(field.into(), Box::new(obj))
+pub fn field(field: &'static str, inner: Expr) -> Expr {
+    Expr::Field {
+        inner: Box::new(inner),
+        field: field.into(),
+    }
 }
 
 pub fn singleton(key: &'static str, value: Expr) -> Vec<Seq> {
@@ -34,7 +37,10 @@ pub fn union(x: Expr, y: Expr) -> Expr {
 }
 
 pub fn call(f: Expr, args: Vec<Expr>) -> Expr {
-    Expr::Call(Box::new(f), args)
+    Expr::Call {
+        function: Box::new(f),
+        args,
+    }
 }
 
 pub fn let_compr(name: &'static str, value: Expr, in_: Seq) -> Seq {

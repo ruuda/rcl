@@ -68,14 +68,17 @@ pub enum Expr {
     /// Access a variable.
     Var(Ident),
 
-    /// Access a field or key.
-    Field(Ident, Box<Expr>),
-
-    /// Call a function.
-    Call(Box<Expr>, Vec<Expr>),
+    /// Access a field on the inner expression.
+    Field { inner: Box<Expr>, field: Ident },
 
     /// Define a function.
     Lam(Vec<Ident>, Box<Expr>),
+
+    /// Call a function.
+    Call {
+        function: Box<Expr>,
+        args: Vec<Expr>,
+    },
 
     /// Apply a unary operator.
     UnOp(UnOp, Box<Expr>),
@@ -93,7 +96,17 @@ pub enum Seq {
     /// A `key: value` mapping.
     Assoc { key: Box<Expr>, value: Box<Expr> },
 
-    /// A comprehension that loops over the collection.
+    /// Let in the middle of a sequence literal.
+    ///
+    /// This is syntactically different from a let before an expression, because
+    /// associations are not first-class values.
+    Let {
+        ident: Ident,
+        value: Box<Expr>,
+        body: Box<Seq>,
+    },
+
+    /// Loop over the collection, binding the values to `idents`.
     For {
         idents: Vec<Ident>,
         collection: Box<Expr>,
@@ -103,16 +116,6 @@ pub enum Seq {
     /// Enter the loop only if the condition is true.
     If {
         condition: Box<Expr>,
-        body: Box<Seq>,
-    },
-
-    /// Let in the middle of a comprehension.
-    ///
-    /// This is syntactically different from a let before an expression, because
-    /// associations are not first-class values.
-    Let {
-        ident: Ident,
-        value: Box<Expr>,
         body: Box<Seq>,
     },
 }

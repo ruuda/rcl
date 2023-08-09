@@ -69,16 +69,19 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             None => Err("Variable not found.".into()),
         },
 
-        Expr::Field(field_name, value_expr) => {
-            let value = eval(env, value_expr)?;
+        Expr::Field {
+            field: field_name,
+            inner: inner_expr,
+        } => {
+            let inner = eval(env, inner_expr)?;
             let field_name_value = Value::String(field_name.0.clone());
-            match value.as_ref() {
+            match inner.as_ref() {
                 Value::Map(fields) => {
                     // First test for the builtin names, they shadow the values,
                     // if there are any values.
                     let builtin = match field_name.as_ref() {
-                        "contains" => Some(builtin_map_contains(value.clone())),
-                        "get" => Some(builtin_map_get(value.clone())),
+                        "contains" => Some(builtin_map_contains(inner.clone())),
+                        "get" => Some(builtin_map_get(inner.clone())),
                         _ => None,
                     };
                     if let Some(b) = builtin {
@@ -95,7 +98,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                 }
                 Value::List(..) => {
                     let builtin = match field_name.as_ref() {
-                        "contains" => Some(builtin_list_contains(value.clone())),
+                        "contains" => Some(builtin_list_contains(inner.clone())),
                         _ => None,
                     };
                     match builtin {
@@ -120,7 +123,10 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             Ok(result)
         }
 
-        Expr::Call(fun_expr, args_exprs) => {
+        Expr::Call {
+            function: fun_expr,
+            args: args_exprs,
+        } => {
             // We do strict evaluation, all arguments get evaluated before we go
             // into the call.
             let fun = eval(env, fun_expr)?;
