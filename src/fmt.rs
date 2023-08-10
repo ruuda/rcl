@@ -78,6 +78,61 @@ impl<'a> Formatter<'a> {
                 self.write_indent()?;
                 self.write_expr(&body.inner)?;
             }
+            Expr::BraceLit { elements, .. } => {
+                if elements.is_empty() {
+                    write!(self.out, "{{}}")?;
+                } else {
+                    writeln!(self.out, "{{")?;
+                    self.write_seqs(elements)?;
+                    write!(self.out, "}}")?;
+                }
+            }
+            Expr::BracketLit { elements, .. } => {
+                if elements.is_empty() {
+                    write!(self.out, "[]")?;
+                } else {
+                    writeln!(self.out, "[")?;
+                    self.write_seqs(elements)?;
+                    write!(self.out, "]")?;
+                }
+            }
+            Expr::StringLit(span) => {
+                self.write_span(*span)?;
+            }
+            todo => unimplemented!("Fmt not implemented for {todo:?}"),
+        }
+        Ok(())
+    }
+
+    pub fn write_seqs(&mut self, elements: &[Prefixed<Seq>]) -> Result {
+        self.indent += 2;
+        for elem in elements.iter() {
+            self.write_non_code(&elem.prefix)?;
+            self.write_indent()?;
+            self.write_seq(&elem.inner)?;
+        }
+        self.indent -= 2;
+        self.write_indent()
+    }
+
+    pub fn write_seq(&mut self, seq: &Seq) -> Result {
+        match seq {
+            Seq::Elem { value } => {
+                self.write_expr(value)?;
+                writeln!(self.out, ",")?;
+            }
+            Seq::AssocExpr { field, value } => {
+                self.write_expr(field)?;
+                write!(self.out, ": ")?;
+                self.write_expr(value)?;
+                writeln!(self.out, ",")?;
+            }
+            Seq::AssocIdent { field, value } => {
+                self.write_span(*field)?;
+                write!(self.out, " = ")?;
+                self.write_expr(value)?;
+                writeln!(self.out, ";")?;
+            }
             todo => unimplemented!("Fmt not implemented for {todo:?}"),
         }
         Ok(())
