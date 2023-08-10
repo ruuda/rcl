@@ -186,12 +186,12 @@ impl<'a> Lexer<'a> {
             return Ok(self.lex_in_ident());
         }
 
-        if input[0].is_ascii_whitespace() {
-            return Ok(self.lex_in_space());
+        if input[0] == b'_' || input[0].is_ascii_alphabetic() {
+            return Ok(self.lex_in_ident());
         }
 
-        if input[0].is_ascii_alphabetic() || input[0].is_ascii_digit() {
-            return Ok(self.lex_in_ident());
+        if input[0].is_ascii_whitespace() {
+            return Ok(self.lex_in_space());
         }
 
         if input[0].is_ascii_punctuation() {
@@ -239,7 +239,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_in_ident(&mut self) -> Lexeme {
-        let span = self.take_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_');
+        let span =
+            self.take_while(|ch| false || ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'-');
         let ident = span.resolve(self.input);
         let token = match ident {
             "for" => Token::KwFor,
