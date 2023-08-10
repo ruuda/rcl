@@ -23,6 +23,42 @@ Why another config language? Because:
 
  * CUE and Nickel were not invented here.
 
+## Classification
+
+ * Purely functional: RCL consists of expressions and has no statements.
+   It has immutable values and no mutable objects. Functions are values.
+
+ * **Vaporware, not fully implemented:** RCL is a superset of json.
+
+ * **Vaporware, not implemented:** RCL should be statically typed, in the
+   sense that errors in unreachable code should cause evaluation to fail.
+
+ * **Vaporware, not implemented:** RCL should be structurally typed with
+   Hindley-Milner-style type inference. Types should *not* be first-class,
+   in the sense that the type and value namespaces don’t mix, and you can’t
+   bind types to variables.
+
+ * Strictly evaluated. Maybe it should become lazily evaluated when you want to
+   build something big like Nixpkgs with it; for now strict is fast enough.
+
+## Usage
+
+Build:
+
+    cargo build
+
+Evaluate an RCL expression to json:
+
+    target/debug/rcl eval examples/tags.rcl | jq
+
+Highlight an RCL expression in your terminal:
+
+    target/debug/rcl highlight examples/tags.rcl
+
+Autoformat an RCL expression (non-destructive, prints to stdout):
+
+    target/debug/rcl fmt examples/tags.rcl
+
 ## License
 
 RCL is licensed under the [Apache 2.0][apache2] license. It may be used in
