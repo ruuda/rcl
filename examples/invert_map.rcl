@@ -8,7 +8,7 @@ let group_devices = {
 };
 
 // We want to construct the inverse mapping of devices to group memberships.
-// This is a bit inefficient because it computes the full cross product of
+// This is a bit inefficient because it computes the full Cartesian product of
 // devices and groups, but it will suffice for now.
 let devices = {
   for _group, devices in group_devices:
