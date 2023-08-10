@@ -97,7 +97,6 @@ impl Data {
     }
 }
 
-
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let args_refs: Vec<&str> = args.iter().map(|a| &a[..]).collect();

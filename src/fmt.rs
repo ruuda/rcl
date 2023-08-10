@@ -6,18 +6,23 @@
 // A copy of the License has been included in the root of the repository.
 
 //! An auto-formatter for pretty-printing CST nodes.
+//!
+//! Note, currently this is an extremely naive toy formatter that formats
+//! everything the long way. At some point I would like to implement a proper
+//! line breaking algorithm, but for now this will suffice.
 
-use std::io::{Write};
+use std::io::Write;
 
-use crate::source::{Span};
 use crate::cst::{Expr, NonCode, Prefixed, Seq};
+use crate::source::Span;
 
 pub type Result = std::io::Result<()>;
 
 /// Write a formatted expression to the output.
 pub fn write_expr(input: &str, expr: &Prefixed<Expr>, out: &mut dyn Write) -> Result {
     let mut formatter = Formatter::new(input, out);
-    formatter.write_prefixed_expr(expr)
+    formatter.write_prefixed_expr(expr)?;
+    formatter.write_str("\n")
 }
 
 struct Formatter<'a> {
@@ -43,6 +48,10 @@ impl<'a> Formatter<'a> {
         self.out.write_all(&spaces[..self.indent as usize])
     }
 
+    pub fn write_str(&mut self, s: &str) -> Result {
+        self.out.write_all(s.as_bytes())
+    }
+
     pub fn write_span(&mut self, span: Span) -> Result {
         self.out.write_all(span.resolve(self.input).as_bytes())
     }
@@ -53,7 +62,8 @@ impl<'a> Formatter<'a> {
                 NonCode::Blank(..) => writeln!(self.out)?,
                 NonCode::LineComment(span) => {
                     self.write_indent()?;
-                    writeln!(self.out, "{}", span.resolve(self.input))?;
+                    self.write_span(*span)?;
+                    self.write_str("\n")?;
                 }
             }
         }
@@ -69,35 +79,82 @@ impl<'a> Formatter<'a> {
     pub fn write_expr(&mut self, expr: &Expr) -> Result {
         match expr {
             Expr::Let { ident, value, body } => {
-                write!(self.out, "let ")?;
+                self.write_str("let ")?;
                 self.write_span(*ident)?;
-                write!(self.out, " = ")?;
+                self.write_str(" = ")?;
                 self.write_expr(value)?;
-                writeln!(self.out, ";")?;
+                self.write_str(";\n")?;
                 self.write_non_code(&body.prefix)?;
                 self.write_indent()?;
                 self.write_expr(&body.inner)?;
             }
+
             Expr::BraceLit { elements, .. } => {
                 if elements.is_empty() {
-                    write!(self.out, "{{}}")?;
+                    self.write_str("{}")?;
                 } else {
-                    writeln!(self.out, "{{")?;
+                    self.write_str("{\n")?;
                     self.write_seqs(elements)?;
-                    write!(self.out, "}}")?;
+                    self.write_str("}")?;
                 }
             }
+
             Expr::BracketLit { elements, .. } => {
                 if elements.is_empty() {
-                    write!(self.out, "[]")?;
+                    self.write_str("[]")?;
                 } else {
-                    writeln!(self.out, "[")?;
+                    self.write_str("[\n")?;
                     self.write_seqs(elements)?;
-                    write!(self.out, "]")?;
+                    self.write_str("]")?;
                 }
             }
+
             Expr::StringLit(span) => {
                 self.write_span(*span)?;
+            }
+
+            Expr::Var(span) => {
+                self.write_span(*span)?;
+            }
+
+            Expr::Field { inner, field } => {
+                self.write_expr(inner)?;
+                self.write_str(".")?;
+                self.write_span(*field)?;
+            }
+
+            Expr::Call { function, args, .. } => {
+                self.write_expr(function)?;
+                self.write_str("(")?;
+                let mut is_first = true;
+                for arg in args.iter() {
+                    if !is_first {
+                        self.write_str(", ")?;
+                    }
+                    assert!(
+                        arg.prefix.is_empty(),
+                        "TODO: We can't format non-code here yet."
+                    );
+                    self.write_expr(&arg.inner)?;
+                    is_first = false;
+                }
+                self.write_str(")")?;
+            }
+
+            Expr::UnOp { op_span, body, .. } => {
+                self.write_span(*op_span)?;
+                self.write_str(" ")?;
+                self.write_expr(body)?;
+            }
+
+            Expr::BinOp {
+                op_span, lhs, rhs, ..
+            } => {
+                self.write_expr(lhs)?;
+                self.write_str(" ")?;
+                self.write_span(*op_span)?;
+                self.write_str(" ")?;
+                self.write_expr(rhs)?;
             }
             todo => unimplemented!("Fmt not implemented for {todo:?}"),
         }
@@ -119,21 +176,64 @@ impl<'a> Formatter<'a> {
         match seq {
             Seq::Elem { value } => {
                 self.write_expr(value)?;
-                writeln!(self.out, ",")?;
+                self.write_str(",\n")?;
             }
+
             Seq::AssocExpr { field, value } => {
                 self.write_expr(field)?;
-                write!(self.out, ": ")?;
+                self.write_str(": ")?;
                 self.write_expr(value)?;
-                writeln!(self.out, ",")?;
+                self.write_str(",\n")?;
             }
+
             Seq::AssocIdent { field, value } => {
                 self.write_span(*field)?;
-                write!(self.out, " = ")?;
+                self.write_str(" = ")?;
                 self.write_expr(value)?;
-                writeln!(self.out, ";")?;
+                self.write_str(";\n")?;
             }
-            todo => unimplemented!("Fmt not implemented for {todo:?}"),
+
+            Seq::Let { ident, value, body } => {
+                self.write_str("let ")?;
+                self.write_span(*ident)?;
+                self.write_str(" = ")?;
+                self.write_expr(value)?;
+                self.write_str(";\n")?;
+                self.write_non_code(&body.prefix)?;
+                self.write_indent()?;
+                self.write_seq(&body.inner)?;
+            }
+
+            Seq::For {
+                idents,
+                collection,
+                body,
+            } => {
+                self.write_str("for ")?;
+                let mut is_first = true;
+                for ident in idents.iter() {
+                    if !is_first {
+                        self.write_str(", ")?;
+                    }
+                    self.write_span(*ident)?;
+                    is_first = false;
+                }
+                self.write_str(" in ")?;
+                self.write_expr(collection)?;
+                self.write_str(":\n")?;
+                self.write_non_code(&body.prefix)?;
+                self.write_indent()?;
+                self.write_seq(&body.inner)?;
+            }
+
+            Seq::If { condition, body } => {
+                self.write_str("if ")?;
+                self.write_expr(condition)?;
+                self.write_str(":\n")?;
+                self.write_non_code(&body.prefix)?;
+                self.write_indent()?;
+                self.write_seq(&body.inner)?;
+            }
         }
         Ok(())
     }
