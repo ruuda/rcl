@@ -29,8 +29,11 @@ pub enum Token {
     /// A sequence of ascii alphanumeric or _, not starting with a digit.
     Ident,
 
-    /// A string enclosed in double quotes.
+    /// A string enclosed in double `"`.
     DoubleQuoted,
+
+    /// A string enclosed in triple double quotes `"""`.
+    TripleQuoted,
 
     /// `for`
     KwFor,
@@ -178,6 +181,10 @@ impl<'a> Lexer<'a> {
             return Ok(self.lex_in_line_comment());
         }
 
+        if input.starts_with(b"\"\"\"") {
+            return self.lex_in_triple_quote();
+        }
+
         if input[0] == b'"' {
             return self.lex_in_double_quote();
         }
@@ -272,13 +279,37 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        let error = ParseError {
-            span: self.span(input.len()),
-            message: "Unexpected end of input, string literal is not closed.",
-            note: None,
-            help: None,
-        };
-        Err(error)
+        self.error_while(
+            |_| true,
+            "Unexpected end of input, string literal is not closed.",
+        )
+    }
+
+    fn lex_in_triple_quote(&mut self) -> Result<Lexeme> {
+        let input = &self.input.as_bytes()[self.start..];
+        let mut n_consecutive = 0;
+
+        // Skip over the initial opening quotes.
+        for (i, &ch) in input.iter().enumerate().skip(3) {
+            // Indexing does not go out of bounds here because we start past 1.
+            if ch == b'"' && input[i - 1] == b'\\' {
+                // An escaped quote should not end the token.
+                continue;
+            }
+            if ch == b'"' {
+                n_consecutive += 1;
+                if n_consecutive == 3 {
+                    return Ok((Token::TripleQuoted, self.span(i + 1)));
+                }
+            } else {
+                n_consecutive = 0;
+            }
+        }
+
+        self.error_while(
+            |_| true,
+            "Unexpected end of input, string literal is not closed.",
+        )
     }
 
     fn lex_in_punct(&mut self) -> Result<Lexeme> {
