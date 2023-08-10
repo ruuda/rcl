@@ -5,6 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+use rcl::error::Error;
 use rcl::runtime::Env;
 use rcl::source::{DocId, Document, Inputs};
 
@@ -94,6 +95,7 @@ fn main() {
             let inputs = [data.as_ref()];
             if let Err(err) = main_eval(&inputs) {
                 err.print(&inputs);
+                std::process::exit(1);
             }
         }
         ["fmt", fname] => {
@@ -103,8 +105,21 @@ fn main() {
         }
         ["highlight", fname] => {
             let data = Data::load(fname);
-            let _inputs = [data.as_ref()];
-            unimplemented!("TODO: Implement highlight.");
+            let inputs = [data.as_ref()];
+            let tokens = match rcl::lexer::lex(DocId(0), &data.data) {
+                Ok(tokens) => tokens,
+                Err(err) => {
+                    Box::<dyn Error>::from(err).print(&inputs);
+                    std::process::exit(1);
+                }
+            };
+            let mut stdout = std::io::stdout().lock();
+            let res = rcl::highlight::highlight(&mut stdout, &tokens, &data.data);
+            if res.is_err() {
+                // If we fail to print to stdout, there is no point in printing
+                // an error, just exit then.
+                std::process::exit(1);
+            }
         }
         ["repl"] => {
             unimplemented!("TODO: Implement repl.");
