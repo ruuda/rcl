@@ -113,6 +113,14 @@ impl<'a> Formatter<'a> {
                 self.write_span(*span)?;
             }
 
+            Expr::StringLitTriple(span) => {
+                self.write_str("\n")?;
+                self.indent += 2;
+                self.write_indent()?;
+                self.write_span(*span)?;
+                self.indent -= 2;
+            }
+
             Expr::Var(span) => {
                 self.write_span(*span)?;
             }

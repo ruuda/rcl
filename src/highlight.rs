@@ -21,7 +21,7 @@ fn get_color(token: &Token) -> &'static str {
     match token {
         Token::Space | Token::Blank => reset,
         Token::LineComment => white,
-        Token::DoubleQuoted => red,
+        Token::DoubleQuoted | Token::TripleQuoted => red,
         Token::Ident => reset,
         Token::KwFor | Token::KwIf | Token::KwIn | Token::KwLet | Token::KwNot => green,
         _ => blue,
