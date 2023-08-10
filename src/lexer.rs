@@ -154,6 +154,7 @@ impl<'a> Lexer<'a> {
             span: self.take_while(include),
             message,
             note: None,
+            help: None,
         };
         Err(error)
     }
@@ -274,6 +275,7 @@ impl<'a> Lexer<'a> {
             span: self.span(input.len()),
             message: "Unexpected end of input, string literal is not closed.",
             note: None,
+            help: None,
         };
         Err(error)
     }
@@ -303,6 +305,7 @@ impl<'a> Lexer<'a> {
                     span: self.span(1),
                     message: "Unrecognized punctuation here.",
                     note: None,
+                    help: None,
                 };
                 return Err(error);
             }

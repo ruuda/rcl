@@ -74,6 +74,7 @@ impl<'a> Parser<'a> {
             span: self.peek_span(),
             message,
             note: None,
+            help: None,
         };
 
         Err(err)
@@ -521,7 +522,19 @@ impl<'a> Parser<'a> {
                 }
                 // If we don't find a separator, nor the end of the collection
                 // literal, that's an error. We can report an unmatched bracket
-                // as the problem, because it is. The pop will fail.
+                // as the problem, because it is. The pop will fail. If we see
+                // an '=' maybe the user tried to make a key-value mapping and
+                // we can report a better error.
+                Some(Token::Eq) => {
+                    let mut err = self.pop_bracket().err().expect("We are in a seq.");
+                    err.help = Some(
+                        "To use 'key = value;' record syntax, \
+                        the left-hand side must be an identifier.\n\
+                        When that is not possible, \
+                        use json-style '\"key\": value' instead.",
+                    );
+                    return Err(err);
+                }
                 _ => {
                     self.pop_bracket()?;
                     unreachable!("pop_bracket should have failed.");

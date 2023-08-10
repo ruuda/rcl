@@ -27,8 +27,8 @@ pub trait Error: std::fmt::Debug {
     /// For example, an unmatched parenthesis can point to the opening paren.
     fn note(&self) -> Option<(&str, Span)>;
 
-    /// Optionally, a hint on how to fix the problem.
-    fn hint(&self) -> Option<&str>;
+    /// Optionally, additional information, or a hint on how to fix the problem.
+    fn help(&self) -> Option<&str>;
 }
 
 impl dyn Error {
@@ -47,8 +47,8 @@ impl dyn Error {
             eprintln!("{}Note:{} {}", bold_yellow, reset, note);
         }
 
-        if let Some(hint) = self.hint() {
-            eprintln!("\n{}Hint:{} {}", bold_yellow, reset, hint);
+        if let Some(help) = self.help() {
+            eprintln!("\n{}Help:{} {}", bold_yellow, reset, help);
         }
     }
 }
@@ -138,6 +138,7 @@ pub struct ParseError {
     pub span: Span,
     pub message: &'static str,
     pub note: Option<(&'static str, Span)>,
+    pub help: Option<&'static str>,
 }
 
 impl From<ParseError> for Box<dyn Error> {
@@ -156,8 +157,8 @@ impl Error for ParseError {
     fn note(&self) -> Option<(&str, Span)> {
         self.note
     }
-    fn hint(&self) -> Option<&str> {
-        None
+    fn help(&self) -> Option<&str> {
+        self.help
     }
 }
 
@@ -188,7 +189,7 @@ impl Error for FixmeError {
     fn note(&self) -> Option<(&str, Span)> {
         None
     }
-    fn hint(&self) -> Option<&str> {
+    fn help(&self) -> Option<&str> {
         None
     }
 }
