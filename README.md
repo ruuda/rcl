@@ -1,5 +1,8 @@
 # Ruud’s Configuration Language
 
+**Vaporware warning:** This is a proof-of-concept toy project. I will probably
+lose interest in it before it reaches a point where it is usable and useful.
+
 Why another config language? Because:
 
  * HCL is too ad-hoc to be suitable for any serious abstraction (`setunion` is
@@ -12,7 +15,8 @@ Why another config language? Because:
    want is to evaluate expressions.
 
  * Python is great but requires some boilerplate for doing the IO if you want
-   to use it as a configuration language.
+   to use it as a configuration language. Also the syntactic order of list
+   comprehensions prevents autocomplete in editors.
 
  * Dhall has the right ideas but the syntax and heavy use of Unicode symbols
    make it look ugly.
