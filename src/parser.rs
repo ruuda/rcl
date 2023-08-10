@@ -432,6 +432,7 @@ impl<'a> Parser<'a> {
                 Ok(result)
             }
             Some(Token::DoubleQuoted) => Ok(Expr::StringLit(self.consume())),
+            Some(Token::TripleQuoted) => Ok(Expr::StringLitTriple(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),
             _ => self.error("Expected a term here."),
         }

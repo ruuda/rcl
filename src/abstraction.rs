@@ -57,6 +57,14 @@ impl<'a> Abstractor<'a> {
                 AExpr::StringLit(span_inner.resolve(self.input).into())
             }
 
+            CExpr::StringLitTriple(span) => {
+                // Cut off the string literal quotes.
+                // TODO: Write a proper parser for string literals that handles
+                // escape codes, and for this one, strip the leading whitespace.
+                let span_inner = span.trim_start(3).trim_end(3);
+                AExpr::StringLit(span_inner.resolve(self.input).into())
+            }
+
             CExpr::Var(span) => AExpr::Var(span.resolve(self.input).into()),
 
             CExpr::Field { inner, field } => AExpr::Field {

@@ -87,8 +87,11 @@ pub enum Expr {
         body: Box<Expr>,
     },
 
-    /// A string literal.
+    /// A string literal quoted in double quotes (`"`).
     StringLit(Span),
+
+    /// A string literal quoted in triple double quotes (`"""`).
+    StringLitTriple(Span),
 
     /// Access a variable.
     Var(Span),
