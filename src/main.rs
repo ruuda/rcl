@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use rcl::error::Error;
+use rcl::error::{Error, Result};
 use rcl::runtime::Env;
 use rcl::source::{DocId, Document, Inputs};
 
@@ -26,7 +26,7 @@ Options:
   -h --help     Show this screen.
 "#;
 
-fn main_eval(inputs: &Inputs) -> rcl::error::Result<()> {
+fn main_eval(inputs: &Inputs) -> Result<()> {
     let debug = false;
 
     for (i, doc) in inputs.iter().enumerate() {
@@ -59,6 +59,21 @@ fn main_eval(inputs: &Inputs) -> rcl::error::Result<()> {
     Ok(())
 }
 
+fn main_fmt(inputs: &Inputs) -> Result<()> {
+    for (i, doc) in inputs.iter().enumerate() {
+        let id = DocId(i as u32);
+        let cst = rcl::parser::parse(id, &doc.data)?;
+        let mut out = std::io::stdout().lock();
+        let res = rcl::fmt::write_expr(&doc.data, &cst, &mut out);
+        if res.is_err() {
+            // If we fail to print to stdout, there is no point in printing
+            // an error, just exit then.
+            std::process::exit(1);
+        }
+    }
+    Ok(())
+}
+
 struct Data {
     path: String,
     data: String,
@@ -82,6 +97,7 @@ impl Data {
     }
 }
 
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let args_refs: Vec<&str> = args.iter().map(|a| &a[..]).collect();
@@ -100,8 +116,11 @@ fn main() {
         }
         ["fmt", fname] => {
             let data = Data::load(fname);
-            let _inputs = [data.as_ref()];
-            unimplemented!("TODO: Implement fmt.");
+            let inputs = [data.as_ref()];
+            if let Err(err) = main_fmt(&inputs) {
+                err.print(&inputs);
+                std::process::exit(1);
+            }
         }
         ["highlight", fname] => {
             let data = Data::load(fname);
