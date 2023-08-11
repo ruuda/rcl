@@ -1,0 +1,8 @@
+!true
+
+
+ --> stdin:1:0
+  |
+1 | !true
+  | ^
+Error: Invalid operator. Negation is written with keyword 'not' instead of '!'.
