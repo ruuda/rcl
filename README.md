@@ -59,6 +59,35 @@ Autoformat an RCL expression (non-destructive, prints to stdout):
 
     target/debug/rcl fmt examples/tags.rcl
 
+## Development
+
+Run all tests and checks below in one command:
+
+    nix flake check
+
+Run golden tests:
+
+    cargo build
+    golden/run.py
+
+Check the grammar for ambiguities:
+
+    bison -Werror=all src/grammar.y
+
+Run unit tests and lints:
+
+    cargo test
+    cargo clippy
+
+Typecheck Python sources
+
+    mypy --strict .
+
+Check formatting:
+
+    cargo fmt
+    black .
+
 ## License
 
 RCL is licensed under the [Apache 2.0][apache2] license. It may be used in

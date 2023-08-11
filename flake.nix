@@ -55,11 +55,27 @@
                 bison -Wcounterexamples,error=all ${./src/grammar.y} --output $out
                 '';
 
-              fmt = pkgs.runCommand
-                "check-fmt"
+              fmt-rust = pkgs.runCommand
+                "check-fmt-rust"
                 { buildInputs = [ pkgs.cargo pkgs.rustfmt ]; }
                 ''
                 cargo fmt --manifest-path ${./.}/Cargo.toml -- --check
+                touch $out
+                '';
+
+              fmt-python = pkgs.runCommand
+                "check-fmt-python"
+                { buildInputs = [ pkgs.black ]; }
+                ''
+                black --check --diff ${pkgs.lib.sourceFilesBySuffices ./. [".py"]}
+                touch $out
+                '';
+
+              typecheck-python = pkgs.runCommand
+                "check-typecheck-python"
+                { buildInputs = [ pkgs.mypy ]; }
+                ''
+                mypy --strict ${pkgs.lib.sourceFilesBySuffices ./. [".py"]}
                 touch $out
                 '';
             };
