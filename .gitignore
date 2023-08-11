@@ -1,1 +1,12 @@
+# Bison
+/grammar.html
+/grammar.output
+/grammar.tab.c
+/grammar.xml
+
+# Rust
 /target
+
+# Nix
+/result*
+
