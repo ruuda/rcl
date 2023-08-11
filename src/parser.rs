@@ -314,28 +314,25 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    fn parse_expr_op(&mut self) -> Result<Expr> {
-        // First we check all the rules for prefix unary operators.
-        if let Some(op) = self.peek().and_then(to_unop) {
-            let span = self.consume();
-            self.skip_non_code()?;
-            let body = self.parse_expr_notop()?;
-            let result = Expr::UnOp {
-                op,
-                op_span: span,
-                body: Box::new(body),
-            };
-            return Ok(result);
-        }
-
+    /// Return an error with hint if there is a known bad unary operator under the cursor.
+    fn check_bad_unop(&self) -> Result<()> {
         if let Some(Token::Bang) = self.peek() {
             return self
                 .error("Invalid operator. Negation is written with keyword 'not' instead of '!'.");
         }
+        Ok(())
+    }
+
+    fn parse_expr_op(&mut self) -> Result<Expr> {
+        // First we check all the rules for prefix unary operators.
+        self.check_bad_unop()?;
+        if self.peek().and_then(to_unop).is_some() {
+            return self.parse_expr_unop();
+        }
 
         // If it was not a prefix unary operator, then we certainly have one
-        // notop, but we may have an operator afterwards.
-        let mut result = self.parse_expr_notop()?;
+        // not_op, but we may have an operator afterwards.
+        let mut result = self.parse_expr_not_op()?;
 
         // We might have binary operators following. If we find one, then
         // all the other ones must be of the same type, to avoid unclear
@@ -349,7 +346,7 @@ impl<'a> Parser<'a> {
                 Some(op) if allowed_op.is_none() || allowed_op == Some(op) => {
                     let span = self.consume();
                     self.skip_non_code()?;
-                    let rhs = self.parse_expr_notop()?;
+                    let rhs = self.parse_expr_not_op()?;
                     allowed_span = Some(span);
                     allowed_op = Some(op);
                     result = Expr::BinOp {
@@ -371,7 +368,47 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expr_notop(&mut self) -> Result<Expr> {
+    fn parse_expr_unop(&mut self) -> Result<Expr> {
+        let op = self
+            .peek()
+            .and_then(to_unop)
+            .expect("Should only call this with unop under cursor.");
+        let span = self.consume();
+        self.skip_non_code()?;
+        self.check_bad_unop()?;
+
+        // Nested unary expressions are okay.
+        let body = if self.peek().and_then(to_unop).is_some() {
+            self.parse_expr_unop()?
+        } else {
+            self.parse_expr_not_op()?
+        };
+
+        let result = Expr::UnOp {
+            op,
+            op_span: span,
+            body: Box::new(body),
+        };
+
+        // Check if the expression is followed by a binary operator. This is
+        // not allowed in the grammar on purpose to force parens to clarify
+        // precedence, but if we don't check for it, then the resulting
+        // parse error is confusing, about unexpected content after the end
+        // of the expression/document.
+        self.skip_non_code()?;
+        if self.peek().and_then(to_binop).is_some() {
+            return self.error_with_note(
+                "Parentheses are needed to clarify the precedence of this operator.",
+                span,
+                "Without parentheses, it is not clear whether this operator \
+                applies only to the left-hand side, or the full expression.",
+            );
+        }
+
+        return Ok(result);
+    }
+
+    fn parse_expr_not_op(&mut self) -> Result<Expr> {
         // TODO: check for operators before, and report a pretty error
         // to clarify that parens must be used to disambiguate.
         let mut result = self.parse_expr_term()?;

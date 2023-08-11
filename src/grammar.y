@@ -13,7 +13,7 @@
 // Inspect with: bison --feature=syntax-only -Wcounterexamples src/grammar.y
 %}
 
-%token IDENT STRING UNOP 
+%token IDENT STRING UNOP BINOP
 
 %%
 
@@ -32,25 +32,25 @@ expr_if: "if" expr "then" expr "else" expr;
 // to be written as "(a + b) + c". But "a + b * c" does need to be written as
 // "a + (b * c)".
 expr_op
-  : UNOP expr_notop
-  | expr_notop '|'   expr_ops_pipe
-  | expr_notop '+'   expr_ops_plus
-  | expr_notop "and" expr_ops_and
-  | expr_notop "or"  expr_ops_or
-  | expr_notop
+  : UNOP expr_unop
+  | expr_not_op BINOP expr_binop
+  | expr_not_op
   ;
 
-expr_ops_pipe: expr_notop | expr_notop '|'   expr_notop;
-expr_ops_plus: expr_notop | expr_notop '+'   expr_notop;
-expr_ops_and:  expr_notop | expr_notop "and" expr_notop;
-expr_ops_or:   expr_notop | expr_notop "or"  expr_notop;
+expr_unop: expr_not_op | UNOP expr_unop;
+
+// This rule for binop is simplified here. In reality, there should be a
+// dedicated one for every binop, so you can repeat the same binop without
+// parens, but you cannot mix multiple different ones. To keep this file simple,
+// we don't expand it out here and we have just one generic binop.
+expr_binop: expr_not_op | expr_not_op BINOP expr_binop;
 
 // Because we disallow confusing operator combinations without parens, the nodes
-// of an operator are "not operator", "notop" for short.
-expr_notop
+// of an operator are "not binary operator", "not binop" for short.
+expr_not_op
   : expr_term
-  | expr_notop '(' call_args ')'
-  | expr_notop '.' IDENT
+  | expr_not_op '(' call_args ')'
+  | expr_not_op '.' IDENT
   ;
 
 call_args

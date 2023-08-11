@@ -1,0 +1,7 @@
+[
+  not (true and false),
+  (not true) and false,
+]
+
+
+[true,false]

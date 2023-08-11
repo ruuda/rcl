@@ -1,0 +1,14 @@
+not true and false
+
+
+ --> stdin:1:9
+  |
+1 | not true and false
+  |          ^~~
+Error: Parentheses are needed to clarify the precedence of this operator.
+
+ --> stdin:1:0
+  |
+1 | not true and false
+  | ^~~
+Note: Without parentheses, it is not clear whether this operator applies only to the left-hand side, or the full expression.
