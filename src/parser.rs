@@ -427,7 +427,7 @@ impl<'a> Parser<'a> {
             }
             Some(Token::LParen) => {
                 let open = self.push_bracket();
-                let body = self.parse_expr()?;
+                let body = self.parse_prefixed_expr()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::Parens {
                     open,

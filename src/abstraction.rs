@@ -49,6 +49,8 @@ impl<'a> Abstractor<'a> {
                 AExpr::BracketLit(elements.iter().map(|elem| self.seq(&elem.inner)).collect())
             }
 
+            CExpr::Parens { body, .. } => self.expr(&body.inner),
+
             CExpr::BoolLit(_span, b) => AExpr::BoolLit(*b),
 
             CExpr::StringLit(span) => {
@@ -84,8 +86,6 @@ impl<'a> Abstractor<'a> {
             CExpr::BinOp { op, lhs, rhs, .. } => {
                 AExpr::BinOp(*op, Box::new(self.expr(lhs)), Box::new(self.expr(rhs)))
             }
-
-            todo => unimplemented!("{:?}", todo),
         }
     }
 

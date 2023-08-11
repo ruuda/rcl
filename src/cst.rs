@@ -84,7 +84,7 @@ pub enum Expr {
     Parens {
         open: Span,
         close: Span,
-        body: Box<Expr>,
+        body: Box<Prefixed<Expr>>,
     },
 
     /// A boolean literal.
