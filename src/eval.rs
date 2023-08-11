@@ -182,6 +182,11 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
             result.extend(ys.iter().cloned());
             Ok(Rc::new(Value::Set(result)))
         }
+        // TODO: Could evaluate these boolean expressions lazily, if the
+        // language is really pure. But if I enable external side effects like
+        // running a program to read its input, that would be questionable to do.
+        (BinOp::And, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x && *y))),
+        (BinOp::Or, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x || *y))),
         (BinOp::Add, Value::Int(x), Value::Int(y)) => {
             // TODO: Make this a checked add.
             Ok(Rc::new(Value::Int(x + y)))

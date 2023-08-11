@@ -30,6 +30,8 @@ fn to_unop(token: Token) -> Option<UnOp> {
 
 fn to_binop(token: Token) -> Option<BinOp> {
     match token {
+        Token::KwAnd => Some(BinOp::And),
+        Token::KwOr => Some(BinOp::Or),
         Token::Pipe => Some(BinOp::Union),
         Token::Plus => Some(BinOp::Add),
         _ => None,

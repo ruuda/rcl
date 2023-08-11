@@ -35,6 +35,9 @@ pub enum Token {
     /// A string enclosed in triple double quotes `"""`.
     TripleQuoted,
 
+    /// `and`
+    KwAnd,
+
     /// `false`
     KwFalse,
 
@@ -52,6 +55,9 @@ pub enum Token {
 
     /// `not`
     KwNot,
+
+    /// `or`
+    KwOr,
 
     /// `true`
     KwTrue,
@@ -256,12 +262,14 @@ impl<'a> Lexer<'a> {
             self.take_while(|ch| false || ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'-');
         let ident = span.resolve(self.input);
         let token = match ident {
+            "and" => Token::KwAnd,
             "false" => Token::KwFalse,
             "for" => Token::KwFor,
             "if" => Token::KwIf,
             "in" => Token::KwIn,
             "let" => Token::KwLet,
             "not" => Token::KwNot,
+            "or" => Token::KwOr,
             "true" => Token::KwTrue,
             _ => Token::Ident,
         };

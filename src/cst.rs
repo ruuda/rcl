@@ -30,11 +30,17 @@ pub enum UnOp {
 /// A binary operator.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BinOp {
-    /// `|`: Union two collections
-    Union,
-
     /// `+`: Add two numbers.
     Add,
+
+    /// `and`: Boolean AND.
+    And,
+
+    /// `or`: Boolean OR.
+    Or,
+
+    /// `|`: Union two collections
+    Union,
 }
 
 /// Not code, but a piece of the document relevant to preserve for formatting.
