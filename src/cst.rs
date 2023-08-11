@@ -87,6 +87,9 @@ pub enum Expr {
         body: Box<Expr>,
     },
 
+    /// A boolean literal.
+    BoolLit(Span, bool),
+
     /// A string literal quoted in double quotes (`"`).
     StringLit(Span),
 

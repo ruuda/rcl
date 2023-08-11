@@ -23,7 +23,13 @@ fn get_color(token: &Token) -> &'static str {
         Token::LineComment => white,
         Token::DoubleQuoted | Token::TripleQuoted => red,
         Token::Ident => reset,
-        Token::KwFor | Token::KwIf | Token::KwIn | Token::KwLet | Token::KwNot => green,
+        Token::KwFalse
+        | Token::KwFor
+        | Token::KwIf
+        | Token::KwIn
+        | Token::KwLet
+        | Token::KwNot
+        | Token::KwTrue => green,
         _ => blue,
     }
 }

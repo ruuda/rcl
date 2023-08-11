@@ -436,6 +436,8 @@ impl<'a> Parser<'a> {
                 };
                 Ok(result)
             }
+            Some(Token::KwTrue) => Ok(Expr::BoolLit(self.consume(), true)),
+            Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
             Some(Token::DoubleQuoted) => Ok(Expr::StringLit(self.consume())),
             Some(Token::TripleQuoted) => Ok(Expr::StringLitTriple(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),

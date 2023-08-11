@@ -59,6 +59,9 @@ pub enum Expr {
     /// A list literal enclosed in `[]`.
     BracketLit(Vec<Seq>),
 
+    /// A boolean literal.
+    BoolLit(bool),
+
     /// A string literal.
     StringLit(Rc<str>),
 

@@ -49,6 +49,8 @@ impl<'a> Abstractor<'a> {
                 AExpr::BracketLit(elements.iter().map(|elem| self.seq(&elem.inner)).collect())
             }
 
+            CExpr::BoolLit(_span, b) => AExpr::BoolLit(*b),
+
             CExpr::StringLit(span) => {
                 // Cut off the string literal quotes.
                 // TODO: Write a proper parser for string literals that handles
