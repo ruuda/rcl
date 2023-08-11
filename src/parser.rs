@@ -326,6 +326,10 @@ impl<'a> Parser<'a> {
             return Ok(result);
         }
 
+        if let Some(Token::Bang) = self.peek() {
+            return self.error("Invalid operator. Negation is written with keyword 'not' instead of '!'.");
+        }
+
         // If it was not a prefix unary operator, then we certainly have one
         // notop, but we may have an operator afterwards.
         let mut result = self.parse_expr_notop()?;
