@@ -81,11 +81,24 @@ struct Data {
 
 impl Data {
     fn load(fname: &str) -> Data {
-        // TODO: Read from stdin if fname is '-'.
-        let data = std::fs::read_to_string(fname).expect("Failed to load example.");
+        use std::fs;
+        use std::io::{self, Read};
         Data {
-            path: fname.to_string(),
-            data: data,
+            path: match fname {
+                "-" => "stdin".to_string(),
+                _ => fname.to_string(),
+            },
+            data: match fname {
+                // TODO: Add IO error to the error module.
+                "-" => {
+                    let mut buf = String::new();
+                    io::stdin()
+                        .read_to_string(&mut buf)
+                        .expect("Failed to read from stdin.");
+                    buf
+                }
+                _ => fs::read_to_string(fname).expect("Failed to read from file."),
+            },
         }
     }
 

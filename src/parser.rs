@@ -327,7 +327,8 @@ impl<'a> Parser<'a> {
         }
 
         if let Some(Token::Bang) = self.peek() {
-            return self.error("Invalid operator. Negation is written with keyword 'not' instead of '!'.");
+            return self
+                .error("Invalid operator. Negation is written with keyword 'not' instead of '!'.");
         }
 
         // If it was not a prefix unary operator, then we certainly have one
