@@ -1,0 +1,11 @@
+let t = true;
+
+
+// The double blank line above should be collapsed into one.
+t
+
+# output:
+let t = true;
+
+// The double blank line above should be collapsed into one.
+t

@@ -109,6 +109,10 @@ impl<'a> Formatter<'a> {
                 }
             }
 
+            Expr::BoolLit(span, ..) => {
+                self.write_span(*span)?;
+            }
+
             Expr::StringLit(span) => {
                 self.write_span(*span)?;
             }
