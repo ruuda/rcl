@@ -40,7 +40,7 @@
           coverageBuild = rcl.overrideAttrs (old: {
             name = "rcl-coverage";
             buildType = "debug";
-            RUSTFLAGS = "-C instrument-coverage";
+            RUSTFLAGS = "-C instrument-coverage -C link-dead-code -C debug-assertions";
           });
         in
           rec {
