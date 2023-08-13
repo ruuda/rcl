@@ -7,3 +7,7 @@ license = "Apache-2.0"
 
 [dependencies]
 unicode-width = "0.1.10"
+
+[profile.release]
+lto = "thin"
+panic = "abort"

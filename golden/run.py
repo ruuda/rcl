@@ -148,9 +148,10 @@ def main() -> None:
         sys.exit(0)
 
     fnames = sys.argv[1:]
+    golden_dir = os.path.dirname(os.path.abspath(__file__))
 
     if len(fnames) == 0:
-        for root, _dirs, files in os.walk("golden"):
+        for root, _dirs, files in os.walk(golden_dir):
             for fname in files:
                 if fname.endswith(".test"):
                     fnames.append(os.path.join(root, fname))
@@ -160,7 +161,9 @@ def main() -> None:
 
     for fname in fnames:
         # Print a status line. The test will later overwrite the status.
-        print(f"[ .. ] {fname}", end="", flush=True)
+        prefix = os.path.commonpath([fname, golden_dir])
+        fname_friendly = fname.removeprefix(prefix + "/")
+        print(f"[ .. ] {fname_friendly}", end="", flush=True)
         num_good += int(test_one(fname, rewrite_output=rewrite_output))
 
     num_bad = len(fnames) - num_good
