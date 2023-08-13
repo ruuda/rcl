@@ -1,0 +1,14 @@
+{true]
+
+# output:
+ --> stdin:1:5
+  |
+1 | {true]
+  |      ^
+Error: Expected '}'.
+
+ --> stdin:1:0
+  |
+1 | {true]
+  | ^
+Note: Unmatched '{' opened here.
