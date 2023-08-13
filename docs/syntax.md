@@ -1,7 +1,7 @@
 # Syntax
 
-RCL is a superset of json. This means that RCL supports literals for the
-following data types:
+RCL is a superset of json. Any json document is a valid RCL expression which
+evaluates to itself as json. RCL furthermore features the following constructs.
 
 ## Booleans
 
@@ -94,20 +94,18 @@ evaluates to the expression after `;`.
 
 ## Operators
 
-Operators are written with keywords.
+The following operators are supported. Most of them are similar to Python.
 
-Unary operators:
+| Operator | Arity  | Description |
+|----------|--------|-------------|
+| `not`    | unary  | Boolean negation |
+| `and`    | binary | Boolean <abbr>AND</abbr> |
+| `or`     | binary | Boolean <abbr>OR</abbr> |
+| `|`      | binary | Set or record union, right-biased for records |
 
- * `not` — Boolean negation.
-
-Binary operators:
-
- * `and` — Boolean <abbr>AND</abbr>.
- * `or` — Boolean <abbr>OR</abbr>.
- * `|` — Set or record union.
-
-Unlike most other languages (but like [Pony][pony-ops]), RCL does not have
-different precedence levels. To avoid confusion, you have to use parentheses:
+Unlike most other languages (but [like Pony][pony-ops]), RCL does not have
+different precedence levels. To avoid confusing combinations of operators, you
+have to use parentheses:
 
     // Invalid: Unclear whether this means (X and Y) or Z, or X and (Y or Z).
     let should_log_verbose =
@@ -121,16 +119,16 @@ different precedence levels. To avoid confusion, you have to use parentheses:
 
 [pony-ops]: https://tutorial.ponylang.io/expressions/ops.html#precedence
 
-## Loops
+## Comprehensions
 
 Inside collection literals (lists, records, and sets), aside from single
-elements, it is possible to use loops. There are three possible loop structures:
-`for`, `if`, and `let`.
+elements, it is possible to use comprehensions. There are three supported
+constructs: `for`, `if`, and `let`.
 
-    let record = {"name": "pear"};
+    let record = {"name": "pear", "flavor": "sweet"};
     [for key, value in record: value]
     // Evaluates to:
-    ["pear"]
+    ["pear", "sweet"]
 
     [if log_level >= 2: "Verbose message"]
     // When log_level < 2, evaluates to:

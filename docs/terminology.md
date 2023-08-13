@@ -1,7 +1,7 @@
 # Terminology
 
 Many concepts are universal across formats and languages, but are known by
-different names nonetheless. RCL adopts the following terminology.
+various names nonetheless. RCL adopts the following terminology.
 
 ### Record
 A record is a collection of key-value pairs where the keys are
