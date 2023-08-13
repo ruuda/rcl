@@ -1,0 +1,8 @@
+"This is unclosed.
+
+# output:
+ --> stdin:1:0
+  |
+1 | "This is unclosed.
+  | ^~~~~~~~~~~~~~~~~~
+Error: Unexpected end of input, string literal is not closed.
