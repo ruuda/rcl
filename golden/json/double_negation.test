@@ -1,4 +1,4 @@
 not (not true)
 
-
+# output:
 true

@@ -1,6 +1,6 @@
 not true and false
 
-
+# output:
  --> stdin:1:9
   |
 1 | not true and false

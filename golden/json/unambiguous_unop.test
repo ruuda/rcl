@@ -3,5 +3,5 @@
   (not true) and false,
 ]
 
-
+# output:
 [true,false]

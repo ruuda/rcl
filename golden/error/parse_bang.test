@@ -1,6 +1,6 @@
 !true
 
-
+# output:
  --> stdin:1:0
   |
 1 | !true

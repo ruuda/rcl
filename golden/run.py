@@ -16,7 +16,8 @@ A test runner for running the golden tests.
 
 The runner takes golden input files, splits them into inputs and expectations,
 and then prints whether they match. Inputs and expectations are separated by a
-double blank line.
+a line that contains "# output:". Blank lines preceding it are not considered
+Part of the input.
 
 SYNOPSIS
 
@@ -60,24 +61,18 @@ def test_one(fname: str, *, rewrite_output: bool) -> bool:
     golden_lines: List[str] = []
 
     with open(fname, "r", encoding="utf-8") as f:
-        consecutive_blank = 0
         target = input_lines
         for line in f:
+            if line == "# output:\n":
+                target = golden_lines
+                continue
+
             target.append(line)
 
-            if line == "\n":
-                consecutive_blank += 1
-            else:
-                consecutive_blank = 0
-
-            if consecutive_blank >= 2:
-                target = golden_lines
-
-    # The input is separated from the output by a double blank line. Strip those
-    # from the input fed to the program, if they were actually blank.
-    for _ in range(2):
-        if input_lines[-1].strip() == "":
-            input_lines.pop()
+    # If there is a blank line before the output separator, remove that line,
+    # it is not considered part of the input.
+    if input_lines[-1].strip() == "":
+        input_lines.pop()
 
     # Run with RUST_BACKTRACE=1 so we get a backtrace if the process panics.
     os.putenv("RUST_BACKTRACE", "1")
@@ -127,7 +122,7 @@ def test_one(fname: str, *, rewrite_output: bool) -> bool:
             for line in input_lines:
                 f.write(line)
 
-            f.write("\n\n")
+            f.write("\n# output:\n")
 
             for line in output_lines:
                 f.write(line)
