@@ -1,0 +1,20 @@
+site_name: RCL
+site_url: https://docs.ruuda.nl/rcl
+repo_url: https://github.com/ruuda/rcl
+strict: true
+
+theme:
+  name: null
+  custom_dir: docs/theme
+
+markdown_extensions:
+  - toc:
+      permalink: true
+      permalink_title: null
+
+nav:
+  - Overview: index.md
+  - User guide:
+    - Terminology: terminology.md
+    - Syntax: syntax.md
+  - Development: development.md
