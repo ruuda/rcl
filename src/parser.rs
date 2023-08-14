@@ -52,6 +52,10 @@ struct Parser<'a> {
     /// This is used in error reporting to provide a hint for where to place the
     /// comment.
     comment_anchor: Span,
+
+    /// The depth of parsing expressions and sequences, to prevent stack
+    /// overflow.
+    depth: u32,
 }
 
 impl<'a> Parser<'a> {
@@ -67,6 +71,7 @@ impl<'a> Parser<'a> {
                 start: 0,
                 len: 0,
             },
+            depth: 0,
         }
     }
 
@@ -134,10 +139,26 @@ impl<'a> Parser<'a> {
         result
     }
 
+    fn increase_depth(&mut self) -> Result<()> {
+        self.depth += 1;
+
+        if self.depth >= 100 {
+            return self.error("Parser recursion limit reached, please reduce nesting.");
+        }
+
+        Ok(())
+    }
+
+    fn decrease_depth(&mut self) {
+        debug_assert!(self.depth > 0, "Expression depth underflow.");
+        self.depth -= 1;
+    }
+
     /// Push an opening bracket onto the stack of brackets when inside a query.
     ///
     /// Consumes the token under the cursor.
-    fn push_bracket(&mut self) -> Span {
+    fn push_bracket(&mut self) -> Result<Span> {
+        self.increase_depth()?;
         let start_token = self.tokens[self.cursor];
         let result = self.consume();
         self.bracket_stack.push(start_token);
@@ -145,13 +166,14 @@ impl<'a> Parser<'a> {
             Token::LBrace | Token::LParen | Token::LBracket => {}
             invalid => unreachable!("Invalid token for `push_bracket`: {:?}", invalid),
         };
-        result
+        Ok(result)
     }
 
     /// Pop a closing bracket while verifying that it is the right one.
     ///
     /// Consumes the token under the cursor.
     fn pop_bracket(&mut self) -> Result<Span> {
+        self.decrease_depth();
         let actual_end_token = self.tokens.get(self.cursor).map(|t| t.0);
         let top = match self.bracket_stack.pop() {
             None => match actual_end_token {
@@ -275,11 +297,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> Result<Expr> {
-        match self.peek() {
+        // TODO: This depth limit is not sustainable if my lets are recursive.
+        // We need tail calls or loops to handle them in the parser ...
+        self.increase_depth()?;
+        let result = match self.peek() {
             Some(Token::KwLet) => self.parse_expr_let(),
             Some(Token::KwIf) => self.parse_expr_if(),
             _ => self.parse_expr_op(),
-        }
+        };
+        self.decrease_depth();
+        result
     }
 
     fn parse_expr_if(&mut self) -> Result<Expr> {
@@ -441,7 +468,7 @@ impl<'a> Parser<'a> {
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::LParen) => {
-                    let open = self.push_bracket();
+                    let open = self.push_bracket()?;
                     let args = self.parse_call_args()?;
                     let close = self.pop_bracket()?;
                     result = Expr::Call {
@@ -468,7 +495,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_term(&mut self) -> Result<Expr> {
         match self.peek() {
             Some(Token::LBrace) => {
-                let open = self.push_bracket();
+                let open = self.push_bracket()?;
                 let elements = self.parse_seqs()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::BraceLit {
@@ -479,7 +506,7 @@ impl<'a> Parser<'a> {
                 Ok(result)
             }
             Some(Token::LBracket) => {
-                let open = self.push_bracket();
+                let open = self.push_bracket()?;
                 let elements = self.parse_seqs()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::BracketLit {
@@ -490,7 +517,7 @@ impl<'a> Parser<'a> {
                 Ok(result)
             }
             Some(Token::LParen) => {
-                let open = self.push_bracket();
+                let open = self.push_bracket()?;
                 let body = self.parse_prefixed_expr()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::Parens {
