@@ -93,6 +93,10 @@ View coverage of the golden tests:
     nix build .#coverage --out-link result
     xdg-open result/index.html
 
+Run the fuzzer:
+
+    cargo +nightly-2023-06-03 fuzz run main
+
 ## License
 
 RCL is licensed under the [Apache 2.0][apache2] license. It may be used in
