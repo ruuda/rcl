@@ -1,0 +1,22 @@
+# Keywords
+"and"
+"else"
+"false"
+"for"
+"if"
+"in"
+"let"
+"not"
+"or"
+"then"
+"true"
+
+# String literals and escape sequences.
+"\"\"\""
+"\\\\"
+"\\\""
+
+# Some examples of numbers.
+"0x1"
+"0b1"
+"0.1e1"

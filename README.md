@@ -95,7 +95,7 @@ View coverage of the golden tests:
 
 Run the fuzzer:
 
-    cargo +nightly-2023-06-03 fuzz run main
+    cargo +nightly-2023-06-03 fuzz run main -- -dict=fuzz/dictionary.txt
 
 ## License
 
