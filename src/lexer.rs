@@ -454,8 +454,7 @@ impl<'a> Lexer<'a> {
             b'=' => Token::Eq,
             b'|' => Token::Pipe,
             b'+' => Token::Plus,
-            q => {
-                eprintln!("TODO: {}", q);
+            _ => {
                 let error = ParseError {
                     span: self.span(1),
                     message: "Unrecognized punctuation here.",
