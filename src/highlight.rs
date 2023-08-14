@@ -15,6 +15,7 @@ fn get_color(token: &Token) -> &'static str {
     let red = "\x1b[31m";
     let green = "\x1b[32m";
     let blue = "\x1b[34m";
+    let cyan = "\x1b[36m";
     let white = "\x1b[37m";
     let reset = "\x1b[0m";
 
@@ -22,6 +23,7 @@ fn get_color(token: &Token) -> &'static str {
         Token::Space | Token::Blank => reset,
         Token::LineComment => white,
         Token::DoubleQuoted | Token::TripleQuoted => red,
+        Token::NumBinary | Token::NumHexadecimal | Token::NumDecimal => cyan,
         Token::Ident => reset,
         Token::KwAnd
         | Token::KwFalse
