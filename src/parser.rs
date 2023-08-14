@@ -152,12 +152,12 @@ impl<'a> Parser<'a> {
     ///
     /// Consumes the token under the cursor.
     fn pop_bracket(&mut self) -> Result<Span> {
-        let actual_end_token = self.tokens[self.cursor].0;
+        let actual_end_token = self.tokens.get(self.cursor).map(|t| t.0);
         let top = match self.bracket_stack.pop() {
             None => match actual_end_token {
-                Token::RParen => return self.error("Found unmatched ')'."),
-                Token::RBrace => return self.error("Found unmatched '}'."),
-                Token::RBracket => return self.error("Found unmatched ']'."),
+                Some(Token::RParen) => return self.error("Found unmatched ')'."),
+                Some(Token::RBrace) => return self.error("Found unmatched '}'."),
+                Some(Token::RBracket) => return self.error("Found unmatched ']'."),
                 invalid => unreachable!("Invalid token for `pop_bracket`: {:?}", invalid),
             },
             Some(t) => t,
@@ -169,7 +169,7 @@ impl<'a> Parser<'a> {
             invalid => unreachable!("Invalid token on bracket stack: {:?}", invalid),
         };
 
-        if actual_end_token == expected_end_token {
+        if actual_end_token == Some(expected_end_token) {
             return Ok(self.consume());
         }
 
