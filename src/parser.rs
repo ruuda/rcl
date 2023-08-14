@@ -277,9 +277,34 @@ impl<'a> Parser<'a> {
     fn parse_expr(&mut self) -> Result<Expr> {
         match self.peek() {
             Some(Token::KwLet) => self.parse_expr_let(),
-            Some(Token::KwIf) => unimplemented!("TODO: parse_expr_if"),
+            Some(Token::KwIf) => self.parse_expr_if(),
             _ => self.parse_expr_op(),
         }
+    }
+
+    fn parse_expr_if(&mut self) -> Result<Expr> {
+        // Consume the `if` keyword.
+        let _if = self.consume();
+
+        self.skip_non_code()?;
+        let condition = self.parse_expr()?;
+
+        let before_then = self.parse_non_code();
+        self.parse_token(Token::KwThen, "Expected 'then' here.")?;
+        let body_then = self.parse_prefixed_expr()?;
+
+        let before_else = self.parse_non_code();
+        self.parse_token(Token::KwElse, "Expected 'else' here.")?;
+        let body_else = self.parse_prefixed_expr()?;
+
+        let result = Expr::IfThenElse {
+            condition: Box::new(condition),
+            before_then,
+            body_then: Box::new(body_then),
+            before_else,
+            body_else: Box::new(body_else),
+        };
+        Ok(result)
     }
 
     fn parse_expr_let(&mut self) -> Result<Expr> {

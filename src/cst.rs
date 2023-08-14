@@ -102,6 +102,15 @@ pub enum Expr {
     /// A string literal quoted in triple double quotes (`"""`).
     StringLitTriple(Span),
 
+    /// A conditional expression.
+    IfThenElse {
+        condition: Box<Expr>,
+        before_then: Box<[NonCode]>,
+        body_then: Box<Prefixed<Expr>>,
+        before_else: Box<[NonCode]>,
+        body_else: Box<Prefixed<Expr>>,
+    },
+
     /// Access a variable.
     Var(Span),
 

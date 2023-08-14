@@ -26,6 +26,7 @@ fn get_color(token: &Token) -> &'static str {
         Token::NumBinary | Token::NumHexadecimal | Token::NumDecimal => cyan,
         Token::Ident => reset,
         Token::KwAnd
+        | Token::KwElse
         | Token::KwFalse
         | Token::KwFor
         | Token::KwIf
@@ -33,6 +34,7 @@ fn get_color(token: &Token) -> &'static str {
         | Token::KwLet
         | Token::KwNot
         | Token::KwOr
+        | Token::KwThen
         | Token::KwTrue => green,
         _ => blue,
     }

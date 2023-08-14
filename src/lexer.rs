@@ -53,6 +53,9 @@ pub enum Token {
     /// `for`
     KwFor,
 
+    /// `else`
+    KwElse,
+
     /// `if`
     KwIf,
 
@@ -67,6 +70,9 @@ pub enum Token {
 
     /// `or`
     KwOr,
+
+    /// `then`
+    KwThen,
 
     /// `true`
     KwTrue,
@@ -277,6 +283,7 @@ impl<'a> Lexer<'a> {
         let ident = span.resolve(self.input);
         let token = match ident {
             "and" => Token::KwAnd,
+            "else" => Token::KwElse,
             "false" => Token::KwFalse,
             "for" => Token::KwFor,
             "if" => Token::KwIf,
@@ -284,6 +291,7 @@ impl<'a> Lexer<'a> {
             "let" => Token::KwLet,
             "not" => Token::KwNot,
             "or" => Token::KwOr,
+            "then" => Token::KwThen,
             "true" => Token::KwTrue,
             _ => Token::Ident,
         };

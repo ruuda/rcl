@@ -69,6 +69,17 @@ impl<'a> Abstractor<'a> {
                 AExpr::StringLit(span_inner.resolve(self.input).into())
             }
 
+            CExpr::IfThenElse {
+                condition,
+                body_then,
+                body_else,
+                ..
+            } => AExpr::IfThenElse(
+                Box::new(self.expr(condition)),
+                Box::new(self.expr(&body_then.inner)),
+                Box::new(self.expr(&body_else.inner)),
+            ),
+
             CExpr::Var(span) => AExpr::Var(span.resolve(self.input).into()),
 
             CExpr::Field { inner, field } => AExpr::Field {
