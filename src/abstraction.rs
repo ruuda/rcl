@@ -72,23 +72,23 @@ impl<'a> Abstractor<'a> {
 
             CExpr::NumHexadecimal(span) => {
                 // Cut off the 0x, then parse the rest.
-                let num_str = span.trim_start(2).resolve(self.input);
-                let n = i64::from_str_radix(num_str, 16);
+                let num_str = span.trim_start(2).resolve(self.input).replace('_', "");
+                let n = i64::from_str_radix(&num_str, 16);
                 // TODO: Deal with overflow by making a bigint.
                 AExpr::IntegerLit(n.expect("Lexer should not have allowed this."))
             }
 
             CExpr::NumBinary(span) => {
                 // Cut off the 0b, then parse the rest.
-                let num_str = span.trim_start(2).resolve(self.input);
-                let n = i64::from_str_radix(num_str, 2);
+                let num_str = span.trim_start(2).resolve(self.input).replace('_', "");
+                let n = i64::from_str_radix(&num_str, 2);
                 // TODO: Deal with overflow by making a bigint.
                 AExpr::IntegerLit(n.expect("Lexer should not have allowed this."))
             }
 
             CExpr::NumDecimal(span) => {
-                let num_str = span.resolve(self.input);
-                match i64::from_str_radix(num_str, 10) {
+                let num_str = span.resolve(self.input).replace('_', "");
+                match i64::from_str_radix(&num_str, 10) {
                     Ok(i) => AExpr::IntegerLit(i),
                     Err(..) => todo_placeholder!(
                         "TODO: Implement parsing of non-integer number literals.",
