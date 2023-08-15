@@ -1,0 +1,22 @@
+[
+  // A regular integer.
+  42,
+
+  // With numeric underscores.
+  1_000_000,
+
+  // Hexadecimal.
+  0xc0ffee,
+
+  // Hexadecimal with numeric underscores.
+  0x_c0_ff_ee,
+
+  // Binary.
+  0b10001,
+
+  // Binary with numeric underscores,
+  0b_0001_0001,
+]
+
+# output:
+[42,1000000,12648430,12648430,17,17]
