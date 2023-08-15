@@ -1,0 +1,7 @@
+let outer = {
+  inner = true;
+};
+outer.inner
+
+# output:
+true
