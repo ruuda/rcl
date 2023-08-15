@@ -65,6 +65,10 @@ pub enum Expr {
     /// A string literal.
     StringLit(Rc<str>),
 
+    /// An integer literal.
+    /// TODO: This should be a bigint.
+    IntegerLit(i64),
+
     /// An conditional choice (if, then, else).
     IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
 

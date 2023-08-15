@@ -13,7 +13,7 @@
 // Inspect with: bison --feature=syntax-only -Wcounterexamples src/grammar.y
 %}
 
-%token IDENT STRING UNOP BINOP
+%token IDENT STRING NUMBER UNOP BINOP
 
 %%
 
@@ -64,6 +64,7 @@ expr_term
   | '[' seqs ']'
   | '(' expr ')'
   | STRING
+  | NUMBER
   | IDENT
   ;
 

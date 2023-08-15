@@ -535,6 +535,9 @@ impl<'a> Parser<'a> {
             Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
             Some(Token::DoubleQuoted) => Ok(Expr::StringLit(self.consume())),
             Some(Token::TripleQuoted) => Ok(Expr::StringLitTriple(self.consume())),
+            Some(Token::NumHexadecimal) => Ok(Expr::NumHexadecimal(self.consume())),
+            Some(Token::NumBinary) => Ok(Expr::NumBinary(self.consume())),
+            Some(Token::NumDecimal) => Ok(Expr::NumDecimal(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),
             _ => self.error("Expected a term here."),
         }

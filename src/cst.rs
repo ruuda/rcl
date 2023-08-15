@@ -114,6 +114,15 @@ pub enum Expr {
     /// A string literal quoted in triple double quotes (`"""`).
     StringLitTriple(Span),
 
+    /// An integer in hexadecimal notation.
+    NumHexadecimal(Span),
+
+    /// An integer in binary notation.
+    NumBinary(Span),
+
+    /// A number in decimal notation.
+    NumDecimal(Span),
+
     /// A conditional expression.
     IfThenElse {
         condition: Box<Expr>,

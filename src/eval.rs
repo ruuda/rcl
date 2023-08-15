@@ -55,6 +55,8 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
 
         Expr::BoolLit(b) => Ok(Rc::new(Value::Bool(*b))),
 
+        Expr::IntegerLit(i) => Ok(Rc::new(Value::Int(*i))),
+
         Expr::StringLit(s) => Ok(Rc::new(Value::String(s.clone()))),
 
         Expr::IfThenElse(if_, then, else_) => {

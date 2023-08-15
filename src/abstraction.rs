@@ -16,6 +16,7 @@
 use crate::ast::{Expr as AExpr, Seq as ASeq};
 use crate::cst::Prefixed;
 use crate::cst::{Expr as CExpr, Seq as CSeq};
+use crate::todo_placeholder;
 
 /// Abstract an expression.
 pub fn abstract_expr(input: &str, expr: &Prefixed<CExpr>) -> AExpr {
@@ -67,6 +68,33 @@ impl<'a> Abstractor<'a> {
                 // escape codes, and for this one, strip the leading whitespace.
                 let span_inner = span.trim_start(3).trim_end(3);
                 AExpr::StringLit(span_inner.resolve(self.input).into())
+            }
+
+            CExpr::NumHexadecimal(span) => {
+                // Cut off the 0x, then parse the rest.
+                let num_str = span.trim_start(2).resolve(self.input);
+                let n = i64::from_str_radix(num_str, 16);
+                // TODO: Deal with overflow by making a bigint.
+                AExpr::IntegerLit(n.expect("Lexer should not have allowed this."))
+            }
+
+            CExpr::NumBinary(span) => {
+                // Cut off the 0b, then parse the rest.
+                let num_str = span.trim_start(2).resolve(self.input);
+                let n = i64::from_str_radix(num_str, 2);
+                // TODO: Deal with overflow by making a bigint.
+                AExpr::IntegerLit(n.expect("Lexer should not have allowed this."))
+            }
+
+            CExpr::NumDecimal(span) => {
+                let num_str = span.resolve(self.input);
+                match i64::from_str_radix(num_str, 10) {
+                    Ok(i) => AExpr::IntegerLit(i),
+                    Err(..) => todo_placeholder!(
+                        "TODO: Implement parsing of non-integer number literals.",
+                        AExpr::IntegerLit(42),
+                    ),
+                }
             }
 
             CExpr::IfThenElse {

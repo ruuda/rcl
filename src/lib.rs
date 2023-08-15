@@ -17,3 +17,15 @@ pub mod lexer;
 pub mod parser;
 pub mod runtime;
 pub mod source;
+
+/// A placeholder just like regular `todo!`, except it doesn't prevent fuzzing.
+#[macro_export]
+macro_rules! todo_placeholder {
+    ($message:expr, $placeholder:expr,) => {
+        if cfg!(fuzzing) {
+            $placeholder
+        } else {
+            todo!($message);
+        }
+    };
+}
