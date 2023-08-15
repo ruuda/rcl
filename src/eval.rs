@@ -80,6 +80,16 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             let inner = eval(env, inner_expr)?;
             let field_name_value = Value::String(field_name.0.clone());
             match inner.as_ref() {
+                Value::String(s) => {
+                    let builtin = match field_name.as_ref() {
+                        "len" => Some(builtin_string_len(s)),
+                        _ => None,
+                    };
+                    match builtin {
+                        Some(b) => Ok(Rc::new(Value::Builtin(b))),
+                        None => Err("No such field in this string.".into()),
+                    }
+                }
                 Value::Map(fields) => {
                     // First test for the builtin names, they shadow the values,
                     // if there are any values.
@@ -112,7 +122,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                 }
                 not_map => {
                     println!("Trying to access {} on:\n{:#?}", field_name, not_map);
-                    Err("Can only do field access on maps for now.".into())
+                    Err("Can only do field access on records for now.".into())
                 }
             }
         }
@@ -273,6 +283,20 @@ fn eval_seq(
             env.pop();
             Ok(())
         }
+    }
+}
+
+fn builtin_string_len(s: &str) -> Builtin {
+    let n = Rc::new(Value::Int(s.len() as _));
+    let f = move |args: &[Rc<Value>]| {
+        if args.len() > 0 {
+            return Err("String.len takes no arguments.".into());
+        };
+        Ok(n.clone())
+    };
+    Builtin {
+        name: "String.len",
+        f: Box::new(f),
     }
 }
 
