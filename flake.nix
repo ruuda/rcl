@@ -114,13 +114,6 @@
 
                 RCL_BIN=${coverageBuild}/bin/rcl python3 ${goldenSources}/run.py
 
-                # For debugging purposes, output raw LLVM coverage to the logs.
-                # This can help identify which files are traced, etc.
-                $bintools/llvm-profdata merge -sparse *.profraw -o rcl.profdata
-                $bintools/llvm-cov report \
-                  --instr-profile=rcl.profdata \
-                  --object ${coverageBuild}/bin/rcl
-
                 # During the build, source file names get included as
                 # "source/src/lib.rs" etc. But when grcov runs, even if we
                 # provide --source-dir, inside that source dir is only a
@@ -136,6 +129,14 @@
                   --llvm \
                   --output-types html \
                   --output-path $out
+
+                # Also output the raw LLVM summary. This can be useful for
+                # diffing, or for debugging to identify which files are traced.
+                $bintools/llvm-profdata merge -sparse *.profraw -o rcl.profdata
+                $bintools/llvm-cov report \
+                  --instr-profile=rcl.profdata \
+                  --object ${coverageBuild}/bin/rcl \
+                  > $out/summary.txt
                 '';
             };
           }
