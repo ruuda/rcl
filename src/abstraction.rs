@@ -73,17 +73,25 @@ impl<'a> Abstractor<'a> {
             CExpr::NumHexadecimal(span) => {
                 // Cut off the 0x, then parse the rest.
                 let num_str = span.trim_start(2).resolve(self.input).replace('_', "");
-                let n = i64::from_str_radix(&num_str, 16);
-                // TODO: Deal with overflow by making a bigint.
-                AExpr::IntegerLit(n.expect("Lexer should not have allowed this."))
+                match i64::from_str_radix(&num_str, 16) {
+                    Ok(i) => AExpr::IntegerLit(i),
+                    Err(..) => todo_placeholder!(
+                        "TODO: Handle overflow when parsing binary literal.",
+                        AExpr::IntegerLit(0),
+                    ),
+                }
             }
 
             CExpr::NumBinary(span) => {
                 // Cut off the 0b, then parse the rest.
                 let num_str = span.trim_start(2).resolve(self.input).replace('_', "");
-                let n = i64::from_str_radix(&num_str, 2);
-                // TODO: Deal with overflow by making a bigint.
-                AExpr::IntegerLit(n.expect("Lexer should not have allowed this."))
+                match i64::from_str_radix(&num_str, 2) {
+                    Ok(i) => AExpr::IntegerLit(i),
+                    Err(..) => todo_placeholder!(
+                        "TODO: Handle overflow when parsing binary literal.",
+                        AExpr::IntegerLit(0),
+                    ),
+                }
             }
 
             CExpr::NumDecimal(span) => {
