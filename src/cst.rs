@@ -41,6 +41,18 @@ pub enum BinOp {
 
     /// `|`: Union two collections
     Union,
+
+    /// `<`: Less than.
+    Lt,
+
+    /// `>`: Greater than.
+    Gt,
+
+    /// `<=`: Less than or equal.
+    LtEq,
+
+    /// `>=`: Greater than or equal.
+    GtEq,
 }
 
 /// Not code, but a piece of the document relevant to preserve for formatting.
