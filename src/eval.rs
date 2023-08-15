@@ -183,11 +183,16 @@ fn eval_unop(op: UnOp, v: Rc<Value>) -> Result<Rc<Value>> {
 
 fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
     match (op, lhs.as_ref(), rhs.as_ref()) {
-        (BinOp::Union, Value::Map(_xs), Value::Map(_ys)) => {
-            unimplemented!("TODO: Implement map union.")
+        (BinOp::Union, Value::Map(xs), Value::Map(ys)) => {
+            let mut result = xs.clone();
+            for (k, v) in ys.iter() {
+                result.insert(k.clone(), v.clone());
+            }
+            Ok(Rc::new(Value::Map(result)))
         }
-        (BinOp::Union, Value::Set(_xs), Value::Set(_ys)) => {
-            unimplemented!("TODO: Implement set union.")
+        (BinOp::Union, Value::Set(xs), Value::Set(ys)) => {
+            let result = xs.union(ys).cloned().collect();
+            Ok(Rc::new(Value::Set(result)))
         }
         (BinOp::Union, Value::Set(xs), Value::List(ys)) => {
             let mut result = xs.clone();
