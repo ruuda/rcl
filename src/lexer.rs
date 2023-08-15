@@ -95,6 +95,18 @@ pub enum Token {
     /// `}`
     RBrace,
 
+    /// `<`
+    Lt,
+
+    /// `>`
+    Gt,
+
+    /// `<=`
+    LtEq,
+
+    /// `>=`
+    GtEq,
+
     /// `!`
     Bang,
 
@@ -435,17 +447,55 @@ impl<'a> Lexer<'a> {
         Ok((Token::NumDecimal, self.span(n)))
     }
 
+    /// Lex a token that starts with ascii punctuation.
     fn lex_in_punct(&mut self) -> Result<Lexeme> {
         debug_assert!(self.start < self.input.len());
 
+        if let Some(result) = self.lex_in_punct_digraph() {
+            return Ok(result);
+        }
+
+        if let Some(result) = self.lex_in_punct_monograph() {
+            return Ok(result);
+        }
+
+        let error = ParseError {
+            span: self.span(1),
+            message: "Unrecognized punctuation here.",
+            note: None,
+            help: None,
+        };
+        Err(error)
+    }
+
+    /// Try to lex punctuation of two bytes in length.
+    fn lex_in_punct_digraph(&mut self) -> Option<Lexeme> {
+        let input = &self.input.as_bytes()[self.start..];
+
+        if input.len() < 2 {
+            return None;
+        }
+
+        let token = match &input[..2] {
+            b"<=" => Token::LtEq,
+            b">=" => Token::GtEq,
+            _ => return None,
+        };
+
+        Some((token, self.span(2)))
+    }
+
+    /// Try to lex punctuation of a single byte in length.
+    fn lex_in_punct_monograph(&mut self) -> Option<Lexeme> {
         let token = match self.input.as_bytes()[self.start] {
-            // For those characters, we have single-character tokens.
             b'(' => Token::LParen,
             b')' => Token::RParen,
             b'[' => Token::LBracket,
             b']' => Token::RBracket,
             b'{' => Token::LBrace,
             b'}' => Token::RBrace,
+            b'<' => Token::Lt,
+            b'>' => Token::Gt,
             b'!' => Token::Bang,
             b',' => Token::Comma,
             b'.' => Token::Dot,
@@ -454,16 +504,9 @@ impl<'a> Lexer<'a> {
             b'=' => Token::Eq,
             b'|' => Token::Pipe,
             b'+' => Token::Plus,
-            _ => {
-                let error = ParseError {
-                    span: self.span(1),
-                    message: "Unrecognized punctuation here.",
-                    note: None,
-                    help: None,
-                };
-                return Err(error);
-            }
+            _ => return None,
         };
-        Ok((token, self.span(1)))
+
+        Some((token, self.span(1)))
     }
 }
