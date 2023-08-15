@@ -2,8 +2,8 @@
   // TODO: The test output is incorrect, the escapes are not yet interpreted.
   newline = "\n";
   quote = "\"";
-  triple = """.".\n""";
+  triple = """.".\""".\n""";
 }
 
 # output:
-{"newline":"\\n","quote":"\\\"","triple":".\".\\n"}
+{"newline":"\\n","quote":"\\\"","triple":".\".\\\"\"\".\\n"}

@@ -1,6 +1,7 @@
 [
-  // A regular integer.
+  // Regular integers.
   42,
+  0,
 
   // With numeric underscores.
   1_000_000,
@@ -19,4 +20,4 @@
 ]
 
 # output:
-[42,1000000,12648430,12648430,17,17]
+[42,0,1000000,12648430,12648430,17,17]

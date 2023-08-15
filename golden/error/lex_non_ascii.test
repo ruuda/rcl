@@ -1,0 +1,11 @@
+{
+  "éclair": "sweet",
+  gougère = "savory";
+}
+
+# output:
+ --> stdin:3:6
+  |
+3 |   gougère = "savory";
+  |       ^
+Error: Non-ascii characters are not supported here.

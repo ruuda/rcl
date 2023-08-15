@@ -1,0 +1,6 @@
+// When exported to json, a set becomes a list.
+// TODO: Preserve insertion order.
+{"a", "c", "b"}
+
+# output:
+["a","b","c"]

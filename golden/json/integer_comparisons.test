@@ -1,0 +1,9 @@
+[
+  0 < 1,
+  0 <= 1,
+  0 > 1,
+  0 >= 1,
+]
+
+# output:
+[true,true,false,false]
