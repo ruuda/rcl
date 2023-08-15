@@ -203,6 +203,10 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
             // TODO: Make this a checked add.
             Ok(Rc::new(Value::Int(x + y)))
         }
+        (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x < *y))),
+        (BinOp::Gt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x > *y))),
+        (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x <= *y))),
+        (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x >= *y))),
         _ => {
             println!("Trying to apply {:?} to:\n{:#?}\n{:#?}", op, lhs, rhs);
             Err("The binary operator is not supported for this value.".into())
