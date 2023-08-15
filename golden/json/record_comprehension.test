@@ -1,0 +1,10 @@
+let xs = ["apple", "orange", "pear"];
+{
+  for x in xs:
+  let n = x.len();
+  if n > 4:
+  x: n
+}
+
+# output:
+{"apple":5,"orange":6}
