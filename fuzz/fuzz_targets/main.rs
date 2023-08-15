@@ -4,18 +4,22 @@ use libfuzzer_sys::fuzz_target;
 
 use rcl::source::DocId;
 
-fuzz_target!(|data: &[u8]| {
+fn fuzz_eval(input: &str) -> rcl::error::Result<()> {
+    let id = DocId(0);
+    let cst = rcl::parser::parse(id, input)?;
+    let ast = rcl::abstraction::abstract_expr(input, &cst);
+    let mut env = rcl::runtime::Env::new();
+    let _ = rcl::eval::eval(&mut env, &ast)?;
+    Ok(())
+}
+
+fuzz_target!(|input: &str| {
     // The last byte of the input sets the fuzzing mode. We take the last byte,
     // such that the prefix of the input should at least be a valid input file,
     // which makes it easier to inspect.
-    let mode = match data.last() {
+    let mode = match input.as_bytes().last() {
         None => return,
         Some(m) => m,
-    };
-
-    let input = match std::str::from_utf8(&data[..data.len() - 1]) {
-        Ok(s) => s,
-        Err(..) => return,
     };
 
     let id = DocId(0);
@@ -27,7 +31,10 @@ fuzz_target!(|data: &[u8]| {
         b'b' => {
             let _ = rcl::parser::parse(id, input);
         }
-        // TODO: Include eval, fmt, json.
+        b'c' => {
+            let _ = fuzz_eval(input);
+        }
+        // TODO: Include fmt, json.
         _ => return,
     };
 });
