@@ -105,7 +105,8 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     match fields.get(&field_name_value) {
                         Some(v) => Ok(v.clone()),
                         None => {
-                            println!("Trying to access {} on:\n{:#?}", field_name, fields);
+                            // TODO: Add proper runtime error.
+                            // println!("Trying to access {} on:\n{:#?}", field_name, fields);
                             Err("No such field in this value.".into())
                         }
                     }
@@ -120,8 +121,9 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                         None => Err("No such field in this list.".into()),
                     }
                 }
-                not_map => {
-                    println!("Trying to access {} on:\n{:#?}", field_name, not_map);
+                _other => {
+                    // TODO: Add proper runtime error.
+                    // println!("Trying to access {} on:\n{:#?}", field_name, other);
                     Err("Can only do field access on records for now.".into())
                 }
             }
@@ -174,8 +176,9 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
 fn eval_unop(op: UnOp, v: Rc<Value>) -> Result<Rc<Value>> {
     match (op, v.as_ref()) {
         (UnOp::Neg, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
-        (op, val) => {
-            println!("Trying to apply {:?} to:\n{:#?}", op, val);
+        (_op, _val) => {
+            // TODO: Add proper runtime error.
+            // println!("Trying to apply {:?} to:\n{:#?}", op, val);
             Err("The unary operator is not supported for this value.".into())
         }
     }
@@ -213,7 +216,8 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
         (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x <= *y))),
         (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x >= *y))),
         _ => {
-            println!("Trying to apply {:?} to:\n{:#?}\n{:#?}", op, lhs, rhs);
+            // TODO: Add a proper runtime error.
+            // println!("Trying to apply {:?} to:\n{:#?}\n{:#?}", op, lhs, rhs);
             Err("The binary operator is not supported for this value.".into())
         }
     }
