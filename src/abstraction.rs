@@ -38,7 +38,7 @@ impl<'a> Abstractor<'a> {
         match expr {
             CExpr::Let { ident, value, body } => AExpr::Let {
                 ident: ident.resolve(self.input).into(),
-                value: Box::new(self.expr(&value)),
+                value: Box::new(self.expr(value)),
                 body: Box::new(self.expr(&body.inner)),
             },
 
@@ -130,12 +130,17 @@ impl<'a> Abstractor<'a> {
 
             CExpr::UnOp { op, body, .. } => AExpr::UnOp(*op, Box::new(self.expr(body))),
 
-            CExpr::BinOp { op, op_span, lhs, rhs, } => AExpr::BinOp {
+            CExpr::BinOp {
+                op,
+                op_span,
+                lhs,
+                rhs,
+            } => AExpr::BinOp {
                 op: *op,
                 op_span: *op_span,
                 lhs: Box::new(self.expr(lhs)),
                 rhs: Box::new(self.expr(rhs)),
-            }
+            },
         }
     }
 

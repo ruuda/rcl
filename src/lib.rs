@@ -5,6 +5,8 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+#![allow(clippy::from_str_radix_10)]
+
 pub mod abstraction;
 pub mod ast;
 pub mod cst;

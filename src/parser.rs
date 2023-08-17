@@ -462,7 +462,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        return Ok(result);
+        Ok(result)
     }
 
     fn parse_expr_not_op(&mut self) -> Result<Expr> {
@@ -633,7 +633,7 @@ impl<'a> Parser<'a> {
                 // an '=' maybe the user tried to make a key-value mapping and
                 // we can report a better error.
                 Some(Token::Eq) => {
-                    let mut err = self.pop_bracket().err().expect("We are in a seq.");
+                    let mut err = self.pop_bracket().expect_err("We are in a seq.");
                     err.help = Some(
                         "To use 'key = value;' record syntax, \
                         the left-hand side must be an identifier.\n\

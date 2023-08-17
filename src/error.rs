@@ -229,7 +229,7 @@ impl Error for RuntimeError {
         self.span
     }
     fn message(&self) -> &str {
-        &self.message[..]
+        self.message
     }
     fn notes(&self) -> &[(Span, &str)] {
         &self.notes[..]

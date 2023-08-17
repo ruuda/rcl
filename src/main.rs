@@ -62,9 +62,9 @@ fn main_eval(inputs: &Inputs) -> Result<()> {
 fn main_fmt(inputs: &Inputs) -> Result<()> {
     for (i, doc) in inputs.iter().enumerate() {
         let id = DocId(i as u32);
-        let cst = rcl::parser::parse(id, &doc.data)?;
+        let cst = rcl::parser::parse(id, doc.data)?;
         let mut out = std::io::stdout().lock();
-        let res = rcl::fmt::write_expr(&doc.data, &cst, &mut out);
+        let res = rcl::fmt::write_expr(doc.data, &cst, &mut out);
         if res.is_err() {
             // If we fail to print to stdout, there is no point in printing
             // an error, just exit then.

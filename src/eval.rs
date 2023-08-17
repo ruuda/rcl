@@ -168,7 +168,12 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             eval_unop(*op, value)
         }
 
-        Expr::BinOp { op, op_span, lhs: lhs_expr, rhs: rhs_expr } => {
+        Expr::BinOp {
+            op,
+            op_span,
+            lhs: lhs_expr,
+            rhs: rhs_expr,
+        } => {
             let lhs = eval(env, lhs_expr)?;
             let rhs = eval(env, rhs_expr)?;
             eval_binop(*op, *op_span, lhs, rhs)
@@ -214,14 +219,14 @@ fn eval_binop(op: BinOp, op_span: Span, lhs: Rc<Value>, rhs: Rc<Value>) -> Resul
             match x.checked_add(*y) {
                 Some(z) => Ok(Rc::new(Value::Int(z))),
                 // TODO: Also include the values themselves through pretty-printer.
-                None => return Err(op_span.error("Addition would overflow.").into()),
+                None => Err(op_span.error("Addition would overflow.").into()),
             }
         }
         (BinOp::Mul, Value::Int(x), Value::Int(y)) => {
             match x.checked_mul(*y) {
                 Some(z) => Ok(Rc::new(Value::Int(z))),
                 // TODO: Also include the values themselves through pretty-printer.
-                None => return Err(op_span.error("Multiplication would overflow.").into()),
+                None => Err(op_span.error("Multiplication would overflow.").into()),
             }
         }
         (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x < *y))),
@@ -236,27 +241,29 @@ fn eval_binop(op: BinOp, op_span: Span, lhs: Rc<Value>, rhs: Rc<Value>) -> Resul
     }
 }
 
+type Values = Vec<Rc<Value>>;
+
 /// Evaluation output for sequences.
 enum SeqOut {
     /// Only allow scalar values because we are in a list literal.
-    List(Vec<Rc<Value>>),
+    List(Values),
 
     /// The sequence is definitely a set, because the first element is scalar.
     ///
     /// The span contains the previous scalar as evidence.
-    Set(Span, Vec<Rc<Value>>),
+    Set(Span, Values),
 
     /// The sequence is definitely a record, because the first element is kv.
     ///
     /// The span contains the previous key-value as evidence.
-    Record(Span, Vec<Rc<Value>>, Vec<Rc<Value>>),
+    Record(Span, Values, Values),
 
     /// It's still unclear whether this is a set or a record.
     SetOrRecord,
 }
 
 impl SeqOut {
-    fn values(&mut self, scalar: Span) -> Result<&mut Vec<Rc<Value>>> {
+    fn values(&mut self, scalar: Span) -> Result<&mut Values> {
         match self {
             SeqOut::SetOrRecord => {
                 *self = SeqOut::Set(scalar, Vec::new());
@@ -271,12 +278,12 @@ impl SeqOut {
                         *first,
                         "The collection is a record and not a set, because of this key-value.",
                     );
-                return Err(err.into());
+                Err(err.into())
             }
         }
     }
 
-    fn keys_values(&mut self, kv: Span) -> Result<(&mut Vec<Rc<Value>>, &mut Vec<Rc<Value>>)> {
+    fn keys_values(&mut self, kv: Span) -> Result<(&mut Values, &mut Values)> {
         match self {
             SeqOut::SetOrRecord => {
                 *self = SeqOut::Record(kv, Vec::new(), Vec::new());
@@ -288,7 +295,7 @@ impl SeqOut {
                     .with_help(
                     "Key-value pairs are allowed in records, which are enclosed in '{}', not '[]'.",
                 );
-                return Err(err.into());
+                Err(err.into())
             }
             SeqOut::Set(first, _values) => {
                 let err = kv
@@ -297,7 +304,7 @@ impl SeqOut {
                         *first,
                         "The collection is a set and not a record, because of this scalar value.",
                     );
-                return Err(err.into());
+                Err(err.into())
             }
             SeqOut::Record(_first, keys, values) => Ok((keys, values)),
         }
@@ -334,7 +341,7 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
         } => {
             let collection_value = eval(env, collection)?;
             match (&idents[..], collection_value.as_ref()) {
-                (&[ref name], Value::List(xs)) => {
+                ([name], Value::List(xs)) => {
                     for x in xs {
                         env.push(name.clone(), x.clone());
                         eval_seq(env, body, out)?;
@@ -342,7 +349,7 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                     }
                     Ok(())
                 }
-                (&[ref name], Value::Set(xs)) => {
+                ([name], Value::Set(xs)) => {
                     for x in xs {
                         env.push(name.clone(), x.clone());
                         eval_seq(env, body, out)?;
@@ -350,7 +357,7 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                     }
                     Ok(())
                 }
-                (&[ref k_name, ref v_name], Value::Map(xs)) => {
+                ([k_name, v_name], Value::Map(xs)) => {
                     for (k, v) in xs {
                         env.push(k_name.clone(), k.clone());
                         env.push(v_name.clone(), v.clone());
@@ -384,7 +391,7 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
 fn builtin_string_len(s: &str) -> Builtin {
     let n = Rc::new(Value::Int(s.len() as _));
     let f = move |args: &[Rc<Value>]| {
-        if args.len() > 0 {
+        if !args.is_empty() {
             return Err("String.len takes no arguments.".into());
         };
         Ok(n.clone())

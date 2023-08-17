@@ -293,8 +293,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_in_ident(&mut self) -> Lexeme {
-        let span =
-            self.take_while(|ch| false || ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'-');
+        let span = self.take_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'-');
         let ident = span.resolve(self.input);
         let token = match ident {
             "and" => Token::KwAnd,
