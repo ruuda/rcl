@@ -44,6 +44,9 @@ pub struct Span {
     ///
     /// The length of a token is limited to 32 bits, such that `Span` itself,
     /// which also contains the document id, fits in two 128 bits.
+    /// TODO: This is a pretty tough restriction ... should we instead take u16
+    /// as the document id, and devote 48 bits to the offsets? It could even be
+    /// 32-48-48.
     pub len: u32,
 }
 
