@@ -7,37 +7,29 @@
 
 //! Evaluation turns ASTs into values.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, Seq, UnOp};
 use crate::error::{IntoRuntimeError, Result};
 use crate::runtime::{Builtin, Env, Value};
-
-/// Evaluation mode for sequences.
-enum EvalSeq<'a> {
-    /// Only allow scalar values.
-    List(&'a mut Vec<Rc<Value>>),
-    /// Enable scalar values or key-value pairs.
-    Kv(&'a mut Vec<Rc<Value>>, &'a mut Vec<Rc<Value>>),
-}
+use crate::source::Span;
 
 pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
     match expr {
         Expr::BraceLit(seqs) => {
-            let mut keys = Vec::new();
-            let mut values = Vec::new();
+            let mut out = SeqOut::SetOrRecord;
             for seq in seqs {
-                eval_seq(env, seq, &mut EvalSeq::Kv(&mut keys, &mut values))?;
+                eval_seq(env, seq, &mut out)?;
             }
-            match keys.len() {
+            match out {
                 // If we have no keys, it’s a set.
-                0 => {
+                SeqOut::SetOrRecord => Ok(Rc::new(Value::Set(BTreeSet::new()))),
+                SeqOut::Set(_, values) => {
                     let result = values.into_iter().collect();
                     Ok(Rc::new(Value::Set(result)))
                 }
-                // If we have a value for every key, this is a map.
-                _ => {
+                SeqOut::Record(_, keys, values) => {
                     assert_eq!(
                         keys.len(),
                         values.len(),
@@ -50,15 +42,18 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     }
                     Ok(Rc::new(Value::Map(result)))
                 }
+                SeqOut::List(_) => unreachable!("Did not start out as list."),
             }
         }
         Expr::BracketLit(seqs) => {
-            let mut values = Vec::new();
+            let mut out = SeqOut::List(Vec::new());
             for seq in seqs {
-                eval_seq(env, seq, &mut EvalSeq::List(&mut values))?;
+                eval_seq(env, seq, &mut out)?;
             }
-
-            Ok(Rc::new(Value::List(values)))
+            match out {
+                SeqOut::List(values) => Ok(Rc::new(Value::List(values))),
+                _ => unreachable!("SeqOut::List type is preserved."),
+            }
         }
 
         Expr::BoolLit(b) => Ok(Rc::new(Value::Bool(*b))),
@@ -235,25 +230,81 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
     }
 }
 
-fn eval_seq(env: &mut Env, seq: &Seq, out: &mut EvalSeq) -> Result<()> {
+/// Evaluation output for sequences.
+enum SeqOut {
+    /// Only allow scalar values because we are in a list literal.
+    List(Vec<Rc<Value>>),
+
+    /// The sequence is definitely a set, because the first element is scalar.
+    ///
+    /// The span contains the previous scalar as evidence.
+    Set(Span, Vec<Rc<Value>>),
+
+    /// The sequence is definitely a record, because the first element is kv.
+    ///
+    /// The span contains the previous key-value as evidence.
+    Record(Span, Vec<Rc<Value>>, Vec<Rc<Value>>),
+
+    /// It's still unclear whether this is a set or a record.
+    SetOrRecord,
+}
+
+impl SeqOut {
+    fn values(&mut self, scalar: Span) -> Result<&mut Vec<Rc<Value>>> {
+        match self {
+            SeqOut::SetOrRecord => {
+                *self = SeqOut::Set(scalar, Vec::new());
+                self.values(scalar)
+            }
+            SeqOut::List(values) => Ok(values),
+            SeqOut::Set(_first, values) => Ok(values),
+            SeqOut::Record(first, _keys, _values) => {
+                let err = scalar
+                    .error("Expected key-value, not a scalar element.")
+                    .with_note(
+                        *first,
+                        "The collection is a record and not a set, because of this key-value.",
+                    );
+                return Err(err.into());
+            }
+        }
+    }
+
+    fn keys_values(&mut self, kv: Span) -> Result<(&mut Vec<Rc<Value>>, &mut Vec<Rc<Value>>)> {
+        match self {
+            SeqOut::SetOrRecord => {
+                *self = SeqOut::Record(kv, Vec::new(), Vec::new());
+                self.keys_values(kv)
+            }
+            SeqOut::List(_values) => {
+                let err = kv
+                    .error("Expected scalar element, not key-value.")
+                    .with_help(
+                    "Key-value pairs are allowed in records, which are enclosed in '{}', not '[]'.",
+                );
+                return Err(err.into());
+            }
+            SeqOut::Set(first, _values) => {
+                let err = kv
+                    .error("Expected scalar element, not key-value.")
+                    .with_note(
+                        *first,
+                        "The collection is a set and not a record, because of this scalar value.",
+                    );
+                return Err(err.into());
+            }
+            SeqOut::Record(_first, keys, values) => Ok((keys, values)),
+        }
+    }
+}
+
+fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
     match seq {
         Seq::Elem {
             span,
             value: value_expr,
         } => {
-            let out_values = match out {
-                EvalSeq::List(values) => values,
-                EvalSeq::Kv(keys, values) => {
-                    if !keys.is_empty() {
-                        let err = span.error("Expected key-value, not a scalar element.");
-                        // TODO: Add note about previous key-value. For this we'd need
-                        // to track a stack of seq evaluations, then we need an
-                        // evaluator struct.
-                        return Err(err.into());
-                    }
-                    values
-                }
-            };
+            let out_values = out.values(*span)?;
             let value = eval(env, value_expr)?;
             out_values.push(value);
             Ok(())
@@ -263,24 +314,7 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut EvalSeq) -> Result<()> {
             key: key_expr,
             value: value_expr,
         } => {
-            let (out_keys, out_values) = match out {
-                EvalSeq::List(..) => {
-                    let err = op_span
-                        .error("Expected scalar element, not key-value.")
-                        .with_help("Key-value pairs are allowed in records, which are enclosed in '{}', not '[]'.");
-                    return Err(err.into());
-                }
-                EvalSeq::Kv(keys, values) => {
-                    if keys.is_empty() && !values.is_empty() {
-                        let err = op_span.error("Expected scalar element, not key-value.");
-                        // TODO: Add note about previous key-value. For this we'd need
-                        // to track a stack of seq evaluations, then we need an
-                        // evaluator struct.
-                        return Err(err.into());
-                    }
-                    (keys, values)
-                }
-            };
+            let (out_keys, out_values) = out.keys_values(*op_span)?;
             let key = eval(env, key_expr)?;
             let value = eval(env, value_expr)?;
             out_keys.push(key);

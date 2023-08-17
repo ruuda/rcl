@@ -9,3 +9,9 @@
 3 |   "single",
   |   ^~~~~~~~
 Error: Expected key-value, not a scalar element.
+
+ --> stdin:2:7
+  |
+2 |   "key": "value",
+  |        ^
+Note: The collection is a record and not a set, because of this key-value.

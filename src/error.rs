@@ -202,15 +202,19 @@ impl Error for FixmeError {
 pub struct RuntimeError {
     pub span: Span,
     pub message: &'static str,
+    pub notes: Vec<(Span, &'static str)>,
     pub help: Option<&'static str>,
 }
 
 impl RuntimeError {
-    pub fn with_help(self, help: &'static str) -> Self {
-        Self {
-            help: Some(help),
-            ..self
-        }
+    pub fn with_help(mut self, help: &'static str) -> Self {
+        self.help = Some(help);
+        self
+    }
+
+    pub fn with_note(mut self, at: Span, note: &'static str) -> Self {
+        self.notes.push((at, note));
+        self
     }
 }
 
@@ -228,7 +232,7 @@ impl Error for RuntimeError {
         &self.message[..]
     }
     fn notes(&self) -> &[(Span, &str)] {
-        &[]
+        &self.notes[..]
     }
     fn help(&self) -> Option<&str> {
         self.help
@@ -244,6 +248,7 @@ impl IntoRuntimeError for Span {
         RuntimeError {
             span: *self,
             message,
+            notes: Vec::new(),
             help: None,
         }
     }
