@@ -1,0 +1,11 @@
+[
+  true and false,
+  true and true,
+  true or false,
+  false or false,
+  not true,
+  not false,
+]
+
+# output:
+[false,true,true,false,false,true]
