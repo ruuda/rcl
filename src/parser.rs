@@ -100,7 +100,7 @@ impl<'a> Parser<'a> {
         note: &'static str,
     ) -> Result<T> {
         self.error(message).map_err(|err| ParseError {
-            note: Some((note, note_span)),
+            note: Some((note_span, note)),
             ..err
         })
     }

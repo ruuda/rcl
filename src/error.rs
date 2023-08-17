@@ -25,7 +25,7 @@ pub trait Error: std::fmt::Debug {
     /// Optionally, a note about error.
     ///
     /// For example, an unmatched parenthesis can point to the opening paren.
-    fn note(&self) -> Option<(&str, Span)>;
+    fn notes(&self) -> &[(Span, &str)];
 
     /// Optionally, additional information, or a hint on how to fix the problem.
     fn help(&self) -> Option<&str>;
@@ -41,8 +41,8 @@ impl dyn Error {
         eprint!("{}", highlight);
         eprintln!("{}Error:{} {}", bold_red, reset, self.message());
 
-        if let Some((note, note_span)) = self.note() {
-            let highlight = highlight_span_in_line(inputs, note_span, bold_yellow);
+        for (note_span, note) in self.notes() {
+            let highlight = highlight_span_in_line(inputs, *note_span, bold_yellow);
             eprint!("\n{}", highlight);
             eprintln!("{}Note:{} {}", bold_yellow, reset, note);
         }
@@ -137,7 +137,7 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
 pub struct ParseError {
     pub span: Span,
     pub message: &'static str,
-    pub note: Option<(&'static str, Span)>,
+    pub note: Option<(Span, &'static str)>,
     pub help: Option<&'static str>,
 }
 
@@ -154,8 +154,11 @@ impl Error for ParseError {
     fn message(&self) -> &str {
         self.message
     }
-    fn note(&self) -> Option<(&str, Span)> {
-        self.note
+    fn notes(&self) -> &[(Span, &str)] {
+        match self.note {
+            Some(ref n) => std::slice::from_ref(n),
+            None => &[],
+        }
     }
     fn help(&self) -> Option<&str> {
         self.help
@@ -186,8 +189,36 @@ impl Error for FixmeError {
     fn message(&self) -> &str {
         self.message
     }
-    fn note(&self) -> Option<(&str, Span)> {
+    fn notes(&self) -> &[(Span, &str)] {
+        &[]
+    }
+    fn help(&self) -> Option<&str> {
         None
+    }
+}
+
+/// An error during evaluation.
+#[derive(Debug)]
+pub struct RuntimeError {
+    pub span: Span,
+    pub message: String,
+}
+
+impl From<RuntimeError> for Box<dyn Error> {
+    fn from(err: RuntimeError) -> Self {
+        Box::new(err)
+    }
+}
+
+impl Error for RuntimeError {
+    fn span(&self) -> Span {
+        self.span
+    }
+    fn message(&self) -> &str {
+        &self.message[..]
+    }
+    fn notes(&self) -> &[(Span, &str)] {
+        &[]
     }
     fn help(&self) -> Option<&str> {
         None
