@@ -185,7 +185,7 @@ pub enum Seq {
     Elem {
         /// The span covering this value.
         span: Span,
-        value: Box<Expr>
+        value: Box<Expr>,
     },
 
     /// A `key: value` mapping, where the key is an expression.

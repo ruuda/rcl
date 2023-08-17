@@ -14,43 +14,51 @@ use crate::ast::{BinOp, Expr, Seq, UnOp};
 use crate::error::{IntoRuntimeError, Result};
 use crate::runtime::{Builtin, Env, Value};
 
+/// Evaluation mode for sequences.
+enum EvalSeq<'a> {
+    /// Only allow scalar values.
+    List(&'a mut Vec<Rc<Value>>),
+    /// Enable scalar values or key-value pairs.
+    Kv(&'a mut Vec<Rc<Value>>, &'a mut Vec<Rc<Value>>),
+}
+
 pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
     match expr {
         Expr::BraceLit(seqs) => {
             let mut keys = Vec::new();
             let mut values = Vec::new();
             for seq in seqs {
-                eval_seq(env, seq, &mut keys, &mut values)?;
+                eval_seq(env, seq, &mut EvalSeq::Kv(&mut keys, &mut values))?;
             }
-            match values.len() {
-                // If we have no values, it’s a set.
+            match keys.len() {
+                // If we have no keys, it’s a set.
                 0 => {
-                    let result = keys.into_iter().collect();
+                    let result = values.into_iter().collect();
                     Ok(Rc::new(Value::Set(result)))
                 }
                 // If we have a value for every key, this is a map.
-                n if n == keys.len() => {
+                _ => {
+                    assert_eq!(
+                        keys.len(),
+                        values.len(),
+                        "Should have already reported error about mixing \
+                        `k: v` and values in one comprehension."
+                    );
                     let mut result = BTreeMap::new();
                     for (k, v) in keys.into_iter().zip(values) {
                         result.insert(k, v);
                     }
                     Ok(Rc::new(Value::Map(result)))
                 }
-                _ => Err("Should not mix `k: v` and values in one comprehension.".into()),
             }
         }
         Expr::BracketLit(seqs) => {
-            let mut keys = Vec::new();
             let mut values = Vec::new();
             for seq in seqs {
-                eval_seq(env, seq, &mut keys, &mut values)?;
+                eval_seq(env, seq, &mut EvalSeq::List(&mut values))?;
             }
 
-            if !values.is_empty() {
-                return Err("`k: v` can only be used inside {}, not [].".into());
-            }
-
-            Ok(Rc::new(Value::List(keys)))
+            Ok(Rc::new(Value::List(values)))
         }
 
         Expr::BoolLit(b) => Ok(Rc::new(Value::Bool(*b))),
@@ -227,23 +235,27 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
     }
 }
 
-fn eval_seq(
-    env: &mut Env,
-    seq: &Seq,
-    out_keys: &mut Vec<Rc<Value>>,
-    out_values: &mut Vec<Rc<Value>>,
-) -> Result<()> {
+fn eval_seq(env: &mut Env, seq: &Seq, out: &mut EvalSeq) -> Result<()> {
     match seq {
-        Seq::Elem { span, value: value_expr } => {
-            if !out_keys.is_empty() {
-                let err = span.error("Expected key-value, not a single element.");
-                // TODO: Add note about previous key-value. For this we'd need
-                // to track a stack of seq evaluations, then we need an
-                // evaluator struct.
-                return Err(err.into());
-            }
+        Seq::Elem {
+            span,
+            value: value_expr,
+        } => {
+            let out_values = match out {
+                EvalSeq::List(values) => values,
+                EvalSeq::Kv(keys, values) => {
+                    if !keys.is_empty() {
+                        let err = span.error("Expected key-value, not a scalar element.");
+                        // TODO: Add note about previous key-value. For this we'd need
+                        // to track a stack of seq evaluations, then we need an
+                        // evaluator struct.
+                        return Err(err.into());
+                    }
+                    values
+                }
+            };
             let value = eval(env, value_expr)?;
-            out_keys.push(value);
+            out_values.push(value);
             Ok(())
         }
         Seq::Assoc {
@@ -251,13 +263,24 @@ fn eval_seq(
             key: key_expr,
             value: value_expr,
         } => {
-            if out_keys.is_empty() && !out_values.is_empty() {
-                let err = op_span.error("Expected a single element, not key-value.");
-                // TODO: Add note about previous key-value. For this we'd need
-                // to track a stack of seq evaluations, then we need an
-                // evaluator struct.
-                return Err(err.into());
-            }
+            let (out_keys, out_values) = match out {
+                EvalSeq::List(..) => {
+                    let err = op_span
+                        .error("Expected scalar element, not key-value.")
+                        .with_help("Key-value pairs are allowed in records, which are enclosed in '{}', not '[]'.");
+                    return Err(err.into());
+                }
+                EvalSeq::Kv(keys, values) => {
+                    if keys.is_empty() && !values.is_empty() {
+                        let err = op_span.error("Expected scalar element, not key-value.");
+                        // TODO: Add note about previous key-value. For this we'd need
+                        // to track a stack of seq evaluations, then we need an
+                        // evaluator struct.
+                        return Err(err.into());
+                    }
+                    (keys, values)
+                }
+            };
             let key = eval(env, key_expr)?;
             let value = eval(env, value_expr)?;
             out_keys.push(key);
@@ -274,7 +297,7 @@ fn eval_seq(
                 (&[ref name], Value::List(xs)) => {
                     for x in xs {
                         env.push(name.clone(), x.clone());
-                        eval_seq(env, body, out_keys, out_values)?;
+                        eval_seq(env, body, out)?;
                         env.pop();
                     }
                     Ok(())
@@ -282,7 +305,7 @@ fn eval_seq(
                 (&[ref name], Value::Set(xs)) => {
                     for x in xs {
                         env.push(name.clone(), x.clone());
-                        eval_seq(env, body, out_keys, out_values)?;
+                        eval_seq(env, body, out)?;
                         env.pop();
                     }
                     Ok(())
@@ -291,7 +314,7 @@ fn eval_seq(
                     for (k, v) in xs {
                         env.push(k_name.clone(), k.clone());
                         env.push(v_name.clone(), v.clone());
-                        eval_seq(env, body, out_keys, out_values)?;
+                        eval_seq(env, body, out)?;
                         env.pop();
                         env.pop();
                     }
@@ -303,7 +326,7 @@ fn eval_seq(
         Seq::If { condition, body } => {
             let cond = eval(env, condition)?;
             match cond.as_ref() {
-                Value::Bool(true) => eval_seq(env, body, out_keys, out_values),
+                Value::Bool(true) => eval_seq(env, body, out),
                 Value::Bool(false) => Ok(()),
                 _ => Err("Comprehension condition should be boolean.".into()),
             }
@@ -311,7 +334,7 @@ fn eval_seq(
         Seq::Let { ident, value, body } => {
             let v = eval(env, value)?;
             env.push(ident.clone(), v);
-            eval_seq(env, body, out_keys, out_values)?;
+            eval_seq(env, body, out)?;
             env.pop();
             Ok(())
         }

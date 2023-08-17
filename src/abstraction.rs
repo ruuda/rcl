@@ -144,13 +144,21 @@ impl<'a> Abstractor<'a> {
                 value: Box::new(self.expr(value)),
             },
 
-            CSeq::AssocExpr { op_span, field, value } => ASeq::Assoc {
+            CSeq::AssocExpr {
+                op_span,
+                field,
+                value,
+            } => ASeq::Assoc {
                 op_span: *op_span,
                 key: Box::new(self.expr(field)),
                 value: Box::new(self.expr(value)),
             },
 
-            CSeq::AssocIdent { op_span, field, value } => {
+            CSeq::AssocIdent {
+                op_span,
+                field,
+                value,
+            } => {
                 // We convert the `key = value` as if it had been written
                 // `"key": value` so we can treat them uniformly from here on.
                 let key_str = field.resolve(self.input);

@@ -672,6 +672,8 @@ impl<'a> Parser<'a> {
             _ => {
                 let before = self.peek_span();
                 let expr = self.parse_expr_op()?;
+                // TODO: This span is not necessarily minimal, it may include
+                // whitespace.
                 let expr_span = before.until(self.peek_span());
                 self.skip_non_code()?;
                 let result = match self.peek() {

@@ -100,10 +100,7 @@ pub enum Expr {
 #[derive(Debug)]
 pub enum Seq {
     /// A single element.
-    Elem {
-        span: Span,
-        value: Box<Expr>
-    },
+    Elem { span: Span, value: Box<Expr> },
 
     /// A `key: value` mapping.
     Assoc {

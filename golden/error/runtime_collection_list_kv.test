@@ -1,0 +1,10 @@
+["key": "value"]
+
+# output:
+ --> stdin:1:6
+  |
+1 | ["key": "value"]
+  |       ^
+Error: Expected scalar element, not key-value.
+
+Help: Key-value pairs are allowed in records, which are enclosed in '{}', not '[]'.

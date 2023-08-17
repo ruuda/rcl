@@ -1,0 +1,11 @@
+{
+  "single",
+  "key": "value",
+}
+
+# output:
+ --> stdin:3:7
+  |
+3 |   "key": "value",
+  |        ^
+Error: Expected scalar element, not key-value.
