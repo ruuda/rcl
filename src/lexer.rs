@@ -107,8 +107,17 @@ pub enum Token {
     /// `>=`
     GtEq,
 
+    /// `=`
+    Eq,
+
     /// `!`
     Bang,
+
+    /// `*`
+    Star,
+
+    /// `+`
+    Plus,
 
     /// `,`
     Comma,
@@ -122,14 +131,8 @@ pub enum Token {
     /// `;`
     Semicolon,
 
-    /// `=`
-    Eq,
-
     /// `|`
     Pipe,
-
-    /// `+`
-    Plus,
 }
 
 pub type Lexeme = (Token, Span);
@@ -496,14 +499,15 @@ impl<'a> Lexer<'a> {
             b'}' => Token::RBrace,
             b'<' => Token::Lt,
             b'>' => Token::Gt,
+            b'=' => Token::Eq,
             b'!' => Token::Bang,
+            b'*' => Token::Star,
+            b'+' => Token::Plus,
             b',' => Token::Comma,
             b'.' => Token::Dot,
             b':' => Token::Colon,
             b';' => Token::Semicolon,
-            b'=' => Token::Eq,
             b'|' => Token::Pipe,
-            b'+' => Token::Plus,
             _ => return None,
         };
 
