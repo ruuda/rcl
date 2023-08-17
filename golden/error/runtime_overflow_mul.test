@@ -1,0 +1,8 @@
+0x7fff_ffff_ffff_ffff * 2
+
+# output:
+ --> stdin:1:22
+  |
+1 | 0x7fff_ffff_ffff_ffff * 2
+  |                       ^
+Error: Multiplication would overflow.

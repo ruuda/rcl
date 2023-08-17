@@ -93,7 +93,12 @@ pub enum Expr {
     UnOp(UnOp, Box<Expr>),
 
     /// Apply a binary operator.
-    BinOp(BinOp, Box<Expr>, Box<Expr>),
+    BinOp {
+        op: BinOp,
+        op_span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
 }
 
 /// One or more elements of a sequence.

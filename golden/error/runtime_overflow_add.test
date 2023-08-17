@@ -1,0 +1,8 @@
+0x7fff_ffff_ffff_ffff + 1
+
+# output:
+ --> stdin:1:22
+  |
+1 | 0x7fff_ffff_ffff_ffff + 1
+  |                       ^
+Error: Addition would overflow.

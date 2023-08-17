@@ -168,10 +168,10 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             eval_unop(*op, value)
         }
 
-        Expr::BinOp(op, lhs_expr, rhs_expr) => {
+        Expr::BinOp { op, op_span, lhs: lhs_expr, rhs: rhs_expr } => {
             let lhs = eval(env, lhs_expr)?;
             let rhs = eval(env, rhs_expr)?;
-            eval_binop(*op, lhs, rhs)
+            eval_binop(*op, *op_span, lhs, rhs)
         }
     }
 }
@@ -187,7 +187,7 @@ fn eval_unop(op: UnOp, v: Rc<Value>) -> Result<Rc<Value>> {
     }
 }
 
-fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
+fn eval_binop(op: BinOp, op_span: Span, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
     match (op, lhs.as_ref(), rhs.as_ref()) {
         (BinOp::Union, Value::Map(xs), Value::Map(ys)) => {
             let mut result = xs.clone();
@@ -211,12 +211,18 @@ fn eval_binop(op: BinOp, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
         (BinOp::And, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x && *y))),
         (BinOp::Or, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x || *y))),
         (BinOp::Add, Value::Int(x), Value::Int(y)) => {
-            // TODO: Make this a checked add.
-            Ok(Rc::new(Value::Int(x + y)))
+            match x.checked_add(*y) {
+                Some(z) => Ok(Rc::new(Value::Int(z))),
+                // TODO: Also include the values themselves through pretty-printer.
+                None => return Err(op_span.error("Addition would overflow.").into()),
+            }
         }
         (BinOp::Mul, Value::Int(x), Value::Int(y)) => {
-            // TODO: Make this a checked mul.
-            Ok(Rc::new(Value::Int(x * y)))
+            match x.checked_mul(*y) {
+                Some(z) => Ok(Rc::new(Value::Int(z))),
+                // TODO: Also include the values themselves through pretty-printer.
+                None => return Err(op_span.error("Multiplication would overflow.").into()),
+            }
         }
         (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x < *y))),
         (BinOp::Gt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x > *y))),
