@@ -201,7 +201,7 @@ impl Error for FixmeError {
 #[derive(Debug)]
 pub struct RuntimeError {
     pub span: Span,
-    pub message: String,
+    pub message: &'static str,
 }
 
 impl From<RuntimeError> for Box<dyn Error> {
@@ -222,5 +222,18 @@ impl Error for RuntimeError {
     }
     fn help(&self) -> Option<&str> {
         None
+    }
+}
+
+pub trait IntoRuntimeError {
+    fn error(&self, message: &'static str) -> RuntimeError;
+}
+
+impl IntoRuntimeError for Span {
+    fn error(&self, message: &'static str) -> RuntimeError {
+        RuntimeError {
+            span: *self,
+            message,
+        }
     }
 }

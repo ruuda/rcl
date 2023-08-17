@@ -182,13 +182,27 @@ pub enum Expr {
 #[derive(Debug)]
 pub enum Seq {
     /// A single element.
-    Elem { value: Box<Expr> },
+    Elem {
+        /// The span covering this value.
+        span: Span,
+        value: Box<Expr>
+    },
 
     /// A `key: value` mapping, where the key is an expression.
-    AssocExpr { field: Box<Expr>, value: Box<Expr> },
+    AssocExpr {
+        /// The `:` span.
+        op_span: Span,
+        field: Box<Expr>,
+        value: Box<Expr>,
+    },
 
     /// A `key = value` mapping, where the key is an identifier.
-    AssocIdent { field: Span, value: Box<Expr> },
+    AssocIdent {
+        /// The `=` span.
+        op_span: Span,
+        field: Span,
+        value: Box<Expr>,
+    },
 
     /// Let in the middle of a sequence literal.
     ///

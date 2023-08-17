@@ -139,19 +139,24 @@ impl<'a> Abstractor<'a> {
     /// Abstract a sequence element.
     pub fn seq(&self, seq: &CSeq) -> ASeq {
         match seq {
-            CSeq::Elem { value } => ASeq::Elem(Box::new(self.expr(value))),
+            CSeq::Elem { span, value } => ASeq::Elem {
+                span: *span,
+                value: Box::new(self.expr(value)),
+            },
 
-            CSeq::AssocExpr { field, value } => ASeq::Assoc {
+            CSeq::AssocExpr { op_span, field, value } => ASeq::Assoc {
+                op_span: *op_span,
                 key: Box::new(self.expr(field)),
                 value: Box::new(self.expr(value)),
             },
 
-            CSeq::AssocIdent { field, value } => {
+            CSeq::AssocIdent { op_span, field, value } => {
                 // We convert the `key = value` as if it had been written
                 // `"key": value` so we can treat them uniformly from here on.
                 let key_str = field.resolve(self.input);
                 let key_expr = AExpr::StringLit(key_str.into());
                 ASeq::Assoc {
+                    op_span: *op_span,
                     key: Box::new(key_expr),
                     value: Box::new(self.expr(value)),
                 }

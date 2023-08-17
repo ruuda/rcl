@@ -12,6 +12,8 @@ use std::rc::Rc;
 
 pub use crate::cst::{BinOp, UnOp};
 
+use crate::source::Span;
+
 /// An identifier.
 // TODO: Should we deduplicate idents, or even all strings, in a hash table?
 // Should they be slices into the source document? For now the easy thing is to
@@ -98,10 +100,18 @@ pub enum Expr {
 #[derive(Debug)]
 pub enum Seq {
     /// A single element.
-    Elem(Box<Expr>),
+    Elem {
+        span: Span,
+        value: Box<Expr>
+    },
 
     /// A `key: value` mapping.
-    Assoc { key: Box<Expr>, value: Box<Expr> },
+    Assoc {
+        /// The span of the `=` or `:`.
+        op_span: Span,
+        key: Box<Expr>,
+        value: Box<Expr>,
+    },
 
     /// Let in the middle of a sequence literal.
     ///

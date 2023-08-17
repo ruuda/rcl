@@ -670,19 +670,23 @@ impl<'a> Parser<'a> {
             (Some(Token::KwFor), _) => self.parse_seq_for(),
             (Some(Token::KwIf), _) => self.parse_seq_if(),
             _ => {
+                let before = self.peek_span();
                 let expr = self.parse_expr_op()?;
+                let expr_span = before.until(self.peek_span());
                 self.skip_non_code()?;
                 let result = match self.peek() {
                     Some(Token::Colon) => {
-                        self.consume();
+                        let op = self.consume();
                         self.skip_non_code()?;
                         let value = self.parse_expr()?;
                         Seq::AssocExpr {
+                            op_span: op,
                             field: Box::new(expr),
                             value: Box::new(value),
                         }
                     }
                     _ => Seq::Elem {
+                        span: expr_span,
                         value: Box::new(expr),
                     },
                 };
@@ -695,12 +699,13 @@ impl<'a> Parser<'a> {
         let ident = self.consume();
 
         self.skip_non_code()?;
-        self.parse_token(Token::Eq, "Expected '=' here.")?;
+        let op = self.parse_token(Token::Eq, "Expected '=' here.")?;
 
         self.skip_non_code()?;
         let value = self.parse_expr()?;
 
         let result = Seq::AssocIdent {
+            op_span: op,
             field: ident,
             value: Box::new(value),
         };

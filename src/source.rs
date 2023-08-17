@@ -77,6 +77,18 @@ impl Span {
             len: self.len - n_trim,
         }
     }
+
+    /// Return a span that runs from self up to but not including `other`.
+    pub fn until(&self, other: Span) -> Span {
+        debug_assert_eq!(self.doc, other.doc);
+        debug_assert!(other.end() >= self.end());
+        Span {
+            doc: self.doc,
+            start: self.start,
+            // TODO: Change types so this would fit.
+            len: (other.start - self.start) as u32,
+        }
+    }
 }
 
 pub trait Source<'a> {

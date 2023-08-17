@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, Seq, UnOp};
-use crate::error::Result;
+use crate::error::{IntoRuntimeError, Result};
 use crate::runtime::{Builtin, Env, Value};
 
 pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
@@ -234,15 +234,30 @@ fn eval_seq(
     out_values: &mut Vec<Rc<Value>>,
 ) -> Result<()> {
     match seq {
-        Seq::Elem(elem_expr) => {
-            let value = eval(env, elem_expr)?;
+        Seq::Elem { span, value: value_expr } => {
+            if !out_keys.is_empty() {
+                let err = span.error("Expected key-value, not a single element.");
+                // TODO: Add note about previous key-value. For this we'd need
+                // to track a stack of seq evaluations, then we need an
+                // evaluator struct.
+                return Err(err.into());
+            }
+            let value = eval(env, value_expr)?;
             out_keys.push(value);
             Ok(())
         }
         Seq::Assoc {
+            op_span,
             key: key_expr,
             value: value_expr,
         } => {
+            if out_keys.is_empty() && !out_values.is_empty() {
+                let err = op_span.error("Expected a single element, not key-value.");
+                // TODO: Add note about previous key-value. For this we'd need
+                // to track a stack of seq evaluations, then we need an
+                // evaluator struct.
+                return Err(err.into());
+            }
             let key = eval(env, key_expr)?;
             let value = eval(env, value_expr)?;
             out_keys.push(key);

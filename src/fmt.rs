@@ -186,19 +186,19 @@ impl<'a> Formatter<'a> {
 
     pub fn write_seq(&mut self, seq: &Seq) -> Result {
         match seq {
-            Seq::Elem { value } => {
+            Seq::Elem { value, .. } => {
                 self.write_expr(value)?;
                 self.write_str(",\n")?;
             }
 
-            Seq::AssocExpr { field, value } => {
+            Seq::AssocExpr { field, value, .. } => {
                 self.write_expr(field)?;
                 self.write_str(": ")?;
                 self.write_expr(value)?;
                 self.write_str(",\n")?;
             }
 
-            Seq::AssocIdent { field, value } => {
+            Seq::AssocIdent { field, value, .. } => {
                 self.write_span(*field)?;
                 self.write_str(" = ")?;
                 self.write_expr(value)?;
