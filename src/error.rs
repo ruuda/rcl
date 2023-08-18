@@ -7,7 +7,7 @@
 
 //! Error types.
 
-use crate::source::{DocId, Inputs, Span};
+use crate::source::{Inputs, Span};
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -165,34 +165,6 @@ impl Error for ParseError {
     }
 }
 
-#[derive(Debug)]
-pub struct FixmeError {
-    // Not dead, used in the debug impl.
-    #[allow(dead_code)]
-    message: &'static str,
-}
-
-impl From<&'static str> for Box<dyn Error> {
-    fn from(err: &'static str) -> Self {
-        Box::new(FixmeError { message: err })
-    }
-}
-
-impl Error for FixmeError {
-    fn span(&self) -> Span {
-        Span::new(DocId(0), 0, 0)
-    }
-    fn message(&self) -> &str {
-        self.message
-    }
-    fn notes(&self) -> &[(Span, &str)] {
-        &[]
-    }
-    fn help(&self) -> Option<&str> {
-        None
-    }
-}
-
 /// An error during evaluation.
 #[derive(Debug)]
 pub struct RuntimeError {
@@ -247,5 +219,40 @@ impl IntoRuntimeError for Span {
             notes: Vec::new(),
             help: None,
         }
+    }
+}
+
+/// A value cannot be represented in the desired way.
+///
+/// For example, when trying to serialize a function as json.
+#[derive(Debug)]
+pub struct ValueError {
+    /// The span where serialization was requested.
+    ///
+    /// This is not the span where the offending value was produced, as that can
+    /// be difficult to track in general.
+    pub span: Span,
+    pub message: &'static str,
+    // TODO: This may be expanded with a "call stack" of where in the value we are.
+}
+
+impl From<ValueError> for Box<dyn Error> {
+    fn from(err: ValueError) -> Self {
+        Box::new(err)
+    }
+}
+
+impl Error for ValueError {
+    fn span(&self) -> Span {
+        self.span
+    }
+    fn message(&self) -> &str {
+        self.message
+    }
+    fn notes(&self) -> &[(Span, &str)] {
+        &[]
+    }
+    fn help(&self) -> Option<&str> {
+        None
     }
 }

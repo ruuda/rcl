@@ -1,0 +1,11 @@
+{
+  1: "first",
+  2: "second",
+}
+
+# output:
+ --> stdin:1:0
+  |
+1 | {
+  | ^
+Error: To export as json, keys must be strings.

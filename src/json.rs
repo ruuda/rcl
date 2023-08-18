@@ -7,11 +7,12 @@
 
 //! Conversion from and to json.
 
-use crate::error::Result;
+use crate::error::{Result, ValueError};
 use crate::runtime::Value;
+use crate::source::Span;
 
 /// Render a value as json.
-pub fn format_json(v: &Value, into: &mut String) -> Result<()> {
+pub fn format_json(caller: Span, v: &Value, into: &mut String) -> Result<()> {
     match v {
         Value::Bool(true) => into.push_str("true"),
         Value::Bool(false) => into.push_str("false"),
@@ -29,7 +30,7 @@ pub fn format_json(v: &Value, into: &mut String) -> Result<()> {
                 if !is_first {
                     into.push(',');
                 }
-                format_json(v, into)?;
+                format_json(caller, v, into)?;
                 is_first = false;
             }
             into.push(']');
@@ -41,7 +42,7 @@ pub fn format_json(v: &Value, into: &mut String) -> Result<()> {
                 if !is_first {
                     into.push(',');
                 }
-                format_json(v, into)?;
+                format_json(caller, v, into)?;
                 is_first = false;
             }
             into.push(']');
@@ -54,17 +55,28 @@ pub fn format_json(v: &Value, into: &mut String) -> Result<()> {
                     into.push(',');
                 }
                 match k.as_ref() {
-                    Value::String(..) => format_json(k, into)?,
-                    _ => return Err("To export as json, keys must be strings.".into()),
+                    Value::String(..) => format_json(caller, k, into)?,
+                    _ => {
+                        let err = ValueError {
+                            span: caller,
+                            // TODO: Include information about the encountered type.
+                            message: "To export as json, keys must be strings.",
+                        };
+                        return Err(err.into());
+                    }
                 };
                 into.push(':');
-                format_json(v, into)?;
+                format_json(caller, v, into)?;
                 is_first = false;
             }
             into.push('}');
         }
         Value::Builtin(..) => {
-            return Err("Functions cannot be exported as json.".into());
+            let err = ValueError {
+                span: caller,
+                message: "Functions cannot be exported as json.",
+            };
+            return Err(err.into());
         }
     }
 

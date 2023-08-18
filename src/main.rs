@@ -38,7 +38,7 @@ fn main_eval(inputs: &Inputs) -> Result<()> {
             }
         }
 
-        let cst = rcl::parser::parse(id, doc.data)?;
+        let (doc_span, cst) = rcl::parser::parse(id, doc.data)?;
         if debug {
             eprintln!("{cst:#?}");
         }
@@ -52,7 +52,7 @@ fn main_eval(inputs: &Inputs) -> Result<()> {
         let val = rcl::eval::eval(&mut env, &ast)?;
 
         let mut val_json = String::new();
-        rcl::json::format_json(val.as_ref(), &mut val_json)?;
+        rcl::json::format_json(doc_span, val.as_ref(), &mut val_json)?;
         println!("{}", val_json);
     }
 
@@ -62,7 +62,7 @@ fn main_eval(inputs: &Inputs) -> Result<()> {
 fn main_fmt(inputs: &Inputs) -> Result<()> {
     for (i, doc) in inputs.iter().enumerate() {
         let id = DocId(i as u32);
-        let cst = rcl::parser::parse(id, doc.data)?;
+        let (_doc_span, cst) = rcl::parser::parse(id, doc.data)?;
         let mut out = std::io::stdout().lock();
         let res = rcl::fmt::write_expr(doc.data, &cst, &mut out);
         if res.is_err() {

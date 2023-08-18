@@ -13,12 +13,12 @@ use crate::source::{DocId, Span};
 pub type Result<T> = std::result::Result<T, ParseError>;
 
 /// Parse an input document into a concrete syntax tree.
-pub fn parse(doc: DocId, input: &str) -> Result<Prefixed<Expr>> {
+pub fn parse(doc: DocId, input: &str) -> Result<(Span, Prefixed<Expr>)> {
     let tokens = lexer::lex(doc, input)?;
     let mut parser = Parser::new(doc, input, &tokens);
-    let (_span, result) = parser.parse_prefixed_expr()?;
+    let (span, result) = parser.parse_prefixed_expr()?;
     parser.parse_eof()?;
-    Ok(result)
+    Ok((span, result))
 }
 
 fn to_unop(token: Token) -> Option<UnOp> {
