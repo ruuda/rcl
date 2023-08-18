@@ -16,7 +16,7 @@ pub type Result<T> = std::result::Result<T, ParseError>;
 pub fn parse(doc: DocId, input: &str) -> Result<Prefixed<Expr>> {
     let tokens = lexer::lex(doc, input)?;
     let mut parser = Parser::new(doc, input, &tokens);
-    let result = parser.parse_prefixed_expr()?;
+    let (_span, result) = parser.parse_prefixed_expr()?;
     parser.parse_eof()?;
     Ok(result)
 }
@@ -61,6 +61,14 @@ struct Parser<'a> {
     /// The depth of parsing expressions and sequences, to prevent stack
     /// overflow.
     depth: u32,
+
+    /// A stack of the starting points of the spans that we are currently parsing.
+    ///
+    /// This is used to provide full enclosing spans of parts of expressions.
+    /// For example, the condition of an if-then-else may itself be a complex
+    /// expression, and the CST nodes of the condition don't expose a single
+    /// span that covers it entirely, so we track this separately.
+    span_stack: Vec<usize>,
 }
 
 impl<'a> Parser<'a> {
@@ -77,6 +85,7 @@ impl<'a> Parser<'a> {
                 len: 0,
             },
             depth: 0,
+            span_stack: Vec::new(),
         }
     }
 
@@ -157,6 +166,27 @@ impl<'a> Parser<'a> {
     fn decrease_depth(&mut self) {
         debug_assert!(self.depth > 0, "Expression depth underflow.");
         self.depth -= 1;
+    }
+
+    /// Record the starting position of some span that we will later pop.
+    fn begin_span(&mut self) {
+        self.span_stack.push(self.peek_span().start);
+    }
+
+    /// Pop off the span stack and return the span that covers the source since the matching push.
+    fn end_span(&mut self) -> Span {
+        let start = self.span_stack.pop().expect("Span stack underflow.");
+        let end = self.tokens[..self.cursor]
+            .iter()
+            .rev()
+            .map(|t| t.1.end())
+            .next()
+            .unwrap_or(0);
+        Span {
+            doc: self.doc,
+            start,
+            len: (end - start) as _,
+        }
     }
 
     /// Push an opening bracket onto the stack of brackets when inside a query.
@@ -297,21 +327,30 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    pub fn parse_prefixed_expr(&mut self) -> Result<Prefixed<Expr>> {
-        self.parse_prefixed(|s| s.parse_expr())
+    pub fn parse_prefixed_expr(&mut self) -> Result<(Span, Prefixed<Expr>)> {
+        let pf = self.parse_prefixed(|s| s.parse_expr())?;
+        Ok((
+            pf.inner.0,
+            Prefixed {
+                prefix: pf.prefix,
+                inner: pf.inner.1,
+            },
+        ))
     }
 
-    fn parse_expr(&mut self) -> Result<Expr> {
+    fn parse_expr(&mut self) -> Result<(Span, Expr)> {
         // TODO: This depth limit is not sustainable if my lets are recursive.
         // We need tail calls or loops to handle them in the parser ...
         self.increase_depth()?;
+        self.begin_span();
         let result = match self.peek() {
             Some(Token::KwLet) => self.parse_expr_let(),
             Some(Token::KwIf) => self.parse_expr_if(),
             _ => self.parse_expr_op(),
         };
         self.decrease_depth();
-        result
+        let span = self.end_span();
+        Ok((span, result?))
     }
 
     fn parse_expr_if(&mut self) -> Result<Expr> {
@@ -319,27 +358,25 @@ impl<'a> Parser<'a> {
         let _if = self.consume();
 
         self.skip_non_code()?;
-        let before = self.peek_span();
-        let condition = self.parse_expr()?;
-        // TODO: This span is not necessarily minimal, it may include
-        // whitespace.
-        let condition_span = before.until(self.peek_span());
+        let (condition_span, condition) = self.parse_expr()?;
 
-        let before_then = self.parse_non_code();
+        let then_before = self.parse_non_code();
         self.parse_token(Token::KwThen, "Expected 'then' here.")?;
-        let body_then = self.parse_prefixed_expr()?;
+        let (then_span, then_body) = self.parse_prefixed_expr()?;
 
-        let before_else = self.parse_non_code();
+        let else_before = self.parse_non_code();
         self.parse_token(Token::KwElse, "Expected 'else' here.")?;
-        let body_else = self.parse_prefixed_expr()?;
+        let (else_span, else_body) = self.parse_prefixed_expr()?;
 
         let result = Expr::IfThenElse {
             condition_span,
             condition: Box::new(condition),
-            before_then,
-            body_then: Box::new(body_then),
-            before_else,
-            body_else: Box::new(body_else),
+            then_before,
+            then_span,
+            then_body: Box::new(then_body),
+            else_before,
+            else_span,
+            else_body: Box::new(else_body),
         };
         Ok(result)
     }
@@ -355,7 +392,7 @@ impl<'a> Parser<'a> {
         self.parse_token(Token::Eq, "Expected '=' here.")?;
 
         self.skip_non_code()?;
-        let value = self.parse_expr()?;
+        let (value_span, value) = self.parse_expr()?;
 
         self.skip_non_code()?;
         self.parse_token_with_note(
@@ -365,11 +402,13 @@ impl<'a> Parser<'a> {
             "Let-binding opened here.",
         )?;
 
-        let body = self.parse_prefixed_expr()?;
+        let (body_span, body) = self.parse_prefixed_expr()?;
 
         let result = Expr::Let {
             ident,
+            value_span,
             value: Box::new(value),
+            body_span,
             body: Box::new(body),
         };
 
@@ -532,11 +571,12 @@ impl<'a> Parser<'a> {
             }
             Some(Token::LParen) => {
                 let open = self.push_bracket()?;
-                let body = self.parse_prefixed_expr()?;
+                let (body_span, body) = self.parse_prefixed_expr()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::Parens {
                     open,
                     close,
+                    body_span,
                     body: Box::new(body),
                 };
                 Ok(result)
@@ -565,7 +605,7 @@ impl<'a> Parser<'a> {
                 return Ok(result.into_boxed_slice());
             }
 
-            let expr = self.parse_expr()?;
+            let (_span, expr) = self.parse_expr()?;
             let prefixed = Prefixed {
                 prefix,
                 inner: expr,
@@ -689,10 +729,11 @@ impl<'a> Parser<'a> {
                     Some(Token::Colon) => {
                         let op = self.consume();
                         self.skip_non_code()?;
-                        let value = self.parse_expr()?;
+                        let (value_span, value) = self.parse_expr()?;
                         Seq::AssocExpr {
                             op_span: op,
                             field: Box::new(expr),
+                            value_span,
                             value: Box::new(value),
                         }
                     }
@@ -713,11 +754,12 @@ impl<'a> Parser<'a> {
         let op = self.parse_token(Token::Eq, "Expected '=' here.")?;
 
         self.skip_non_code()?;
-        let value = self.parse_expr()?;
+        let (value_span, value) = self.parse_expr()?;
 
         let result = Seq::AssocIdent {
             op_span: op,
             field: ident,
+            value_span,
             value: Box::new(value),
         };
 
@@ -734,7 +776,7 @@ impl<'a> Parser<'a> {
         self.parse_token(Token::Eq, "Expected '=' here.")?;
 
         self.skip_non_code()?;
-        let value = self.parse_expr()?;
+        let (value_span, value) = self.parse_expr()?;
 
         self.skip_non_code()?;
         self.parse_token_with_note(
@@ -748,6 +790,7 @@ impl<'a> Parser<'a> {
 
         let result = Seq::Let {
             ident,
+            value_span,
             value: Box::new(value),
             body: Box::new(body),
         };
@@ -779,10 +822,7 @@ impl<'a> Parser<'a> {
         self.parse_token(Token::KwIn, "Expected 'in' here.")?;
 
         self.skip_non_code()?;
-        let before = self.peek_span();
-        let collection = self.parse_expr()?;
-        // TODO: This span is not necessarily minimal, it may include whitespace.
-        let collection_span = before.until(self.peek_span());
+        let (collection_span, collection) = self.parse_expr()?;
 
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' here.")?;
@@ -803,10 +843,7 @@ impl<'a> Parser<'a> {
         let _for = self.consume();
 
         self.skip_non_code()?;
-        let before = self.peek_span();
-        let condition = self.parse_expr()?;
-        // TODO: This span is not necessarily minimal, it may include whitespace.
-        let condition_span = before.until(self.peek_span());
+        let (condition_span, condition) = self.parse_expr()?;
 
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' here.")?;

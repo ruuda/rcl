@@ -78,7 +78,9 @@ impl<'a> Formatter<'a> {
 
     pub fn write_expr(&mut self, expr: &Expr) -> Result {
         match expr {
-            Expr::Let { ident, value, body } => {
+            Expr::Let {
+                ident, value, body, ..
+            } => {
                 self.write_str("let ")?;
                 self.write_span(*ident)?;
                 self.write_str(" = ")?;
@@ -205,7 +207,9 @@ impl<'a> Formatter<'a> {
                 self.write_str(";\n")?;
             }
 
-            Seq::Let { ident, value, body } => {
+            Seq::Let {
+                ident, value, body, ..
+            } => {
                 self.write_str("let ")?;
                 self.write_span(*ident)?;
                 self.write_str(" = ")?;

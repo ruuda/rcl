@@ -83,7 +83,9 @@ pub enum Expr {
     /// A let-binding that binds `value` to the name `ident` in `body`.
     Let {
         ident: Span,
+        value_span: Span,
         value: Box<Expr>,
+        body_span: Span,
         body: Box<Prefixed<Expr>>,
     },
 
@@ -105,6 +107,7 @@ pub enum Expr {
     Parens {
         open: Span,
         close: Span,
+        body_span: Span,
         body: Box<Prefixed<Expr>>,
     },
 
@@ -130,10 +133,12 @@ pub enum Expr {
     IfThenElse {
         condition_span: Span,
         condition: Box<Expr>,
-        before_then: Box<[NonCode]>,
-        body_then: Box<Prefixed<Expr>>,
-        before_else: Box<[NonCode]>,
-        body_else: Box<Prefixed<Expr>>,
+        then_before: Box<[NonCode]>,
+        then_span: Span,
+        then_body: Box<Prefixed<Expr>>,
+        else_before: Box<[NonCode]>,
+        else_span: Span,
+        else_body: Box<Prefixed<Expr>>,
     },
 
     /// Access a variable.
@@ -197,6 +202,7 @@ pub enum Seq {
         /// The `:` span.
         op_span: Span,
         field: Box<Expr>,
+        value_span: Span,
         value: Box<Expr>,
     },
 
@@ -205,6 +211,7 @@ pub enum Seq {
         /// The `=` span.
         op_span: Span,
         field: Span,
+        value_span: Span,
         value: Box<Expr>,
     },
 
@@ -214,6 +221,7 @@ pub enum Seq {
     /// associations are not first-class values.
     Let {
         ident: Span,
+        value_span: Span,
         value: Box<Expr>,
         body: Box<Prefixed<Seq>>,
     },

@@ -36,7 +36,9 @@ impl<'a> Abstractor<'a> {
     /// Abstract an expression.
     pub fn expr(&self, expr: &CExpr) -> AExpr {
         match expr {
-            CExpr::Let { ident, value, body } => AExpr::Let {
+            CExpr::Let {
+                ident, value, body, ..
+            } => AExpr::Let {
                 ident: ident.resolve(self.input).into(),
                 value: Box::new(self.expr(value)),
                 body: Box::new(self.expr(&body.inner)),
@@ -108,14 +110,14 @@ impl<'a> Abstractor<'a> {
             CExpr::IfThenElse {
                 condition_span,
                 condition,
-                body_then,
-                body_else,
+                then_body,
+                else_body,
                 ..
             } => AExpr::IfThenElse {
                 condition_span: *condition_span,
                 condition: Box::new(self.expr(condition)),
-                body_then: Box::new(self.expr(&body_then.inner)),
-                body_else: Box::new(self.expr(&body_else.inner)),
+                body_then: Box::new(self.expr(&then_body.inner)),
+                body_else: Box::new(self.expr(&else_body.inner)),
             },
 
             CExpr::Var(span) => AExpr::Var {
@@ -174,6 +176,7 @@ impl<'a> Abstractor<'a> {
                 op_span,
                 field,
                 value,
+                ..
             } => ASeq::Assoc {
                 op_span: *op_span,
                 key: Box::new(self.expr(field)),
@@ -184,6 +187,7 @@ impl<'a> Abstractor<'a> {
                 op_span,
                 field,
                 value,
+                ..
             } => {
                 // We convert the `key = value` as if it had been written
                 // `"key": value` so we can treat them uniformly from here on.
@@ -196,7 +200,9 @@ impl<'a> Abstractor<'a> {
                 }
             }
 
-            CSeq::Let { ident, value, body } => ASeq::Let {
+            CSeq::Let {
+                ident, value, body, ..
+            } => ASeq::Let {
                 ident: ident.resolve(self.input).into(),
                 value: Box::new(self.expr(value)),
                 body: Box::new(self.seq(&body.inner)),
