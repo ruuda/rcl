@@ -79,11 +79,7 @@ impl<'a> Parser<'a> {
             tokens,
             cursor: 0,
             bracket_stack: Vec::new(),
-            comment_anchor: Span {
-                doc,
-                start: 0,
-                len: 0,
-            },
+            comment_anchor: Span::new(doc, 0, 0),
             depth: 0,
             span_stack: Vec::new(),
         }
@@ -131,11 +127,7 @@ impl<'a> Parser<'a> {
         self.tokens
             .get(self.cursor)
             .map(|t| t.1)
-            .unwrap_or_else(|| Span {
-                doc: self.doc,
-                start: self.input.len(),
-                len: 0,
-            })
+            .unwrap_or(Span::new(self.doc, self.input.len(), self.input.len()))
     }
 
     /// Advance the cursor by one token, consuming the token under the cursor.
@@ -170,7 +162,7 @@ impl<'a> Parser<'a> {
 
     /// Record the starting position of some span that we will later pop.
     fn begin_span(&mut self) {
-        self.span_stack.push(self.peek_span().start);
+        self.span_stack.push(self.peek_span().start());
     }
 
     /// Pop off the span stack and return the span that covers the source since the matching push.
@@ -179,14 +171,11 @@ impl<'a> Parser<'a> {
         let end = self.tokens[..self.cursor]
             .iter()
             .rev()
+            .filter(|t| !matches!(t.0, Token::Space | Token::LineComment))
             .map(|t| t.1.end())
             .next()
-            .unwrap_or(0);
-        Span {
-            doc: self.doc,
-            start,
-            len: (end - start) as _,
-        }
+            .expect("If we pushed a start, we should find at least that.");
+        Span::new(self.doc, start, end)
     }
 
     /// Push an opening bracket onto the stack of brackets when inside a query.
@@ -260,8 +249,8 @@ impl<'a> Parser<'a> {
                     // a comment could have been inserted. Record that, so we
                     // can suggest this place in case an invalid comment is
                     // encountered.
-                    self.comment_anchor = self.peek_span();
-                    self.comment_anchor.len = 0;
+                    let anchor = self.peek_span();
+                    self.comment_anchor = Span::new(self.doc, anchor.start(), anchor.start());
                     return result.into_boxed_slice();
                 }
             }
@@ -339,18 +328,21 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> Result<(Span, Expr)> {
+        self.begin_span();
         // TODO: This depth limit is not sustainable if my lets are recursive.
         // We need tail calls or loops to handle them in the parser ...
         self.increase_depth()?;
-        self.begin_span();
         let result = match self.peek() {
             Some(Token::KwLet) => self.parse_expr_let(),
             Some(Token::KwIf) => self.parse_expr_if(),
             _ => self.parse_expr_op(),
         };
         self.decrease_depth();
-        let span = self.end_span();
-        Ok((span, result?))
+
+        match result {
+            Ok(expr) => Ok((self.end_span(), expr)),
+            Err(err) => Err(err),
+        }
     }
 
     fn parse_expr_if(&mut self) -> Result<Expr> {

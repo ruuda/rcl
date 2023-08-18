@@ -6,6 +6,7 @@
 // A copy of the License has been included in the root of the repository.
 
 #![allow(clippy::from_str_radix_10)]
+#![allow(clippy::len_without_is_empty)]
 
 pub mod abstraction;
 pub mod ast;

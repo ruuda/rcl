@@ -170,23 +170,9 @@ impl<'a> Lexer<'a> {
 
     /// Return a span from the current cursor location and advance the cursor.
     fn span(&mut self, len: usize) -> Span {
-        // We could turn this into a proper error and report it, but it would
-        // make things really tedious. It's one of those things where if you
-        // don't fix it a fuzzer will force you to, except in this case we need
-        // an input larger than 4 GiB before it happens, so we can get away with
-        // a panic.
-        assert!(
-            len <= u32::MAX as usize,
-            "The lexer does not support spans longer than 4 GiB. Byte offset: {}",
-            self.start,
-        );
         let start = self.start;
         self.start += len;
-        Span {
-            start,
-            len: len as u32,
-            doc: self.doc,
-        }
+        Span::new(self.doc, start, start + len)
     }
 
     /// Build a parse error at the current cursor location.

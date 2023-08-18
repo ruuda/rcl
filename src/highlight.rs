@@ -54,11 +54,11 @@ pub fn highlight(out: &mut dyn Write, tokens: &[Lexeme], input: &str) -> Result<
 
         // Insignificant space is not represented explicitly as a token, we can
         // infer it from a gap in the byte range.
-        if span.start > end {
-            out.write_all(&input[end..span.start])?;
+        if span.start() > end {
+            out.write_all(&input[end..span.start()])?;
         }
 
-        out.write_all(&input[span.start..span.end()])?;
+        out.write_all(&input[span.start()..span.end()])?;
         end = span.end();
     }
 

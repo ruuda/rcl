@@ -32,28 +32,67 @@ impl fmt::Debug for DocId {
 }
 
 /// Marks a location in a source file by byte offset.
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Span {
-    /// Index of the document that contains the span.
-    pub doc: DocId,
-
-    /// Start of the token, inclusive.
-    pub start: usize,
-
-    /// Length of the token.
+    /// Packed fields, use constructor and getter methods to pack/unpack.
     ///
-    /// The length of a token is limited to 32 bits, such that `Span` itself,
-    /// which also contains the document id, fits in two 128 bits.
-    /// TODO: This is a pretty tough restriction ... should we instead take u16
-    /// as the document id, and devote 48 bits to the offsets? It could even be
-    /// 32-48-48.
-    pub len: u32,
+    /// From least significant to most significant bit:
+    /// * 48 bits start offset (6 bytes)
+    /// * 48 bits end offset (6 bytes)
+    /// * 32 bits document id (4 bytes)
+    ///
+    /// While 32 bit offset may be too constraining for a language that can also
+    /// be a data format, 48 bits of offset enables documents of 252 TiB, which
+    /// ought to be enough for a single document.
+    data: u128,
+}
+
+impl fmt::Debug for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "d{}[{}..{}]", self.doc().0, self.start(), self.end())
+    }
 }
 
 impl Span {
-    /// End of the token, exclusive.
+    #[inline(always)]
+    pub fn new(doc: DocId, start: usize, end: usize) -> Span {
+        // We could turn this into a proper error and report it, but it would
+        // make things really tedious. It's one of those things where if you
+        // don't fix it a fuzzer will force you to, except in this case we need
+        // an input larger than 262 TiB before it happens, so we can get away
+        // with a panic.
+        assert!(
+            end <= 0xffff_ffff_ffff,
+            "Document should not be larger than 262 TiB."
+        );
+        debug_assert!(end >= start);
+        Span {
+            data: (start as u128) | ((end as u128) << 48) | ((doc.0 as u128) << 96),
+        }
+    }
+
+    /// Id of the document that this span belongs to.
+    #[inline(always)]
+    pub fn doc(&self) -> DocId {
+        DocId(((self.data >> 96) & 0xffff_ffff) as u32)
+    }
+
+    /// Start byte offset of the span, inclusive.
+    #[inline(always)]
+    pub fn start(&self) -> usize {
+        (self.data & 0xffff_ffff_ffff) as usize
+    }
+
+    /// End byte offset of the span, exclusive.
+    #[inline(always)]
     pub fn end(&self) -> usize {
-        self.start + self.len as usize
+        ((self.data >> 48) & 0xffff_ffff_ffff) as usize
+    }
+
+    /// Length of this span in bytes.
+    #[inline(always)]
+    pub fn len(&self) -> usize {
+        self.end() - self.start()
     }
 
     /// Return the slice from the input that the span spans.
@@ -62,48 +101,32 @@ impl Span {
     }
 
     /// Delete n bytes from the start of the span.
-    pub fn trim_start(&self, n: u32) -> Span {
-        let n_trim = self.len.min(n);
-        Span {
-            doc: self.doc,
-            start: self.start + n_trim as usize,
-            len: self.len - n_trim,
-        }
+    pub fn trim_start(&self, n: usize) -> Span {
+        let n_trim = self.len().min(n);
+        Span::new(self.doc(), self.start() + n_trim, self.end())
     }
 
     /// Delete n bytes from the end of the span.
-    pub fn trim_end(&self, n: u32) -> Span {
-        let n_trim = self.len.min(n);
-        Span {
-            doc: self.doc,
-            start: self.start,
-            len: self.len - n_trim,
-        }
+    pub fn trim_end(&self, n: usize) -> Span {
+        let n_trim = self.len().min(n);
+        Span::new(self.doc(), self.start(), self.end() - n_trim)
     }
 
     /// Return a span that runs from self up to but not including `other`.
     pub fn until(&self, other: Span) -> Span {
-        debug_assert_eq!(self.doc, other.doc);
-        debug_assert!(other.end() >= self.end());
-        Span {
-            doc: self.doc,
-            start: self.start,
-            // TODO: Change types so this would fit.
-            len: (other.start - self.start) as u32,
-        }
+        debug_assert_eq!(self.doc(), other.doc());
+        debug_assert!(other.start() >= self.end());
+        Span::new(self.doc(), self.start(), other.start())
     }
 
     /// Return a span that encloses both spans.
     pub fn union(&self, other: Span) -> Span {
-        debug_assert_eq!(self.doc, other.doc);
-        let start = self.start.min(other.start);
-        let end = self.end().max(other.end());
-        Span {
-            doc: self.doc,
-            start,
-            // TODO: Change types so this would fit.
-            len: (end - start) as u32,
-        }
+        debug_assert_eq!(self.doc(), other.doc());
+        Span::new(
+            self.doc(),
+            self.start().min(other.start()),
+            self.end().max(other.end()),
+        )
     }
 }
 
@@ -116,14 +139,14 @@ pub trait Source<'a> {
 /// right document for this span, and we ignore the document id in the span.
 impl<'a> Source<'a> for &'a str {
     fn resolve(self, span: Span) -> &'a str {
-        &self[span.start..span.end()]
+        &self[span.start()..span.end()]
     }
 }
 
 impl<'a> Source<'a> for &Inputs<'a> {
     fn resolve(self, span: Span) -> &'a str {
-        let doc = self[span.doc.0 as usize].data;
-        &doc[span.start..span.end()]
+        let doc = self[span.doc().0 as usize].data;
+        &doc[span.start()..span.end()]
     }
 }
 
@@ -135,5 +158,33 @@ mod test {
     fn span_is_two_usizes() {
         assert!(std::mem::size_of::<Span>() <= std::mem::size_of::<usize>() * 2);
         assert_eq!(std::mem::align_of::<Span>(), std::mem::align_of::<usize>());
+    }
+
+    #[test]
+    fn span_roundtrips() {
+        let offsets = [
+            0_usize,
+            1,
+            2,
+            3,
+            0xff,
+            0xffff,
+            0xffff_ffff,
+            0xffff_ffff_ffff,
+        ];
+        for doc_id in [0_u32, 1, 2, 3, 0xff, 0xffff, 0xffff_ffff] {
+            for start in offsets {
+                for end in offsets {
+                    if end >= start {
+                        let doc = DocId(doc_id);
+                        let span = Span::new(doc, start, end);
+                        println!("doc={doc_id} start={start} end={end} -> {span:?}");
+                        assert_eq!(span.doc(), doc);
+                        assert_eq!(span.start(), start);
+                        assert_eq!(span.end(), end);
+                    }
+                }
+            }
+        }
     }
 }

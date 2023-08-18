@@ -58,7 +58,7 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
     use std::fmt::Write;
     use unicode_width::UnicodeWidthStr;
 
-    let doc = &inputs[span.doc.0 as usize];
+    let doc = &inputs[span.doc().0 as usize];
     let input = doc.data;
 
     // Locate the line that contains the error.
@@ -66,7 +66,7 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
     let mut line_start = 0;
     let mut line_end = 0;
     for (&c, i) in input.as_bytes().iter().zip(0..) {
-        if i == span.start {
+        if i == span.start() {
             break;
         }
         if c == b'\n' {
@@ -89,9 +89,9 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
     // The length of the mark can be longer than the line, for example when
     // token to mark was a multiline string literal. In that case, highlight
     // only up to the newline, don't extend the tildes too far.
-    let indent_content = &line_content[..span.start - line_start];
-    let as_of_error = &line_content[span.start - line_start..];
-    let error_content = &as_of_error[..cmp::min(span.len as usize, as_of_error.len())];
+    let indent_content = &line_content[..span.start() - line_start];
+    let as_of_error = &line_content[span.start() - line_start..];
+    let error_content = &as_of_error[..cmp::min(span.len(), as_of_error.len())];
 
     // The width of the error is not necessarily the number of bytes,
     // measure the Unicode width of the span to underline.
@@ -113,7 +113,7 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
         line_num_pad,
         doc.path,
         line,
-        span.start - line_start
+        span.start() - line_start
     )
     .unwrap();
     writeln!(&mut result, "{} |", line_num_pad).unwrap();
@@ -180,11 +180,7 @@ impl From<&'static str> for Box<dyn Error> {
 
 impl Error for FixmeError {
     fn span(&self) -> Span {
-        Span {
-            doc: DocId(0),
-            start: 0,
-            len: 0,
-        }
+        Span::new(DocId(0), 0, 0)
     }
     fn message(&self) -> &str {
         self.message
