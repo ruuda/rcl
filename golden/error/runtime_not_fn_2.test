@@ -1,0 +1,9 @@
+let person = { name = "Deckard"; };
+person.name()
+
+# output:
+ --> stdin:2:0
+  |
+2 | person.name()
+  | ^~~~~~~~~~~
+Error: This is not a function, it cannot be called.

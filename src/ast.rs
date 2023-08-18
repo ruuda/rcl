@@ -94,6 +94,7 @@ pub enum Expr {
 
     /// Call a function.
     Call {
+        function_span: Span,
         function: Box<Expr>,
         args: Vec<Expr>,
     },

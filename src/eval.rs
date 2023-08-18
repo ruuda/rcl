@@ -146,6 +146,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
         }
 
         Expr::Call {
+            function_span,
             function: fun_expr,
             args: args_exprs,
         } => {
@@ -160,7 +161,10 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             match fun.as_ref() {
                 Value::Builtin(f) => (f.f)(&args[..]),
                 // TODO: Define a value for lambdas, implement the call.
-                _ => Err("Can only call functions.".into()),
+                // TODO: Add a proper type error.
+                _ => Err(function_span
+                    .error("This is not a function, it cannot be called.")
+                    .into()),
             }
         }
 

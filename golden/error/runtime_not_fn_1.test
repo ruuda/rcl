@@ -1,0 +1,8 @@
+"frobnicator"()
+
+# output:
+ --> stdin:1:0
+  |
+1 | "frobnicator"()
+  | ^~~~~~~~~~~~~
+Error: This is not a function, it cannot be called.

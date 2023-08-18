@@ -473,11 +473,14 @@ impl<'a> Parser<'a> {
     fn parse_expr_not_op(&mut self) -> Result<Expr> {
         // TODO: check for operators before, and report a pretty error
         // to clarify that parens must be used to disambiguate.
+        let before = self.peek_span();
         let mut result = self.parse_expr_term()?;
+        // TODO: This span is not necessarily minimal, it may include whitespace.
         loop {
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::LParen) => {
+                    let result_span = before.until(self.peek_span());
                     let open = self.push_bracket()?;
                     let args = self.parse_call_args()?;
                     let close = self.pop_bracket()?;
@@ -485,6 +488,7 @@ impl<'a> Parser<'a> {
                         open,
                         close,
                         args,
+                        function_span: result_span,
                         function: Box::new(result),
                     };
                 }

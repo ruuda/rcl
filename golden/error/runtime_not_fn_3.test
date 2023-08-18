@@ -1,0 +1,8 @@
+"frobnicator".len()(42)
+
+# output:
+ --> stdin:1:0
+  |
+1 | "frobnicator".len()(42)
+  | ^~~~~~~~~~~~~~~~~~~
+Error: This is not a function, it cannot be called.
