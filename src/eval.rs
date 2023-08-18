@@ -108,8 +108,8 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     // First test for the builtin names, they shadow the values,
                     // if there are any values.
                     let builtin = match field_name.as_ref() {
-                        "contains" => Some(builtin_map_contains(inner.clone())),
-                        "get" => Some(builtin_map_get(inner.clone())),
+                        "contains" => Some(builtin_dict_contains(inner.clone())),
+                        "get" => Some(builtin_dict_get(inner.clone())),
                         _ => None,
                     };
                     if let Some(b) = builtin {
@@ -146,6 +146,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
         }
 
         Expr::Call {
+            open,
             function_span,
             function: fun_expr,
             args: args_exprs,
@@ -159,7 +160,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                 .collect::<Result<Vec<_>>>()?;
 
             match fun.as_ref() {
-                Value::Builtin(f) => (f.f)(&args[..]),
+                Value::Builtin(f) => (f.f)(*open, &args[..]),
                 // TODO: Define a value for lambdas, implement the call.
                 // TODO: Add a proper type error.
                 _ => Err(function_span
@@ -437,9 +438,9 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
 
 fn builtin_string_len(s: &str) -> Builtin {
     let n = Rc::new(Value::Int(s.len() as _));
-    let f = move |args: &[Rc<Value>]| {
+    let f = move |span: Span, args: &[Rc<Value>]| {
         if !args.is_empty() {
-            return Err("String.len takes no arguments.".into());
+            return Err(span.error("String.len takes no arguments.").into());
         };
         Ok(n.clone())
     };
@@ -449,31 +450,31 @@ fn builtin_string_len(s: &str) -> Builtin {
     }
 }
 
-fn builtin_map_contains(v: Rc<Value>) -> Builtin {
-    let f = move |args: &[Rc<Value>]| {
+fn builtin_dict_contains(v: Rc<Value>) -> Builtin {
+    let f = move |span: Span, args: &[Rc<Value>]| {
         let arg = match args {
             [a] => a,
-            _ => return Err("Map.contains takes a single argument.".into()),
+            _ => return Err(span.error("Dict.contains takes a single argument.").into()),
         };
         match v.as_ref() {
             Value::Map(m) => {
                 let contains = m.contains_key(arg);
                 Ok(Rc::new(Value::Bool(contains)))
             }
-            _not_map => panic!("Should not have made a Map.contains for this value."),
+            _not_map => panic!("Should not have made a Dict.contains for this value."),
         }
     };
     Builtin {
-        name: "Map.contains",
+        name: "Dict.contains",
         f: Box::new(f),
     }
 }
 
 fn builtin_list_contains(v: Rc<Value>) -> Builtin {
-    let f = move |args: &[Rc<Value>]| {
+    let f = move |span: Span, args: &[Rc<Value>]| {
         let arg = match args {
             [a] => a,
-            _ => return Err("List.contains takes a single argument.".into()),
+            _ => return Err(span.error("List.contains takes a single argument.").into()),
         };
         match v.as_ref() {
             Value::List(m) => {
@@ -489,18 +490,18 @@ fn builtin_list_contains(v: Rc<Value>) -> Builtin {
     }
 }
 
-fn builtin_map_get(v: Rc<Value>) -> Builtin {
-    let f = move |args: &[Rc<Value>]| {
+fn builtin_dict_get(v: Rc<Value>) -> Builtin {
+    let f = move |span: Span, args: &[Rc<Value>]| {
         let (k, default) = match args {
             [k, default] => (k, default),
-            _ => return Err("Map.get takes two arguments.".into()),
+            _ => return Err(span.error("Dict.get takes two arguments.").into()),
         };
         match v.as_ref() {
             Value::Map(m) => match m.get(k) {
                 Some(v) => Ok(v.clone()),
                 None => Ok(default.clone()),
             },
-            _not_map => panic!("Should not have made a Map.get for this value."),
+            _not_map => panic!("Should not have made a Dict.get for this value."),
         }
     };
     Builtin {

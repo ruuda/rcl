@@ -130,11 +130,13 @@ impl<'a> Abstractor<'a> {
             },
 
             CExpr::Call {
+                open,
                 function,
                 function_span,
                 args,
                 ..
             } => AExpr::Call {
+                open: *open,
                 function_span: *function_span,
                 function: Box::new(self.expr(function)),
                 args: args.iter().map(|a| self.expr(&a.inner)).collect(),

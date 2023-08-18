@@ -1,0 +1,8 @@
+{"k": "v"}.contains("k", "unexpected argument")
+
+# output:
+ --> stdin:1:19
+  |
+1 | {"k": "v"}.contains("k", "unexpected argument")
+  |                    ^
+Error: Dict.contains takes a single argument.

@@ -12,8 +12,9 @@ use std::rc::Rc;
 
 use crate::ast::Ident;
 use crate::error::Result;
+use crate::source::Span;
 
-pub type BuiltinFnBox = Box<dyn Fn(&[Rc<Value>]) -> Result<Rc<Value>>>;
+pub type BuiltinFnBox = Box<dyn Fn(Span, &[Rc<Value>]) -> Result<Rc<Value>>>;
 
 /// A built-in function.
 pub struct Builtin {
