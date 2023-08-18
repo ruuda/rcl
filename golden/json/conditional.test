@@ -1,4 +1,7 @@
-if true then "true" else "false"
+[
+  (if true then "true" else "false"),
+  (if false then "true" else "false"),
+]
 
 # output:
-"true"
+["true","false"]
