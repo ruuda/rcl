@@ -83,7 +83,11 @@ pub enum Expr {
     Var { span: Span, ident: Ident },
 
     /// Access a field on the inner expression.
-    Field { inner: Box<Expr>, field: Ident },
+    Field {
+        inner: Box<Expr>,
+        field: Ident,
+        field_span: Span,
+    },
 
     /// Define a function.
     Lam(Vec<Ident>, Box<Expr>),

@@ -1,0 +1,12 @@
+let widget = {
+  name = "Turbo encabulator";
+  marzlevanes = ["hydrocoptic"];
+};
+widget.is_prefabulated
+
+# output:
+ --> stdin:5:7
+  |
+5 | widget.is_prefabulated
+  |        ^~~~~~~~~~~~~~~
+Error: Unknown field.

@@ -126,6 +126,7 @@ impl<'a> Abstractor<'a> {
             CExpr::Field { inner, field } => AExpr::Field {
                 inner: Box::new(self.expr(inner)),
                 field: field.resolve(self.input).into(),
+                field_span: *field,
             },
 
             CExpr::Call { function, args, .. } => AExpr::Call {

@@ -1,0 +1,14 @@
+let turbo_encabulator = [
+  "differential girdlespacing",
+  "hydrocoptic marzlevanes",
+  "pentametric fan",
+  "spurving bearings",
+];
+turbo_encabulator.is_prefabulated
+
+# output:
+ --> stdin:7:18
+  |
+7 | turbo_encabulator.is_prefabulated
+  |                   ^~~~~~~~~~~~~~~
+Error: Unknown field.

@@ -86,11 +86,13 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
         },
 
         Expr::Field {
+            field_span,
             field: field_name,
             inner: inner_expr,
         } => {
             let inner = eval(env, inner_expr)?;
             let field_name_value = Value::String(field_name.0.clone());
+            let err_unknown_field = field_span.error("Unknown field.");
             match inner.as_ref() {
                 Value::String(s) => {
                     let builtin = match field_name.as_ref() {
@@ -99,7 +101,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     };
                     match builtin {
                         Some(b) => Ok(Rc::new(Value::Builtin(b))),
-                        None => Err("No such field in this string.".into()),
+                        None => Err(err_unknown_field.into()),
                     }
                 }
                 Value::Map(fields) => {
@@ -116,11 +118,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     // If it wasn't a builtin, look for a key in the map.
                     match fields.get(&field_name_value) {
                         Some(v) => Ok(v.clone()),
-                        None => {
-                            // TODO: Add proper runtime error.
-                            // println!("Trying to access {} on:\n{:#?}", field_name, fields);
-                            Err("No such field in this value.".into())
-                        }
+                        None => Err(err_unknown_field.into()),
                     }
                 }
                 Value::List(..) => {
@@ -130,14 +128,10 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     };
                     match builtin {
                         Some(b) => Ok(Rc::new(Value::Builtin(b))),
-                        None => Err("No such field in this list.".into()),
+                        None => Err(err_unknown_field.into()),
                     }
                 }
-                _other => {
-                    // TODO: Add proper runtime error.
-                    // println!("Trying to access {} on:\n{:#?}", field_name, other);
-                    Err("Can only do field access on records for now.".into())
-                }
+                _other => Err(err_unknown_field.into()),
             }
         }
 
