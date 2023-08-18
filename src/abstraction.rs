@@ -202,13 +202,20 @@ impl<'a> Abstractor<'a> {
 
             CSeq::For {
                 idents,
+                collection_span,
                 collection,
                 body,
             } => ASeq::For {
+                idents_span: idents
+                    .iter()
+                    .copied()
+                    .reduce(|x, y| x.union(y))
+                    .expect("Parser should have produced at least one ident."),
                 idents: idents
                     .iter()
                     .map(|span| span.resolve(self.input).into())
                     .collect(),
+                collection_span: *collection_span,
                 collection: Box::new(self.expr(collection)),
                 body: Box::new(self.seq(&body.inner)),
             },

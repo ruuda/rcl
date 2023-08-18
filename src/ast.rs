@@ -141,7 +141,9 @@ pub enum Seq {
 
     /// Loop over the collection, binding the values to `idents`.
     For {
+        idents_span: Span,
         idents: Vec<Ident>,
+        collection_span: Span,
         collection: Box<Expr>,
         body: Box<Seq>,
     },

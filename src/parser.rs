@@ -779,7 +779,10 @@ impl<'a> Parser<'a> {
         self.parse_token(Token::KwIn, "Expected 'in' here.")?;
 
         self.skip_non_code()?;
+        let before = self.peek_span();
         let collection = self.parse_expr()?;
+        // TODO: This span is not necessarily minimal, it may include whitespace.
+        let collection_span = before.until(self.peek_span());
 
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' here.")?;
@@ -788,6 +791,7 @@ impl<'a> Parser<'a> {
 
         let result = Seq::For {
             idents: idents.into_boxed_slice(),
+            collection_span,
             collection: Box::new(collection),
             body: Box::new(body),
         };
@@ -801,8 +805,7 @@ impl<'a> Parser<'a> {
         self.skip_non_code()?;
         let before = self.peek_span();
         let condition = self.parse_expr()?;
-        // TODO: This span is not necessarily minimal, it may include
-        // whitespace.
+        // TODO: This span is not necessarily minimal, it may include whitespace.
         let condition_span = before.until(self.peek_span());
 
         self.skip_non_code()?;

@@ -92,6 +92,19 @@ impl Span {
             len: (other.start - self.start) as u32,
         }
     }
+
+    /// Return a span that encloses both spans.
+    pub fn union(&self, other: Span) -> Span {
+        debug_assert_eq!(self.doc, other.doc);
+        let start = self.start.min(other.start);
+        let end = self.end().max(other.end());
+        Span {
+            doc: self.doc,
+            start,
+            // TODO: Change types so this would fit.
+            len: (end - start) as u32,
+        }
+    }
 }
 
 pub trait Source<'a> {

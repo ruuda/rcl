@@ -220,6 +220,7 @@ impl<'a> Formatter<'a> {
                 idents,
                 collection,
                 body,
+                ..
             } => {
                 self.write_str("for ")?;
                 let mut is_first = true;

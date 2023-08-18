@@ -219,6 +219,7 @@ pub enum Seq {
     /// Loop over the collection, binding the values to `idents`.
     For {
         idents: Box<[Span]>,
+        collection_span: Span,
         collection: Box<Expr>,
         body: Box<Prefixed<Seq>>,
     },

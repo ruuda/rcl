@@ -348,7 +348,9 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
             Ok(())
         }
         Seq::For {
+            idents_span,
             idents,
+            collection_span,
             collection,
             body,
         } => {
@@ -362,6 +364,13 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                     }
                     Ok(())
                 }
+                (_names, Value::List(..)) => {
+                    let err = idents_span.error("Expected a single variable.").with_note(
+                        *collection_span,
+                        "This is a list, it yields one element per iteration.",
+                    );
+                    Err(err.into())
+                }
                 ([name], Value::Set(xs)) => {
                     for x in xs {
                         env.push(name.clone(), x.clone());
@@ -369,6 +378,13 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                         env.pop();
                     }
                     Ok(())
+                }
+                (_names, Value::Set(..)) => {
+                    let err = idents_span.error("Expected a single variable.").with_note(
+                        *collection_span,
+                        "This is a set, it yields one element per iteration.",
+                    );
+                    Err(err.into())
                 }
                 ([k_name, v_name], Value::Map(xs)) => {
                     for (k, v) in xs {
@@ -380,7 +396,17 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                     }
                     Ok(())
                 }
-                _ => Err("Iteration is not supported like this.".into()),
+                (_names, Value::Map(..)) => {
+                    let err = idents_span
+                        .error("Expected two variables in record iteration.")
+                        .with_note(
+                            *collection_span,
+                            "This is a record, it yields a key and value per iteration.",
+                        );
+                    Err(err.into())
+                }
+                // TODO: Add a proper type error.
+                _ => Err(collection_span.error("This is not iterable.").into()),
             }
         }
         Seq::If {
