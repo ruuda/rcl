@@ -166,9 +166,13 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
 
         Expr::Lam(_args, _body) => unimplemented!("TODO: Define lambdas."),
 
-        Expr::UnOp(op, value_expr) => {
+        Expr::UnOp {
+            op,
+            op_span,
+            body: value_expr,
+        } => {
             let value = eval(env, value_expr)?;
-            eval_unop(*op, value)
+            eval_unop(*op, *op_span, value)
         }
 
         Expr::BinOp {
@@ -184,13 +188,14 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
     }
 }
 
-fn eval_unop(op: UnOp, v: Rc<Value>) -> Result<Rc<Value>> {
+fn eval_unop(op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {
     match (op, v.as_ref()) {
         (UnOp::Neg, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
         (_op, _val) => {
-            // TODO: Add proper runtime error.
-            // println!("Trying to apply {:?} to:\n{:#?}", op, val);
-            Err("The unary operator is not supported for this value.".into())
+            // TODO: Add a proper type error, report the type of the value.
+            Err(op_span
+                .error("This operator is not supported for this value.")
+                .into())
         }
     }
 }
@@ -237,9 +242,10 @@ fn eval_binop(op: BinOp, op_span: Span, lhs: Rc<Value>, rhs: Rc<Value>) -> Resul
         (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x <= *y))),
         (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x >= *y))),
         _ => {
-            // TODO: Add a proper runtime error.
-            // println!("Trying to apply {:?} to:\n{:#?}\n{:#?}", op, lhs, rhs);
-            Err("The binary operator is not supported for this value.".into())
+            // TODO: Add a proper type error.
+            Err(op_span
+                .error("This operator is not supported for these values.")
+                .into())
         }
     }
 }

@@ -99,7 +99,11 @@ pub enum Expr {
     },
 
     /// Apply a unary operator.
-    UnOp(UnOp, Box<Expr>),
+    UnOp {
+        op: UnOp,
+        op_span: Span,
+        body: Box<Expr>,
+    },
 
     /// Apply a binary operator.
     BinOp {

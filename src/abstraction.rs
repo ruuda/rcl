@@ -134,7 +134,11 @@ impl<'a> Abstractor<'a> {
                 args: args.iter().map(|a| self.expr(&a.inner)).collect(),
             },
 
-            CExpr::UnOp { op, body, .. } => AExpr::UnOp(*op, Box::new(self.expr(body))),
+            CExpr::UnOp { op, op_span, body } => AExpr::UnOp {
+                op: *op,
+                op_span: *op_span,
+                body: Box::new(self.expr(body)),
+            },
 
             CExpr::BinOp {
                 op,

@@ -1,0 +1,8 @@
+"0" + 1
+
+# output:
+ --> stdin:1:4
+  |
+1 | "0" + 1
+  |     ^
+Error: This operator is not supported for these values.
