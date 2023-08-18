@@ -118,7 +118,10 @@ impl<'a> Abstractor<'a> {
                 body_else: Box::new(self.expr(&body_else.inner)),
             },
 
-            CExpr::Var(span) => AExpr::Var(span.resolve(self.input).into()),
+            CExpr::Var(span) => AExpr::Var {
+                span: *span,
+                ident: span.resolve(self.input).into(),
+            },
 
             CExpr::Field { inner, field } => AExpr::Field {
                 inner: Box::new(self.expr(inner)),

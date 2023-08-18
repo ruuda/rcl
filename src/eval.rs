@@ -80,9 +80,9 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             }
         }
 
-        Expr::Var(var) => match env.lookup(var) {
+        Expr::Var { span, ident } => match env.lookup(ident) {
             Some(value) => Ok(value.clone()),
-            None => Err("Variable not found.".into()),
+            None => Err(span.error("Unknown variable.").into()),
         },
 
         Expr::Field {

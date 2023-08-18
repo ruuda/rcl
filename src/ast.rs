@@ -80,7 +80,7 @@ pub enum Expr {
     },
 
     /// Access a variable.
-    Var(Ident),
+    Var { span: Span, ident: Ident },
 
     /// Access a field on the inner expression.
     Field { inner: Box<Expr>, field: Ident },
