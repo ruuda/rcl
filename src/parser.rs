@@ -832,13 +832,27 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_seq_if(&mut self) -> Result<Seq> {
-        let _for = self.consume();
+        let if_ = self.consume();
 
         self.skip_non_code()?;
         let (condition_span, condition) = self.parse_expr()?;
 
         self.skip_non_code()?;
-        self.parse_token(Token::Colon, "Expected ':' here.")?;
+
+        // Parse the colon, but also add a hint if this looks like an
+        // if-then-else.
+        match self.peek() {
+            Some(Token::Colon) => self.consume(),
+            Some(Token::KwThen) => {
+                return self.error_with_note(
+                    "Expected ':' here.",
+                    if_,
+                    "This 'if' is part of a comprehension. \
+                    For an if-then-else expression, enclose the expression in parentheses.",
+                );
+            }
+            _ => return self.error("Expected ':' here."),
+        };
 
         let body = self.parse_prefixed_seq()?;
 

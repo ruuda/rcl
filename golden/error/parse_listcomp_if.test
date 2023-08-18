@@ -1,0 +1,16 @@
+[
+  if true then "true" else "false"
+]
+
+# output:
+ --> stdin:2:10
+  |
+2 |   if true then "true" else "false"
+  |           ^~~~
+Error: Expected ':' here.
+
+ --> stdin:2:2
+  |
+2 |   if true then "true" else "false"
+  |   ^~
+Note: This 'if' is part of a comprehension. For an if-then-else expression, enclose the expression in parentheses.
