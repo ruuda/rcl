@@ -319,7 +319,11 @@ impl<'a> Parser<'a> {
         let _if = self.consume();
 
         self.skip_non_code()?;
+        let before = self.peek_span();
         let condition = self.parse_expr()?;
+        // TODO: This span is not necessarily minimal, it may include
+        // whitespace.
+        let condition_span = before.until(self.peek_span());
 
         let before_then = self.parse_non_code();
         self.parse_token(Token::KwThen, "Expected 'then' here.")?;
@@ -330,6 +334,7 @@ impl<'a> Parser<'a> {
         let body_else = self.parse_prefixed_expr()?;
 
         let result = Expr::IfThenElse {
+            condition_span,
             condition: Box::new(condition),
             before_then,
             body_then: Box::new(body_then),
@@ -790,7 +795,11 @@ impl<'a> Parser<'a> {
         let _for = self.consume();
 
         self.skip_non_code()?;
+        let before = self.peek_span();
         let condition = self.parse_expr()?;
+        // TODO: This span is not necessarily minimal, it may include
+        // whitespace.
+        let condition_span = before.until(self.peek_span());
 
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' here.")?;
@@ -798,6 +807,7 @@ impl<'a> Parser<'a> {
         let body = self.parse_prefixed_seq()?;
 
         let result = Seq::If {
+            condition_span,
             condition: Box::new(condition),
             body: Box::new(body),
         };

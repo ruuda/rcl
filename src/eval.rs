@@ -62,12 +62,21 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
 
         Expr::StringLit(s) => Ok(Rc::new(Value::String(s.clone()))),
 
-        Expr::IfThenElse(if_, then, else_) => {
-            let cond = eval(env, if_)?;
+        Expr::IfThenElse {
+            condition_span,
+            condition,
+            body_then,
+            body_else,
+        } => {
+            let cond = eval(env, condition)?;
             match cond.as_ref() {
-                Value::Bool(true) => eval(env, then),
-                Value::Bool(false) => eval(env, else_),
-                _ => Err("Condition should be boolean.".into()),
+                Value::Bool(true) => eval(env, body_then),
+                Value::Bool(false) => eval(env, body_else),
+                _ => {
+                    // TODO: Make this a type error.
+                    let err = condition_span.error("Condition should be a boolean.");
+                    Err(err.into())
+                }
             }
         }
 
@@ -370,12 +379,20 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                 _ => Err("Iteration is not supported like this.".into()),
             }
         }
-        Seq::If { condition, body } => {
+        Seq::If {
+            condition_span,
+            condition,
+            body,
+        } => {
             let cond = eval(env, condition)?;
             match cond.as_ref() {
                 Value::Bool(true) => eval_seq(env, body, out),
                 Value::Bool(false) => Ok(()),
-                _ => Err("Comprehension condition should be boolean.".into()),
+                _ => {
+                    // TODO: Make this a type error.
+                    let err = condition_span.error("Condition should be a boolean.");
+                    Err(err.into())
+                }
             }
         }
         Seq::Let { ident, value, body } => {

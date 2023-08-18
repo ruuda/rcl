@@ -128,6 +128,7 @@ pub enum Expr {
 
     /// A conditional expression.
     IfThenElse {
+        condition_span: Span,
         condition: Box<Expr>,
         before_then: Box<[NonCode]>,
         body_then: Box<Prefixed<Expr>>,
@@ -223,6 +224,7 @@ pub enum Seq {
 
     /// Enter the loop only if the condition is true.
     If {
+        condition_span: Span,
         condition: Box<Expr>,
         body: Box<Prefixed<Seq>>,
     },

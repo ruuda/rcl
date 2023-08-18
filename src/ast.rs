@@ -72,7 +72,12 @@ pub enum Expr {
     IntegerLit(i64),
 
     /// An conditional choice (if, then, else).
-    IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
+    IfThenElse {
+        condition_span: Span,
+        condition: Box<Expr>,
+        body_then: Box<Expr>,
+        body_else: Box<Expr>,
+    },
 
     /// Access a variable.
     Var(Ident),
@@ -134,6 +139,7 @@ pub enum Seq {
 
     /// Enter the loop only if the condition is true.
     If {
+        condition_span: Span,
         condition: Box<Expr>,
         body: Box<Seq>,
     },

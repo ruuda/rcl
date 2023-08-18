@@ -106,15 +106,17 @@ impl<'a> Abstractor<'a> {
             }
 
             CExpr::IfThenElse {
+                condition_span,
                 condition,
                 body_then,
                 body_else,
                 ..
-            } => AExpr::IfThenElse(
-                Box::new(self.expr(condition)),
-                Box::new(self.expr(&body_then.inner)),
-                Box::new(self.expr(&body_else.inner)),
-            ),
+            } => AExpr::IfThenElse {
+                condition_span: *condition_span,
+                condition: Box::new(self.expr(condition)),
+                body_then: Box::new(self.expr(&body_then.inner)),
+                body_else: Box::new(self.expr(&body_else.inner)),
+            },
 
             CExpr::Var(span) => AExpr::Var(span.resolve(self.input).into()),
 
@@ -197,7 +199,12 @@ impl<'a> Abstractor<'a> {
                 body: Box::new(self.seq(&body.inner)),
             },
 
-            CSeq::If { condition, body } => ASeq::If {
+            CSeq::If {
+                condition_span,
+                condition,
+                body,
+            } => ASeq::If {
+                condition_span: *condition_span,
                 condition: Box::new(self.expr(condition)),
                 body: Box::new(self.seq(&body.inner)),
             },

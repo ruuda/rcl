@@ -238,7 +238,9 @@ impl<'a> Formatter<'a> {
                 self.write_seq(&body.inner)?;
             }
 
-            Seq::If { condition, body } => {
+            Seq::If {
+                condition, body, ..
+            } => {
                 self.write_str("if ")?;
                 self.write_expr(condition)?;
                 self.write_str(":\n")?;
