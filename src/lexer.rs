@@ -35,6 +35,15 @@ pub enum Token {
     /// A string enclosed in triple double quotes `"""`.
     TripleQuoted,
 
+    /// A double-quoted f-string until its first hole, e.g. `f" str {`.
+    FormatDoubleOpen,
+
+    /// A double-quoted f-string between two holes, e.g. `} str {`.
+    FormatDoubleInner,
+
+    /// A double-quoted f-string after the last hole, e.g. `} str"`.
+    FormatDoubleClose,
+
     /// A hexadecimal integer literal prefixed by `0x`.
     NumHexadecimal,
 
@@ -135,6 +144,20 @@ pub enum Token {
     Pipe,
 }
 
+/// The an element of the string interpolation stack.
+enum Delimiter {
+    /// Inside a `{}` in expression context.
+    Brace,
+    /// Inside a `()` in expression context.
+    Paren,
+    /// Inside a `[]` in expression context.
+    Bracket,
+    /// Inside a hole in an `f"`-quoted string.
+    HoleDouble,
+    /// Inside a hole in an `f"""`-quoted string.
+    HoleTriple,
+}
+
 pub type Lexeme = (Token, Span);
 
 /// Lex an input document into tokens.
@@ -157,6 +180,11 @@ struct Lexer<'a> {
     input: &'a str,
     doc: DocId,
     start: usize,
+
+    /// A stack of delimiters to determine what we are parsing.
+    ///
+    /// Also the offset at which we encountered it.
+    delimiters: Vec<(Delimiter, usize)>,
 }
 
 impl<'a> Lexer<'a> {
@@ -165,6 +193,7 @@ impl<'a> Lexer<'a> {
             input,
             doc,
             start: 0,
+            delimiters: Vec::new(),
         }
     }
 
@@ -190,6 +219,33 @@ impl<'a> Lexer<'a> {
         Err(error)
     }
 
+    /// Build an error of the given length at the current cursor location.
+    fn error<T>(&mut self, len: usize, message: &'static str) -> Result<T> {
+        let error = ParseError {
+            span: self.span(len),
+            message,
+            note: None,
+            help: None,
+        };
+        Err(error)
+    }
+
+    /// Build an error of length 1, with a note at the given offset.
+    fn error_with_note<T>(
+        &mut self,
+        message: &'static str,
+        note_offset: usize,
+        note: &'static str,
+    ) -> Result<T> {
+        let error = ParseError {
+            span: self.span(1),
+            message,
+            note: Some((Span::new(self.doc, note_offset, note_offset + 1), note)),
+            help: None,
+        };
+        Err(error)
+    }
+
     /// Take `skip` bytes, and then more until `include` returns false.
     fn skip_take_while<F: FnMut(u8) -> bool>(&mut self, skip: usize, mut include: F) -> Span {
         let input = &self.input.as_bytes()[self.start + skip..];
@@ -199,6 +255,44 @@ impl<'a> Lexer<'a> {
     /// Take until `include` returns false.
     fn take_while<F: FnMut(u8) -> bool>(&mut self, include: F) -> Span {
         self.skip_take_while(0, include)
+    }
+
+    /// Push a delimiter on thes stack. Does not advance the cursor.
+    fn push_delimiter(&mut self, delimiter: Delimiter) {
+        self.delimiters.push((delimiter, self.start));
+    }
+
+    /// Pop a closing delimiter while verifying that it is the right one.
+    fn pop_delimiter(&mut self) -> Result<Delimiter> {
+        let actual_end = self.input.as_bytes()[self.start];
+
+        let top = match self.delimiters.pop() {
+            None => match actual_end {
+                b')' => return self.error(1, "Found unmatched ')'."),
+                b'}' => return self.error(1, "Found unmatched '}'."),
+                b']' => return self.error(1, "Found unmatched ']'."),
+                invalid => unreachable!("Invalid byte for `pop_delimiter`: 0x{:x}", invalid),
+            },
+            Some(t) => t,
+        };
+        let expected_end = match top.0 {
+            Delimiter::Paren => b')',
+            Delimiter::Brace => b'}',
+            Delimiter::Bracket => b']',
+            Delimiter::HoleDouble => b'}',
+            Delimiter::HoleTriple => b'}',
+        };
+
+        if actual_end == expected_end {
+            return Ok(top.0);
+        }
+
+        match expected_end {
+            b')' => self.error_with_note("Expected ')'.", top.1, "Unmatched '(' opened here."),
+            b'}' => self.error_with_note("Expected '}'.", top.1, "Unmatched '{' opened here."),
+            b']' => self.error_with_note("Expected ']'.", top.1, "Unmatched '[' opened here."),
+            _ => unreachable!("End byte is one of the above three."),
+        }
     }
 
     /// Lex one token. The input must not be empty.
@@ -218,8 +312,25 @@ impl<'a> Lexer<'a> {
             return self.lex_in_triple_quote();
         }
 
+        if input.starts_with(b"f\"") {
+            return self.lex_in_format_double_open();
+        }
+
         if input[0] == b'"' {
             return self.lex_in_double_quote();
+        }
+
+        // What state to continue lexing in after the closing '}', depends on
+        // whether it was closing a regular expression or a string
+        // interpolation.
+        if input[0] == b'}' {
+            match self.pop_delimiter()? {
+                Delimiter::HoleDouble => todo!("Continue f-quoted string."),
+                Delimiter::HoleTriple => todo!("Continue triple-quoted f-string."),
+                // If it was a regular delimiter, then we continue lexing
+                // normally.
+                _ => {}
+            }
         }
 
         if input[0].is_ascii_digit() {
@@ -350,6 +461,37 @@ impl<'a> Lexer<'a> {
         )
     }
 
+    fn lex_in_format_double_open(&mut self) -> Result<Lexeme> {
+        let input = &self.input.as_bytes()[self.start..];
+
+        // Skip over the initial f and opening quote.
+        for (i, &ch) in input.iter().enumerate().skip(2) {
+            // Indexing does not go out of bounds here because we start at 1.
+            if ch == b'"' && input[i - 1] == b'\\' {
+                // An escaped quote should not end the token.
+                continue;
+            }
+            if ch == b'{' && input[i - 1] == b'\\' {
+                // An escaped { should not open a hole.
+            }
+            if ch == b'{' {
+                self.push_delimiter(Delimiter::HoleDouble);
+                return Ok((Token::FormatDoubleOpen, self.span(i + 2)));
+            }
+            if ch == b'"' {
+                return self.error(
+                    i + 2,
+                    "This f-string has no holes, it can be a regular string.",
+                );
+            }
+        }
+
+        self.error_while(
+            |_| true,
+            "Unexpected end of input, string literal is not closed.",
+        )
+    }
+
     fn lex_in_number(&mut self) -> Result<Lexeme> {
         let mut input = &self.input.as_bytes()[self.start..];
         let mut n = 0;
@@ -443,17 +585,7 @@ impl<'a> Lexer<'a> {
             return Ok(result);
         }
 
-        if let Some(result) = self.lex_in_punct_monograph() {
-            return Ok(result);
-        }
-
-        let error = ParseError {
-            span: self.span(1),
-            message: "Unrecognized punctuation here.",
-            note: None,
-            help: None,
-        };
-        Err(error)
+        self.lex_in_punct_monograph()
     }
 
     /// Try to lex punctuation of two bytes in length.
@@ -474,14 +606,34 @@ impl<'a> Lexer<'a> {
     }
 
     /// Try to lex punctuation of a single byte in length.
-    fn lex_in_punct_monograph(&mut self) -> Option<Lexeme> {
+    fn lex_in_punct_monograph(&mut self) -> Result<Lexeme> {
         let token = match self.input.as_bytes()[self.start] {
-            b'(' => Token::LParen,
-            b')' => Token::RParen,
-            b'[' => Token::LBracket,
-            b']' => Token::RBracket,
-            b'{' => Token::LBrace,
-            b'}' => Token::RBrace,
+            b'(' => {
+                self.push_delimiter(Delimiter::Paren);
+                Token::LParen
+            }
+            b'[' => {
+                self.push_delimiter(Delimiter::Bracket);
+                Token::LBracket
+            }
+            b'{' => {
+                self.push_delimiter(Delimiter::Brace);
+                Token::LBrace
+            }
+            b')' => {
+                self.pop_delimiter()?;
+                Token::RParen
+            }
+            b']' => {
+                self.pop_delimiter()?;
+                Token::RBracket
+            }
+            b'}' => {
+                // Note, here we do not pop the delimiter, we have already
+                // popped it before when deciding whether it was the end of an
+                // interpolation hole or a regular bracket.
+                Token::RBrace
+            }
             b'<' => Token::Lt,
             b'>' => Token::Gt,
             b'=' => Token::Eq,
@@ -493,9 +645,9 @@ impl<'a> Lexer<'a> {
             b':' => Token::Colon,
             b';' => Token::Semicolon,
             b'|' => Token::Pipe,
-            _ => return None,
+            _ => return self.error(1, "Unrecognized punctuation here."),
         };
 
-        Some((token, self.span(1)))
+        Ok((token, self.span(1)))
     }
 }
