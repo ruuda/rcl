@@ -20,3 +20,8 @@
 "0x1"
 "0b1"
 "0.1e1"
+
+# Builtin methods.
+"contains"
+"get"
+"len"
