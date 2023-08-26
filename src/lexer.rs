@@ -447,7 +447,7 @@ impl<'a> Lexer<'a> {
                 // An escaped { should not open a hole.
                 continue;
             }
-            if ch == b'{' && mode != QuoteMode::Regular {
+            if ch == b'{' {
                 let token = match mode {
                     // Holes are only meaningful if we are in an f-string.
                     QuoteMode::Regular => continue,
