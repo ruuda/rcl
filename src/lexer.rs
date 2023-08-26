@@ -661,6 +661,15 @@ impl<'a> Lexer<'a> {
             b':' => Token::Colon,
             b';' => Token::Semicolon,
             b'|' => Token::Pipe,
+            b'#' => {
+                let err = ParseError {
+                    span: self.span(1),
+                    message: "Unrecognized punctuation here.",
+                    note: None,
+                    help: Some("Comments are written with '//', not with '#'."),
+                };
+                return Err(err);
+            }
             _ => return self.error(1, "Unrecognized punctuation here."),
         };
 

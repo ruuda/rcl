@@ -1,8 +1,8 @@
-true # false
+true @ false
 
 # output:
  --> stdin:1:5
   |
-1 | true # false
+1 | true @ false
   |      ^
 Error: Unrecognized punctuation here.
