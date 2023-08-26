@@ -430,11 +430,11 @@ impl<'a> Lexer<'a> {
         let input = &self.input.as_bytes()[self.start..];
 
         // The length of the start of the string literal, can be one or two
-        // bytes depending on the prefix, '"' or 'f"'.
+        // bytes depending on the prefix, '"' or 'f"' or '}'.
         let n_skip = match mode {
             QuoteMode::Regular => 1,
             QuoteMode::FormatOpen => 2,
-            QuoteMode::FormatInner => 2,
+            QuoteMode::FormatInner => 1,
         };
 
         for (i, &ch) in input.iter().enumerate().skip(n_skip) {
@@ -445,23 +445,24 @@ impl<'a> Lexer<'a> {
             }
             if ch == b'{' && input[i - 1] == b'\\' {
                 // An escaped { should not open a hole.
+                continue;
             }
             if ch == b'{' && mode != QuoteMode::Regular {
                 // Holes are allowed if we are in an f-string.
                 self.push_delimiter(Delimiter::HoleDouble);
-                return Ok((Token::FormatDoubleOpen, self.span(i + n_skip)));
+                return Ok((Token::FormatDoubleOpen, self.span(i + 1)));
             }
             if ch == b'"' {
                 match mode {
                     QuoteMode::Regular => {
-                        return Ok((Token::DoubleQuoted, self.span(i + n_skip)));
+                        return Ok((Token::DoubleQuoted, self.span(i + 1)));
                     }
                     QuoteMode::FormatInner => {
-                        return Ok((Token::FormatDoubleClose, self.span(i + n_skip)));
+                        return Ok((Token::FormatDoubleClose, self.span(i + 1)));
                     }
                     QuoteMode::FormatOpen => {
                         return self.error(
-                            i + n_skip,
+                            i + 1,
                             "This f-string has no holes, it can be a regular string.",
                         );
                     }

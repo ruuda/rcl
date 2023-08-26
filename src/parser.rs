@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, UnOp};
+use crate::cst::{BinOp, Expr, FormatHole, NonCode, Prefixed, Seq, UnOp};
 use crate::error::ParseError;
 use crate::lexer::{self, Token};
 use crate::source::{DocId, Span};
@@ -573,15 +573,58 @@ impl<'a> Parser<'a> {
                 };
                 Ok(result)
             }
+            Some(Token::FormatDoubleOpen) => self.parse_format_string_double(),
             Some(Token::KwTrue) => Ok(Expr::BoolLit(self.consume(), true)),
             Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
-            Some(Token::DoubleQuoted) => Ok(Expr::StringLit(self.consume())),
+            Some(Token::DoubleQuoted) => Ok(Expr::StringLitDouble(self.consume())),
             Some(Token::TripleQuoted) => Ok(Expr::StringLitTriple(self.consume())),
             Some(Token::NumHexadecimal) => Ok(Expr::NumHexadecimal(self.consume())),
             Some(Token::NumBinary) => Ok(Expr::NumBinary(self.consume())),
             Some(Token::NumDecimal) => Ok(Expr::NumDecimal(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),
             _ => self.error("Expected a term here."),
+        }
+    }
+
+    /// Parse a double-quoted format string (`f"`).
+    fn parse_format_string_double(&mut self) -> Result<Expr> {
+        debug_assert_eq!(self.peek(), Some(Token::FormatDoubleOpen));
+
+        let begin = self.consume();
+        let mut holes = Vec::new();
+        let mut prefix = begin;
+
+        loop {
+            self.skip_non_code()?;
+            let (_span, inner) = self.parse_expr()?;
+            self.skip_non_code()?;
+
+            let is_close = match self.peek() {
+                Some(Token::FormatDoubleInner) => false,
+                Some(Token::FormatDoubleClose) => true,
+                _ => {
+                    return self.error_with_note(
+                        "Unclosed hole in f-string, expected '}' here.",
+                        prefix.trim_start(prefix.len() - 1),
+                        "Hole opened here.",
+                    )
+                }
+            };
+
+            let suffix = self.consume();
+            let hole = FormatHole {
+                // The hole span also covers the } and {.
+                span: Span::new(self.doc, prefix.end(), suffix.start() + 1),
+                inner,
+                suffix,
+            };
+            holes.push(hole);
+            prefix = suffix;
+
+            if is_close {
+                let result = Expr::FormatStringDouble { begin, holes };
+                return Ok(result);
+            }
         }
     }
 

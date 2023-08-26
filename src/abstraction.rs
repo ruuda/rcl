@@ -56,7 +56,7 @@ impl<'a> Abstractor<'a> {
 
             CExpr::BoolLit(_span, b) => AExpr::BoolLit(*b),
 
-            CExpr::StringLit(span) => {
+            CExpr::StringLitDouble(span) => {
                 // Cut off the string literal quotes.
                 // TODO: Write a proper parser for string literals that handles
                 // escape codes.
@@ -70,6 +70,10 @@ impl<'a> Abstractor<'a> {
                 // escape codes, and for this one, strip the leading whitespace.
                 let span_inner = span.trim_start(3).trim_end(3);
                 AExpr::StringLit(span_inner.resolve(self.input).into())
+            }
+
+            CExpr::FormatStringDouble { begin, holes } => {
+                todo!("Implement format string abstraction.")
             }
 
             CExpr::NumHexadecimal(span) => {

@@ -115,7 +115,7 @@ impl<'a> Formatter<'a> {
                 self.write_span(*span)?;
             }
 
-            Expr::StringLit(span) => {
+            Expr::StringLitDouble(span) => {
                 self.write_span(*span)?;
             }
 

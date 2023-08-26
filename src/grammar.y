@@ -13,7 +13,7 @@
 // Inspect with: bison --feature=syntax-only -Wcounterexamples src/grammar.y
 %}
 
-%token IDENT STRING NUMBER UNOP BINOP
+%token IDENT STRING NUMBER UNOP BINOP FSTRING_OPEN FSTRING_INNER FSTRING_CLOSE
 
 %%
 
@@ -63,9 +63,15 @@ expr_term
   : '{' seqs '}'
   | '[' seqs ']'
   | '(' expr ')'
+  | FSTRING_OPEN fstring
   | STRING
   | NUMBER
   | IDENT
+  ;
+
+fstring
+  : expr FSTRING_CLOSE
+  | expr FSTRING_INNER fstring
   ;
 
 seqs

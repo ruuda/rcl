@@ -1,0 +1,8 @@
+f"This f-string has no holes."
+
+# output:
+ --> stdin:1:0
+  |
+1 | f"This f-string has no holes."
+  | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Error: This f-string has no holes, it can be a regular string.

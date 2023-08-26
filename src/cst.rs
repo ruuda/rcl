@@ -78,6 +78,19 @@ pub struct Prefixed<T> {
     pub inner: T,
 }
 
+/// A hole in a format string.
+#[derive(Debug)]
+pub struct FormatHole {
+    /// The span of the hole itself, including `}` and `{`.
+    pub span: Span,
+
+    /// The contents of the hole.
+    pub inner: Expr,
+
+    /// The string literal following the hole, including `}`.
+    pub suffix: Span,
+}
+
 #[derive(Debug)]
 pub enum Expr {
     /// A let-binding that binds `value` to the name `ident` in `body`.
@@ -115,10 +128,18 @@ pub enum Expr {
     BoolLit(Span, bool),
 
     /// A string literal quoted in double quotes (`"`).
-    StringLit(Span),
+    StringLitDouble(Span),
 
     /// A string literal quoted in triple double quotes (`"""`).
     StringLitTriple(Span),
+
+    /// A format string quoted in double quotes (`f"`).
+    FormatStringDouble {
+        /// The string literal up to and including the `{` of the first hole.
+        begin: Span,
+        /// Contents of a hole followed by the string literal after it.
+        holes: Vec<FormatHole>,
+    },
 
     /// An integer in hexadecimal notation.
     NumHexadecimal(Span),

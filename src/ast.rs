@@ -71,6 +71,9 @@ pub enum Expr {
     /// TODO: This should be a bigint.
     IntegerLit(i64),
 
+    /// A format string, with string literals and hole contents interleaved.
+    Format(Vec<Expr>),
+
     /// An conditional choice (if, then, else).
     IfThenElse {
         condition_span: Span,
