@@ -448,9 +448,14 @@ impl<'a> Lexer<'a> {
                 continue;
             }
             if ch == b'{' && mode != QuoteMode::Regular {
-                // Holes are allowed if we are in an f-string.
+                let token = match mode {
+                    // Holes are only meaningful if we are in an f-string.
+                    QuoteMode::Regular => continue,
+                    QuoteMode::FormatOpen => Token::FormatDoubleOpen,
+                    QuoteMode::FormatInner => Token::FormatDoubleInner,
+                };
                 self.push_delimiter(Delimiter::HoleDouble);
-                return Ok((Token::FormatDoubleOpen, self.span(i + 1)));
+                return Ok((token, self.span(i + 1)));
             }
             if ch == b'"' {
                 match mode {

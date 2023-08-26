@@ -10,7 +10,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Expr, Seq, UnOp};
+use crate::ast::{BinOp, Expr, FormatFragment, Seq, UnOp};
 use crate::error::{IntoRuntimeError, Result};
 use crate::runtime::{Builtin, Env, Value};
 use crate::source::Span;
@@ -62,9 +62,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
 
         Expr::StringLit(s) => Ok(Rc::new(Value::String(s.clone()))),
 
-        Expr::Format(fragments) => {
-            todo!("Evaluate format string parts. {:#?}", fragments)
-        }
+        Expr::Format(fragments) => eval_format(env, fragments),
 
         Expr::IfThenElse {
             condition_span,
@@ -195,6 +193,26 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             eval_binop(*op, *op_span, lhs, rhs)
         }
     }
+}
+
+/// Evaluate a format string.
+pub fn eval_format(env: &mut Env, fragments: &[FormatFragment]) -> Result<Rc<Value>> {
+    let mut results: Vec<Rc<str>> = Vec::new();
+
+    for fragment in fragments {
+        let result = eval(env, &fragment.inner)?;
+        match result.as_ref() {
+            Value::String(s) => results.push(s.clone()),
+            _ => todo!("Format non-string values."),
+        }
+    }
+
+    let mut result = String::with_capacity(results.iter().map(|s| s.len()).sum());
+    for s in results {
+        result.push_str(s.as_ref());
+    }
+
+    Ok(Rc::new(Value::String(result.into())))
 }
 
 fn eval_unop(op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {
