@@ -81,11 +81,11 @@ pub struct Prefixed<T> {
 /// A hole in a format string.
 #[derive(Debug)]
 pub struct FormatHole {
-    /// The span of the hole itself, including `}` and `{`.
+    /// The span of the expression that fills the hole, excluding `}` and `{`.
     pub span: Span,
 
-    /// The contents of the hole.
-    pub inner: Expr,
+    /// The expression that fills the hole.
+    pub body: Expr,
 
     /// The string literal following the hole, including `}`.
     pub suffix: Span,

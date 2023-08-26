@@ -596,7 +596,7 @@ impl<'a> Parser<'a> {
 
         loop {
             self.skip_non_code()?;
-            let (_span, inner) = self.parse_expr()?;
+            let (span, body) = self.parse_expr()?;
             self.skip_non_code()?;
 
             let is_close = match self.peek() {
@@ -612,12 +612,7 @@ impl<'a> Parser<'a> {
             };
 
             let suffix = self.consume();
-            let hole = FormatHole {
-                // The hole span also covers the } and {.
-                span: Span::new(self.doc, prefix.end(), suffix.start() + 1),
-                inner,
-                suffix,
-            };
+            let hole = FormatHole { span, body, suffix };
             holes.push(hole);
             prefix = suffix;
 

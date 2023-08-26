@@ -200,10 +200,17 @@ pub fn eval_format(env: &mut Env, fragments: &[FormatFragment]) -> Result<Rc<Val
     let mut results: Vec<Rc<str>> = Vec::new();
 
     for fragment in fragments {
-        let result = eval(env, &fragment.inner)?;
+        let result = eval(env, &fragment.body)?;
         match result.as_ref() {
             Value::String(s) => results.push(s.clone()),
-            _ => todo!("Format non-string values."),
+            Value::Int(i) => results.push(i.to_string().into()),
+            Value::Bool(b) => results.push((if *b { "true" } else { "false" }).into()),
+            _ => {
+                return Err(fragment
+                    .span
+                    .error("This value cannot be interpolated into a string.")
+                    .into())
+            }
         }
     }
 

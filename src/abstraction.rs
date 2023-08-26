@@ -78,14 +78,14 @@ impl<'a> Abstractor<'a> {
                 let begin_inner = begin.trim_start(2).trim_end(1);
                 let begin = FormatFragment {
                     span: *begin,
-                    inner: AExpr::StringLit(begin_inner.resolve(self.input).into()),
+                    body: AExpr::StringLit(begin_inner.resolve(self.input).into()),
                 };
                 fragments.push(begin);
 
                 for hole in holes.iter() {
-                    let inner = self.expr(&hole.inner);
+                    let body = self.expr(&hole.body);
                     let frag = FormatFragment {
-                        inner,
+                        body,
                         span: hole.span,
                     };
                     fragments.push(frag);
@@ -94,7 +94,7 @@ impl<'a> Abstractor<'a> {
                     let suffix_inner = hole.suffix.trim_start(1).trim_end(1);
                     let frag = FormatFragment {
                         span: hole.suffix,
-                        inner: AExpr::StringLit(suffix_inner.resolve(self.input).into()),
+                        body: AExpr::StringLit(suffix_inner.resolve(self.input).into()),
                     };
                     fragments.push(frag);
                 }

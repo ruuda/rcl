@@ -48,9 +48,9 @@ impl From<&str> for Ident {
 /// A part of a format string, either a hole or a string literal.
 #[derive(Debug)]
 pub struct FormatFragment {
-    /// For a hole, the span includes the surrounding `} {`.
+    /// For a hole, the span of the expression that fills the hole.
     pub span: Span,
-    pub inner: Expr,
+    pub body: Expr,
 }
 
 /// An expression.
