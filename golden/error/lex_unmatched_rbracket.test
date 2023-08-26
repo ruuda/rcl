@@ -1,0 +1,8 @@
+]
+
+# output:
+ --> stdin:1:0
+  |
+1 | ]
+  | ^
+Error: Found unmatched ']'.
