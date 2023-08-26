@@ -62,8 +62,8 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
 
         Expr::StringLit(s) => Ok(Rc::new(Value::String(s.clone()))),
 
-        Expr::Format(parts) => {
-            todo!("Evaluate format string parts.")
+        Expr::Format(fragments) => {
+            todo!("Evaluate format string parts. {:#?}", fragments)
         }
 
         Expr::IfThenElse {

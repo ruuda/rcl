@@ -45,6 +45,14 @@ impl From<&str> for Ident {
     }
 }
 
+/// A part of a format string, either a hole or a string literal.
+#[derive(Debug)]
+pub struct FormatFragment {
+    /// For a hole, the span includes the surrounding `} {`.
+    pub span: Span,
+    pub inner: Expr,
+}
+
 /// An expression.
 #[derive(Debug)]
 pub enum Expr {
@@ -72,7 +80,7 @@ pub enum Expr {
     IntegerLit(i64),
 
     /// A format string, with string literals and hole contents interleaved.
-    Format(Vec<Expr>),
+    Format(Vec<FormatFragment>),
 
     /// An conditional choice (if, then, else).
     IfThenElse {
