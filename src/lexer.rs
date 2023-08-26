@@ -158,6 +158,17 @@ enum Delimiter {
     HoleTriple,
 }
 
+/// What type of string literal we are lexing.
+#[derive(Eq, PartialEq)]
+enum QuoteMode {
+    /// Not a format string.
+    Regular,
+    /// A format string before the first hole.
+    FormatOpen,
+    /// A format string after a hole.
+    FormatInner,
+}
+
 pub type Lexeme = (Token, Span);
 
 /// Lex an input document into tokens.
@@ -313,11 +324,11 @@ impl<'a> Lexer<'a> {
         }
 
         if input.starts_with(b"f\"") {
-            return self.lex_in_format_double_open();
+            return self.lex_in_double_quote(QuoteMode::FormatOpen);
         }
 
         if input[0] == b'"' {
-            return self.lex_in_double_quote();
+            return self.lex_in_double_quote(QuoteMode::Regular);
         }
 
         // What state to continue lexing in after the closing '}', depends on
@@ -325,7 +336,9 @@ impl<'a> Lexer<'a> {
         // interpolation.
         if input[0] == b'}' {
             match self.pop_delimiter()? {
-                Delimiter::HoleDouble => todo!("Continue f-quoted string."),
+                Delimiter::HoleDouble => {
+                    return self.lex_in_double_quote(QuoteMode::FormatInner);
+                }
                 Delimiter::HoleTriple => todo!("Continue triple-quoted f-string."),
                 // If it was a regular delimiter, then we continue lexing
                 // normally.
@@ -413,18 +426,46 @@ impl<'a> Lexer<'a> {
         (Token::LineComment, self.take_while(|ch| ch != b'\n'))
     }
 
-    fn lex_in_double_quote(&mut self) -> Result<Lexeme> {
+    fn lex_in_double_quote(&mut self, mode: QuoteMode) -> Result<Lexeme> {
         let input = &self.input.as_bytes()[self.start..];
 
-        // Skip over the initial opening quote.
-        for (i, &ch) in input.iter().enumerate().skip(1) {
+        // The length of the start of the string literal, can be one or two
+        // bytes depending on the prefix, '"' or 'f"'.
+        let n_skip = match mode {
+            QuoteMode::Regular => 1,
+            QuoteMode::FormatOpen => 2,
+            QuoteMode::FormatInner => 2,
+        };
+
+        for (i, &ch) in input.iter().enumerate().skip(n_skip) {
             // Indexing does not go out of bounds here because we start at 1.
             if ch == b'"' && input[i - 1] == b'\\' {
                 // An escaped quote should not end the token.
                 continue;
             }
+            if ch == b'{' && input[i - 1] == b'\\' {
+                // An escaped { should not open a hole.
+            }
+            if ch == b'{' && mode != QuoteMode::Regular {
+                // Holes are allowed if we are in an f-string.
+                self.push_delimiter(Delimiter::HoleDouble);
+                return Ok((Token::FormatDoubleOpen, self.span(i + n_skip)));
+            }
             if ch == b'"' {
-                return Ok((Token::DoubleQuoted, self.span(i + 1)));
+                match mode {
+                    QuoteMode::Regular => {
+                        return Ok((Token::DoubleQuoted, self.span(i + n_skip)));
+                    }
+                    QuoteMode::FormatInner => {
+                        return Ok((Token::FormatDoubleClose, self.span(i + n_skip)));
+                    }
+                    QuoteMode::FormatOpen => {
+                        return self.error(
+                            i + n_skip,
+                            "This f-string has no holes, it can be a regular string.",
+                        );
+                    }
+                }
             }
         }
 
@@ -452,37 +493,6 @@ impl<'a> Lexer<'a> {
                 }
             } else {
                 n_consecutive = 0;
-            }
-        }
-
-        self.error_while(
-            |_| true,
-            "Unexpected end of input, string literal is not closed.",
-        )
-    }
-
-    fn lex_in_format_double_open(&mut self) -> Result<Lexeme> {
-        let input = &self.input.as_bytes()[self.start..];
-
-        // Skip over the initial f and opening quote.
-        for (i, &ch) in input.iter().enumerate().skip(2) {
-            // Indexing does not go out of bounds here because we start at 1.
-            if ch == b'"' && input[i - 1] == b'\\' {
-                // An escaped quote should not end the token.
-                continue;
-            }
-            if ch == b'{' && input[i - 1] == b'\\' {
-                // An escaped { should not open a hole.
-            }
-            if ch == b'{' {
-                self.push_delimiter(Delimiter::HoleDouble);
-                return Ok((Token::FormatDoubleOpen, self.span(i + 2)));
-            }
-            if ch == b'"' {
-                return self.error(
-                    i + 2,
-                    "This f-string has no holes, it can be a regular string.",
-                );
             }
         }
 
