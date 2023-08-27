@@ -199,15 +199,7 @@ impl<'a> Parser<'a> {
     fn pop_bracket(&mut self) -> Result<Span> {
         self.decrease_depth();
         let actual_end_token = self.tokens.get(self.cursor).map(|t| t.0);
-        let top = match self.bracket_stack.pop() {
-            None => match actual_end_token {
-                Some(Token::RParen) => return self.error("Found unmatched ')'."),
-                Some(Token::RBrace) => return self.error("Found unmatched '}'."),
-                Some(Token::RBracket) => return self.error("Found unmatched ']'."),
-                invalid => unreachable!("Invalid token for `pop_bracket`: {:?}", invalid),
-            },
-            Some(t) => t,
-        };
+        let top = self.bracket_stack.pop().expect("If brackets were unmatched, lexing would have failed.");
         let expected_end_token = match top.0 {
             Token::LParen => Token::RParen,
             Token::LBrace => Token::RBrace,

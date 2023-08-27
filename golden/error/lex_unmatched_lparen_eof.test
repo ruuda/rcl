@@ -1,14 +1,14 @@
-{a
+(a
 
 # output:
  --> stdin:2:0
   |
 2 | 
   | ^
-Error: Expected '}'.
+Error: Expected ')'.
 
  --> stdin:1:0
   |
-1 | {a
+1 | (a
   | ^
-Note: Unmatched '{' opened here.
+Note: Unmatched '(' opened here.
