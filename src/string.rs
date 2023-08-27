@@ -135,11 +135,20 @@ fn parse_unicode_escape(input: &str, span: Span) -> Result<(char, usize)> {
             }
         }
         Some(ch) if ch.is_ascii_hexdigit() => {
-            // We are parsing a json-style Unicode escape sequence with 4 hex digits.
+            // We are parsing a json-style Unicode escape sequence with 4 hex
+            // digits. We expect the next 4 characters to be the next 4 bytes,
+            // but it might be a multi-byte code point, so we need to measure
+            // properly.
+            let n_bytes = input
+                .char_indices()
+                .skip(4)
+                .map(|p| p.0)
+                .next()
+                .unwrap_or(input.len());
             let err = span
-                .take(4)
+                .take(n_bytes)
                 .error("Expected four hex digits after '\\u' escape sequence.");
-            if input.len() < 4 {
+            if n_bytes != 4 {
                 return Err(err);
             }
             match u32::from_str_radix(&input[..4], 16) {
@@ -203,5 +212,11 @@ mod test {
     fn unescape_does_not_crash_on_early_end() {
         // This is a regression test.
         assert!(unescape(r"\u").is_err());
+    }
+
+    #[test]
+    fn unescape_does_not_slice_code_points() {
+        // This is a regression test.
+        assert!(unescape(r"\u000ö").is_err());
     }
 }
