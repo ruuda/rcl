@@ -64,6 +64,14 @@ pub fn unescape(input: &str, span: Span) -> Result<String> {
                     );
                 return Err(err);
             }
+            ch if ch.is_ascii_uppercase() => {
+                let err = span
+                    .trim_start(offset)
+                    .take(2)
+                    .error("Invalid escape sequence.")
+                    .with_help("Escape sequences are written lowercase.");
+                return Err(err);
+            }
             _ => {
                 let err = span
                     .trim_start(offset)
@@ -89,72 +97,85 @@ pub fn unescape(input: &str, span: Span) -> Result<String> {
 /// Returns the parsed code point and the number of input bytes consumed,
 /// which does not include the two bytes for `\u`.
 fn parse_unicode_escape(input: &str, span: Span) -> Result<(char, usize)> {
-    if input.as_bytes().first().copied() == Some(b'{') {
-        // We are parsing a {}-delimited code point. (This is an extension of
-        // what json allows, similar to Rust escape sequences.)
-        let len = match input.find('}') {
-            None => {
-                let err = span.error("Unclosed '\\u{' escape sequence, expected '}'.");
+    match input.as_bytes().first() {
+        Some(b'[') => {
+            // We are parsing a []-delimited code point. (This is an extension of
+            // what json allows, similar to Rust escape sequences.)
+            let len = match input.find(']') {
+                None => {
+                    let err = span.error("Unclosed '\\u[' escape sequence, expected '}'.");
+                    return Err(err);
+                }
+                Some(n) => n + 1,
+            };
+            if len > 8 {
+                let err = span
+                    .take(len)
+                    .error("Escape sequence too long, expected at most 6 hex digits.");
                 return Err(err);
             }
-            Some(n) => n + 1,
-        };
-        if len > 8 {
-            let err = span
-                .take(len)
-                .error("Escape sequence too long, expected at most 6 hex digits.");
-            return Err(err);
-        }
-        match u32::from_str_radix(&input[1..len - 1], 16) {
-            Err(..) => {
-                let err = span
-                    .trim_start(1)
-                    .take(len - 2)
-                    .error("Expected hex digits between '{}' in '\\u' escape sequence.");
-                Err(err)
-            }
-            Ok(u) => match char::from_u32(u) {
-                Some(ch) => Ok((ch, len)),
-                None => {
+            match u32::from_str_radix(&input[1..len - 1], 16) {
+                Err(..) => {
                     let err = span
                         .trim_start(1)
                         .take(len - 2)
-                        .error("Invalid escape sequence: not a Unicode scalar value.");
+                        .error("Expected hex digits between '{}' in '\\u' escape sequence.");
                     Err(err)
                 }
-            },
+                Ok(u) => match char::from_u32(u) {
+                    Some(ch) => Ok((ch, len)),
+                    None => {
+                        let err = span
+                            .trim_start(1)
+                            .take(len - 2)
+                            .error("Invalid escape sequence: not a Unicode scalar value.");
+                        Err(err)
+                    }
+                },
+            }
         }
-    } else {
-        // We are parsing a json-style Unicode escape sequence with 4 hex digits.
-        let err = span
-            .take(4)
-            .error("Expected four hex digits after '\\u' escape sequence.");
-        if input.len() < 4 {
-            return Err(err);
-        }
-        match u32::from_str_radix(&input[..4], 16) {
-            Err(..) => Err(err),
-            Ok(u) => match char::from_u32(u) {
-                Some(ch) => Ok((ch, 4)),
-                // TODO: For strict json compatibility, we would have to allow
-                // surrogate pairs, which means there needs to be another \u
-                // escape after this one. But let's not complicate things right
-                // now.
-                None => {
-                    assert!(
-                        u >= 0xd800 && u <= 0xdfff,
-                        "char::from_u32 on 2-byte input only fails on surrogate code points."
-                    );
-                    let err = span
-                        .take(4)
-                        .error("Invalid escape sequence: not a Unicode scalar value.")
-                        .with_help(
-                            "For code points beyond U+FFFF, use '\\u{xxxxxx}' \
-                            instead of a surrogate pair.",
+        Some(ch) if ch.is_ascii_hexdigit() => {
+            // We are parsing a json-style Unicode escape sequence with 4 hex digits.
+            let err = span
+                .take(4)
+                .error("Expected four hex digits after '\\u' escape sequence.");
+            if input.len() < 4 {
+                return Err(err);
+            }
+            match u32::from_str_radix(&input[..4], 16) {
+                Err(..) => Err(err),
+                Ok(u) => match char::from_u32(u) {
+                    Some(ch) => Ok((ch, 4)),
+                    // TODO: For strict json compatibility, we would have to allow
+                    // surrogate pairs, which means there needs to be another \u
+                    // escape after this one. But let's not complicate things right
+                    // now.
+                    None => {
+                        assert!(
+                            u >= 0xd800 && u <= 0xdfff,
+                            "char::from_u32 on 2-byte input only fails on surrogate code points."
                         );
-                    Err(err)
-                }
-            },
+                        let err = span
+                            .take(4)
+                            .error("Invalid escape sequence: not a Unicode scalar value.")
+                            .with_help(
+                                "For code points beyond U+FFFF, use \
+                                '\\u{xxxxxx}' instead of a surrogate pair.",
+                            );
+                        Err(err)
+                    }
+                },
+            }
+        }
+        _ => {
+            let err = span
+                .take(1)
+                .error("Invalid '\\u' escape sequence.")
+                .with_help(
+                    "The code point must be exactly four hex digits, \
+                    or enclosed in '[]'. For example '\\u000a' or '\\u[0a]'.",
+                );
+            Err(err)
         }
     }
 }
@@ -175,7 +196,7 @@ mod test {
         assert_eq!(unescape(r#"\"\\\/\b"#).unwrap(), "\"\\/\x08");
         assert_eq!(unescape(r#"\f\r\n\t"#).unwrap(), "\x0c\r\n\t");
         assert_eq!(unescape(r#"a\u0008c"#).unwrap(), "a\x08c");
-        assert_eq!(unescape(r#"a\u{0008}\u{8}c"#).unwrap(), "a\x08\x08c");
+        assert_eq!(unescape(r#"a\u[0008]\u[8]c"#).unwrap(), "a\x08\x08c");
     }
 
     #[test]
