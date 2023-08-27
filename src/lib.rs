@@ -7,6 +7,7 @@
 
 #![allow(clippy::from_str_radix_10)]
 #![allow(clippy::len_without_is_empty)]
+#![allow(clippy::manual_range_contains)]
 
 pub mod abstraction;
 pub mod ast;
