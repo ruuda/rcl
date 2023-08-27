@@ -89,7 +89,7 @@ pub fn unescape(input: &str, span: Span) -> Result<String> {
 /// Returns the parsed code point and the number of input bytes consumed,
 /// which does not include the two bytes for `\u`.
 fn parse_unicode_escape(input: &str, span: Span) -> Result<(char, usize)> {
-    if input.as_bytes()[0] == b'{' {
+    if input.as_bytes().first().copied() == Some(b'{') {
         // We are parsing a {}-delimited code point. (This is an extension of
         // what json allows, similar to Rust escape sequences.)
         let len = match input.find('}') {
@@ -176,5 +176,11 @@ mod test {
         assert_eq!(unescape(r#"\f\r\n\t"#).unwrap(), "\x0c\r\n\t");
         assert_eq!(unescape(r#"a\u0008c"#).unwrap(), "a\x08c");
         assert_eq!(unescape(r#"a\u{0008}\u{8}c"#).unwrap(), "a\x08\x08c");
+    }
+
+    #[test]
+    fn unescape_does_not_crash_on_early_end() {
+        // This is a regression test.
+        assert!(unescape(r"\u").is_err());
     }
 }
