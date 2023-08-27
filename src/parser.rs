@@ -199,7 +199,10 @@ impl<'a> Parser<'a> {
     fn pop_bracket(&mut self) -> Result<Span> {
         self.decrease_depth();
         let actual_end_token = self.tokens.get(self.cursor).map(|t| t.0);
-        let top = self.bracket_stack.pop().expect("If brackets were unmatched, lexing would have failed.");
+        let top = self
+            .bracket_stack
+            .pop()
+            .expect("If brackets were unmatched, lexing would have failed.");
         let expected_end_token = match top.0 {
             Token::LParen => Token::RParen,
             Token::LBrace => Token::RBrace,

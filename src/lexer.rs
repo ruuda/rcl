@@ -184,6 +184,7 @@ pub fn lex(doc: DocId, input: &str) -> Result<Vec<Lexeme>> {
             lexeme => tokens.push(lexeme),
         };
     }
+    lexer.report_unclosed_delimiters()?;
     Ok(tokens)
 }
 
@@ -211,6 +212,7 @@ impl<'a> Lexer<'a> {
     /// Return a span from the current cursor location and advance the cursor.
     fn span(&mut self, len: usize) -> Span {
         let start = self.start;
+        let len = len.min(self.input.len() - start);
         self.start += len;
         Span::new(self.doc, start, start + len)
     }
@@ -268,9 +270,9 @@ impl<'a> Lexer<'a> {
         self.skip_take_while(0, include)
     }
 
-    /// Push a delimiter on thes stack. Does not advance the cursor.
-    fn push_delimiter(&mut self, delimiter: Delimiter) {
-        self.delimiters.push((delimiter, self.start));
+    /// Push a delimiter on the stack. Does not advance the cursor.
+    fn push_delimiter(&mut self, delimiter: Delimiter, offset: usize) {
+        self.delimiters.push((delimiter, offset));
     }
 
     /// Pop a closing delimiter while verifying that it is the right one.
@@ -454,7 +456,7 @@ impl<'a> Lexer<'a> {
                     QuoteMode::FormatOpen => Token::FormatDoubleOpen,
                     QuoteMode::FormatInner => Token::FormatDoubleInner,
                 };
-                self.push_delimiter(Delimiter::HoleDouble);
+                self.push_delimiter(Delimiter::HoleDouble, self.start + i);
                 return Ok((token, self.span(i + 1)));
             }
             if ch == b'"' {
@@ -625,15 +627,15 @@ impl<'a> Lexer<'a> {
     fn lex_in_punct_monograph(&mut self) -> Result<Lexeme> {
         let token = match self.input.as_bytes()[self.start] {
             b'(' => {
-                self.push_delimiter(Delimiter::Paren);
+                self.push_delimiter(Delimiter::Paren, self.start);
                 Token::LParen
             }
             b'[' => {
-                self.push_delimiter(Delimiter::Bracket);
+                self.push_delimiter(Delimiter::Bracket, self.start);
                 Token::LBracket
             }
             b'{' => {
-                self.push_delimiter(Delimiter::Brace);
+                self.push_delimiter(Delimiter::Brace, self.start);
                 Token::LBrace
             }
             b')' => {
@@ -674,5 +676,30 @@ impl<'a> Lexer<'a> {
         };
 
         Ok((token, self.span(1)))
+    }
+
+    fn report_unclosed_delimiters(&mut self) -> Result<()> {
+        let top = match self.delimiters.pop() {
+            None => return Ok(()),
+            Some(t) => t,
+        };
+
+        match top.0 {
+            Delimiter::Paren => {
+                self.error_with_note("Expected ')'.", top.1, "Unmatched '(' opened here.")
+            }
+            Delimiter::Brace => {
+                self.error_with_note("Expected '}'.", top.1, "Unmatched '{' opened here.")
+            }
+            Delimiter::Bracket => {
+                self.error_with_note("Expected ']'.", top.1, "Unmatched '[' opened here.")
+            }
+            Delimiter::HoleDouble => {
+                self.error_with_note("Expected '}'.", top.1, "Unmatched '{' opened here.")
+            }
+            Delimiter::HoleTriple => {
+                self.error_with_note("Expected '}'.", top.1, "Unmatched '{' opened here.")
+            }
+        }
     }
 }
