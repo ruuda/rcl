@@ -1,0 +1,11 @@
+let n = 1;
+f"f-strings can be {
+  let n = n + 1;
+  f"nested arbitrarily. {
+    let n = n + 1;
+    f"This one is at depth {n},"
+  } this one at depth {n},"
+} and this one at depth {n}."
+
+# output:
+"f-strings can be nested arbitrarily. This one is at depth 3, this one at depth 2, and this one at depth 1."
