@@ -1,8 +1,7 @@
 [
-  // TODO: Fix expected output after implementing handling of escapes.
   f"\{{0}}",
   "{ inside non-f-string behaves regularly."
 ]
 
 # output:
-["\\{0}","{ inside non-f-string behaves regularly."]
+["{0}","{ inside non-f-string behaves regularly."]

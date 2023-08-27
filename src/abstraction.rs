@@ -13,9 +13,12 @@
 //! * Converting literals in the source code into values in the runtime.
 //! * Removing syntactical differences (e.g. converting `k = v;` into `"k": v`).
 
+use std::rc::Rc;
+
 use crate::ast::{Expr as AExpr, FormatFragment, Seq as ASeq};
 use crate::cst::Prefixed;
 use crate::cst::{Expr as CExpr, Seq as CSeq};
+use crate::source::Span;
 use crate::todo_placeholder;
 
 /// Abstract an expression.
@@ -31,6 +34,12 @@ struct Abstractor<'a> {
 impl<'a> Abstractor<'a> {
     pub fn new(input: &'a str) -> Self {
         Self { input }
+    }
+
+    pub fn unescape(&self, str_inner: Span) -> Rc<str> {
+        crate::string::unescape(self.input, str_inner)
+            .expect("TODO Return err from abstract.")
+            .into()
     }
 
     /// Abstract an expression.
@@ -58,27 +67,23 @@ impl<'a> Abstractor<'a> {
 
             CExpr::StringLitDouble(span) => {
                 // Cut off the string literal quotes.
-                // TODO: Write a proper parser for string literals that handles
-                // escape codes.
                 let span_inner = span.trim_start(1).trim_end(1);
-                AExpr::StringLit(span_inner.resolve(self.input).into())
+                AExpr::StringLit(self.unescape(span_inner))
             }
 
             CExpr::StringLitTriple(span) => {
                 // Cut off the string literal quotes.
-                // TODO: Write a proper parser for string literals that handles
-                // escape codes, and for this one, strip the leading whitespace.
+                // TODO: Strip leading whitespace from string literal.
                 let span_inner = span.trim_start(3).trim_end(3);
-                AExpr::StringLit(span_inner.resolve(self.input).into())
+                AExpr::StringLit(self.unescape(span_inner))
             }
 
             CExpr::FormatStringDouble { begin, holes } => {
                 let mut fragments = Vec::new();
-                // TODO: Write a proper parser for string literals.
                 let begin_inner = begin.trim_start(2).trim_end(1);
                 let begin = FormatFragment {
                     span: *begin,
-                    body: AExpr::StringLit(begin_inner.resolve(self.input).into()),
+                    body: AExpr::StringLit(self.unescape(begin_inner)),
                 };
                 fragments.push(begin);
 
@@ -90,11 +95,10 @@ impl<'a> Abstractor<'a> {
                     };
                     fragments.push(frag);
 
-                    // TODO: Write a proper parser for string literals.
                     let suffix_inner = hole.suffix.trim_start(1).trim_end(1);
                     let frag = FormatFragment {
                         span: hole.suffix,
-                        body: AExpr::StringLit(suffix_inner.resolve(self.input).into()),
+                        body: AExpr::StringLit(self.unescape(suffix_inner)),
                     };
                     fragments.push(frag);
                 }
