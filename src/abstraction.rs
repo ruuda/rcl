@@ -18,11 +18,12 @@ use std::rc::Rc;
 use crate::ast::{Expr as AExpr, FormatFragment, Seq as ASeq};
 use crate::cst::Prefixed;
 use crate::cst::{Expr as CExpr, Seq as CSeq};
+use crate::error::Result;
 use crate::source::Span;
 use crate::todo_placeholder;
 
 /// Abstract an expression.
-pub fn abstract_expr(input: &str, expr: &Prefixed<CExpr>) -> AExpr {
+pub fn abstract_expr(input: &str, expr: &Prefixed<CExpr>) -> Result<AExpr> {
     Abstractor::new(input).expr(&expr.inner)
 }
 
@@ -36,46 +37,50 @@ impl<'a> Abstractor<'a> {
         Self { input }
     }
 
-    pub fn unescape(&self, str_inner: Span) -> Rc<str> {
-        crate::string::unescape(self.input, str_inner)
-            .expect("TODO Return err from abstract.")
-            .into()
+    pub fn unescape(&self, str_inner: Span) -> Result<Rc<str>> {
+        Ok(crate::string::unescape(self.input, str_inner)?.into())
     }
 
     /// Abstract an expression.
-    pub fn expr(&self, expr: &CExpr) -> AExpr {
-        match expr {
+    pub fn expr(&self, expr: &CExpr) -> Result<AExpr> {
+        let result = match expr {
             CExpr::Let {
                 ident, value, body, ..
             } => AExpr::Let {
                 ident: ident.resolve(self.input).into(),
-                value: Box::new(self.expr(value)),
-                body: Box::new(self.expr(&body.inner)),
+                value: Box::new(self.expr(value)?),
+                body: Box::new(self.expr(&body.inner)?),
             },
 
-            CExpr::BraceLit { elements, .. } => {
-                AExpr::BraceLit(elements.iter().map(|elem| self.seq(&elem.inner)).collect())
-            }
+            CExpr::BraceLit { elements, .. } => AExpr::BraceLit(
+                elements
+                    .iter()
+                    .map(|elem| self.seq(&elem.inner))
+                    .collect::<Result<Vec<_>>>()?,
+            ),
 
-            CExpr::BracketLit { elements, .. } => {
-                AExpr::BracketLit(elements.iter().map(|elem| self.seq(&elem.inner)).collect())
-            }
+            CExpr::BracketLit { elements, .. } => AExpr::BracketLit(
+                elements
+                    .iter()
+                    .map(|elem| self.seq(&elem.inner))
+                    .collect::<Result<Vec<_>>>()?,
+            ),
 
-            CExpr::Parens { body, .. } => self.expr(&body.inner),
+            CExpr::Parens { body, .. } => self.expr(&body.inner)?,
 
             CExpr::BoolLit(_span, b) => AExpr::BoolLit(*b),
 
             CExpr::StringLitDouble(span) => {
                 // Cut off the string literal quotes.
                 let span_inner = span.trim_start(1).trim_end(1);
-                AExpr::StringLit(self.unescape(span_inner))
+                AExpr::StringLit(self.unescape(span_inner)?)
             }
 
             CExpr::StringLitTriple(span) => {
                 // Cut off the string literal quotes.
                 // TODO: Strip leading whitespace from string literal.
                 let span_inner = span.trim_start(3).trim_end(3);
-                AExpr::StringLit(self.unescape(span_inner))
+                AExpr::StringLit(self.unescape(span_inner)?)
             }
 
             CExpr::FormatStringDouble { begin, holes } => {
@@ -83,14 +88,13 @@ impl<'a> Abstractor<'a> {
                 let begin_inner = begin.trim_start(2).trim_end(1);
                 let begin = FormatFragment {
                     span: *begin,
-                    body: AExpr::StringLit(self.unescape(begin_inner)),
+                    body: AExpr::StringLit(self.unescape(begin_inner)?),
                 };
                 fragments.push(begin);
 
                 for hole in holes.iter() {
-                    let body = self.expr(&hole.body);
                     let frag = FormatFragment {
-                        body,
+                        body: self.expr(&hole.body)?,
                         span: hole.span,
                     };
                     fragments.push(frag);
@@ -98,7 +102,7 @@ impl<'a> Abstractor<'a> {
                     let suffix_inner = hole.suffix.trim_start(1).trim_end(1);
                     let frag = FormatFragment {
                         span: hole.suffix,
-                        body: AExpr::StringLit(self.unescape(suffix_inner)),
+                        body: AExpr::StringLit(self.unescape(suffix_inner)?),
                     };
                     fragments.push(frag);
                 }
@@ -149,9 +153,9 @@ impl<'a> Abstractor<'a> {
                 ..
             } => AExpr::IfThenElse {
                 condition_span: *condition_span,
-                condition: Box::new(self.expr(condition)),
-                body_then: Box::new(self.expr(&then_body.inner)),
-                body_else: Box::new(self.expr(&else_body.inner)),
+                condition: Box::new(self.expr(condition)?),
+                body_then: Box::new(self.expr(&then_body.inner)?),
+                body_else: Box::new(self.expr(&else_body.inner)?),
             },
 
             CExpr::Var(span) => AExpr::Var {
@@ -160,7 +164,7 @@ impl<'a> Abstractor<'a> {
             },
 
             CExpr::Field { inner, field } => AExpr::Field {
-                inner: Box::new(self.expr(inner)),
+                inner: Box::new(self.expr(inner)?),
                 field: field.resolve(self.input).into(),
                 field_span: *field,
             },
@@ -174,14 +178,17 @@ impl<'a> Abstractor<'a> {
             } => AExpr::Call {
                 open: *open,
                 function_span: *function_span,
-                function: Box::new(self.expr(function)),
-                args: args.iter().map(|a| self.expr(&a.inner)).collect(),
+                function: Box::new(self.expr(function)?),
+                args: args
+                    .iter()
+                    .map(|a| self.expr(&a.inner))
+                    .collect::<Result<Vec<_>>>()?,
             },
 
             CExpr::UnOp { op, op_span, body } => AExpr::UnOp {
                 op: *op,
                 op_span: *op_span,
-                body: Box::new(self.expr(body)),
+                body: Box::new(self.expr(body)?),
             },
 
             CExpr::BinOp {
@@ -192,18 +199,19 @@ impl<'a> Abstractor<'a> {
             } => AExpr::BinOp {
                 op: *op,
                 op_span: *op_span,
-                lhs: Box::new(self.expr(lhs)),
-                rhs: Box::new(self.expr(rhs)),
+                lhs: Box::new(self.expr(lhs)?),
+                rhs: Box::new(self.expr(rhs)?),
             },
-        }
+        };
+        Ok(result)
     }
 
     /// Abstract a sequence element.
-    pub fn seq(&self, seq: &CSeq) -> ASeq {
-        match seq {
+    pub fn seq(&self, seq: &CSeq) -> Result<ASeq> {
+        let result = match seq {
             CSeq::Elem { span, value } => ASeq::Elem {
                 span: *span,
-                value: Box::new(self.expr(value)),
+                value: Box::new(self.expr(value)?),
             },
 
             CSeq::AssocExpr {
@@ -213,8 +221,8 @@ impl<'a> Abstractor<'a> {
                 ..
             } => ASeq::Assoc {
                 op_span: *op_span,
-                key: Box::new(self.expr(field)),
-                value: Box::new(self.expr(value)),
+                key: Box::new(self.expr(field)?),
+                value: Box::new(self.expr(value)?),
             },
 
             CSeq::AssocIdent {
@@ -230,7 +238,7 @@ impl<'a> Abstractor<'a> {
                 ASeq::Assoc {
                     op_span: *op_span,
                     key: Box::new(key_expr),
-                    value: Box::new(self.expr(value)),
+                    value: Box::new(self.expr(value)?),
                 }
             }
 
@@ -238,8 +246,8 @@ impl<'a> Abstractor<'a> {
                 ident, value, body, ..
             } => ASeq::Let {
                 ident: ident.resolve(self.input).into(),
-                value: Box::new(self.expr(value)),
-                body: Box::new(self.seq(&body.inner)),
+                value: Box::new(self.expr(value)?),
+                body: Box::new(self.seq(&body.inner)?),
             },
 
             CSeq::For {
@@ -258,8 +266,8 @@ impl<'a> Abstractor<'a> {
                     .map(|span| span.resolve(self.input).into())
                     .collect(),
                 collection_span: *collection_span,
-                collection: Box::new(self.expr(collection)),
-                body: Box::new(self.seq(&body.inner)),
+                collection: Box::new(self.expr(collection)?),
+                body: Box::new(self.seq(&body.inner)?),
             },
 
             CSeq::If {
@@ -268,9 +276,10 @@ impl<'a> Abstractor<'a> {
                 body,
             } => ASeq::If {
                 condition_span: *condition_span,
-                condition: Box::new(self.expr(condition)),
-                body: Box::new(self.seq(&body.inner)),
+                condition: Box::new(self.expr(condition)?),
+                body: Box::new(self.seq(&body.inner)?),
             },
-        }
+        };
+        Ok(result)
     }
 }

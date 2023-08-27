@@ -43,7 +43,7 @@ fn main_eval(inputs: &Inputs) -> Result<()> {
             eprintln!("{cst:#?}");
         }
 
-        let ast = rcl::abstraction::abstract_expr(doc.data, &cst);
+        let ast = rcl::abstraction::abstract_expr(doc.data, &cst)?;
         if debug {
             eprintln!("{ast:#?}");
         }

@@ -7,7 +7,7 @@ use rcl::source::DocId;
 fn fuzz_eval(input: &str) -> rcl::error::Result<()> {
     let id = DocId(0);
     let (_span, cst) = rcl::parser::parse(id, input)?;
-    let ast = rcl::abstraction::abstract_expr(input, &cst);
+    let ast = rcl::abstraction::abstract_expr(input, &cst)?;
     let mut env = rcl::runtime::Env::new();
     let _ = rcl::eval::eval(&mut env, &ast)?;
     Ok(())
