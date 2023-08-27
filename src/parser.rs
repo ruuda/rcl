@@ -214,6 +214,9 @@ impl<'a> Parser<'a> {
             return Ok(self.consume());
         }
 
+        // The lexer ensures matching brackets, but even in a document where
+        // that is the case, we may still encounter a different token where the
+        // parser expects a closing bracket. E.g. in `{1 1}`.
         match expected_end_token {
             Token::RParen => {
                 self.error_with_note("Expected ')'.", top.1, "Unmatched '(' opened here.")
