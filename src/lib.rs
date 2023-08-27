@@ -20,6 +20,7 @@ pub mod lexer;
 pub mod parser;
 pub mod runtime;
 pub mod source;
+pub mod string;
 
 /// A placeholder just like regular `todo!`, except it doesn't prevent fuzzing.
 #[macro_export]

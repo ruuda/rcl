@@ -141,6 +141,13 @@ pub struct ParseError {
     pub help: Option<&'static str>,
 }
 
+impl ParseError {
+    pub fn with_help(mut self, help: &'static str) -> Self {
+        self.help = Some(help);
+        self
+    }
+}
+
 impl From<ParseError> for Box<dyn Error> {
     fn from(err: ParseError) -> Self {
         Box::new(err)
@@ -162,6 +169,22 @@ impl Error for ParseError {
     }
     fn help(&self) -> Option<&str> {
         self.help
+    }
+}
+
+// TODO: Check if it is useful in other places.
+pub trait IntoParseError {
+    fn error(&self, message: &'static str) -> ParseError;
+}
+
+impl IntoParseError for Span {
+    fn error(&self, message: &'static str) -> ParseError {
+        ParseError {
+            span: *self,
+            message,
+            note: None,
+            help: None,
+        }
     }
 }
 
