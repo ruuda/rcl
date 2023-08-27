@@ -1,0 +1,15 @@
+let x = 10
+x
+
+# output:
+ --> stdin:2:0
+  |
+2 | x
+  | ^
+Error: Expected ';' here to close the let-binding.
+
+ --> stdin:1:0
+  |
+1 | let x = 10
+  | ^~~
+Note: Let-binding opened here.
