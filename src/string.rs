@@ -41,7 +41,7 @@ pub fn unescape(input: &str, span: Span) -> Result<String> {
             b'r' => output.push('\r'),
             b't' => output.push('\t'),
             b'u' => {
-                let (ch, consumed) = parse_unicode_escape(&input[i + 1..], span.trim_start(i + 1))?;
+                let (ch, consumed) = parse_unicode_escape(&input[i + 2..], span.trim_start(i + 2))?;
                 output.push(ch);
                 input = &input[i + consumed + 2..];
                 offset += i + consumed + 2;
@@ -97,7 +97,7 @@ fn parse_unicode_escape(input: &str, span: Span) -> Result<(char, usize)> {
                 let err = span.error("Unclosed '\\u{' escape sequence, expected '}'.");
                 return Err(err);
             }
-            Some(n) => n,
+            Some(n) => n + 1,
         };
         if len > 8 {
             let err = span
@@ -156,5 +156,25 @@ fn parse_unicode_escape(input: &str, span: Span) -> Result<(char, usize)> {
                 }
             },
         }
+    }
+}
+
+// Note, most testing is done through golden tests, not unit tests.
+#[cfg(test)]
+mod test {
+    use crate::source::{DocId, Span};
+
+    fn unescape(inner: &str) -> super::Result<String> {
+        let span = Span::new(DocId(0), 0, inner.len());
+        super::unescape(inner, span)
+    }
+
+    #[test]
+    fn unescape_handles_json_escape_sequences() {
+        assert_eq!(unescape(r"abc").unwrap(), "abc");
+        assert_eq!(unescape(r#"\"\\\/\b"#).unwrap(), "\"\\/\x08");
+        assert_eq!(unescape(r#"\f\r\n\t"#).unwrap(), "\x0c\r\n\t");
+        assert_eq!(unescape(r#"a\u0008c"#).unwrap(), "a\x08c");
+        assert_eq!(unescape(r#"a\u{0008}\u{8}c"#).unwrap(), "a\x08\x08c");
     }
 }
