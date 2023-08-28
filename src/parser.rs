@@ -16,6 +16,11 @@ pub type Result<T> = std::result::Result<T, ParseError>;
 pub fn parse(doc: DocId, input: &str) -> Result<(Span, Prefixed<Expr>)> {
     let tokens = lexer::lex(doc, input)?;
     let mut parser = Parser::new(doc, input, &tokens);
+
+    // Comments at the start of the document are allowed, but the document
+    // should not start with blank lines, those we drop.
+    parser.skip_blanks();
+
     let (span, result) = parser.parse_prefixed_expr()?;
     parser.parse_eof()?;
     Ok((span, result))
@@ -243,6 +248,13 @@ impl<'a> Parser<'a> {
                     return result.into_boxed_slice();
                 }
             }
+        }
+    }
+
+    /// Skip over any blank line tokens.
+    fn skip_blanks(&mut self) {
+        while let Some(Token::Blank) = self.peek() {
+            self.consume();
         }
     }
 
