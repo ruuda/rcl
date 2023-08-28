@@ -189,6 +189,28 @@ fn parse_unicode_escape(input: &str, span: Span) -> Result<(char, usize)> {
     }
 }
 
+/// Escape a string for use inside a json string literal.
+pub fn escape_json(str: &str, into: &mut String) {
+    use std::fmt::Write;
+
+    into.reserve(str.len());
+
+    for ch in str.chars() {
+        match ch {
+            '\n' => into.push_str(r#"\n"#),
+            '\r' => into.push_str(r#"\r"#),
+            '\x08' => into.push_str(r#"\b"#),
+            '\x0c' => into.push_str(r#"\f"#),
+            '\t' => into.push_str(r#"\t"#),
+            '\"' => into.push_str(r#"\""#),
+            '\\' => into.push_str(r#"\\"#),
+            ch if ch.is_ascii_control() => write!(into, "\\u{:04x}", ch as u32)
+                .expect("Writing into &mut String does not fail."),
+            ch => into.push(ch),
+        }
+    }
+}
+
 // Note, most testing is done through golden tests, not unit tests.
 #[cfg(test)]
 mod test {
@@ -197,6 +219,12 @@ mod test {
     fn unescape(inner: &str) -> super::Result<String> {
         let span = Span::new(DocId(0), 0, inner.len());
         super::unescape(inner, span)
+    }
+
+    fn escape_json(str: &str) -> String {
+        let mut out = String::new();
+        super::escape_json(str, &mut out);
+        out
     }
 
     #[test]
@@ -218,5 +246,18 @@ mod test {
     fn unescape_does_not_slice_code_points() {
         // This is a regression test.
         assert!(unescape(r"\u000ö").is_err());
+    }
+
+    #[test]
+    fn escape_json_handles_predefined_escapes() {
+        assert_eq!(escape_json("\"\\/\x08\x0c\n\r\t"), r#"\"\\/\b\f\n\r\t"#,)
+    }
+
+    #[test]
+    fn escape_json_handles_ascii_control() {
+        assert_eq!(
+            escape_json("\x00\x01\x02\x03\x7f"),
+            r#"\u0000\u0001\u0002\u0003\u007f"#,
+        )
     }
 }

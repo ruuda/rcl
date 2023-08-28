@@ -2,7 +2,9 @@
   newline = "\n";
   quote = "\"";
   triple = """.".\""".\n""";
+  json_escapes = "\\\/\b\f\n\r\t\u000a";
+  unicode_escapes = "\u[1f574]\u[fe0e]";
 }
 
 # output:
-{"newline":"\n","quote":"\"","triple":".\".\"\"\".\n"}
+{"json_escapes":"\\/\b\f\n\r\t\n","newline":"\n","quote":"\"","triple":".\".\"\"\".\n","unicode_escapes":"🕴︎"}

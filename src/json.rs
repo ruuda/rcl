@@ -10,6 +10,7 @@
 use crate::error::{Result, ValueError};
 use crate::runtime::Value;
 use crate::source::Span;
+use crate::string::escape_json;
 
 /// Render a value as json.
 pub fn format_json(caller: Span, v: &Value, into: &mut String) -> Result<()> {
@@ -19,8 +20,7 @@ pub fn format_json(caller: Span, v: &Value, into: &mut String) -> Result<()> {
         Value::Int(i) => into.push_str(&i.to_string()),
         Value::String(s) => {
             into.push('"');
-            // TODO: Implement proper json escaping.
-            into.extend(s.escape_default());
+            escape_json(s, into);
             into.push('"');
         }
         Value::List(vs) => {
