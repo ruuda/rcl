@@ -155,18 +155,35 @@ impl<'a> Formatter<'a> {
 
             Expr::Call { function, args, .. } => {
                 self.write_expr(function)?;
-                self.write_str("(")?;
                 let mut is_first = true;
+                let is_multiline = args.iter().any(|e| !e.prefix.is_empty());
+
+                if is_multiline {
+                    self.write_str("(\n")?;
+                    self.indent += 2;
+                } else {
+                    self.write_str("(")?;
+                }
+
                 for arg in args.iter() {
-                    if !is_first {
+                    if !is_first && !is_multiline {
                         self.write_str(", ")?;
                     }
-                    assert!(
-                        arg.prefix.is_empty(),
-                        "TODO: We can't format non-code here yet."
-                    );
+                    self.write_non_code(&arg.prefix)?;
+                    if is_multiline {
+                        self.write_indent()?;
+                    }
                     self.write_expr(&arg.inner)?;
                     is_first = false;
+
+                    if is_multiline {
+                        self.write_str(",\n")?;
+                    }
+                }
+
+                if is_multiline {
+                    self.indent -= 2;
+                    self.write_indent()?;
                 }
                 self.write_str(")")?;
             }

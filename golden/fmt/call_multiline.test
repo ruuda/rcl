@@ -1,0 +1,18 @@
+let x = f( a, b , c,);
+let y = f(
+  // The first argument.
+  a,
+  // The second two arguments.
+  b, c);
+x + y
+
+# output:
+let x = f(a, b, c);
+let y = f(
+  // The first argument.
+  a,
+  // The second two arguments.
+  b,
+  c,
+);
+x + y
