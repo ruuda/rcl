@@ -1,0 +1,8 @@
+let _ = "This line ends with U+0007, ASCII BEL."
+
+# output:
+ --> stdin:1:48
+  |
+1 | let _ = "This line ends with U+0007, ASCII BEL."
+  |                                                 ^
+Error: Control characters are not supported here.
