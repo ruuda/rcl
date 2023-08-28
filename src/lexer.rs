@@ -159,7 +159,6 @@ enum Delimiter {
 }
 
 /// What type of string literal we are lexing.
-#[derive(Eq, PartialEq)]
 enum QuoteMode {
     /// Not a format string.
     Regular,
