@@ -127,6 +127,22 @@ impl<'a> Formatter<'a> {
                 }
             },
 
+            Expr::NumHexadecimal(span) => {
+                // Normalize A-F to a-f.
+                let num = span.resolve(self.input).as_bytes();
+                self.out.write_all(&num.to_ascii_lowercase())?;
+            }
+
+            Expr::NumBinary(span) => {
+                self.write_span(*span)?;
+            }
+
+            Expr::NumDecimal(span) => {
+                // Normalize exponent E to e.
+                let num = span.resolve(self.input).as_bytes();
+                self.out.write_all(&num.to_ascii_lowercase())?;
+            }
+
             Expr::Var(span) => {
                 self.write_span(*span)?;
             }
