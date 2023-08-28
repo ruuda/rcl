@@ -112,6 +112,25 @@ impl<'a> Formatter<'a> {
                 }
             }
 
+            Expr::Parens { body, .. } => {
+                let is_multiline = !body.prefix.is_empty();
+                if is_multiline {
+                    self.write_str("(\n")?;
+                    self.indent += 2;
+                    self.write_non_code(&body.prefix)?;
+                    self.write_indent()?;
+                    self.write_expr(&body.inner)?;
+                    self.write_str("\n")?;
+                    self.indent -= 2;
+                    self.write_indent()?;
+                    self.write_str(")")?;
+                } else {
+                    self.write_str("(")?;
+                    self.write_expr(&body.inner)?;
+                    self.write_str(")")?;
+                }
+            }
+
             Expr::BoolLit(span, ..) => {
                 self.write_span(*span)?;
             }
