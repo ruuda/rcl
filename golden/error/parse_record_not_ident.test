@@ -1,0 +1,20 @@
+{
+  ident = "valid";
+  "not ident" = "invalid";
+}
+
+# output:
+ --> stdin:3:14
+  |
+3 |   "not ident" = "invalid";
+  |               ^
+Error: Expected '}'.
+
+ --> stdin:1:0
+  |
+1 | {
+  | ^
+Note: Unmatched '{' opened here.
+
+Help: To use 'key = value;' record syntax, the left-hand side must be an identifier.
+When that is not possible, use json-style '"key": value' instead.
