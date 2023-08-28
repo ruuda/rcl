@@ -44,7 +44,7 @@ pub fn unescape(input: &str, span: Span) -> Result<String> {
                 let (ch, consumed) = parse_unicode_escape(&input[i + 2..], span.trim_start(i + 2))?;
                 output.push(ch);
                 input = &input[i + consumed + 2..];
-                offset += i + consumed + 2;
+                offset += consumed + 2;
                 continue;
             }
 
@@ -103,7 +103,7 @@ fn parse_unicode_escape(input: &str, span: Span) -> Result<(char, usize)> {
             // what json allows, similar to Rust escape sequences.)
             let len = match input.find(']') {
                 None => {
-                    let err = span.error("Unclosed '\\u[' escape sequence, expected '}'.");
+                    let err = span.error("Unclosed '\\u[' escape sequence, expected ']'.");
                     return Err(err);
                 }
                 Some(n) => n + 1,
@@ -119,7 +119,7 @@ fn parse_unicode_escape(input: &str, span: Span) -> Result<(char, usize)> {
                     let err = span
                         .trim_start(1)
                         .take(len - 2)
-                        .error("Expected hex digits between '{}' in '\\u' escape sequence.");
+                        .error("Expected hex digits between '[]' in '\\u' escape sequence.");
                     Err(err)
                 }
                 Ok(u) => match char::from_u32(u) {
@@ -169,7 +169,7 @@ fn parse_unicode_escape(input: &str, span: Span) -> Result<(char, usize)> {
                             .error("Invalid escape sequence: not a Unicode scalar value.")
                             .with_help(
                                 "For code points beyond U+FFFF, use \
-                                '\\u{xxxxxx}' instead of a surrogate pair.",
+                                '\\u[xxxxxx]' instead of a surrogate pair.",
                             );
                         Err(err)
                     }

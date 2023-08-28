@@ -1,0 +1,10 @@
+"Invalid: \unothex"
+
+# output:
+ --> stdin:1:12
+  |
+1 | "Invalid: \unothex"
+  |             ^
+Error: Invalid '\u' escape sequence.
+
+Help: The code point must be exactly four hex digits, or enclosed in '[]'. For example '\u000a' or '\u[0a]'.

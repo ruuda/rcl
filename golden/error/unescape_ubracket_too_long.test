@@ -1,0 +1,8 @@
+"Invalid: \u[0000000000]"
+
+# output:
+ --> stdin:1:12
+  |
+1 | "Invalid: \u[0000000000]"
+  |             ^~~~~~~~~~~~
+Error: Escape sequence too long, expected at most 6 hex digits.
