@@ -3,8 +3,8 @@
   quote = "\"";
   triple = """.".\""".\n""";
   json_escapes = "\\\/\b\f\n\r\t\u000a";
-  unicode_escapes = "\u[1f574]\u[fe0e]";
+  unicode_escapes = "\u[7f]\u[1f574]\u[fe0e]";
 }
 
 # output:
-{"json_escapes":"\\/\b\f\n\r\t\n","newline":"\n","quote":"\"","triple":".\".\"\"\".\n","unicode_escapes":"🕴︎"}
+{"json_escapes":"\\/\b\f\n\r\t\n","newline":"\n","quote":"\"","triple":".\".\"\"\".\n","unicode_escapes":"\u007f🕴︎"}
