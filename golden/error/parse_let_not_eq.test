@@ -1,0 +1,8 @@
+let x be 32; x
+
+# output:
+ --> stdin:1:6
+  |
+1 | let x be 32; x
+  |       ^~
+Error: Expected '=' here.

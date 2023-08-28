@@ -853,7 +853,7 @@ impl<'a> Parser<'a> {
         let (collection_span, collection) = self.parse_expr()?;
 
         self.skip_non_code()?;
-        self.parse_token(Token::Colon, "Expected ':' here.")?;
+        self.parse_token(Token::Colon, "Expected ':' after the collection.")?;
 
         let body = self.parse_prefixed_seq()?;
 
@@ -887,7 +887,7 @@ impl<'a> Parser<'a> {
                     For an if-then-else expression, enclose the expression in parentheses.",
                 );
             }
-            _ => return self.error("Expected ':' here."),
+            _ => return self.error("Expected ':' after the condition."),
         };
 
         let body = self.parse_prefixed_seq()?;

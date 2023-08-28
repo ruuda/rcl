@@ -1,0 +1,14 @@
+frobnicate(widget {})
+
+# output:
+ --> stdin:1:18
+  |
+1 | frobnicate(widget {})
+  |                   ^
+Error: Expected ')'.
+
+ --> stdin:1:10
+  |
+1 | frobnicate(widget {})
+  |           ^
+Note: Unmatched '(' opened here.
