@@ -211,7 +211,7 @@ pub fn escape_json(str: &str, into: &mut String) {
     }
 }
 
-// Note, most testing is done through golden tests, not unit tests.
+// Note, most testing is done through golden tests and fuzzing, not unit tests.
 #[cfg(test)]
 mod test {
     use crate::source::{DocId, Span};
@@ -248,6 +248,8 @@ mod test {
         assert!(unescape(r"\u000ö").is_err());
     }
 
+    // Note, the main tests for unescaping are the golden tests.
+
     #[test]
     fn escape_json_handles_predefined_escapes() {
         assert_eq!(escape_json("\"\\/\x08\x0c\n\r\t"), r#"\"\\/\b\f\n\r\t"#,)
@@ -260,4 +262,6 @@ mod test {
             r#"\u0000\u0001\u0002\u0003\u007f"#,
         )
     }
+
+    // Note, the main test for json escaping is the `escapes` fuzzer.
 }
