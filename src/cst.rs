@@ -156,7 +156,7 @@ pub enum Expr {
     /// A conditional expression.
     IfThenElse {
         condition_span: Span,
-        condition: Box<Expr>,
+        condition: Box<Prefixed<Expr>>,
         then_before: Box<[NonCode]>,
         then_span: Span,
         then_body: Box<Prefixed<Expr>>,

@@ -158,7 +158,7 @@ impl<'a> Abstractor<'a> {
                 ..
             } => AExpr::IfThenElse {
                 condition_span: *condition_span,
-                condition: Box::new(self.expr(condition)?),
+                condition: Box::new(self.expr(&condition.inner)?),
                 body_then: Box::new(self.expr(&then_body.inner)?),
                 body_else: Box::new(self.expr(&else_body.inner)?),
             },

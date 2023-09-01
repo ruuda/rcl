@@ -349,9 +349,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_if(&mut self) -> Result<Expr> {
         // Consume the `if` keyword.
         let _if = self.consume();
-
-        self.skip_non_code()?;
-        let (condition_span, condition) = self.parse_expr()?;
+        let (condition_span, condition) = self.parse_prefixed_expr()?;
 
         let then_before = self.parse_non_code();
         self.parse_token(Token::KwThen, "Expected 'then' here.")?;
