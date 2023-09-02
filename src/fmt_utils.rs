@@ -27,6 +27,7 @@ struct Block<'a> {
 }
 
 enum Rect<'a> {
+    // TODO: Add comment line variant to be able to not measure comment width.
     Line(Line<'a>),
     Stack(Vec<Rect<'a>>),
     Indent(Box<Rect<'a>>),
@@ -161,5 +162,25 @@ impl<'a> std::ops::Add for Block<'a> {
             width_body,
             width_tail: that.width_tail,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn block_stack_list() {
+        let block = Block::new(
+            Some(Line(vec!["A", " ", "B"])),
+            Rect::Line(Line(vec!["B", "C"]))
+                .stack(Rect::Line(Line(vec!["P", "Q"])))
+                .indent(),
+            Some(Line(vec!["X", "Z"])),
+        );
+
+        let mut out = Vec::new();
+        block.into_rect().write(0, &mut out);
+        assert_eq!(out, b"A B\n  BC\n  PQ\nXZ\n",);
     }
 }
