@@ -131,12 +131,49 @@ impl<'a> Formatter<'a> {
             Expr::BoolLit(span, ..) => self.span(*span),
 
             Expr::StringLit(style, span) => match style {
-                QuoteStyle::Double => self.span(*span),
-                QuoteStyle::Triple => concat! {
-                    Doc::HardBreak
-                    // TODO: Write lines individually.
-                    indent! { self.span(*span) }
-                },
+                QuoteStyle::Double => {
+                    let inner = span.resolve(self.input);
+                    if inner.contains('\n') {
+                        // TODO: This changes the meaning of string literals by
+                        // inserting additional spaces into them for the indent, and
+                        // also by stripping spaces from the individual lines. For
+                        // now we do this because at least it makes the formatter
+                        // panic-free and idempotent. Probably we should just
+                        // disallow newlines in "-quoted string literals in the
+                        // lexer.
+                        Doc::join(
+                            span.resolve(self.input)
+                                .lines()
+                                .map(|line| line.trim().into()),
+                            Doc::HardBreak,
+                        )
+                    } else {
+                        inner.into()
+                    }
+                }
+                QuoteStyle::Triple => {
+                    let mut result = Vec::new();
+                    result.push(Doc::SoftBreak);
+                    result.push("\"\"\"".into());
+                    for (i, line) in span
+                        .trim_start(3)
+                        .trim_end(3)
+                        .resolve(self.input)
+                        .lines()
+                        .enumerate()
+                    {
+                        // The first line of a """-string can be empty. For the
+                        // contents of the string it is ignored, so we should not
+                        // emit an additional newline.
+                        if i == 0 && line.is_empty() {
+                            continue;
+                        }
+                        result.push(Doc::HardBreak);
+                        result.push(line.into());
+                    }
+                    result.push("\"\"\"".into());
+                    Doc::Concat(result)
+                }
             },
 
             Expr::FormatString {

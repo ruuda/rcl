@@ -490,13 +490,22 @@ mod printer {
         }
 
         pub fn newline(&mut self) -> PrintResult {
+            // HACK: We don't want to create leading whitespace at the start of
+            // a document. Just ignore the newline in that case.
+            if self.out.is_empty() {
+                return PrintResult::Fits;
+            }
+
             // HACK: Remove any trailing spaces from the current line before we
             // move on to the next. This is bad because it might trim
             // significant spaces from user code (e.g. a trailing space in
             // Markdown is significant, and maybe you write Markdown in a
-            // comment). But it is the quick and dirty fix for not emitting
-            // space after e.g. a multi-line `let` binding.
+            // comment). Or even worse, there may be trailing whitespace in a
+            // multiline string literal. But it is the quick and dirty fix for
+            // not emitting space after e.g. a multi-line `let` binding.
+            // TODO: Fix this the whitespace eating.
             self.out.truncate(self.out.trim_end_matches(' ').len());
+
             self.out.push('\n');
             self.line_width = 0;
             self.needs_indent = true;
