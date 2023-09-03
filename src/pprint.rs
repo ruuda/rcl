@@ -490,6 +490,13 @@ mod printer {
         }
 
         pub fn newline(&mut self) -> PrintResult {
+            // HACK: Remove any trailing spaces from the current line before we
+            // move on to the next. This is bad because it might trim
+            // significant spaces from user code (e.g. a trailing space in
+            // Markdown is significant, and maybe you write Markdown in a
+            // comment). But it is the quick and dirty fix for not emitting
+            // space after e.g. a multi-line `let` binding.
+            self.out.truncate(self.out.trim_end_matches(' ').len());
             self.out.push('\n');
             self.line_width = 0;
             self.needs_indent = true;

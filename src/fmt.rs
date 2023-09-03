@@ -126,6 +126,8 @@ impl<'a> Formatter<'a> {
                 }
             }
 
+            Expr::NullLit(span) => self.span(*span),
+
             Expr::BoolLit(span, ..) => self.span(*span),
 
             Expr::StringLit(style, span) => match style {
@@ -136,6 +138,14 @@ impl<'a> Formatter<'a> {
                     indent! { self.span(*span) }
                 },
             },
+
+            Expr::FormatString {
+                style: _,
+                begin: _,
+                holes: _,
+            } => {
+                unimplemented!("TODO: Fmt format strings.")
+            }
 
             Expr::NumHexadecimal(span) => {
                 // Normalize A-F to a-f.
@@ -157,6 +167,25 @@ impl<'a> Formatter<'a> {
             Expr::Field { inner, field } => {
                 concat! {
                     self.expr(inner) "." self.span(*field)
+                }
+            }
+
+            Expr::IfThenElse {
+                condition,
+                then_body,
+                else_body,
+                ..
+            } => {
+                group! {
+                    Doc::SoftBreak
+                    indent! {
+                        "if" Doc::Sep
+                        indent! { self.prefixed_expr(condition) } Doc::Sep
+                        "then" Doc::Sep
+                        indent! { self.prefixed_expr(then_body) } Doc::Sep
+                        "else" Doc::Sep
+                        indent! { self.prefixed_expr(else_body) }
+                    }
                 }
             }
 
@@ -200,8 +229,6 @@ impl<'a> Formatter<'a> {
                     self.expr(rhs)
                 }
             }
-
-            todo => unimplemented!("Fmt not implemented for {todo:?}"),
         }
     }
 

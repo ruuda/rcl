@@ -351,21 +351,19 @@ impl<'a> Parser<'a> {
         let _if = self.consume();
         let (condition_span, condition) = self.parse_prefixed_expr()?;
 
-        let then_before = self.parse_non_code();
+        self.skip_non_code()?;
         self.parse_token(Token::KwThen, "Expected 'then' here.")?;
         let (then_span, then_body) = self.parse_prefixed_expr()?;
 
-        let else_before = self.parse_non_code();
+        self.skip_non_code()?;
         self.parse_token(Token::KwElse, "Expected 'else' here.")?;
         let (else_span, else_body) = self.parse_prefixed_expr()?;
 
         let result = Expr::IfThenElse {
             condition_span,
             condition: Box::new(condition),
-            then_before,
             then_span,
             then_body: Box::new(then_body),
-            else_before,
             else_span,
             else_body: Box::new(else_body),
         };
