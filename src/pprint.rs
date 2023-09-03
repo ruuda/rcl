@@ -37,11 +37,12 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            // By default we set a line length of 88 characters, which Black
-            // found to produce shorter files than sticking strictly to 88 for
-            // Python. See also:
+            // Although Black found a limit of 88 to produce significantly
+            // shorter files for Python than sticking strictly to 80 (see also
             // https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#line-length
-            width: 88,
+            // ), in my tests (based on not that much data so far) I preferred
+            // just 80.
+            width: 80,
         }
     }
 }
@@ -190,21 +191,6 @@ impl<'a> Doc<'a> {
         Doc::WhenTall(ch)
     }
 
-    /// Emit the trailing text:
-    ///
-    /// * Unconditionally when `!is_last`.
-    /// * Only in tall mode when `is_last`.
-    ///
-    /// This can be used to add trailing commas to collections.
-    pub fn trailer(trail: &'a str, is_last: bool) -> Doc<'a> {
-        if is_last {
-            debug_assert_eq!(trail.len(), 1, "Trailer must be 1 ascii byte.");
-            Doc::tall(trail.chars().next().expect("Should not pass empty string."))
-        } else {
-            Doc::str(trail)
-        }
-    }
-
     /// Join multiple documents with a separator in between.
     pub fn join<I: Iterator<Item = Doc<'a>>>(elements: I, separator: Doc<'a>) -> Doc<'a> {
         let mut result = Vec::new();
@@ -343,6 +329,7 @@ impl<'a> std::ops::Add<Doc<'a>> for Doc<'a> {
 macro_rules! doc_concat {
     { $($fragment:expr)* } => {
         {
+            #[allow(unused_mut)]
             let mut result = Doc::Concat(Vec::new());
             $( result = result + $fragment.into(); )*
             result

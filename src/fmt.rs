@@ -29,6 +29,17 @@ struct Formatter<'a> {
     input: &'a str,
 }
 
+/// How to terminate an item in a collection literal.
+#[derive(Copy, Clone)]
+enum Separator {
+    /// Unconditionally append a separator.
+    Unconditional,
+    /// Append the sparator only in tall mode.
+    Trailer,
+    /// Do not append a separator.
+    None,
+}
+
 impl<'a> Formatter<'a> {
     pub fn new(input: &'a str) -> Self {
         Self { input }
@@ -194,12 +205,40 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    /// Emit the separator according to the termination mode.
+    pub fn separator(&self, separator: &'a str, mode: Separator) -> Doc<'a> {
+        match mode {
+            Separator::Unconditional => Doc::str(separator),
+            Separator::Trailer => {
+                // TODO: Make tail hold just a str, it's not worth the special
+                // case.
+                debug_assert_eq!(separator.len(), 1, "Trailer must be 1 ascii byte.");
+                Doc::tall(
+                    separator
+                        .chars()
+                        .next()
+                        .expect("Should not pass empty string."),
+                )
+            }
+            Separator::None => concat! {},
+        }
+    }
+
     pub fn seqs(&self, elements: &[Prefixed<Seq>]) -> Doc<'a> {
         let mut result = Vec::new();
         for (i, elem) in elements.iter().enumerate() {
             let is_last = i + 1 == elements.len();
+            let sep_mode = match i {
+                // For collections that contain a single seq, do not add a
+                // separator, even when they are multi-line. It makes
+                // comprehensions look weird, which are regularly multi-line but
+                // only rarely are there multiple seqs in the collection.
+                _ if elements.len() == 1 => Separator::None,
+                _ if is_last => Separator::Trailer,
+                _ => Separator::Unconditional,
+            };
             result.push(self.non_code(&elem.prefix));
-            result.push(self.seq(&elem.inner, is_last));
+            result.push(self.seq(&elem.inner, sep_mode));
             if !is_last {
                 result.push(Doc::Sep)
             }
@@ -207,26 +246,26 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
-    pub fn seq(&self, seq: &Seq, is_last: bool) -> Doc<'a> {
+    pub fn seq(&self, seq: &Seq, sep_mode: Separator) -> Doc<'a> {
         match seq {
             Seq::Elem { value, .. } => {
                 concat! {
                     self.expr(value)
-                    Doc::trailer(",", is_last)
+                    self.separator(",", sep_mode)
                 }
             }
 
             Seq::AssocExpr { field, value, .. } => {
                 concat! {
                     self.expr(field) ": " self.expr(value)
-                    Doc::trailer(",", is_last)
+                    self.separator(",", sep_mode)
                 }
             }
 
             Seq::AssocIdent { field, value, .. } => {
                 concat! {
                     self.span(*field) " = " self.expr(value)
-                    Doc::trailer(";", is_last)
+                    self.separator(";", sep_mode)
                 }
             }
 
@@ -237,7 +276,7 @@ impl<'a> Formatter<'a> {
                     "let " self.span(*ident) " = " self.expr(value) ";"
                     Doc::Sep
                     self.non_code(&body.prefix)
-                    self.seq(&body.inner, is_last)
+                    self.seq(&body.inner, sep_mode)
                 }
             }
 
@@ -261,7 +300,7 @@ impl<'a> Formatter<'a> {
                     ":"
                     Doc::Sep
                     self.non_code(&body.prefix)
-                    self.seq(&body.inner, is_last)
+                    self.seq(&body.inner, sep_mode)
                 }
             }
 
@@ -274,7 +313,7 @@ impl<'a> Formatter<'a> {
                     ":"
                     Doc::Sep
                     self.non_code(&body.prefix)
-                    self.seq(&body.inner, is_last)
+                    self.seq(&body.inner, sep_mode)
                 }
             }
         }
