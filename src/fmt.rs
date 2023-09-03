@@ -171,7 +171,7 @@ impl<'a> Formatter<'a> {
                                 args.iter().map(|arg| self.prefixed_expr(arg)),
                                 concat!{ "," Doc::Sep },
                             )
-                            Doc::tall(',')
+                            Doc::tall(",")
                         }
                         Doc::SoftBreak
                         ")"
@@ -209,18 +209,8 @@ impl<'a> Formatter<'a> {
     pub fn separator(&self, separator: &'a str, mode: Separator) -> Doc<'a> {
         match mode {
             Separator::Unconditional => Doc::str(separator),
-            Separator::Trailer => {
-                // TODO: Make tail hold just a str, it's not worth the special
-                // case.
-                debug_assert_eq!(separator.len(), 1, "Trailer must be 1 ascii byte.");
-                Doc::tall(
-                    separator
-                        .chars()
-                        .next()
-                        .expect("Should not pass empty string."),
-                )
-            }
-            Separator::None => concat! {},
+            Separator::Trailer => Doc::tall(separator),
+            Separator::None => Doc::empty(),
         }
     }
 

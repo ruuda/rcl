@@ -114,12 +114,12 @@ pub enum Doc<'a> {
     /// later if desired.
     ZeroWidth(&'a str),
 
-    /// A character of width 1 which is only output in tall mode.
+    /// Text which is only output in tall mode.
     ///
     /// This can be used to add trailing commas in a collection when the
     /// collection is formatted in tall mode, without having those trailing
     /// commas in the wide mode.
-    WhenTall(char),
+    WhenTall { content: &'a str, width: u32 },
 
     /// A space in wide mode; a newline in tall mode.
     Sep,
@@ -141,6 +141,15 @@ pub enum Doc<'a> {
 }
 
 impl<'a> Doc<'a> {
+    /// Construct an empty document.
+    pub fn empty() -> Doc<'a> {
+        // We pick concat of empty vec over str of empty string, so that when
+        // this later gets concatenated with something else, it disappears.
+        // An emty string would stick around as a node unless we added logic to
+        // omit it during concat.
+        Doc::Concat(Vec::new())
+    }
+
     /// Construct a new document fragment from a string slice.
     pub fn str(value: &'a str) -> Doc<'a> {
         use unicode_width::UnicodeWidthStr;
@@ -177,18 +186,16 @@ impl<'a> Doc<'a> {
     }
 
     /// Construct a new document fragment that only gets emitted in tall mode.
-    pub fn tall(ch: char) -> Doc<'a> {
-        use unicode_width::UnicodeWidthChar;
-        debug_assert_ne!(
-            ch, '\n',
+    pub fn tall(value: &'a str) -> Doc<'a> {
+        use unicode_width::UnicodeWidthStr;
+        debug_assert!(
+            !value.contains('\n'),
             "Doc fragments cannot contain newlines, use SoftBreak etc.",
         );
-        debug_assert_eq!(
-            ch.width(),
-            Some(1),
-            "A single-char fragment must have width 1.",
-        );
-        Doc::WhenTall(ch)
+        Doc::WhenTall {
+            width: value.width() as u32,
+            content: value,
+        }
     }
 
     /// Join multiple documents with a separator in between.
@@ -228,8 +235,8 @@ impl<'a> Doc<'a> {
                 let width = 0;
                 printer.push_str(content, width)
             }
-            Doc::WhenTall(ch) => match mode {
-                Mode::Tall => printer.push_char(*ch),
+            Doc::WhenTall { content, width } => match mode {
+                Mode::Tall => printer.push_str(content, *width),
                 Mode::Wide => PrintResult::Fits,
             },
             Doc::Sep => match mode {
@@ -330,7 +337,7 @@ macro_rules! doc_concat {
     { $($fragment:expr)* } => {
         {
             #[allow(unused_mut)]
-            let mut result = Doc::Concat(Vec::new());
+            let mut result = Doc::empty();
             $( result = result + $fragment.into(); )*
             result
         }
@@ -483,7 +490,6 @@ mod printer {
         }
 
         pub fn newline(&mut self) -> PrintResult {
-            // TODO: Print indent.
             self.out.push('\n');
             self.line_width = 0;
             self.needs_indent = true;
@@ -513,7 +519,7 @@ mod test {
             indent! {
                 "elem0" "," Sep
                 "elem1" "," Sep
-                "elem2" Doc::tall(',')
+                "elem2" Doc::tall(",")
             }
             SoftBreak
             "]"
@@ -554,14 +560,14 @@ mod test {
                     indent! {
                         "a" "," Sep
                         "b" "," Sep
-                        "c" Doc::tall(',')
+                        "c" Doc::tall(",")
                     }
                     SoftBreak
                     "]"
                 } "," Sep
                 "elem0" "," Sep
                 "elem1" "," Sep
-                "elem2" Doc::tall(',')
+                "elem2" Doc::tall(",")
             }
             SoftBreak
             "]"
