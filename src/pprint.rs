@@ -301,6 +301,7 @@ impl Printer {
             n_left -= n;
         }
 
+        self.line_width += self.indent;
         self.needs_indent = false;
     }
 
@@ -424,5 +425,41 @@ mod test {
         // Despite fitting in 80 columns, we should still format tall because of
         // the hard break.
         assert_eq!(print_width(&doc, 80), "[\n  // Comment.\n  elem0\n]");
+    }
+
+    #[test]
+    fn format_wide_in_tall() {
+        use Doc::{Sep, SoftBreak};
+        let doc = group! {
+            "["
+            SoftBreak
+            indent! {
+                group! {
+                    "["
+                    SoftBreak
+                    indent! {
+                        "a" "," Sep
+                        "b" "," Sep
+                        "c" Doc::if_tall(b',')
+                    }
+                    SoftBreak
+                    "]"
+                } "," Sep
+                "elem0" "," Sep
+                "elem1" "," Sep
+                "elem2" Doc::if_tall(b',')
+            }
+            SoftBreak
+            "]"
+        };
+        assert_eq!(print_width(&doc, 80), "[[a, b, c], elem0, elem1, elem2]");
+        assert_eq!(
+            print_width(&doc, 15),
+            "[\n  [a, b, c],\n  elem0,\n  elem1,\n  elem2,\n]",
+        );
+        assert_eq!(
+            print_width(&doc, 8),
+            "[\n  [\n    a,\n    b,\n    c\n  ],\n  elem0,\n  elem1,\n  elem2,\n]",
+        );
     }
 }
