@@ -130,6 +130,12 @@ pub enum Doc<'a> {
     /// A newline. Forces tall mode onto all its parents.
     HardBreak,
 
+    /// A newline without indentation after it. Forces tall mode onto its parents.
+    ///
+    /// This can be used to preserve string literals in which whitespace is
+    /// significant.
+    RawBreak,
+
     /// A concatenation of document fragments.
     Concat(Vec<Doc<'a>>),
 
@@ -219,6 +225,7 @@ impl<'a> Doc<'a> {
     fn is_forced_tall(&self) -> bool {
         match self {
             Doc::HardBreak => true,
+            Doc::RawBreak => true,
             Doc::Concat(children) => children.iter().any(|node| node.is_forced_tall()),
             Doc::Group(inner) => inner.is_forced_tall(),
             Doc::Indent(inner) => inner.is_forced_tall(),
@@ -250,6 +257,10 @@ impl<'a> Doc<'a> {
             Doc::HardBreak => match mode {
                 Mode::Tall => printer.newline(),
                 Mode::Wide => unreachable!("HardBreak forces Tall mode."),
+            },
+            Doc::RawBreak => match mode {
+                Mode::Tall => printer.raw_newline(),
+                Mode::Wide => unreachable!("RawBreak forces Tall mode."),
             },
             Doc::Concat(children) => children.iter().fold(PrintResult::Fits, |r, doc| {
                 doc.print_to(printer, mode).max(r)
@@ -514,6 +525,13 @@ mod printer {
             // exceeded the target width. This is mostly to simplify call sites
             // where all match arms return `PrintResult`.
             PrintResult::Fits
+        }
+
+        /// Emit a newline but without indentation after it.
+        pub fn raw_newline(&mut self) -> PrintResult {
+            let result = self.newline();
+            self.needs_indent = false;
+            result
         }
     }
 }

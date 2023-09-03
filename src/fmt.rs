@@ -11,17 +11,17 @@
 //! pretty-printed for formatting.
 
 use crate::cst::{Expr, NonCode, Prefixed, Seq};
-use crate::lexer::QuoteStyle;
 use crate::pprint::{concat, group, indent, Config, Doc};
 use crate::source::Span;
 
-/// Write a formatted expression to the output.
+/// Format a document.
 pub fn format_expr(input: &str, expr: &Prefixed<Expr>, config: &Config) -> String {
     let formatter = Formatter::new(input);
     let doc = formatter.prefixed_expr(expr);
     doc.print(config)
 }
 
+/// Helper so we can use methods for resolving spans against the input.
 struct Formatter<'a> {
     // TODO: This could all be more efficient if we resolved on bytestrings, so
     // the code point slicing check can be omitted.
@@ -44,8 +44,29 @@ impl<'a> Formatter<'a> {
         Self { input }
     }
 
+    /// Format the span as-is. It should not contain newlines.
     pub fn span(&self, span: Span) -> Doc<'a> {
         span.resolve(self.input).into()
+    }
+
+    /// Format a span that may contain newlines using raw line breaks.
+    pub fn raw_span(&self, span: Span) -> Doc<'a> {
+        let mut inner = span.resolve(self.input);
+        if !inner.contains('\n') {
+            return inner.into();
+        }
+
+        let mut result = Vec::new();
+
+        while let Some(i) = inner.find('\n') {
+            result.push(inner[..i].into());
+            result.push(Doc::RawBreak);
+            inner = &inner[i + 1..];
+        }
+
+        result.push(inner.into());
+
+        Doc::Concat(result)
     }
 
     pub fn non_code(&self, nc: &[NonCode]) -> Doc<'a> {
@@ -93,9 +114,9 @@ impl<'a> Formatter<'a> {
                 } else {
                     group! {
                         "{"
-                            Doc::SoftBreak
-                            indent! { self.seqs(elements) }
-                            Doc::SoftBreak
+                        Doc::SoftBreak
+                        indent! { self.seqs(elements) }
+                        Doc::SoftBreak
                         "}"
                     }
                 }
@@ -107,9 +128,9 @@ impl<'a> Formatter<'a> {
                 } else {
                     group! {
                         "["
-                            Doc::SoftBreak
-                            indent! { self.seqs(elements) }
-                            Doc::SoftBreak
+                        Doc::SoftBreak
+                        indent! { self.seqs(elements) }
+                        Doc::SoftBreak
                         "]"
                     }
                 }
@@ -129,58 +150,19 @@ impl<'a> Formatter<'a> {
 
             Expr::BoolLit(span, ..) => self.span(*span),
 
-            Expr::StringLit(style, span) => match style {
-                QuoteStyle::Double => {
-                    let inner = span.resolve(self.input);
-                    if inner.contains('\n') {
-                        // TODO: This changes the meaning of string literals by
-                        // inserting additional spaces into them for the indent, and
-                        // also by stripping spaces from the individual lines. For
-                        // now we do this because at least it makes the formatter
-                        // panic-free and idempotent. Probably we should just
-                        // disallow newlines in "-quoted string literals in the
-                        // lexer.
-                        Doc::join(
-                            span.resolve(self.input)
-                                .lines()
-                                .map(|line| line.trim().into()),
-                            Doc::HardBreak,
-                        )
-                    } else {
-                        inner.into()
-                    }
-                }
-                QuoteStyle::Triple => {
-                    let mut result = Vec::new();
-                    result.push(Doc::SoftBreak);
-                    result.push("\"\"\"".into());
-                    for (i, line) in span
-                        .trim_start(3)
-                        .trim_end(3)
-                        .resolve(self.input)
-                        .lines()
-                        .enumerate()
-                    {
-                        // The first line of a """-string can be empty. For the
-                        // contents of the string it is ignored, so we should not
-                        // emit an additional newline.
-                        if i == 0 && line.is_empty() {
-                            continue;
-                        }
-                        result.push(Doc::HardBreak);
-                        result.push(line.into());
-                    }
-                    result.push("\"\"\"".into());
-                    Doc::Concat(result)
-                }
-            },
+            // TODO: We could reformat a triple-quoted string and indent it
+            // properly if needed.
+            Expr::StringLit(_style, span) => self.raw_span(*span),
 
-            Expr::FormatString {
-                style: _,
-                begin: _,
-                holes: _,
-            } => {
-                unimplemented!("TODO: Fmt format strings.")
+            Expr::FormatString { begin, holes, .. } => {
+                let mut result = self.raw_span(*begin);
+                // TODO: Add soft breaks around the hole contents?
+                // TODO: Reformat triple-quoted string like `StringLit`.
+                for hole in holes {
+                    result = result + self.expr(&hole.body);
+                    result = result + self.raw_span(hole.suffix);
+                }
+                result
             }
 
             Expr::NumHexadecimal(span) => {
