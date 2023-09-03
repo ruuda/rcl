@@ -16,6 +16,15 @@
 //!
 //! [wadler2003]: https://homepages.inf.ed.ac.uk/wadler/papers/prettier/prettier.pdf
 
+use crate::pprint::printer::{PrintResult, Printer};
+
+/// Whether to format a node in wide mode or tall mode.
+#[derive(Copy, Clone)]
+enum Mode {
+    Wide,
+    Tall,
+}
+
 /// A document tree that can be pretty-printed.
 ///
 /// Every node can be printed in two ways: wide or tall. The goal of the
@@ -66,7 +75,7 @@
 /// first and last outputs are valid, so this gives us more control: the
 /// middle example can still be produced, by wrapping the `Doc::Indent` in
 /// a `Doc::Group`.
-enum Doc<'a> {
+pub enum Doc<'a> {
     /// A literal piece of content.
     String { content: &'a str, width: u32 },
 
@@ -79,11 +88,12 @@ enum Doc<'a> {
     /// later if desired.
     ZeroWidth(&'a str),
 
-    /// An ascii character of width 1 which is only output in tall mode.
+    /// A character of width 1 which is only output in tall mode.
     ///
-    /// This can be used to add tailing commas in a collection, but only when
-    /// the collection is formatted in tall mode.
-    IfTall(u8),
+    /// This can be used to add trailing commas in a collection when the
+    /// collection is formatted in tall mode, without having those trailing
+    /// commas in the wide mode.
+    WhenTall(char),
 
     /// A space in wide mode; a newline in tall mode.
     Sep,
@@ -105,32 +115,20 @@ enum Doc<'a> {
     Indent(Box<Doc<'a>>),
 }
 
-/// Whether to format a node in wide mode or tall mode.
-#[derive(Copy, Clone)]
-enum Mode {
-    Wide,
-    Tall,
-}
-
-/// Whether printing in a particular mode fitted or not.
-///
-/// The `Ord` impl returns the worst possible result (overflow) as maximum.
-#[derive(Eq, Ord, PartialEq, PartialOrd)]
-enum PrintResult {
-    /// The content could be printed within the allocated width.
-    Fits,
-
-    /// The content exceeded the target width.
-    Overflow,
-}
-
-impl PrintResult {
-    pub fn is_overflow(&self) -> bool {
-        matches!(self, PrintResult::Overflow)
-    }
-}
-
 impl<'a> Doc<'a> {
+    /// Construct a new document fragment from a `&str`.
+    fn str(value: &'a str) -> Doc<'a> {
+        use unicode_width::UnicodeWidthStr;
+        debug_assert!(
+            !value.contains('\n'),
+            "Doc fragments cannot contain newlines, use SoftBreak etc.",
+        );
+        Doc::String {
+            width: value.width() as u32,
+            content: value,
+        }
+    }
+
     /// Construct a new document fragment of width zero.
     pub fn zero_width(value: &'a str) -> Doc<'a> {
         debug_assert!(
@@ -141,18 +139,24 @@ impl<'a> Doc<'a> {
     }
 
     /// Construct a new document fragment that only gets emitted in tall mode.
-    pub fn if_tall(ch: u8) -> Doc<'a> {
+    pub fn tall(ch: char) -> Doc<'a> {
+        use unicode_width::UnicodeWidthChar;
         debug_assert_ne!(
-            ch, b'\n',
+            ch, '\n',
             "Doc fragments cannot contain newlines, use SoftBreak etc.",
         );
-        Doc::IfTall(ch)
+        debug_assert_eq!(
+            ch.width(),
+            Some(1),
+            "A single-char fragment must have width 1.",
+        );
+        Doc::WhenTall(ch)
     }
 
     /// Whether any of the nodes in this tree force tall mode.
     ///
     /// A hard break forces tall mode.
-    pub fn is_forced_tall(&self) -> bool {
+    fn is_forced_tall(&self) -> bool {
         match self {
             Doc::HardBreak => true,
             Doc::Concat(children) => children.iter().any(|node| node.is_forced_tall()),
@@ -162,20 +166,21 @@ impl<'a> Doc<'a> {
         }
     }
 
-    pub fn print(&self, printer: &mut Printer, mode: Mode) -> PrintResult {
+    /// Print the document to the given printer.
+    fn print_to(&self, printer: &mut Printer, mode: Mode) -> PrintResult {
         match self {
             Doc::String { content, width } => printer.push_str(content, *width),
             Doc::ZeroWidth(content) => {
                 let width = 0;
                 printer.push_str(content, width)
             }
-            Doc::IfTall(ch) => match mode {
+            Doc::WhenTall(ch) => match mode {
                 Mode::Tall => printer.push_char(*ch),
                 Mode::Wide => PrintResult::Fits,
             },
             Doc::Sep => match mode {
                 Mode::Tall => printer.newline(),
-                Mode::Wide => printer.push_char(b' '),
+                Mode::Wide => printer.push_char(' '),
             },
             Doc::SoftBreak => match mode {
                 Mode::Tall => printer.newline(),
@@ -185,164 +190,51 @@ impl<'a> Doc<'a> {
                 Mode::Tall => printer.newline(),
                 Mode::Wide => unreachable!("HardBreak forces Tall mode."),
             },
-            Doc::Concat(children) => children
-                .iter()
-                .fold(PrintResult::Fits, |r, doc| doc.print(printer, mode).max(r)),
+            Doc::Concat(children) => children.iter().fold(PrintResult::Fits, |r, doc| {
+                doc.print_to(printer, mode).max(r)
+            }),
             Doc::Group(inner) => {
                 if inner.is_forced_tall() {
                     debug_assert!(matches!(mode, Mode::Tall));
-                    return inner.print(printer, mode);
+                    return inner.print_to(printer, mode);
                 }
 
                 match mode {
                     // If we are wide, then the inner content must be wide too.
-                    Mode::Wide => inner.print(printer, mode),
+                    Mode::Wide => inner.print_to(printer, mode),
 
                     // If we are tall, then we can try to make the inner content
                     // wide. If that is too wide, then we backtrack and try to
                     // make it tall instead.
-                    Mode::Tall => match printer.try_(|p| inner.print(p, Mode::Wide)) {
-                        PrintResult::Overflow => inner.print(printer, Mode::Tall),
+                    Mode::Tall => match printer.try_(|p| inner.print_to(p, Mode::Wide)) {
+                        PrintResult::Overflow => inner.print_to(printer, Mode::Tall),
                         PrintResult::Fits => PrintResult::Fits,
                     },
                 }
             }
             Doc::Indent(inner) => match mode {
-                Mode::Wide => inner.print(printer, mode),
-                Mode::Tall => printer.indented(|p| inner.print(p, mode)),
+                Mode::Wide => inner.print_to(printer, mode),
+                Mode::Tall => printer.indented(|p| inner.print_to(p, mode)),
             },
         }
     }
-}
 
-struct Printer {
-    /// Buffer where we place the output.
-    out: String,
-
-    /// Target width that we should try to not exceed.
-    width: u32,
-
-    /// The width so far of the line that we are currently writing.
-    line_width: u32,
-
-    /// The current indentation level, counted in spaces.
-    indent: u32,
-
-    /// Whether indentation has been written for the current line.
-    needs_indent: bool,
-}
-
-impl Printer {
-    /// Create a new printer with the given line width target.
-    pub fn new(width: u32) -> Printer {
-        Printer {
-            out: String::new(),
-            width,
-            line_width: 0,
-            indent: 0,
-            needs_indent: true,
-        }
-    }
-
-    /// Return the result string printed to the printer.
-    pub fn into_inner(self) -> String {
-        self.out
-    }
-
-    /// Execute `f` against this printer. If the result was too wide, roll back.
-    pub fn try_<F: FnOnce(&mut Printer) -> PrintResult>(&mut self, f: F) -> PrintResult {
-        let len = self.out.len();
-        let line_width = self.line_width;
-        let needs_indent = self.needs_indent;
-        let result = f(self);
-        if result.is_overflow() {
-            self.out.truncate(len);
-            self.line_width = line_width;
-            self.needs_indent = needs_indent;
-        }
-        result
-    }
-
-    /// Execute `f` under increased indentation width.
-    pub fn indented<F: FnOnce(&mut Printer) -> PrintResult>(&mut self, f: F) -> PrintResult {
-        self.indent += 2;
-        let result = f(self);
-        self.indent -= 2;
-        result
-    }
-
-    /// Write the indent after the newline, if needed.
-    fn write_indent(&mut self) {
-        if !self.needs_indent {
-            return;
-        }
-
-        // 50 spaces.
-        let spaces = "                                                  ";
-
-        let mut n_left = self.indent as usize;
-        while n_left > 0 {
-            let n = n_left.min(spaces.len());
-            self.out.push_str(&spaces[..n]);
-            n_left -= n;
-        }
-
-        self.line_width += self.indent;
-        self.needs_indent = false;
-    }
-
-    /// Report whether the current content still fits.
-    fn fits(&self) -> PrintResult {
-        if self.line_width > self.width {
-            PrintResult::Overflow
-        } else {
-            PrintResult::Fits
-        }
-    }
-
-    pub fn push_str(&mut self, value: &str, width: u32) -> PrintResult {
-        debug_assert!(
-            !value.contains('\n'),
-            "Use `newline` to push a newline instead."
-        );
-        self.write_indent();
-        self.out.push_str(value);
-        self.line_width += width;
-        self.fits()
-    }
-
-    pub fn push_char(&mut self, ch: u8) -> PrintResult {
-        debug_assert_ne!(ch, b'\n', "Use `newline` to push a newline instead.");
-        self.write_indent();
-        self.out.push(ch as char);
-        self.line_width += 1;
-        self.fits()
-    }
-
-    pub fn newline(&mut self) -> PrintResult {
-        // TODO: Print indent.
-        self.out.push('\n');
-        self.line_width = 0;
-        self.needs_indent = true;
-        // For the print result, we measure until the end of the line, so a
-        // newline fits by definition, even if the previous line might have
-        // exceeded the target width. This is mostly to simplify call sites
-        // where all match arms return `PrintResult`.
-        PrintResult::Fits
+    /// Pretty-print the document.
+    ///
+    /// The pretty printer will try to avoid creating lines longer than `width`
+    /// columns, but this is not always possible. Furthermore, zero-width nodes
+    /// are not considered for the width on purpose. These nodes are used for
+    /// comments, so long comments can still exceed the desired width.
+    pub fn print(&self, width: u32) -> String {
+        let mut printer = Printer::new(width);
+        self.print_to(&mut printer, Mode::Tall);
+        printer.into_inner()
     }
 }
 
 impl<'a> From<&'a str> for Doc<'a> {
     fn from(value: &'a str) -> Doc<'a> {
-        use unicode_width::UnicodeWidthStr;
-        debug_assert!(
-            !value.contains('\n'),
-            "Doc fragments cannot contain newlines, use SoftBreak etc.",
-        );
-        Doc::String {
-            width: value.width() as u32,
-            content: value,
-        }
+        Doc::str(value)
     }
 }
 
@@ -363,6 +255,149 @@ macro_rules! indent {
         Doc::Indent(Box::new(Doc::Concat(vec![$(
             $fragment.into(),
         )*])))
+    }
+}
+
+/// Helper module for pretty printing.
+///
+/// This is a separate module to be able to hide some of the printer internals
+/// from the [`Doc::print`] implementation.
+pub mod printer {
+
+    /// Whether printing in a particular mode fitted or not.
+    ///
+    /// The `Ord` impl returns the worst possible result (overflow) as maximum.
+    #[derive(Eq, Ord, PartialEq, PartialOrd)]
+    pub enum PrintResult {
+        /// The content could be printed within the allocated width.
+        Fits,
+
+        /// The content exceeded the target width.
+        Overflow,
+    }
+
+    impl PrintResult {
+        pub fn is_overflow(&self) -> bool {
+            matches!(self, PrintResult::Overflow)
+        }
+    }
+
+    /// Helper for pretty-printing documents that tracks indentation state.
+    pub struct Printer {
+        /// Buffer where we place the output.
+        out: String,
+
+        /// Target width that we should try to not exceed.
+        width: u32,
+
+        /// The width so far of the line that we are currently writing.
+        line_width: u32,
+
+        /// The current indentation level, counted in spaces.
+        indent: u32,
+
+        /// Whether indentation has been written for the current line.
+        needs_indent: bool,
+    }
+
+    impl Printer {
+        /// Create a new printer with the given line width target.
+        pub fn new(width: u32) -> Printer {
+            Printer {
+                out: String::new(),
+                width,
+                line_width: 0,
+                indent: 0,
+                needs_indent: true,
+            }
+        }
+
+        /// Return the result string printed to the printer.
+        pub fn into_inner(self) -> String {
+            self.out
+        }
+
+        /// Execute `f` against this printer. If the result was too wide, roll back.
+        pub fn try_<F: FnOnce(&mut Printer) -> PrintResult>(&mut self, f: F) -> PrintResult {
+            let len = self.out.len();
+            let line_width = self.line_width;
+            let needs_indent = self.needs_indent;
+            let result = f(self);
+            if result.is_overflow() {
+                self.out.truncate(len);
+                self.line_width = line_width;
+                self.needs_indent = needs_indent;
+            }
+            result
+        }
+
+        /// Execute `f` under increased indentation width.
+        pub fn indented<F: FnOnce(&mut Printer) -> PrintResult>(&mut self, f: F) -> PrintResult {
+            self.indent += 2;
+            let result = f(self);
+            self.indent -= 2;
+            result
+        }
+
+        /// Write the indent after the newline, if needed.
+        fn write_indent(&mut self) {
+            if !self.needs_indent {
+                return;
+            }
+
+            // 50 spaces.
+            let spaces = "                                                  ";
+
+            let mut n_left = self.indent as usize;
+            while n_left > 0 {
+                let n = n_left.min(spaces.len());
+                self.out.push_str(&spaces[..n]);
+                n_left -= n;
+            }
+
+            self.line_width += self.indent;
+            self.needs_indent = false;
+        }
+
+        /// Report whether the current content still fits.
+        fn fits(&self) -> PrintResult {
+            if self.line_width > self.width {
+                PrintResult::Overflow
+            } else {
+                PrintResult::Fits
+            }
+        }
+
+        pub fn push_str(&mut self, value: &str, width: u32) -> PrintResult {
+            debug_assert!(
+                !value.contains('\n'),
+                "Use `newline` to push a newline instead."
+            );
+            self.write_indent();
+            self.out.push_str(value);
+            self.line_width += width;
+            self.fits()
+        }
+
+        pub fn push_char(&mut self, ch: char) -> PrintResult {
+            debug_assert_ne!(ch, '\n', "Use `newline` to push a newline instead.");
+            self.write_indent();
+            self.out.push(ch);
+            self.line_width += 1;
+            self.fits()
+        }
+
+        pub fn newline(&mut self) -> PrintResult {
+            // TODO: Print indent.
+            self.out.push('\n');
+            self.line_width = 0;
+            self.needs_indent = true;
+            // For the print result, we measure until the end of the line, so a
+            // newline fits by definition, even if the previous line might have
+            // exceeded the target width. This is mostly to simplify call sites
+            // where all match arms return `PrintResult`.
+            PrintResult::Fits
+        }
     }
 }
 
