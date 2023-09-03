@@ -11,265 +11,234 @@
 //! everything the long way. At some point I would like to implement a proper
 //! line breaking algorithm, but for now this will suffice.
 
-use std::io::Write;
-
 use crate::cst::{Expr, NonCode, Prefixed, Seq};
 use crate::lexer::QuoteStyle;
+use crate::pprint::{concat, group, indent, Config, Doc};
 use crate::source::Span;
 
-pub type Result = std::io::Result<()>;
-
 /// Write a formatted expression to the output.
-pub fn write_expr(input: &str, expr: &Prefixed<Expr>, out: &mut dyn Write) -> Result {
-    let mut formatter = Formatter::new(input, out);
-    formatter.write_prefixed_expr(expr)?;
-    formatter.write_str("\n")
+pub fn format_expr(input: &str, expr: &Prefixed<Expr>, config: &Config) -> String {
+    let formatter = Formatter::new(input);
+    let doc = formatter.prefixed_expr(expr);
+    doc.print(config)
 }
 
 struct Formatter<'a> {
     // TODO: This could all be more efficient if we resolved on bytestrings, so
     // the code point slicing check can be omitted.
     input: &'a str,
-    out: &'a mut dyn Write,
-    indent: u32,
 }
 
 impl<'a> Formatter<'a> {
-    pub fn new(input: &'a str, out: &'a mut dyn Write) -> Self {
-        Self {
-            input,
-            out,
-            indent: 0,
-        }
+    pub fn new(input: &'a str) -> Self {
+        Self { input }
     }
 
-    pub fn write_indent(&mut self) -> Result {
-        let spaces = [b' '; 64];
-        debug_assert!((self.indent as usize) < spaces.len());
-        self.out.write_all(&spaces[..self.indent as usize])
+    pub fn span(&self, span: Span) -> Doc<'a> {
+        span.resolve(self.input).into()
     }
 
-    pub fn write_str(&mut self, s: &str) -> Result {
-        self.out.write_all(s.as_bytes())
-    }
+    pub fn non_code(&self, nc: &[NonCode]) -> Doc<'a> {
+        let mut result = Vec::new();
 
-    pub fn write_span(&mut self, span: Span) -> Result {
-        self.out.write_all(span.resolve(self.input).as_bytes())
-    }
-
-    pub fn write_non_code(&mut self, nc: &[NonCode]) -> Result {
         for line in nc {
             match line {
-                NonCode::Blank(..) => writeln!(self.out)?,
+                NonCode::Blank(..) => {
+                    result.push(Doc::HardBreak);
+                }
                 NonCode::LineComment(span) => {
-                    self.write_indent()?;
-                    self.write_span(*span)?;
-                    self.write_str("\n")?;
+                    result.push(self.span(*span));
+                    result.push(Doc::HardBreak);
                 }
             }
         }
-        Ok(())
+
+        Doc::Concat(result)
     }
 
-    pub fn write_prefixed_expr(&mut self, expr: &Prefixed<Expr>) -> Result {
-        self.write_non_code(&expr.prefix)?;
-        self.write_expr(&expr.inner)?;
-        Ok(())
+    pub fn prefixed_expr(&self, expr: &Prefixed<Expr>) -> Doc<'a> {
+        concat! {
+            self.non_code(&expr.prefix)
+            self.expr(&expr.inner)
+        }
     }
 
-    pub fn write_expr(&mut self, expr: &Expr) -> Result {
+    pub fn expr(&self, expr: &Expr) -> Doc<'a> {
         match expr {
+            // TODO: Make let-chains a first class construct, so we can format
+            // them either wide or tall.
             Expr::Let {
                 ident, value, body, ..
             } => {
-                self.write_str("let ")?;
-                self.write_span(*ident)?;
-                self.write_str(" = ")?;
-                self.write_expr(value)?;
-                self.write_str(";\n")?;
-                self.write_non_code(&body.prefix)?;
-                self.write_indent()?;
-                self.write_expr(&body.inner)?;
+                concat! {
+                    "let " self.span(*ident) " = " self.expr(value) ";"
+                    Doc::Sep
+                    self.prefixed_expr(&body)
+                }
             }
 
             Expr::BraceLit { elements, .. } => {
                 if elements.is_empty() {
-                    self.write_str("{}")?;
+                    Doc::str("{}")
                 } else {
-                    self.write_str("{\n")?;
-                    self.write_seqs(elements)?;
-                    self.write_str("}")?;
+                    group! {
+                        "{"
+                            Doc::SoftBreak
+                            indent! { self.seqs(elements) }
+                            Doc::SoftBreak
+                        "}"
+                    }
                 }
             }
 
             Expr::BracketLit { elements, .. } => {
                 if elements.is_empty() {
-                    self.write_str("[]")?;
+                    Doc::str("[]")
                 } else {
-                    self.write_str("[\n")?;
-                    self.write_seqs(elements)?;
-                    self.write_str("]")?;
+                    group! {
+                        "["
+                            Doc::SoftBreak
+                            indent! { self.seqs(elements) }
+                            Doc::SoftBreak
+                        "]"
+                    }
                 }
             }
 
             Expr::Parens { body, .. } => {
-                let is_multiline = !body.prefix.is_empty();
-                if is_multiline {
-                    self.write_str("(\n")?;
-                    self.indent += 2;
-                    self.write_non_code(&body.prefix)?;
-                    self.write_indent()?;
-                    self.write_expr(&body.inner)?;
-                    self.write_str("\n")?;
-                    self.indent -= 2;
-                    self.write_indent()?;
-                    self.write_str(")")?;
-                } else {
-                    self.write_str("(")?;
-                    self.write_expr(&body.inner)?;
-                    self.write_str(")")?;
+                group! {
+                    "("
+                    Doc::SoftBreak
+                    indent! { self.prefixed_expr(body) }
+                    Doc::SoftBreak
+                    ")"
                 }
             }
 
-            Expr::BoolLit(span, ..) => {
-                self.write_span(*span)?;
-            }
+            Expr::BoolLit(span, ..) => self.span(*span),
 
             Expr::StringLit(style, span) => match style {
-                QuoteStyle::Double => self.write_span(*span)?,
-                QuoteStyle::Triple => {
-                    self.write_str("\n")?;
-                    self.indent += 2;
-                    self.write_indent()?;
-                    self.write_span(*span)?;
-                    self.indent -= 2;
-                }
+                QuoteStyle::Double => self.span(*span),
+                QuoteStyle::Triple => concat! {
+                    Doc::HardBreak
+                    // TODO: Write lines individually.
+                    indent! { self.span(*span) }
+                },
             },
 
             Expr::NumHexadecimal(span) => {
                 // Normalize A-F to a-f.
-                let num = span.resolve(self.input).as_bytes();
-                self.out.write_all(&num.to_ascii_lowercase())?;
+                span.resolve(self.input).to_ascii_lowercase().into()
             }
 
-            Expr::NumBinary(span) => {
-                self.write_span(*span)?;
-            }
+            Expr::NumBinary(span) => self.span(*span),
 
             Expr::NumDecimal(span) => {
                 // Normalize exponent E to e.
-                let num = span.resolve(self.input).as_bytes();
-                self.out.write_all(&num.to_ascii_lowercase())?;
+                span.resolve(self.input).to_ascii_lowercase().into()
             }
 
-            Expr::Var(span) => {
-                self.write_span(*span)?;
-            }
+            Expr::Var(span) => self.span(*span),
 
+            // TODO: Parse as vec with multiple dots, so we can toggle an entire
+            // method chain as all-or-nothing wide or tall. For now, we just
+            // don't line-wrap field access.
             Expr::Field { inner, field } => {
-                self.write_expr(inner)?;
-                self.write_str(".")?;
-                self.write_span(*field)?;
+                concat! {
+                    self.expr(inner) "." self.span(*field)
+                }
             }
 
             Expr::Call { function, args, .. } => {
-                self.write_expr(function)?;
-                let mut is_first = true;
-                let is_multiline = args.iter().any(|e| !e.prefix.is_empty());
-
-                if is_multiline {
-                    self.write_str("(\n")?;
-                    self.indent += 2;
-                } else {
-                    self.write_str("(")?;
-                }
-
-                for arg in args.iter() {
-                    if !is_first && !is_multiline {
-                        self.write_str(", ")?;
-                    }
-                    self.write_non_code(&arg.prefix)?;
-                    if is_multiline {
-                        self.write_indent()?;
-                    }
-                    self.write_expr(&arg.inner)?;
-                    is_first = false;
-
-                    if is_multiline {
-                        self.write_str(",\n")?;
+                concat! {
+                    self.expr(function)
+                    group! {
+                        "("
+                        Doc::SoftBreak
+                        indent! {
+                            Doc::join(
+                                args.iter().map(|arg| self.prefixed_expr(arg)),
+                                concat!{ "," Doc::Sep },
+                            )
+                            Doc::tall(',')
+                        }
+                        Doc::SoftBreak
+                        ")"
                     }
                 }
-
-                if is_multiline {
-                    self.indent -= 2;
-                    self.write_indent()?;
-                }
-                self.write_str(")")?;
             }
 
             Expr::UnOp { op_span, body, .. } => {
-                self.write_span(*op_span)?;
-                self.write_str(" ")?;
-                self.write_expr(body)?;
+                concat! {
+                    self.span(*op_span)
+                    Doc::Sep
+                    self.expr(body)
+                }
             }
 
+            // TODO: Make this a collection in the parser, so we can toggle
+            // operator chains into all-wide or all-tall but not mixed.
             Expr::BinOp {
                 op_span, lhs, rhs, ..
             } => {
-                self.write_expr(lhs)?;
-                self.write_str(" ")?;
-                self.write_span(*op_span)?;
-                self.write_str(" ")?;
-                self.write_expr(rhs)?;
+                group! {
+                    self.expr(lhs)
+                    Doc::Sep
+                    self.span(*op_span)
+                    " "
+                    self.expr(rhs)
+                }
             }
+
             todo => unimplemented!("Fmt not implemented for {todo:?}"),
         }
-        Ok(())
     }
 
-    pub fn write_seqs(&mut self, elements: &[Prefixed<Seq>]) -> Result {
-        self.indent += 2;
-        for elem in elements.iter() {
-            self.write_non_code(&elem.prefix)?;
-            self.write_indent()?;
-            self.write_seq(&elem.inner)?;
+    pub fn seqs(&self, elements: &[Prefixed<Seq>]) -> Doc<'a> {
+        let mut result = Vec::new();
+        for (i, elem) in elements.iter().enumerate() {
+            let is_last = i + 1 == elements.len();
+            result.push(self.non_code(&elem.prefix));
+            result.push(self.seq(&elem.inner, is_last));
+            if !is_last {
+                result.push(Doc::Sep)
+            }
         }
-        self.indent -= 2;
-        self.write_indent()
+        Doc::Concat(result)
     }
 
-    pub fn write_seq(&mut self, seq: &Seq) -> Result {
+    pub fn seq(&self, seq: &Seq, is_last: bool) -> Doc<'a> {
         match seq {
             Seq::Elem { value, .. } => {
-                self.write_expr(value)?;
-                self.write_str(",\n")?;
+                concat! {
+                    self.expr(value)
+                    Doc::trailer(",", is_last)
+                }
             }
 
             Seq::AssocExpr { field, value, .. } => {
-                self.write_expr(field)?;
-                self.write_str(": ")?;
-                self.write_expr(value)?;
-                self.write_str(",\n")?;
+                concat! {
+                    self.expr(field) ": " self.expr(value)
+                    Doc::trailer(",", is_last)
+                }
             }
 
             Seq::AssocIdent { field, value, .. } => {
-                self.write_span(*field)?;
-                self.write_str(" = ")?;
-                self.write_expr(value)?;
-                self.write_str(";\n")?;
+                concat! {
+                    self.span(*field) " = " self.expr(value)
+                    Doc::trailer(";", is_last)
+                }
             }
 
             Seq::Let {
                 ident, value, body, ..
             } => {
-                self.write_str("let ")?;
-                self.write_span(*ident)?;
-                self.write_str(" = ")?;
-                self.write_expr(value)?;
-                self.write_str(";\n")?;
-                self.write_non_code(&body.prefix)?;
-                self.write_indent()?;
-                self.write_seq(&body.inner)?;
+                concat! {
+                    "let " self.span(*ident) " = " self.expr(value) ";"
+                    Doc::Sep
+                    self.non_code(&body.prefix)
+                    self.seq(&body.inner, is_last)
+                }
             }
 
             Seq::For {
@@ -278,34 +247,36 @@ impl<'a> Formatter<'a> {
                 body,
                 ..
             } => {
-                self.write_str("for ")?;
-                let mut is_first = true;
-                for ident in idents.iter() {
-                    if !is_first {
-                        self.write_str(", ")?;
-                    }
-                    self.write_span(*ident)?;
-                    is_first = false;
+                concat! {
+                    "for "
+                    // TODO: This does not use a proper sep, which means we
+                    // cannot break this over multiple lines. But maybe that's
+                    // okay.
+                    Doc::join(
+                        idents.iter().map(|ident| self.span(*ident)),
+                        ", ".into(),
+                    )
+                    " in "
+                    self.expr(collection)
+                    ":"
+                    Doc::Sep
+                    self.non_code(&body.prefix)
+                    self.seq(&body.inner, is_last)
                 }
-                self.write_str(" in ")?;
-                self.write_expr(collection)?;
-                self.write_str(":\n")?;
-                self.write_non_code(&body.prefix)?;
-                self.write_indent()?;
-                self.write_seq(&body.inner)?;
             }
 
             Seq::If {
                 condition, body, ..
             } => {
-                self.write_str("if ")?;
-                self.write_expr(condition)?;
-                self.write_str(":\n")?;
-                self.write_non_code(&body.prefix)?;
-                self.write_indent()?;
-                self.write_seq(&body.inner)?;
+                concat! {
+                    "if "
+                    self.expr(condition)
+                    ":"
+                    Doc::Sep
+                    self.non_code(&body.prefix)
+                    self.seq(&body.inner, is_last)
+                }
             }
         }
-        Ok(())
     }
 }

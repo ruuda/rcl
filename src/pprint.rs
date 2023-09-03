@@ -25,6 +25,27 @@ enum Mode {
     Tall,
 }
 
+/// Configuration for the pretty-printer.
+pub struct Config {
+    /// The pretty printer will try to avoid creating lines longer than `width`
+    /// columns, but this is not always possible. Furthermore, zero-width nodes
+    /// are not considered for the width on purpose. These nodes are used for
+    /// comments, so long comments can still exceed the desired width.
+    width: u32,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            // By default we set a line length of 88 characters, which Black
+            // found to produce shorter files than sticking strictly to 88 for
+            // Python. See also:
+            // https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#line-length
+            width: 88,
+        }
+    }
+}
+
 /// A document tree that can be pretty-printed.
 ///
 /// Every node can be printed in two ways: wide or tall. The goal of the
@@ -44,7 +65,7 @@ enum Mode {
 ///   indent! {
 ///     "elem0" "," Sep
 ///     "elem1" "," Sep
-///     "elem2" Doc::if_tall(",")
+///     "elem2" Doc::tall(',')
 ///   }
 ///   SoftBreak
 ///   "]"
@@ -75,9 +96,13 @@ enum Mode {
 /// first and last outputs are valid, so this gives us more control: the
 /// middle example can still be produced, by wrapping the `Doc::Indent` in
 /// a `Doc::Group`.
+#[derive(Clone)]
 pub enum Doc<'a> {
-    /// A literal piece of content.
-    String { content: &'a str, width: u32 },
+    /// A string slice to be spliced into the output.
+    Str { content: &'a str, width: u32 },
+
+    /// An owned string to be spliced into the output.
+    String { content: String, width: u32 },
 
     /// A string which does not contribute to the width of the document.
     ///
@@ -111,13 +136,25 @@ pub enum Doc<'a> {
     Group(Box<Doc<'a>>),
 
     /// An indented block.
-    ///
     Indent(Box<Doc<'a>>),
 }
 
 impl<'a> Doc<'a> {
-    /// Construct a new document fragment from a `&str`.
-    fn str(value: &'a str) -> Doc<'a> {
+    /// Construct a new document fragment from a string slice.
+    pub fn str(value: &'a str) -> Doc<'a> {
+        use unicode_width::UnicodeWidthStr;
+        debug_assert!(
+            !value.contains('\n'),
+            "Doc fragments cannot contain newlines, use SoftBreak etc.",
+        );
+        Doc::Str {
+            width: value.width() as u32,
+            content: value,
+        }
+    }
+
+    /// Construct a new document fragment from an owned string.
+    pub fn string(value: String) -> Doc<'a> {
         use unicode_width::UnicodeWidthStr;
         debug_assert!(
             !value.contains('\n'),
@@ -153,6 +190,36 @@ impl<'a> Doc<'a> {
         Doc::WhenTall(ch)
     }
 
+    /// Emit the trailing text:
+    ///
+    /// * Unconditionally when `!is_last`.
+    /// * Only in tall mode when `is_last`.
+    ///
+    /// This can be used to add trailing commas to collections.
+    pub fn trailer(trail: &'a str, is_last: bool) -> Doc<'a> {
+        if is_last {
+            debug_assert_eq!(trail.len(), 1, "Trailer must be 1 ascii byte.");
+            Doc::tall(trail.chars().next().expect("Should not pass empty string."))
+        } else {
+            Doc::str(trail)
+        }
+    }
+
+    /// Join multiple documents with a separator in between.
+    pub fn join<I: Iterator<Item = Doc<'a>>>(elements: I, separator: Doc<'a>) -> Doc<'a> {
+        let mut result = Vec::new();
+        let mut is_first = true;
+        for elem in elements {
+            if !is_first {
+                result.push(separator.clone());
+            } else {
+                is_first = false;
+            }
+            result.push(elem)
+        }
+        Doc::Concat(result)
+    }
+
     /// Whether any of the nodes in this tree force tall mode.
     ///
     /// A hard break forces tall mode.
@@ -169,7 +236,8 @@ impl<'a> Doc<'a> {
     /// Print the document to the given printer.
     fn print_to(&self, printer: &mut Printer, mode: Mode) -> PrintResult {
         match self {
-            Doc::String { content, width } => printer.push_str(content, *width),
+            Doc::Str { content, width } => printer.push_str(content, *width),
+            Doc::String { content, width } => printer.push_str(&content, *width),
             Doc::ZeroWidth(content) => {
                 let width = 0;
                 printer.push_str(content, width)
@@ -221,12 +289,8 @@ impl<'a> Doc<'a> {
 
     /// Pretty-print the document.
     ///
-    /// The pretty printer will try to avoid creating lines longer than `width`
-    /// columns, but this is not always possible. Furthermore, zero-width nodes
-    /// are not considered for the width on purpose. These nodes are used for
-    /// comments, so long comments can still exceed the desired width.
-    pub fn print(&self, width: u32) -> String {
-        let mut printer = Printer::new(width);
+    pub fn print(&self, config: &Config) -> String {
+        let mut printer = Printer::new(config);
         self.print_to(&mut printer, Mode::Tall);
         printer.into_inner()
     }
@@ -238,31 +302,75 @@ impl<'a> From<&'a str> for Doc<'a> {
     }
 }
 
-macro_rules! group {
-    { $($fragment:expr)* } => {
-        // TODO: Add constructor that avoids constructing nested Concat and
-        // inlines the children if they are concats.
-        Doc::Group(Box::new(Doc::Concat(vec![$(
-            $fragment.into(),
-        )*])))
+impl<'a> From<String> for Doc<'a> {
+    fn from(value: String) -> Doc<'a> {
+        Doc::string(value)
     }
 }
 
-macro_rules! indent {
-    { $($fragment:expr)* } => {
-        // TODO: Add constructor that avoids constructing nested Concat and
-        // inlines the children if they are concats.
-        Doc::Indent(Box::new(Doc::Concat(vec![$(
-            $fragment.into(),
-        )*])))
+impl<'a> std::ops::Add<Doc<'a>> for Doc<'a> {
+    type Output = Doc<'a>;
+
+    #[inline]
+    fn add(self, that: Doc<'a>) -> Doc<'a> {
+        // For the logic, always returning the final catch-all case would
+        // suffice, but that would be wasteful and produce a deep tree
+        // of small vecs, we can make a shallower tree and avoid some pointer
+        // chasing by concatenating. Hopefully LLVM will inline this as well
+        // as the call that produced the doc, and then it can statically resolve
+        // everything.
+        match (self, that) {
+            (Doc::Concat(xs), y) if xs.is_empty() => y,
+            (x, Doc::Concat(ys)) if ys.is_empty() => x,
+            (Doc::Concat(mut xs), Doc::Concat(mut ys)) => {
+                xs.append(&mut ys);
+                Doc::Concat(xs)
+            }
+            (Doc::Concat(mut xs), y) => {
+                xs.push(y);
+                Doc::Concat(xs)
+            }
+            (x, Doc::Concat(mut ys)) => {
+                ys.insert(0, x);
+                Doc::Concat(ys)
+            }
+            (Doc::Indent(x), Doc::Indent(y)) => Doc::Indent(Box::new(*x + *y)),
+            (x, y) => Doc::Concat(vec![x, y]),
+        }
     }
 }
+
+macro_rules! doc_concat {
+    { $($fragment:expr)* } => {
+        {
+            let mut result = Doc::Concat(Vec::new());
+            $( result = result + $fragment.into(); )*
+            result
+        }
+    }
+}
+pub(crate) use doc_concat as concat;
+
+macro_rules! group {
+    { $($fragment:expr)* } => {
+        Doc::Group(Box::new( $crate::pprint::concat! { $($fragment)* } ))
+    }
+}
+pub(crate) use group;
+
+macro_rules! indent {
+    { $($fragment:expr)* } => {
+        Doc::Indent(Box::new( $crate::pprint::concat! { $($fragment)* } ))
+    }
+}
+pub(crate) use indent;
 
 /// Helper module for pretty printing.
 ///
 /// This is a separate module to be able to hide some of the printer internals
 /// from the [`Doc::print`] implementation.
 mod printer {
+    use super::Config;
 
     /// Whether printing in a particular mode fitted or not.
     ///
@@ -302,10 +410,10 @@ mod printer {
 
     impl Printer {
         /// Create a new printer with the given line width target.
-        pub fn new(width: u32) -> Printer {
+        pub fn new(config: &Config) -> Printer {
             Printer {
                 out: String::new(),
-                width,
+                width: config.width,
                 line_width: 0,
                 indent: 0,
                 needs_indent: true,
@@ -403,12 +511,10 @@ mod printer {
 
 #[cfg(test)]
 mod test {
-    use super::{Doc, Mode, Printer};
+    use super::{Config, Doc};
 
     fn print_width(doc: &Doc, width: u32) -> String {
-        let mut printer = Printer::new(width);
-        doc.print(&mut printer, Mode::Tall);
-        printer.into_inner()
+        doc.print(&Config { width })
     }
 
     #[test]
@@ -420,7 +526,7 @@ mod test {
             indent! {
                 "elem0" "," Sep
                 "elem1" "," Sep
-                "elem2" Doc::if_tall(b',')
+                "elem2" Doc::tall(',')
             }
             SoftBreak
             "]"
@@ -461,14 +567,14 @@ mod test {
                     indent! {
                         "a" "," Sep
                         "b" "," Sep
-                        "c" Doc::if_tall(b',')
+                        "c" Doc::tall(',')
                     }
                     SoftBreak
                     "]"
                 } "," Sep
                 "elem0" "," Sep
                 "elem1" "," Sep
-                "elem2" Doc::if_tall(b',')
+                "elem2" Doc::tall(',')
             }
             SoftBreak
             "]"

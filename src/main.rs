@@ -60,11 +60,14 @@ fn main_eval(inputs: &Inputs) -> Result<()> {
 }
 
 fn main_fmt(inputs: &Inputs) -> Result<()> {
+    use std::io::Write;
     for (i, doc) in inputs.iter().enumerate() {
         let id = DocId(i as u32);
         let (_doc_span, cst) = rcl::parser::parse(id, doc.data)?;
+        let cfg = rcl::pprint::Config::default();
+        let res = rcl::fmt::format_expr(doc.data, &cst, &cfg);
         let mut out = std::io::stdout().lock();
-        let res = rcl::fmt::write_expr(doc.data, &cst, &mut out);
+        let res = out.write_all(res.as_bytes());
         if res.is_err() {
             // If we fail to print to stdout, there is no point in printing
             // an error, just exit then.
