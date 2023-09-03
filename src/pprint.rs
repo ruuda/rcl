@@ -253,10 +253,12 @@ impl Printer {
     pub fn try_<F: FnOnce(&mut Printer) -> PrintResult>(&mut self, f: F) -> PrintResult {
         let len = self.out.len();
         let line_width = self.line_width;
+        let needs_indent = self.needs_indent;
         let result = f(self);
         if result.is_overflow() {
             self.out.truncate(len);
             self.line_width = line_width;
+            self.needs_indent = needs_indent;
         }
         result
     }
@@ -443,7 +445,7 @@ mod test {
         );
         assert_eq!(
             print_width(&doc, 8),
-            "[\n  [\n    a,\n    b,\n    c\n  ],\n  elem0,\n  elem1,\n  elem2,\n]",
+            "[\n  [\n    a,\n    b,\n    c,\n  ],\n  elem0,\n  elem1,\n  elem2,\n]",
         );
     }
 }
