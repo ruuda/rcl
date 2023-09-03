@@ -8,7 +8,7 @@
 //! Utilities for pretty-printing code.
 //!
 //! The approach in this module is inspired by Philip Wadler’s 2003 paper
-//! [A Prettier Printer][wadler2003]. The implementation is slightly different
+//! [_A Prettier Printer_][wadler2003]. The implementation is slightly different
 //! to make it more suitable for Rust’s strict evaluation, and new constructors
 //! are added to deal with comments, which should be ignored for width
 //! calculation because we don’t reflow them, and which should always force a
@@ -262,7 +262,7 @@ macro_rules! indent {
 ///
 /// This is a separate module to be able to hide some of the printer internals
 /// from the [`Doc::print`] implementation.
-pub mod printer {
+mod printer {
 
     /// Whether printing in a particular mode fitted or not.
     ///
