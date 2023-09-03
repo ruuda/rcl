@@ -17,9 +17,11 @@ fn fuzz_eval(input: &str) -> rcl::error::Result<()> {
 fn run_fmt(input: &str) -> rcl::error::Result<String> {
     let id = DocId(0);
     let (_span, cst) = rcl::parser::parse(id, input)?;
-    let mut out = Vec::new();
-    rcl::fmt::write_expr(input, &cst, &mut out).expect("Write to &mut String does not fail.");
-    Ok(String::from_utf8(out).expect("Formatter should produce valid UTF-8."))
+    // For the fuzzer, we set the format width somewhat lower than the default,
+    // so we can explore interesting behavior with smaller inputs.
+    let cfg = rcl::pprint::Config { width: 32 };
+    let result = rcl::fmt::format_expr(input, &cst, &cfg);
+    Ok(result)
 }
 
 /// Run the formatter twice and check for idempotency.

@@ -31,7 +31,7 @@ pub struct Config {
     /// columns, but this is not always possible. Furthermore, zero-width nodes
     /// are not considered for the width on purpose. These nodes are used for
     /// comments, so long comments can still exceed the desired width.
-    width: u32,
+    pub width: u32,
 }
 
 impl Default for Config {
