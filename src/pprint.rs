@@ -230,14 +230,6 @@ struct Printer {
 
     /// Whether indentation has been written for the current line.
     needs_indent: bool,
-
-    /// Checkpoints that we can revert to.
-    ///
-    /// The checkpoint records the length of the buffer at that time, and the
-    /// `line_width` at that time. To revert to the checkpoint, we truncate the
-    /// buffer back to that length. To commit the topmost checkpoint, we just
-    /// pop it from this stack.
-    checkpoints: Vec<(usize, u32)>,
 }
 
 impl Printer {
@@ -249,30 +241,22 @@ impl Printer {
             line_width: 0,
             indent: 0,
             needs_indent: true,
-            checkpoints: Vec::new(),
         }
     }
 
     /// Return the result string printed to the printer.
     pub fn into_inner(self) -> String {
-        debug_assert!(
-            self.checkpoints.is_empty(),
-            "Should only consume printer outside of a `try_`.",
-        );
         self.out
     }
 
     /// Execute `f` against this printer. If the result was too wide, roll back.
     pub fn try_<F: FnOnce(&mut Printer) -> PrintResult>(&mut self, f: F) -> PrintResult {
-        self.checkpoints.push((self.out.len(), self.line_width));
+        let len = self.out.len();
+        let line_width = self.line_width;
         let result = f(self);
-        let (len, width) = self
-            .checkpoints
-            .pop()
-            .expect("Impossible: push/pop are balanced.");
         if result.is_overflow() {
             self.out.truncate(len);
-            self.line_width = width;
+            self.line_width = line_width;
         }
         result
     }
