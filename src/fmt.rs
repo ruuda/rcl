@@ -7,9 +7,8 @@
 
 //! An auto-formatter for pretty-printing CST nodes.
 //!
-//! Note, currently this is an extremely naive toy formatter that formats
-//! everything the long way. At some point I would like to implement a proper
-//! line breaking algorithm, but for now this will suffice.
+//! The formatter converts the CST into a [`Doc`], which can subsequently be
+//! pretty-printed for formatting.
 
 use crate::cst::{Expr, NonCode, Prefixed, Seq};
 use crate::lexer::QuoteStyle;
