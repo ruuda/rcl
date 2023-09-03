@@ -20,6 +20,7 @@ pub mod highlight;
 pub mod json;
 pub mod lexer;
 pub mod parser;
+pub mod pprint;
 pub mod runtime;
 pub mod source;
 pub mod string;
