@@ -436,8 +436,8 @@ impl<'a> Lexer<'a> {
     fn lex_in_quote(&mut self, style: QuoteStyle, mode: QuoteMode) -> Result<Lexeme> {
         let input = &self.input.as_bytes()[self.start..];
 
-        // The length of the start of the string literal, can be one or two
-        // bytes depending on the prefix, '"' or 'f"' or '}'.
+        // The length of the start of the string literal depends on the quote
+        // style and whether it has the prefix 'f', or whether it was a hole.
         let n_skip = match (style, mode) {
             (style, QuoteMode::Regular) => style.len(),
             (style, QuoteMode::FormatOpen) => style.len() + 1,
