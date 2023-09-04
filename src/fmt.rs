@@ -104,7 +104,7 @@ impl<'a> Formatter<'a> {
                 concat! {
                     "let " self.span(*ident) " = " self.expr(value) ";"
                     Doc::Sep
-                    self.prefixed_expr(&body)
+                    self.prefixed_expr(body)
                 }
             }
 

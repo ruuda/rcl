@@ -244,7 +244,7 @@ impl<'a> Doc<'a> {
     fn print_to(&self, printer: &mut Printer, mode: Mode) -> PrintResult {
         match self {
             Doc::Str { content, width } => printer.push_str(content, *width),
-            Doc::String { content, width } => printer.push_str(&content, *width),
+            Doc::String { content, width } => printer.push_str(content, *width),
             Doc::ZeroWidth(content) => {
                 let width = 0;
                 printer.push_str(content, width)
