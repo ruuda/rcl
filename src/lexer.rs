@@ -344,17 +344,13 @@ impl<'a> Lexer<'a> {
         }
 
         // What state to continue lexing in after the closing '}', depends on
-        // whether it was closing a regular expression or a string
-        // interpolation.
+        // whether it was closing an expression or a string interpolation.
         if input[0] == b'}' {
-            match self.pop_delimiter()? {
-                Delimiter::Hole(style) => {
-                    return self.lex_in_quote(style, QuoteMode::FormatInner);
-                }
-                // If it was a regular delimiter, then we continue lexing
-                // normally.
-                _ => {}
+            if let Delimiter::Hole(style) = self.pop_delimiter()? {
+                return self.lex_in_quote(style, QuoteMode::FormatInner);
             }
+            // If it was a regular delimiter, then we continue lexing
+            // normally.
         }
 
         if input[0].is_ascii_digit() {
