@@ -1,0 +1,9 @@
+[
+  // Two parts, no inner fragment.
+  f"Interpolated string: {"hello, world"}",
+  // Three parts, one inner fragment.
+  f"Begin {"hole1"} inner {"hole2"} end.",
+]
+
+# output:
+["Interpolated string: hello, world","Begin hole1 inner hole2 end."]

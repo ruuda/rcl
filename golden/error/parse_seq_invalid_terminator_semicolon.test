@@ -1,0 +1,8 @@
+{x = 10, y = 32}
+
+# output:
+ --> stdin:1:7
+  |
+1 | {x = 10, y = 32}
+  |        ^
+Error: Expected ';' instead of ',' here.

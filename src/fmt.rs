@@ -14,6 +14,7 @@
 use std::io::Write;
 
 use crate::cst::{Expr, NonCode, Prefixed, Seq};
+use crate::lexer::QuoteStyle;
 use crate::source::Span;
 
 pub type Result = std::io::Result<()>;
@@ -115,17 +116,16 @@ impl<'a> Formatter<'a> {
                 self.write_span(*span)?;
             }
 
-            Expr::StringLit(span) => {
-                self.write_span(*span)?;
-            }
-
-            Expr::StringLitTriple(span) => {
-                self.write_str("\n")?;
-                self.indent += 2;
-                self.write_indent()?;
-                self.write_span(*span)?;
-                self.indent -= 2;
-            }
+            Expr::StringLit(style, span) => match style {
+                QuoteStyle::Double => self.write_span(*span)?,
+                QuoteStyle::Triple => {
+                    self.write_str("\n")?;
+                    self.indent += 2;
+                    self.write_indent()?;
+                    self.write_span(*span)?;
+                    self.indent -= 2;
+                }
+            },
 
             Expr::Var(span) => {
                 self.write_span(*span)?;

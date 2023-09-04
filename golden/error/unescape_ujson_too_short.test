@@ -1,0 +1,8 @@
+"Invalid: \u00"
+
+# output:
+ --> stdin:1:12
+  |
+1 | "Invalid: \u00"
+  |             ^~
+Error: Expected four hex digits after '\u' escape sequence.

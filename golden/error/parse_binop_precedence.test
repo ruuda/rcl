@@ -1,0 +1,15 @@
+let flags = ["no", "se", "dk"];
+flags.contains("se") or flags.contains("dk") and flags.contains("no")
+
+# output:
+ --> stdin:2:45
+  |
+2 | flags.contains("se") or flags.contains("dk") and flags.contains("no")
+  |                                              ^~~
+Error: Parentheses are needed to clarify the precedence of this operator.
+
+ --> stdin:2:21
+  |
+2 | flags.contains("se") or flags.contains("dk") and flags.contains("no")
+  |                      ^~
+Note: Without parentheses, it is not clear whether this operator should take precedence.

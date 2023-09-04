@@ -18,6 +18,7 @@
 //! implied by the structure of the tree. For example, for a let-binding, it
 //! does not store the span of the `let` keyword nor of the `=` after the name.
 
+use crate::lexer::QuoteStyle;
 use crate::source::Span;
 
 /// A unary operator.
@@ -78,6 +79,19 @@ pub struct Prefixed<T> {
     pub inner: T,
 }
 
+/// A hole in a format string.
+#[derive(Debug)]
+pub struct FormatHole {
+    /// The span of the expression that fills the hole, excluding `}` and `{`.
+    pub span: Span,
+
+    /// The expression that fills the hole.
+    pub body: Expr,
+
+    /// The string literal following the hole, including `}`.
+    pub suffix: Span,
+}
+
 #[derive(Debug)]
 pub enum Expr {
     /// A let-binding that binds `value` to the name `ident` in `body`.
@@ -114,11 +128,18 @@ pub enum Expr {
     /// A boolean literal.
     BoolLit(Span, bool),
 
-    /// A string literal quoted in double quotes (`"`).
-    StringLit(Span),
+    /// A string literal quoted in double or triple quotes (`"`).
+    StringLit(QuoteStyle, Span),
 
-    /// A string literal quoted in triple double quotes (`"""`).
-    StringLitTriple(Span),
+    /// A format string, also called f-string.
+    FormatString {
+        /// Whether the string is double (`f"`) or triple (`f"""`) quoted.
+        style: QuoteStyle,
+        /// The string literal up to and including the `{` of the first hole.
+        begin: Span,
+        /// Contents of a hole followed by the string literal after it.
+        holes: Vec<FormatHole>,
+    },
 
     /// An integer in hexadecimal notation.
     NumHexadecimal(Span),

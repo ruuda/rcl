@@ -7,6 +7,7 @@
 
 #![allow(clippy::from_str_radix_10)]
 #![allow(clippy::len_without_is_empty)]
+#![allow(clippy::manual_range_contains)]
 
 pub mod abstraction;
 pub mod ast;
@@ -20,6 +21,7 @@ pub mod lexer;
 pub mod parser;
 pub mod runtime;
 pub mod source;
+pub mod string;
 
 /// A placeholder just like regular `todo!`, except it doesn't prevent fuzzing.
 #[macro_export]

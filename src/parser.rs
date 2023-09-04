@@ -5,9 +5,9 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, UnOp};
-use crate::error::ParseError;
-use crate::lexer::{self, Token};
+use crate::cst::{BinOp, Expr, FormatHole, NonCode, Prefixed, Seq, UnOp};
+use crate::error::{IntoParseError, ParseError};
+use crate::lexer::{self, QuoteStyle, Token};
 use crate::source::{DocId, Span};
 
 pub type Result<T> = std::result::Result<T, ParseError>;
@@ -87,14 +87,7 @@ impl<'a> Parser<'a> {
 
     /// Build a parse error at the current cursor location.
     fn error<T>(&self, message: &'static str) -> Result<T> {
-        let err = ParseError {
-            span: self.peek_span(),
-            message,
-            note: None,
-            help: None,
-        };
-
-        Err(err)
+        Err(self.peek_span().error(message))
     }
 
     /// Build a parse error at the current cursor location, and a note elsewhere.
@@ -104,10 +97,8 @@ impl<'a> Parser<'a> {
         note_span: Span,
         note: &'static str,
     ) -> Result<T> {
-        self.error(message).map_err(|err| ParseError {
-            note: Some((note_span, note)),
-            ..err
-        })
+        self.error(message)
+            .map_err(|err| err.with_note(note_span, note))
     }
 
     /// Return the token under the cursor, if there is one.
@@ -199,15 +190,10 @@ impl<'a> Parser<'a> {
     fn pop_bracket(&mut self) -> Result<Span> {
         self.decrease_depth();
         let actual_end_token = self.tokens.get(self.cursor).map(|t| t.0);
-        let top = match self.bracket_stack.pop() {
-            None => match actual_end_token {
-                Some(Token::RParen) => return self.error("Found unmatched ')'."),
-                Some(Token::RBrace) => return self.error("Found unmatched '}'."),
-                Some(Token::RBracket) => return self.error("Found unmatched ']'."),
-                invalid => unreachable!("Invalid token for `pop_bracket`: {:?}", invalid),
-            },
-            Some(t) => t,
-        };
+        let top = self
+            .bracket_stack
+            .pop()
+            .expect("If brackets were unmatched, lexing would have failed.");
         let expected_end_token = match top.0 {
             Token::LParen => Token::RParen,
             Token::LBrace => Token::RBrace,
@@ -219,6 +205,9 @@ impl<'a> Parser<'a> {
             return Ok(self.consume());
         }
 
+        // The lexer ensures matching brackets, but even in a document where
+        // that is the case, we may still encounter a different token where the
+        // parser expects a closing bracket. E.g. in `{1 1}`.
         match expected_end_token {
             Token::RParen => {
                 self.error_with_note("Expected ')'.", top.1, "Unmatched '(' opened here.")
@@ -573,15 +562,56 @@ impl<'a> Parser<'a> {
                 };
                 Ok(result)
             }
+            Some(Token::FormatOpen(style)) => self.parse_format_string(style),
             Some(Token::KwTrue) => Ok(Expr::BoolLit(self.consume(), true)),
             Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
-            Some(Token::DoubleQuoted) => Ok(Expr::StringLit(self.consume())),
-            Some(Token::TripleQuoted) => Ok(Expr::StringLitTriple(self.consume())),
+            Some(Token::Quoted(style)) => Ok(Expr::StringLit(style, self.consume())),
             Some(Token::NumHexadecimal) => Ok(Expr::NumHexadecimal(self.consume())),
             Some(Token::NumBinary) => Ok(Expr::NumBinary(self.consume())),
             Some(Token::NumDecimal) => Ok(Expr::NumDecimal(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),
             _ => self.error("Expected a term here."),
+        }
+    }
+
+    /// Parse a format string (`f"` or `f"""`).
+    fn parse_format_string(&mut self, style: QuoteStyle) -> Result<Expr> {
+        debug_assert_eq!(self.peek(), Some(Token::FormatOpen(style)));
+
+        let begin = self.consume();
+        let mut holes = Vec::new();
+        let mut prefix = begin;
+
+        loop {
+            self.skip_non_code()?;
+            let (span, body) = self.parse_expr()?;
+            self.skip_non_code()?;
+
+            let is_close = match self.peek() {
+                Some(Token::FormatInner(..)) => false,
+                Some(Token::FormatClose(..)) => true,
+                _ => {
+                    return self.error_with_note(
+                        "Unclosed hole in f-string, expected '}' here.",
+                        prefix.trim_start(prefix.len() - 1),
+                        "Hole opened here.",
+                    )
+                }
+            };
+
+            let suffix = self.consume();
+            let hole = FormatHole { span, body, suffix };
+            holes.push(hole);
+            prefix = suffix;
+
+            if is_close {
+                let result = Expr::FormatString {
+                    style,
+                    begin,
+                    holes,
+                };
+                return Ok(result);
+            }
         }
     }
 
@@ -817,7 +847,7 @@ impl<'a> Parser<'a> {
         let (collection_span, collection) = self.parse_expr()?;
 
         self.skip_non_code()?;
-        self.parse_token(Token::Colon, "Expected ':' here.")?;
+        self.parse_token(Token::Colon, "Expected ':' after the collection.")?;
 
         let body = self.parse_prefixed_seq()?;
 
@@ -851,7 +881,7 @@ impl<'a> Parser<'a> {
                     For an if-then-else expression, enclose the expression in parentheses.",
                 );
             }
-            _ => return self.error("Expected ':' here."),
+            _ => return self.error("Expected ':' after the condition."),
         };
 
         let body = self.parse_prefixed_seq()?;

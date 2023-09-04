@@ -112,6 +112,11 @@ impl Span {
         Span::new(self.doc(), self.start(), self.end() - n_trim)
     }
 
+    /// Keep at most the first `n` bytes of the span.
+    pub fn take(&self, n: usize) -> Span {
+        Span::new(self.doc(), self.start(), self.end().min(self.start() + n))
+    }
+
     /// Return a span that runs from self up to but not including `other`.
     pub fn until(&self, other: Span) -> Span {
         debug_assert_eq!(self.doc(), other.doc());

@@ -1,9 +1,10 @@
 {
-  // TODO: The test output is incorrect, the escapes are not yet interpreted.
   newline = "\n";
   quote = "\"";
   triple = """.".\""".\n""";
+  json_escapes = "\\\/\b\f\n\r\t\u000a";
+  unicode_escapes = "\u[7f]\u[1f574]\u[fe0e]";
 }
 
 # output:
-{"newline":"\\n","quote":"\\\"","triple":".\".\\\"\"\".\\n"}
+{"json_escapes":"\\/\b\f\n\r\t\n","newline":"\n","quote":"\"","triple":".\".\"\"\".\n","unicode_escapes":"\u007f🕴︎"}

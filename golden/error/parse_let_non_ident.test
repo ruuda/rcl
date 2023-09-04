@@ -1,0 +1,8 @@
+let 1 = 1; 1
+
+# output:
+ --> stdin:1:4
+  |
+1 | let 1 = 1; 1
+  |     ^
+Error: Expected an identifier here.

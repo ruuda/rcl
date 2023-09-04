@@ -5,7 +5,8 @@
   false or false,
   not true,
   not false,
+  not not true,
 ]
 
 # output:
-[false,true,true,false,false,true]
+[false,true,true,false,false,true,true]

@@ -13,4 +13,4 @@ let record = {
 [ for _key, value in record: value ]
 
 # output:
-["\n    In the Voight-Kampff test, it took over a hundred questions\n    to establish Rachael\u{2019}s true nature.\n    ","NEXUS-7 N7FAA52318","Rachael"]
+["\n    In the Voight-Kampff test, it took over a hundred questions\n    to establish Rachael’s true nature.\n    ","NEXUS-7 N7FAA52318","Rachael"]

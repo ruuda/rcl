@@ -8,6 +8,7 @@ theme:
   custom_dir: docs/theme
 
 markdown_extensions:
+  - footnotes
   - toc:
       permalink: true
       permalink_title: null
@@ -17,4 +18,5 @@ nav:
   - User guide:
     - Terminology: terminology.md
     - Syntax: syntax.md
+    - Strings: strings.md
   - Development: development.md

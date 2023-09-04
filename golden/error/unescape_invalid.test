@@ -1,0 +1,8 @@
+"Note that \* is not a valid escape sequence."
+
+# output:
+ --> stdin:1:11
+  |
+1 | "Note that \* is not a valid escape sequence."
+  |            ^~
+Error: Invalid escape sequence.
