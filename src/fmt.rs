@@ -78,7 +78,7 @@ impl<'a> Formatter<'a> {
                     result.push(Doc::HardBreak);
                 }
                 NonCode::LineComment(span) => {
-                    result.push(self.span(*span));
+                    result.push(Doc::zero_width(span.resolve(self.input)));
                     result.push(Doc::HardBreak);
                 }
             }
