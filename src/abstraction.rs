@@ -85,21 +85,24 @@ impl<'a> Abstractor<'a> {
             } => {
                 let mut fragments = Vec::new();
                 let len = style.len();
-                let begin_inner = begin.trim_start(1 + len).trim_end(len);
+                let begin_inner = begin.trim_start(1 + len).trim_end(1);
                 let begin = FormatFragment {
                     span: *begin,
                     body: AExpr::StringLit(self.unescape(begin_inner)?),
                 };
                 fragments.push(begin);
 
-                for hole in holes.iter() {
+                for (i, hole) in holes.iter().enumerate() {
                     let frag = FormatFragment {
                         body: self.expr(&hole.body)?,
                         span: hole.span,
                     };
                     fragments.push(frag);
 
-                    let suffix_inner = hole.suffix.trim_start(1).trim_end(1);
+                    let is_last = i + 1 == holes.len();
+                    let end_len = if is_last { len } else { 1 };
+
+                    let suffix_inner = hole.suffix.trim_start(1).trim_end(end_len);
                     let frag = FormatFragment {
                         span: hole.suffix,
                         body: AExpr::StringLit(self.unescape(suffix_inner)?),

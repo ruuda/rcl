@@ -1,0 +1,5 @@
+// This is a regression test.
+f"""\\ { 0 }"""
+
+# output:
+"\\ 0"

@@ -248,6 +248,11 @@ mod test {
         assert!(unescape(r"\u000ö").is_err());
     }
 
+    #[test]
+    fn unescape_handles_escaped_backslash_at_end() {
+        assert_eq!(unescape(r"\\").unwrap(), "\\");
+    }
+
     // Note, the main tests for unescaping are the golden tests.
 
     #[test]
