@@ -18,6 +18,11 @@ In both cases, add an `f` to enable interpolation.
 
     f"Hello {greetee}"
 
+[^1]: Except for `\u` escape sequences that encode surrogate code points
+(U+D800 through U+DFFF). While a pair of such escape sequences may together be
+valid, a single one is not, so at this point RCL opts to not implement surrogate
+pairs.
+
 ## Multiline strings
 
 In all string literals, newlines are preserved verbatim. Inside a `"""`-quoted
@@ -41,7 +46,7 @@ newline if it directly follows the `"""`. The following strings are identical:
 Inside a `"`-quoted string, `"` itself needs to be escaped as `\"`, but inside
 a `"""`-quoted string, `"` does not need to be escaped. Inside a `"""`-quoted
 string, `"""` itself needs to be escaped, but escaping one of the three quotes
-is usually sufficient.
+is sufficient.
 
 ## Interpolation
 
@@ -78,6 +83,3 @@ in `[]` instead of `{}`). The following strings are identical:
     let b = "\u000a";
     let c = "\u[0a]";
     let d = "\u[00000a]";
-
-[^1]: Except for `\u` escape sequences that encode surrogate code points
-(U+D800 through U+DFFF).
