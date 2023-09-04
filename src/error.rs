@@ -146,6 +146,11 @@ impl ParseError {
         self.help = Some(help);
         self
     }
+
+    pub fn with_note(mut self, at: Span, note: &'static str) -> Self {
+        self.note = Some((at, note));
+        self
+    }
 }
 
 impl From<ParseError> for Box<dyn Error> {
@@ -172,7 +177,6 @@ impl Error for ParseError {
     }
 }
 
-// TODO: Check if it is useful in other places.
 pub trait IntoParseError {
     fn error(&self, message: &'static str) -> ParseError;
 }

@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::error::ParseError;
+use crate::error::{IntoParseError, ParseError};
 use crate::source::{DocId, Span};
 
 pub type Result<T> = std::result::Result<T, ParseError>;
@@ -242,24 +242,12 @@ impl<'a> Lexer<'a> {
         include: F,
         message: &'static str,
     ) -> Result<T> {
-        let error = ParseError {
-            span: self.take_while(include),
-            message,
-            note: None,
-            help: None,
-        };
-        Err(error)
+        Err(self.take_while(include).error(message))
     }
 
     /// Build an error of the given length at the current cursor location.
     fn error<T>(&mut self, len: usize, message: &'static str) -> Result<T> {
-        let error = ParseError {
-            span: self.span(len),
-            message,
-            note: None,
-            help: None,
-        };
-        Err(error)
+        Err(self.span(len).error(message))
     }
 
     /// Build an error of length 1, with a note at the given offset.
@@ -670,12 +658,10 @@ impl<'a> Lexer<'a> {
             b';' => Token::Semicolon,
             b'|' => Token::Pipe,
             b'#' => {
-                let err = ParseError {
-                    span: self.span(1),
-                    message: "Unrecognized punctuation here.",
-                    note: None,
-                    help: Some("Comments are written with '//', not with '#'."),
-                };
+                let err = self
+                    .span(1)
+                    .error("Unrecognized punctuation here.")
+                    .with_help("Comments are written with '//', not with '#'.");
                 return Err(err);
             }
             _ => return self.error(1, "Unrecognized punctuation here."),

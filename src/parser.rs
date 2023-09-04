@@ -6,7 +6,7 @@
 // A copy of the License has been included in the root of the repository.
 
 use crate::cst::{BinOp, Expr, FormatHole, NonCode, Prefixed, Seq, UnOp};
-use crate::error::ParseError;
+use crate::error::{IntoParseError, ParseError};
 use crate::lexer::{self, QuoteStyle, Token};
 use crate::source::{DocId, Span};
 
@@ -87,14 +87,7 @@ impl<'a> Parser<'a> {
 
     /// Build a parse error at the current cursor location.
     fn error<T>(&self, message: &'static str) -> Result<T> {
-        let err = ParseError {
-            span: self.peek_span(),
-            message,
-            note: None,
-            help: None,
-        };
-
-        Err(err)
+        Err(self.peek_span().error(message))
     }
 
     /// Build a parse error at the current cursor location, and a note elsewhere.
@@ -104,10 +97,8 @@ impl<'a> Parser<'a> {
         note_span: Span,
         note: &'static str,
     ) -> Result<T> {
-        self.error(message).map_err(|err| ParseError {
-            note: Some((note_span, note)),
-            ..err
-        })
+        self.error(message)
+            .map_err(|err| err.with_note(note_span, note))
     }
 
     /// Return the token under the cursor, if there is one.
