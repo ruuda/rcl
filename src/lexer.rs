@@ -10,6 +10,30 @@ use crate::source::{DocId, Span};
 
 pub type Result<T> = std::result::Result<T, ParseError>;
 
+/// What quote style a string literal is quoted in (`"` or `"""`).
+///
+/// Yes, the names _double_ and _triple_ are slightly misleading because the
+/// triple variant has three times as many quotes as the double one. _Double_
+/// refers to the double quote charater (`"` as opposed to `'`) while _triple_
+/// refers to the number of such characters.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum QuoteStyle {
+    /// A string delimited by double quotes (`"`).
+    Double,
+    /// A string delimited by triple double quotes (`"""`).
+    Triple,
+}
+
+impl QuoteStyle {
+    /// The byte length of the quotes.
+    pub fn len(&self) -> usize {
+        match self {
+            QuoteStyle::Double => 1,
+            QuoteStyle::Triple => 3,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Token {
     /// A sequence of ascii whitespace not significant for reformatting.
@@ -29,20 +53,17 @@ pub enum Token {
     /// A sequence of ascii alphanumeric or _, not starting with a digit.
     Ident,
 
-    /// A string enclosed in double `"`.
-    DoubleQuoted,
+    /// A string enclosed in double or triple quotes.
+    Quoted(QuoteStyle),
 
-    /// A string enclosed in triple double quotes `"""`.
-    TripleQuoted,
+    /// An f-string until its first hole, e.g. `f" str {`.
+    FormatOpen(QuoteStyle),
 
-    /// A double-quoted f-string until its first hole, e.g. `f" str {`.
-    FormatDoubleOpen,
+    /// An f-string between two holes, e.g. `} str {`.
+    FormatInner(QuoteStyle),
 
-    /// A double-quoted f-string between two holes, e.g. `} str {`.
-    FormatDoubleInner,
-
-    /// A double-quoted f-string after the last hole, e.g. `} str"`.
-    FormatDoubleClose,
+    /// An f-string after the last hole, e.g. `} str"`.
+    FormatClose(QuoteStyle),
 
     /// A hexadecimal integer literal prefixed by `0x`.
     NumHexadecimal,
@@ -152,13 +173,12 @@ enum Delimiter {
     Paren,
     /// Inside a `[]` in expression context.
     Bracket,
-    /// Inside a hole in an `f"`-quoted string.
-    HoleDouble,
-    /// Inside a hole in an `f"""`-quoted string.
-    HoleTriple,
+    /// Inside a hole in an f-string.
+    Hole(QuoteStyle),
 }
 
 /// What type of string literal we are lexing.
+#[derive(Copy, Clone)]
 enum QuoteMode {
     /// Not a format string.
     Regular,
@@ -291,8 +311,7 @@ impl<'a> Lexer<'a> {
             Delimiter::Paren => b')',
             Delimiter::Brace => b'}',
             Delimiter::Bracket => b']',
-            Delimiter::HoleDouble => b'}',
-            Delimiter::HoleTriple => b'}',
+            Delimiter::Hole(..) => b'}',
         };
 
         if actual_end == expected_end {
@@ -320,16 +339,20 @@ impl<'a> Lexer<'a> {
             return Ok(self.lex_in_line_comment());
         }
 
+        if input.starts_with(b"f\"\"\"") {
+            return self.lex_in_quote(QuoteStyle::Triple, QuoteMode::FormatOpen);
+        }
+
         if input.starts_with(b"\"\"\"") {
-            return self.lex_in_triple_quote();
+            return self.lex_in_quote(QuoteStyle::Triple, QuoteMode::Regular);
         }
 
         if input.starts_with(b"f\"") {
-            return self.lex_in_double_quote(QuoteMode::FormatOpen);
+            return self.lex_in_quote(QuoteStyle::Double, QuoteMode::FormatOpen);
         }
 
         if input[0] == b'"' {
-            return self.lex_in_double_quote(QuoteMode::Regular);
+            return self.lex_in_quote(QuoteStyle::Double, QuoteMode::Regular);
         }
 
         // What state to continue lexing in after the closing '}', depends on
@@ -337,10 +360,9 @@ impl<'a> Lexer<'a> {
         // interpolation.
         if input[0] == b'}' {
             match self.pop_delimiter()? {
-                Delimiter::HoleDouble => {
-                    return self.lex_in_double_quote(QuoteMode::FormatInner);
+                Delimiter::Hole(style) => {
+                    return self.lex_in_quote(style, QuoteMode::FormatInner);
                 }
-                Delimiter::HoleTriple => todo!("Continue triple-quoted f-string."),
                 // If it was a regular delimiter, then we continue lexing
                 // normally.
                 _ => {}
@@ -427,18 +449,24 @@ impl<'a> Lexer<'a> {
         (Token::LineComment, self.take_while(|ch| ch != b'\n'))
     }
 
-    fn lex_in_double_quote(&mut self, mode: QuoteMode) -> Result<Lexeme> {
+    fn lex_in_quote(&mut self, style: QuoteStyle, mode: QuoteMode) -> Result<Lexeme> {
         let input = &self.input.as_bytes()[self.start..];
 
         // The length of the start of the string literal, can be one or two
         // bytes depending on the prefix, '"' or 'f"' or '}'.
-        let n_skip = match mode {
-            QuoteMode::Regular => 1,
-            QuoteMode::FormatOpen => 2,
-            QuoteMode::FormatInner => 1,
+        let n_skip = match (style, mode) {
+            (style, QuoteMode::Regular) => style.len(),
+            (style, QuoteMode::FormatOpen) => style.len() + 1,
+            (_stle, QuoteMode::FormatInner) => 1,
         };
 
+        let mut n_consecutive = 0;
+
         for (i, &ch) in input.iter().enumerate().skip(n_skip) {
+            if ch != b'"' {
+                n_consecutive = 0;
+            }
+
             // Indexing does not go out of bounds here because we start at 1.
             if ch == b'"' && input[i - 1] == b'\\' {
                 // An escaped quote should not end the token.
@@ -452,19 +480,25 @@ impl<'a> Lexer<'a> {
                 let token = match mode {
                     // Holes are only meaningful if we are in an f-string.
                     QuoteMode::Regular => continue,
-                    QuoteMode::FormatOpen => Token::FormatDoubleOpen,
-                    QuoteMode::FormatInner => Token::FormatDoubleInner,
+                    QuoteMode::FormatOpen => Token::FormatOpen(style),
+                    QuoteMode::FormatInner => Token::FormatInner(style),
                 };
-                self.push_delimiter(Delimiter::HoleDouble, self.start + i);
+                self.push_delimiter(Delimiter::Hole(style), self.start + i);
                 return Ok((token, self.span(i + 1)));
             }
             if ch == b'"' {
+                if style == QuoteStyle::Triple {
+                    n_consecutive += 1;
+                    if n_consecutive < 3 {
+                        continue;
+                    }
+                }
                 match mode {
                     QuoteMode::Regular => {
-                        return Ok((Token::DoubleQuoted, self.span(i + 1)));
+                        return Ok((Token::Quoted(style), self.span(i + 1)));
                     }
                     QuoteMode::FormatInner => {
-                        return Ok((Token::FormatDoubleClose, self.span(i + 1)));
+                        return Ok((Token::FormatClose(style), self.span(i + 1)));
                     }
                     QuoteMode::FormatOpen => {
                         return self.error(
@@ -473,33 +507,6 @@ impl<'a> Lexer<'a> {
                         );
                     }
                 }
-            }
-        }
-
-        self.error_while(
-            |_| true,
-            "Unexpected end of input, string literal is not closed.",
-        )
-    }
-
-    fn lex_in_triple_quote(&mut self) -> Result<Lexeme> {
-        let input = &self.input.as_bytes()[self.start..];
-        let mut n_consecutive = 0;
-
-        // Skip over the initial opening quotes.
-        for (i, &ch) in input.iter().enumerate().skip(3) {
-            // Indexing does not go out of bounds here because we start past 1.
-            if ch == b'"' && input[i - 1] == b'\\' {
-                // An escaped quote should not end the token.
-                continue;
-            }
-            if ch == b'"' {
-                n_consecutive += 1;
-                if n_consecutive == 3 {
-                    return Ok((Token::TripleQuoted, self.span(i + 1)));
-                }
-            } else {
-                n_consecutive = 0;
             }
         }
 
@@ -693,10 +700,7 @@ impl<'a> Lexer<'a> {
             Delimiter::Bracket => {
                 self.error_with_note("Expected ']'.", top.1, "Unmatched '[' opened here.")
             }
-            Delimiter::HoleDouble => {
-                self.error_with_note("Expected '}'.", top.1, "Unmatched '{' opened here.")
-            }
-            Delimiter::HoleTriple => {
+            Delimiter::Hole(..) => {
                 self.error_with_note("Expected '}'.", top.1, "Unmatched '{' opened here.")
             }
         }

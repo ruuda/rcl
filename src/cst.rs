@@ -18,6 +18,7 @@
 //! implied by the structure of the tree. For example, for a let-binding, it
 //! does not store the span of the `let` keyword nor of the `=` after the name.
 
+use crate::lexer::QuoteStyle;
 use crate::source::Span;
 
 /// A unary operator.
@@ -127,14 +128,13 @@ pub enum Expr {
     /// A boolean literal.
     BoolLit(Span, bool),
 
-    /// A string literal quoted in double quotes (`"`).
-    StringLitDouble(Span),
+    /// A string literal quoted in double or triple quotes (`"`).
+    StringLit(QuoteStyle, Span),
 
-    /// A string literal quoted in triple double quotes (`"""`).
-    StringLitTriple(Span),
-
-    /// A format string quoted in double quotes (`f"`).
-    FormatStringDouble {
+    /// A format string, also called f-string.
+    FormatString {
+        /// Whether the string is double (`f"`) or triple (`f"""`) quoted.
+        style: QuoteStyle,
         /// The string literal up to and including the `{` of the first hole.
         begin: Span,
         /// Contents of a hole followed by the string literal after it.

@@ -70,22 +70,22 @@ impl<'a> Abstractor<'a> {
 
             CExpr::BoolLit(_span, b) => AExpr::BoolLit(*b),
 
-            CExpr::StringLitDouble(span) => {
+            CExpr::StringLit(style, span) => {
                 // Cut off the string literal quotes.
-                let span_inner = span.trim_start(1).trim_end(1);
+                let len = style.len();
+                let span_inner = span.trim_start(len).trim_end(len);
+                // TODO: Add a dedicated unescaper for `"""`-strings.
                 AExpr::StringLit(self.unescape(span_inner)?)
             }
 
-            CExpr::StringLitTriple(span) => {
-                // Cut off the string literal quotes.
-                // TODO: Strip leading whitespace from string literal.
-                let span_inner = span.trim_start(3).trim_end(3);
-                AExpr::StringLit(self.unescape(span_inner)?)
-            }
-
-            CExpr::FormatStringDouble { begin, holes } => {
+            CExpr::FormatString {
+                style,
+                begin,
+                holes,
+            } => {
                 let mut fragments = Vec::new();
-                let begin_inner = begin.trim_start(2).trim_end(1);
+                let len = style.len();
+                let begin_inner = begin.trim_start(1 + len).trim_end(len);
                 let begin = FormatFragment {
                     span: *begin,
                     body: AExpr::StringLit(self.unescape(begin_inner)?),

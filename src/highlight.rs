@@ -22,7 +22,8 @@ fn get_color(token: &Token) -> &'static str {
     match token {
         Token::Space | Token::Blank => reset,
         Token::LineComment => white,
-        Token::DoubleQuoted | Token::TripleQuoted => red,
+        Token::Quoted(..) => red,
+        Token::FormatOpen(..) | Token::FormatInner(..) | Token::FormatClose(..) => red,
         Token::NumBinary | Token::NumHexadecimal | Token::NumDecimal => cyan,
         Token::Ident => reset,
         Token::KwAnd

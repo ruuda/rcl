@@ -7,7 +7,7 @@
 
 use crate::cst::{BinOp, Expr, FormatHole, NonCode, Prefixed, Seq, UnOp};
 use crate::error::ParseError;
-use crate::lexer::{self, Token};
+use crate::lexer::{self, QuoteStyle, Token};
 use crate::source::{DocId, Span};
 
 pub type Result<T> = std::result::Result<T, ParseError>;
@@ -571,11 +571,10 @@ impl<'a> Parser<'a> {
                 };
                 Ok(result)
             }
-            Some(Token::FormatDoubleOpen) => self.parse_format_string_double(),
+            Some(Token::FormatOpen(style)) => self.parse_format_string(style),
             Some(Token::KwTrue) => Ok(Expr::BoolLit(self.consume(), true)),
             Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
-            Some(Token::DoubleQuoted) => Ok(Expr::StringLitDouble(self.consume())),
-            Some(Token::TripleQuoted) => Ok(Expr::StringLitTriple(self.consume())),
+            Some(Token::Quoted(style)) => Ok(Expr::StringLit(style, self.consume())),
             Some(Token::NumHexadecimal) => Ok(Expr::NumHexadecimal(self.consume())),
             Some(Token::NumBinary) => Ok(Expr::NumBinary(self.consume())),
             Some(Token::NumDecimal) => Ok(Expr::NumDecimal(self.consume())),
@@ -584,9 +583,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a double-quoted format string (`f"`).
-    fn parse_format_string_double(&mut self) -> Result<Expr> {
-        debug_assert_eq!(self.peek(), Some(Token::FormatDoubleOpen));
+    /// Parse a format string (`f"` or `f"""`).
+    fn parse_format_string(&mut self, style: QuoteStyle) -> Result<Expr> {
+        debug_assert_eq!(self.peek(), Some(Token::FormatOpen(style)));
 
         let begin = self.consume();
         let mut holes = Vec::new();
@@ -598,8 +597,8 @@ impl<'a> Parser<'a> {
             self.skip_non_code()?;
 
             let is_close = match self.peek() {
-                Some(Token::FormatDoubleInner) => false,
-                Some(Token::FormatDoubleClose) => true,
+                Some(Token::FormatInner(..)) => false,
+                Some(Token::FormatClose(..)) => true,
                 _ => {
                     return self.error_with_note(
                         "Unclosed hole in f-string, expected '}' here.",
@@ -615,7 +614,11 @@ impl<'a> Parser<'a> {
             prefix = suffix;
 
             if is_close {
-                let result = Expr::FormatStringDouble { begin, holes };
+                let result = Expr::FormatString {
+                    style,
+                    begin,
+                    holes,
+                };
                 return Ok(result);
             }
         }
