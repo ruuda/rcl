@@ -105,15 +105,6 @@ pub enum Doc<'a> {
     /// An owned string to be spliced into the output.
     String { content: String, width: u32 },
 
-    /// A string which does not contribute to the width of the document.
-    ///
-    /// We use this for printing comments. Because we do not reflow comments, if
-    /// a comment makes a particular format exceed the line length limit, that
-    /// should not force us to choose a taller/narrower layout; instead we just
-    /// let the comments exceed the limit, and the user can reflow the comment
-    /// later if desired.
-    ZeroWidth(&'a str),
-
     /// Text which is only output in tall mode.
     ///
     /// This can be used to add trailing commas in a collection when the
@@ -189,15 +180,6 @@ impl<'a> Doc<'a> {
         }
     }
 
-    /// Construct a new document fragment of width zero.
-    pub fn zero_width(value: &'a str) -> Doc<'a> {
-        debug_assert!(
-            !value.contains('\n'),
-            "Doc fragments cannot contain newlines, use SoftBreak etc.",
-        );
-        Doc::ZeroWidth(value)
-    }
-
     /// Construct a new document fragment that only gets emitted in tall mode.
     pub fn tall(value: &'a str) -> Doc<'a> {
         use unicode_width::UnicodeWidthStr;
@@ -245,10 +227,6 @@ impl<'a> Doc<'a> {
         match self {
             Doc::Str { content, width } => printer.push_str(content, *width),
             Doc::String { content, width } => printer.push_str(content, *width),
-            Doc::ZeroWidth(content) => {
-                let width = 0;
-                printer.push_str(content, width)
-            }
             Doc::WhenTall { content, width } => match mode {
                 Mode::Tall => printer.push_str(content, *width),
                 Mode::Wide => PrintResult::Fits,
