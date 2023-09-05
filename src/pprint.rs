@@ -118,13 +118,6 @@ pub enum Doc<'a> {
     /// An empty string in wide mode; a newline in tall mode.
     SoftBreak,
 
-    /// An empty string in wide mode; a flush in tall mode.
-    ///
-    /// In tall mode, if we are still at the start of a line with no content
-    /// written yet, this is a no-op. But if there is something on the line
-    /// already, then start a new line.
-    FlushBreak,
-
     /// A newline. Forces tall mode onto all its parents.
     HardBreak,
 
@@ -142,6 +135,17 @@ pub enum Doc<'a> {
 
     /// An indented block.
     Indent(Box<Doc<'a>>),
+
+    /// A newline plus indented block.
+    ///
+    /// If we are still at the start of a line, then do not emit a newline and
+    /// do not increase the indent. If there is already content on the line,
+    /// then emit a newline and increase the indent. This can be used for
+    /// content that should "hang under" something in its entirety, rather than
+    /// having its opening fragments still on the same line.
+    ///
+    /// In wide mode, this is a no-op.
+    FlushIndent(Box<Doc<'a>>),
 }
 
 impl<'a> Doc<'a> {
@@ -218,6 +222,7 @@ impl<'a> Doc<'a> {
             Doc::Concat(children) => children.iter().any(|node| node.is_forced_tall()),
             Doc::Group(inner) => inner.is_forced_tall(),
             Doc::Indent(inner) => inner.is_forced_tall(),
+            Doc::FlushIndent(inner) => inner.is_forced_tall(),
             _ => false,
         }
     }
@@ -237,10 +242,6 @@ impl<'a> Doc<'a> {
             },
             Doc::SoftBreak => match mode {
                 Mode::Tall => printer.newline(),
-                Mode::Wide => PrintResult::Fits,
-            },
-            Doc::FlushBreak => match mode {
-                Mode::Tall => printer.flush_newline(),
                 Mode::Wide => PrintResult::Fits,
             },
             Doc::HardBreak => match mode {
@@ -276,6 +277,16 @@ impl<'a> Doc<'a> {
             Doc::Indent(inner) => match mode {
                 Mode::Wide => inner.print_to(printer, mode),
                 Mode::Tall => printer.indented(|p| inner.print_to(p, mode)),
+            },
+            Doc::FlushIndent(inner) => match mode {
+                Mode::Wide => inner.print_to(printer, mode),
+                Mode::Tall => {
+                    if printer.flush_newline() {
+                        printer.indented(|p| inner.print_to(p, mode))
+                    } else {
+                        inner.print_to(printer, mode)
+                    }
+                }
             },
         }
     }
@@ -358,6 +369,13 @@ macro_rules! indent {
     }
 }
 pub(crate) use indent;
+
+macro_rules! flush_indent {
+    { $($fragment:expr)* } => {
+        Doc::FlushIndent(Box::new( $crate::pprint::concat! { $($fragment)* } ))
+    }
+}
+pub(crate) use flush_indent;
 
 /// Helper module for pretty printing.
 ///
@@ -490,11 +508,10 @@ mod printer {
         }
 
         pub fn newline(&mut self) -> PrintResult {
-            // HACK: We don't want to create leading whitespace at the start of
-            // a document. Just ignore the newline in that case.
-            if self.out.is_empty() {
-                return PrintResult::Fits;
-            }
+            debug_assert!(
+                !self.out.is_empty(),
+                "Should not try to create leading whitespace!",
+            );
 
             // HACK: Remove any trailing spaces from the current line before we
             // move on to the next. This is bad because it might trim
@@ -524,11 +541,14 @@ mod printer {
         }
 
         /// Emit a newline, unless we are still at the start of a line.
-        pub fn flush_newline(&mut self) -> PrintResult {
+        ///
+        /// Returns whether the newline was emitted.
+        pub fn flush_newline(&mut self) -> bool {
             if self.needs_indent {
-                PrintResult::Fits
+                false
             } else {
-                self.newline()
+                self.newline();
+                true
             }
         }
     }

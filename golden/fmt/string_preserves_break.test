@@ -1,0 +1,16 @@
+{
+  name = "Begonia rex";
+  // The string literal should be preserved verbatim, even though its
+  // indentation would place other items further to the right.
+  water_remark = "Keep the soil evenly moist,
+water again when it is dry to the touch.";
+}
+
+# output:
+{
+  name = "Begonia rex";
+  // The string literal should be preserved verbatim, even though its
+  // indentation would place other items further to the right.
+  water_remark = "Keep the soil evenly moist,
+water again when it is dry to the touch.";
+}

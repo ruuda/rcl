@@ -11,7 +11,7 @@
 //! pretty-printed for formatting.
 
 use crate::cst::{Expr, NonCode, Prefixed, Seq};
-use crate::pprint::{concat, group, indent, Config, Doc};
+use crate::pprint::{concat, flush_indent, group, indent, Config, Doc};
 use crate::source::Span;
 
 /// Format a document.
@@ -195,8 +195,7 @@ impl<'a> Formatter<'a> {
                 ..
             } => {
                 group! {
-                    Doc::FlushBreak
-                    indent! {
+                    flush_indent! {
                         "if" Doc::Sep
                         indent! { self.prefixed_expr(condition) } Doc::Sep
                         "then" Doc::Sep

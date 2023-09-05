@@ -1,0 +1,18 @@
+if
+  // When an if-then-else occurs at the top level, the flush break that the
+  // formatter uses should not cause a blank line in the document.
+  true
+then
+  "yes yes"
+else
+  "oh no"
+
+# output:
+if
+  // When an if-then-else occurs at the top level, the flush break that the
+  // formatter uses should not cause a blank line in the document.
+  true
+then
+  "yes yes"
+else
+  "oh no"
