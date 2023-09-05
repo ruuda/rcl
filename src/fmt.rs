@@ -36,7 +36,7 @@ struct Formatter<'a> {
 enum Separator {
     /// Unconditionally append a separator.
     Unconditional,
-    /// Append the sparator only in tall mode.
+    /// Append the separator only in tall mode.
     Trailer,
     /// Do not append a separator.
     None,
