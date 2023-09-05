@@ -1,17 +1,9 @@
 // This list is too long to fit on one line, so it is forced to be tall.
 // Note also the missing trailing comma.
 [
-  "Dave Holden",
-  "Eldon Tyrell",
-  "Gaff",
-  "Harry Byrant",
-  "J.F. Sebastian",
-  "Leon Kowalski",
-  "Pris Stratton",
-  "Rachael Tyrell",
-  "Rick Deckard",
-  "Roy Batty",
-  "Zhora Salome"
+  "Dave Holden", "Eldon Tyrell", "Gaff", "Harry Byrant", "J.F. Sebastian",
+  "Leon Kowalski", "Pris Stratton", "Rachael Tyrell", "Rick Deckard",
+  "Roy Batty", "Zhora Salome"
 ]
 
 # output:
