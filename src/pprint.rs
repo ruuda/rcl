@@ -8,11 +8,11 @@
 //! Utilities for pretty-printing code.
 //!
 //! The approach in this module is inspired by Philip Wadler’s 2003 paper
-//! [_A Prettier Printer_][wadler2003]. The implementation is slightly different
-//! to make it more suitable for Rust’s strict evaluation, and new constructors
-//! are added to deal with comments, which should be ignored for width
-//! calculation because we don’t reflow them, and which should always force a
-//! tall rather than wide layout.
+//! [_A Prettier Printer_][wadler2003]. The implementation is different to make
+//! it more suitable for Rust’s strict evaluation, and new constructors are
+//! added to deal with with some formatting edge cases. For example, newlines
+//! in string literals should be preserved without creating indentation after
+//! the newline.
 //!
 //! [wadler2003]: https://homepages.inf.ed.ac.uk/wadler/papers/prettier/prettier.pdf
 
@@ -28,9 +28,7 @@ enum Mode {
 /// Configuration for the pretty-printer.
 pub struct Config {
     /// The pretty printer will try to avoid creating lines longer than `width`
-    /// columns, but this is not always possible. Furthermore, zero-width nodes
-    /// are not considered for the width on purpose. These nodes are used for
-    /// comments, so long comments can still exceed the desired width.
+    /// columns, but this is not always possible.
     pub width: u32,
 }
 
@@ -53,6 +51,11 @@ impl Default for Config {
 /// pretty-printer is to print as many nodes as possible in wide mode without
 /// exceeding the line width limit. When a node is printed in tall mode, all of
 /// its parents must be printed in tall mode as well.
+///
+/// The main mechanism to control layout is the _group_, represented by
+/// [`Doc::Group`] and created with `group!`. Every group causes the formatter
+/// to make a wide/tall choice, but the contents of the group is either all wide
+/// or all tall.
 ///
 /// Indentation is only output in tall mode; in wide mode this behaves like
 /// a non-indented group. Note that a `Doc::Indent` and `Doc::Concat` do not
