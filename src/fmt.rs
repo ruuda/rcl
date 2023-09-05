@@ -32,7 +32,7 @@ struct Formatter<'a> {
 }
 
 /// How to terminate an item in a collection literal.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum Separator {
     /// Unconditionally append a separator.
     Unconditional,
