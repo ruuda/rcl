@@ -1,0 +1,15 @@
+let wide = "a" + "b";
+let tall = "supercalifragilisticexpialidocious umbrella " +
+           "supercalifragilisticexpialidocious umbrella " +
+           "supercalifragilisticexpialidocious umbrella " ;
+
+wide + tall
+
+# output:
+let wide = "a" + "b";
+let tall =
+  "supercalifragilisticexpialidocious umbrella "
+  + "supercalifragilisticexpialidocious umbrella "
+  + "supercalifragilisticexpialidocious umbrella ";
+
+wide + tall

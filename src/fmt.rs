@@ -17,7 +17,10 @@ use crate::source::Span;
 /// Format a document.
 pub fn format_expr(input: &str, expr: &Prefixed<Expr>, config: &Config) -> String {
     let formatter = Formatter::new(input);
-    let doc = formatter.prefixed_expr(expr);
+    // Usually the entire thing is already wrapped in a group, but we need to
+    // add one in case it is not, to enable wide formatting of expressions that
+    // are not a group at the top level.
+    let doc = Doc::Group(Box::new(formatter.prefixed_expr(expr)));
     doc.print(config)
 }
 
@@ -239,11 +242,13 @@ impl<'a> Formatter<'a> {
                 op_span, lhs, rhs, ..
             } => {
                 group! {
-                    self.expr(lhs)
-                    Doc::Sep
-                    self.span(*op_span)
-                    " "
-                    self.expr(rhs)
+                    flush_indent! {
+                        self.expr(lhs)
+                        Doc::Sep
+                        self.span(*op_span)
+                        " "
+                        self.expr(rhs)
+                    }
                 }
             }
         }
