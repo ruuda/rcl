@@ -1,0 +1,11 @@
+let release_years = {
+  "Blade Runner": 1982,
+  "Blade Runner 2049": 2017,
+};
+[
+  release_years.get("Blade Runner", 2000),
+  release_years.get("Do Androids Dream of Electric Sheep", 2000),
+]
+
+# output:
+[1982,2000]
