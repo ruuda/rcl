@@ -211,6 +211,45 @@ pub fn escape_json(str: &str, into: &mut String) {
     }
 }
 
+/// Count common leading spaces.
+///
+/// For every line in the input, counts the number of spaces that follow it,
+/// then take the minimum.
+pub fn count_common_leading_spaces(input: &str) -> Option<usize> {
+    let mut input = input;
+    let mut n_spaces = None;
+    while let Some(i) = input.find('\n') {
+        let n = input.as_bytes()[i + 1..]
+            .iter()
+            .take_while(|ch| **ch == b' ')
+            .count();
+        n_spaces = match n_spaces {
+            None => Some(n),
+            Some(m) => Some(m.min(n)),
+        };
+        input = &input[i + 1 + n..];
+    }
+    n_spaces
+}
+
+/// Return the lines of a `"""`-quoted string, stripped of common indentation.
+///
+/// Use [`count_common_leading_spaces`] to find the common whitespace in the
+/// string, or string fragments in the case of a format string. Outputs one str
+/// per line, stripped of common indentation. Does not strip the leading newline
+/// from the first line, if there is any.
+pub fn trim_common_leading_spaces(n_trim: usize, input: &str) -> Vec<&str> {
+    let mut result = Vec::new();
+    let mut input = input;
+
+    while let Some(i) = input.find('\n') {
+        result.push(&input[..i + 1]);
+        input = &input[i + 1 + n_trim..];
+    }
+    result.push(input);
+    result
+}
+
 // Note, most testing is done through golden tests and fuzzing, not unit tests.
 #[cfg(test)]
 mod test {
@@ -269,4 +308,24 @@ mod test {
     }
 
     // Note, the main test for json escaping is the `escapes` fuzzer.
+
+    #[test]
+    fn count_trim_common_spaces_works() {
+        let s = r#"
+        Line 1
+          Line 2
+        Line 3
+        "#;
+        let n = super::count_common_leading_spaces(s).unwrap();
+        let lines = super::trim_common_leading_spaces(n, s);
+        assert_eq!(lines, ["\n", "Line 1\n", "  Line 2\n", "Line 3\n", ""]);
+
+        let s = r#"
+            Line 1
+          Line 2
+        Line 3"#;
+        let n = super::count_common_leading_spaces(s).unwrap();
+        let lines = super::trim_common_leading_spaces(n, s);
+        assert_eq!(lines, ["\n", "    Line 1\n", "  Line 2\n", "Line 3"]);
+    }
 }
