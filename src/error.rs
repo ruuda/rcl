@@ -100,6 +100,10 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
     let mut trunc_suffix = "";
     if span.start() - line_start > 100 {
         line_start = span.start() - 20;
+        // Ensure we don't slice code points in half. Slightly nicer would be
+        // to not slice grapheme clusters in half (and also measure whether the
+        // line is long from its width, not in bytes), but that is way overkill
+        // for a fringe case like this.
         while !input.is_char_boundary(line_start) {
             line_start -= 1;
         }
