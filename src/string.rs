@@ -238,15 +238,15 @@ pub fn count_common_leading_spaces(input: &str) -> Option<usize> {
 /// string, or string fragments in the case of a format string. Outputs one str
 /// per line, stripped of common indentation. Does not strip the leading newline
 /// from the first line, if there is any.
-pub fn trim_common_leading_spaces(n_trim: usize, input: &str) -> Vec<&str> {
+pub fn trim_common_leading_spaces(n_trim: usize, input: &str, span: Span) -> Vec<Span> {
     let mut result = Vec::new();
-    let mut input = input;
+    let mut span = span;
 
-    while let Some(i) = input.find('\n') {
-        result.push(&input[..i + 1]);
-        input = &input[i + 1 + n_trim..];
+    while let Some(i) = span.resolve(input).find('\n') {
+        result.push(span.take(i + 1));
+        span = span.trim_start(i + 1 + n_trim);
     }
-    result.push(input);
+    result.push(span);
     result
 }
 
@@ -317,7 +317,9 @@ mod test {
         Line 3
         "#;
         let n = super::count_common_leading_spaces(s).unwrap();
-        let lines = super::trim_common_leading_spaces(n, s);
+        let span = Span::new(DocId(0), 0, s.len());
+        let spans = super::trim_common_leading_spaces(n, s, span);
+        let lines = spans.iter().map(|sp| sp.resolve(s)).collect::<Vec<_>>();
         assert_eq!(lines, ["\n", "Line 1\n", "  Line 2\n", "Line 3\n", ""]);
 
         let s = r#"
@@ -325,7 +327,9 @@ mod test {
           Line 2
         Line 3"#;
         let n = super::count_common_leading_spaces(s).unwrap();
-        let lines = super::trim_common_leading_spaces(n, s);
+        let span = Span::new(DocId(0), 0, s.len());
+        let spans = super::trim_common_leading_spaces(n, s, span);
+        let lines = spans.iter().map(|sp| sp.resolve(s)).collect::<Vec<_>>();
         assert_eq!(lines, ["\n", "    Line 1\n", "  Line 2\n", "Line 3"]);
     }
 }
