@@ -19,7 +19,9 @@ use crate::ast::{Expr as AExpr, FormatFragment, Seq as ASeq};
 use crate::cst::Prefixed;
 use crate::cst::{Expr as CExpr, Seq as CSeq};
 use crate::error::Result;
+use crate::lexer::QuoteStyle;
 use crate::source::Span;
+use crate::string;
 use crate::todo_placeholder;
 
 /// Abstract an expression.
@@ -37,8 +39,23 @@ impl<'a> Abstractor<'a> {
         Self { input }
     }
 
+    /// Unescape the inner part of a string literal.
     pub fn unescape(&self, str_inner: Span) -> Result<Rc<str>> {
-        Ok(crate::string::unescape(self.input, str_inner)?.into())
+        Ok(string::unescape(self.input, str_inner)?.into())
+    }
+
+    /// Trim leading whitespace from lines, unescape, append the result to `out`.
+    pub fn unescape_triple(
+        &self,
+        n_indent: usize,
+        str_inner: Span,
+        out: &mut String,
+    ) -> Result<()> {
+        let lines = string::trim_common_leading_spaces(n_indent, self.input, str_inner);
+        for line in lines {
+            out.push_str(&self.unescape(line)?);
+        }
+        Ok(())
     }
 
     /// Abstract an expression.
@@ -75,9 +92,28 @@ impl<'a> Abstractor<'a> {
             CExpr::StringLit(style, span) => {
                 // Cut off the string literal quotes.
                 let len = style.len();
-                let span_inner = span.trim_start(len).trim_end(len);
-                // TODO: Add a dedicated unescaper for `"""`-strings.
-                AExpr::StringLit(self.unescape(span_inner)?)
+                let mut span_inner = span.trim_start(len).trim_end(len);
+
+                match style {
+                    QuoteStyle::Double => AExpr::StringLit(self.unescape(span_inner)?),
+                    QuoteStyle::Triple => {
+                        let str_inner = span_inner.resolve(self.input);
+                        let n_indent = string::count_common_leading_spaces(str_inner).unwrap_or(0);
+                        // When a """ is immediately followed by a newline, that
+                        // newline is not considered part of the string itself.
+                        let first_byte = self.input.as_bytes()[span_inner.start()];
+                        if first_byte == b'\n' {
+                            // TODO: The leading whitespace now doesn't get
+                            // removed because there is no newline ... but if we
+                            // do not trim it, then the newline stays. How to
+                            // fix this elegantly?
+                            span_inner = span_inner.trim_start(1);
+                        }
+                        let mut result = String::with_capacity(span_inner.len());
+                        self.unescape_triple(n_indent, span_inner, &mut result)?;
+                        AExpr::StringLit(result.into())
+                    }
+                }
             }
 
             CExpr::FormatString {
