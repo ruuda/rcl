@@ -84,6 +84,35 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
         line_end = input.len();
     }
 
+    // Save this for reporting the error location, in case we adjust the line
+    // start below. TODO: It has an off by one, column should start counting at
+    // 1. But I need to rewrite all the goldens if I change this, better to do
+    // it later.
+    let column = span.start() - line_start;
+
+    // If there is a really long line (for example, because you are evaluating
+    // a multi-megabyte json document that is formatted without whitespace, on
+    // a single line), then printing the error to the terminal is going to line
+    // wrap that enormous content and not do anything productive. In that case,
+    // we would rather just truncate. If we do truncate, add an ellipsis to
+    // clarify that we did.
+    let mut trunc_prefix = "";
+    let mut trunc_suffix = "";
+    if span.start() - line_start > 100 {
+        line_start = span.start() - 20;
+        while !input.is_char_boundary(line_start) {
+            line_start -= 1;
+        }
+        trunc_prefix = "…";
+    }
+    if line_end > span.end() + 100 {
+        line_end = span.end() + 20;
+        while !input.is_char_boundary(line_end) {
+            line_end += 1;
+        }
+        trunc_suffix = "…";
+    }
+
     let line_content = &input[line_start..line_end];
 
     // The length of the mark can be longer than the line, for example when
@@ -95,7 +124,7 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
 
     // The width of the error is not necessarily the number of bytes,
     // measure the Unicode width of the span to underline.
-    let indent_width = indent_content.width();
+    let indent_width = indent_content.width() + trunc_prefix.width();
     let mark_width = cmp::max(1, error_content.width());
 
     let line_num_str = line.to_string();
@@ -110,14 +139,16 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
     writeln!(
         &mut result,
         "{}--> {}:{}:{}",
-        line_num_pad,
-        doc.path,
-        line,
-        span.start() - line_start
+        line_num_pad, doc.path, line, column,
     )
     .unwrap();
     writeln!(&mut result, "{} |", line_num_pad).unwrap();
-    writeln!(&mut result, "{} | {}", line_num_str, line_content).unwrap();
+    writeln!(
+        &mut result,
+        "{} | {}{}{}",
+        line_num_str, trunc_prefix, line_content, trunc_suffix
+    )
+    .unwrap();
     writeln!(
         &mut result,
         "{} | {}{}^{}{}",

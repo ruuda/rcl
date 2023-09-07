@@ -1,0 +1,10 @@
+// This tests that error printing truncates the line if the line is really long.
+this is a syntax error, but a turbo_encabulator = { baseplate = "prefabulated aluminite"; casing = "surmounted, malleable logarithmic"; spurving_bearings = "aligned with the pentametric fan" };
+true
+
+# output:
+ --> stdin:2:5
+  |
+2 | this is a syntax error, but…
+  |      ^~
+Error: Unexpected content after the main expression.
