@@ -14,9 +14,10 @@ markdown_extensions:
       permalink_title: null
 
 nav:
-  - Overview: index.md
-  - User guide:
-    - Terminology: terminology.md
-    - Syntax: syntax.md
-    - Strings: strings.md
-  - Development: development.md
+  - "Overview": "index.md"
+  - "User guide":
+    - "Terminology": "terminology.md"
+    - "Syntax": "syntax.md"
+    - "Strings": "strings.md"
+    - "Null": "null.md"
+  - "Development": "development.md"
