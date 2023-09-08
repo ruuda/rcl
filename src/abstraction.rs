@@ -103,11 +103,7 @@ impl<'a> Abstractor<'a> {
                         // newline is not considered part of the string itself.
                         let first_byte = self.input.as_bytes()[span_inner.start()];
                         if first_byte == b'\n' {
-                            // TODO: The leading whitespace now doesn't get
-                            // removed because there is no newline ... but if we
-                            // do not trim it, then the newline stays. How to
-                            // fix this elegantly?
-                            span_inner = span_inner.trim_start(1);
+                            span_inner = span_inner.trim_start(1 + n_indent);
                         }
                         let mut result = String::with_capacity(span_inner.len());
                         self.unescape_triple(n_indent, span_inner, &mut result)?;
