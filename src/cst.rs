@@ -125,6 +125,9 @@ pub enum Expr {
         body: Box<Prefixed<Expr>>,
     },
 
+    /// A null literal.
+    NullLit(Span),
+
     /// A boolean literal.
     BoolLit(Span, bool),
 

@@ -50,6 +50,8 @@ impl Ord for Builtin {
 /// A value.
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Value {
+    Null,
+
     Bool(bool),
 
     // TODO: Should be a bigint.

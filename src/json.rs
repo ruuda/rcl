@@ -15,6 +15,7 @@ use crate::string::escape_json;
 /// Render a value as json.
 pub fn format_json(caller: Span, v: &Value, into: &mut String) -> Result<()> {
     match v {
+        Value::Null => into.push_str("null"),
         Value::Bool(true) => into.push_str("true"),
         Value::Bool(false) => into.push_str("false"),
         Value::Int(i) => into.push_str(&i.to_string()),

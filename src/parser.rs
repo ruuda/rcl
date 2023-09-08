@@ -563,6 +563,7 @@ impl<'a> Parser<'a> {
                 Ok(result)
             }
             Some(Token::FormatOpen(style)) => self.parse_format_string(style),
+            Some(Token::KwNull) => Ok(Expr::NullLit(self.consume())),
             Some(Token::KwTrue) => Ok(Expr::BoolLit(self.consume(), true)),
             Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
             Some(Token::Quoted(style)) => Ok(Expr::StringLit(style, self.consume())),

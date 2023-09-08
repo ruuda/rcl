@@ -68,6 +68,8 @@ impl<'a> Abstractor<'a> {
 
             CExpr::Parens { body, .. } => self.expr(&body.inner)?,
 
+            CExpr::NullLit(_span) => AExpr::NullLit,
+
             CExpr::BoolLit(_span, b) => AExpr::BoolLit(*b),
 
             CExpr::StringLit(style, span) => {

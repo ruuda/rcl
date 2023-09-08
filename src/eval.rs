@@ -56,6 +56,8 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             }
         }
 
+        Expr::NullLit => Ok(Rc::new(Value::Null)),
+
         Expr::BoolLit(b) => Ok(Rc::new(Value::Bool(*b))),
 
         Expr::IntegerLit(i) => Ok(Rc::new(Value::Int(*i))),

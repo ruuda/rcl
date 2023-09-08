@@ -98,6 +98,9 @@ pub enum Token {
     /// `not`
     KwNot,
 
+    /// `null`
+    KwNull,
+
     /// `or`
     KwOr,
 
@@ -421,6 +424,7 @@ impl<'a> Lexer<'a> {
             "in" => Token::KwIn,
             "let" => Token::KwLet,
             "not" => Token::KwNot,
+            "null" => Token::KwNull,
             "or" => Token::KwOr,
             "then" => Token::KwThen,
             "true" => Token::KwTrue,
