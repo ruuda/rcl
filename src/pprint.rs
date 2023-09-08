@@ -127,6 +127,13 @@ pub enum Doc<'a> {
     /// An empty string in wide mode; a newline in tall mode.
     SoftBreak,
 
+    /// An empty string in wide mode; a flush in tall mode.
+    ///
+    /// In tall mode, if we are still at the start of a line with no content
+    /// written yet, this is a no-op. But if there is something on the line
+    /// already, then start a new line.
+    FlushBreak,
+
     /// A newline. Forces tall mode onto all its parents.
     HardBreak,
 
@@ -252,6 +259,10 @@ impl<'a> Doc<'a> {
             },
             Doc::SoftBreak => match mode {
                 Mode::Tall => printer.newline(),
+                Mode::Wide => PrintResult::Fits,
+            },
+            Doc::FlushBreak => match mode {
+                Mode::Tall => printer.flush_newline(),
                 Mode::Wide => PrintResult::Fits,
             },
             Doc::HardBreak => match mode {
@@ -532,6 +543,15 @@ mod printer {
             let result = self.newline();
             self.needs_indent = false;
             result
+        }
+
+        /// Emit a newline, unless we are still at the start of a line.
+        pub fn flush_newline(&mut self) -> PrintResult {
+            if self.needs_indent {
+                PrintResult::Fits
+            } else {
+                self.newline()
+            }
         }
     }
 }

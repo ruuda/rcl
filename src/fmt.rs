@@ -195,17 +195,15 @@ impl<'a> Formatter<'a> {
                 ..
             } => {
                 group! {
-                    // TODO: How could we ensure that when the group gets
-                    // formatted in tall mode, the if does not trail (like an
-                    // egyptian bracket)? Have some kind of "flush" newline
-                    // which is only a newline when the current line is not
-                    // already empty perhaps?
-                    "if" Doc::Sep
-                    indent! { self.prefixed_expr(condition) } Doc::Sep
-                    "then" Doc::Sep
-                    indent! { self.prefixed_expr(then_body) } Doc::Sep
-                    "else" Doc::Sep
-                    indent! { self.prefixed_expr(else_body) }
+                    Doc::FlushBreak
+                    indent! {
+                        "if" Doc::Sep
+                        indent! { self.prefixed_expr(condition) } Doc::Sep
+                        "then" Doc::Sep
+                        indent! { self.prefixed_expr(then_body) } Doc::Sep
+                        "else" Doc::Sep
+                        indent! { self.prefixed_expr(else_body) }
+                    }
                 }
             }
 
