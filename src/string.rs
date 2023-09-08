@@ -7,6 +7,7 @@
 
 //! Utilities for working with strings.
 
+use crate::cst::{Expr, FormatHole};
 use crate::error::{IntoParseError, ParseError};
 use crate::source::Span;
 
@@ -18,6 +19,12 @@ pub type Result<T> = std::result::Result<T, ParseError>;
 /// literal.
 pub fn unescape(input: &str, span: Span) -> Result<String> {
     let mut output = String::with_capacity(span.len());
+    unescape_into(input, span, &mut output)?;
+    Ok(output)
+}
+
+/// See [`unescape`].
+pub fn unescape_into(input: &str, span: Span, output: &mut String) -> Result<()> {
     let mut input = span.resolve(input);
     let mut offset = 0;
 
@@ -86,7 +93,7 @@ pub fn unescape(input: &str, span: Span) -> Result<String> {
 
     output.push_str(input);
 
-    Ok(output)
+    Ok(())
 }
 
 /// Parse a unicode escape sequence starting with `\u`.
@@ -215,9 +222,9 @@ pub fn escape_json(str: &str, into: &mut String) {
 ///
 /// For every line in the input, counts the number of spaces that follow it,
 /// then take the minimum.
-pub fn count_common_leading_spaces(input: &str) -> Option<usize> {
+pub fn count_common_leading_spaces(input: &str, current_min: Option<usize>) -> Option<usize> {
     let mut input = input;
-    let mut n_spaces = None;
+    let mut n_spaces = current_min;
     while let Some(i) = input.find('\n') {
         let n = input.as_bytes()[i + 1..]
             .iter()
@@ -232,22 +239,129 @@ pub fn count_common_leading_spaces(input: &str) -> Option<usize> {
     n_spaces
 }
 
-/// Return the lines of a `"""`-quoted string, stripped of common indentation.
+/// Execute callbacks for all spans and holes of the `f"`-quoted format string.
 ///
-/// Use [`count_common_leading_spaces`] to find the common whitespace in the
-/// string, or string fragments in the case of a format string. Outputs one str
-/// per line, stripped of common indentation. Does not strip the leading newline
-/// from the first line, if there is any.
-pub fn trim_common_leading_spaces(n_trim: usize, input: &str, span: Span) -> Vec<Span> {
-    let mut result = Vec::new();
-    let mut span = span;
+/// The callbacks receive the inner spans, with surrounding quotes removed.
+pub fn fold_double_format_string<E, T, F, G>(
+    begin: Span,
+    holes: &[FormatHole],
+    seed: T,
+    mut on_span: F,
+    mut on_hole: G,
+) -> std::result::Result<T, E>
+where
+    F: FnMut(T, Span) -> std::result::Result<T, E>,
+    G: FnMut(T, Span, &Expr) -> std::result::Result<T, E>,
+{
+    let mut acc = seed;
+    // Cut off the `f"` and `"`.
+    let begin_inner = begin.trim_start(2).trim_end(1);
+    acc = on_span(acc, begin_inner)?;
+
+    for hole in holes.iter() {
+        let suffix_inner = hole.suffix.trim_start(1).trim_end(1);
+        acc = on_hole(acc, hole.span, &hole.body)?;
+        acc = on_span(acc, suffix_inner)?;
+    }
+
+    Ok(acc)
+}
+
+/// Execute callbacks for all lines of the string.
+///
+/// The span should _not_ include the opening and closing `"""`.
+/// The returned lines include a trailing newline, if applicable.
+pub fn fold_triple_string_lines<E, T, F>(
+    input: &str,
+    span_inner: Span,
+    seed: T,
+    mut on_line: F,
+) -> std::result::Result<T, E>
+where
+    F: FnMut(T, Span) -> std::result::Result<T, E>,
+{
+    let mut span = span_inner;
+    let n_indent = count_common_leading_spaces(span.resolve(input), None);
+    let n_indent = n_indent.unwrap_or(0);
+
+    // When a """ is immediately followed by a newline, that
+    // newline is not considered part of the string itself.
+    let first_byte = input.as_bytes()[span.start()];
+    if first_byte == b'\n' {
+        span = span.trim_start(1 + n_indent);
+    }
+
+    let mut acc = seed;
 
     while let Some(i) = span.resolve(input).find('\n') {
-        result.push(span.take(i + 1));
-        span = span.trim_start(i + 1 + n_trim);
+        acc = on_line(acc, span.take(i + 1))?;
+        span = span.trim_start(i + 1 + n_indent);
     }
-    result.push(span);
-    result
+    acc = on_line(acc, span)?;
+
+    Ok(acc)
+}
+
+/// Execute callbacks for all lines and holes of the format string.
+///
+/// The begin span should include `f"""`, the hole spans should include the
+/// `}` and `{`, and the final suffix should include the `"""`.
+///
+/// The returned lines include a trailing newline, if applicable.
+pub fn fold_triple_format_string_lines<E, T, F, G>(
+    input: &str,
+    begin: Span,
+    holes: &[FormatHole],
+    seed: T,
+    mut on_line: F,
+    mut on_hole: G,
+) -> std::result::Result<T, E>
+where
+    F: FnMut(T, Span) -> std::result::Result<T, E>,
+    G: FnMut(T, Span, &Expr) -> std::result::Result<T, E>,
+{
+    let mut span = begin.trim_start(4).trim_end(1);
+    let mut n_indent = count_common_leading_spaces(span.resolve(input), None);
+
+    for (i, hole) in holes.iter().enumerate() {
+        let is_last = i + 1 == holes.len();
+        let end_len = if is_last { 3 } else { 1 };
+        let suffix_inner = hole.suffix.trim_start(1).trim_end(end_len);
+        n_indent = count_common_leading_spaces(suffix_inner.resolve(input), n_indent);
+    }
+
+    let n_indent = n_indent.unwrap_or(0);
+
+    // When a """ is immediately followed by a newline, that
+    // newline is not considered part of the string itself.
+    let first_byte = input.as_bytes()[span.start()];
+    if first_byte == b'\n' {
+        span = span.trim_start(1 + n_indent);
+    }
+
+    let mut acc = seed;
+
+    while let Some(i) = span.resolve(input).find('\n') {
+        acc = on_line(acc, span.take(i + 1))?;
+        span = span.trim_start(i + 1 + n_indent);
+    }
+    acc = on_line(acc, span)?;
+
+    for (i, hole) in holes.iter().enumerate() {
+        acc = on_hole(acc, hole.span, &hole.body)?;
+
+        let is_last = i + 1 == holes.len();
+        let end_len = if is_last { 4 } else { 1 };
+        let mut span = hole.suffix.trim_start(1).trim_end(end_len);
+
+        while let Some(i) = span.resolve(input).find('\n') {
+            acc = on_line(acc, span.take(i + 1))?;
+            span = span.trim_start(i + 1 + n_indent);
+        }
+        acc = on_line(acc, span)?;
+    }
+
+    Ok(acc)
 }
 
 // Note, most testing is done through golden tests and fuzzing, not unit tests.
@@ -310,26 +424,30 @@ mod test {
     // Note, the main test for json escaping is the `escapes` fuzzer.
 
     #[test]
-    fn count_trim_common_spaces_works() {
+    fn count_common_spaces_works() {
         let s = r#"
         Line 1
           Line 2
         Line 3
         "#;
-        let n = super::count_common_leading_spaces(s).unwrap();
         let span = Span::new(DocId(0), 0, s.len());
-        let spans = super::trim_common_leading_spaces(n, s, span);
-        let lines = spans.iter().map(|sp| sp.resolve(s)).collect::<Vec<_>>();
-        assert_eq!(lines, ["\n", "Line 1\n", "  Line 2\n", "Line 3\n", ""]);
+        let lines = super::fold_triple_string_lines(s, span, Vec::new(), |mut acc, line| {
+            acc.push(line.resolve(s));
+            Ok::<_, ()>(acc)
+        })
+        .unwrap();
+        assert_eq!(lines, ["Line 1\n", "  Line 2\n", "Line 3\n", ""]);
 
         let s = r#"
             Line 1
           Line 2
         Line 3"#;
-        let n = super::count_common_leading_spaces(s).unwrap();
         let span = Span::new(DocId(0), 0, s.len());
-        let spans = super::trim_common_leading_spaces(n, s, span);
-        let lines = spans.iter().map(|sp| sp.resolve(s)).collect::<Vec<_>>();
-        assert_eq!(lines, ["\n", "    Line 1\n", "  Line 2\n", "Line 3"]);
+        let lines = super::fold_triple_string_lines(s, span, Vec::new(), |mut acc, line| {
+            acc.push(line.resolve(s));
+            Ok::<_, ()>(acc)
+        })
+        .unwrap();
+        assert_eq!(lines, ["    Line 1\n", "  Line 2\n", "Line 3"]);
     }
 }
