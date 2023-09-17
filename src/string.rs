@@ -327,13 +327,15 @@ where
 {
     let mut span = span_inner;
     let n_indent = count_common_leading_spaces(span.resolve(input), None);
-    let n_indent = n_indent.unwrap_or(0);
+    let mut n_indent = n_indent.unwrap_or(0);
 
     // When a """ is immediately followed by a newline, that
     // newline is not considered part of the string itself.
     let first_byte = input.as_bytes()[span.start()];
     if first_byte == b'\n' {
         span = span.trim_start(1);
+    } else {
+        n_indent = 0;
     }
 
     fold_triple_string_lines_impl(input, span, n_indent, seed, on_line)
@@ -368,13 +370,15 @@ where
         n_indent = count_common_leading_spaces(suffix_inner.resolve(input), n_indent);
     }
 
-    let n_indent = n_indent.unwrap_or(0);
+    let mut n_indent = n_indent.unwrap_or(0);
 
     // When a """ is immediately followed by a newline, that
     // newline is not considered part of the string itself.
     let first_byte = input.as_bytes()[span.start()];
     if first_byte == b'\n' {
         span = span.trim_start(1);
+    } else {
+        n_indent = 0;
     }
 
     acc = fold_triple_string_lines_impl(input, span, n_indent, acc, &mut on_line)?;
@@ -462,7 +466,7 @@ mod test {
     // Note, the main test for json escaping is the `escapes` fuzzer.
 
     #[test]
-    fn count_common_spaces_works() {
+    fn fold_triple_string_lines_works() {
         let s = r#"
         Line 1
           Line 2
@@ -487,5 +491,17 @@ mod test {
         })
         .unwrap();
         assert_eq!(lines, ["    Line 1\n", "  Line 2\n", "Line 3"]);
+    }
+
+    #[test]
+    fn fold_triple_string_lines_does_nto_slice_code_points() {
+        let s = "\u{1f574}\u{fe0e}\n    ";
+        let span = Span::new(DocId(0), 0, s.len());
+        let lines = super::fold_triple_string_lines(s, span, Vec::new(), |mut acc, line| {
+            acc.push(line.resolve(s));
+            Ok::<_, ()>(acc)
+        })
+        .unwrap();
+        assert_eq!(lines, ["\u{1f574}\u{fe0e}\n", "    "]);
     }
 }
