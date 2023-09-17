@@ -351,7 +351,7 @@ where
         acc = on_hole(acc, hole.span, &hole.body)?;
 
         let is_last = i + 1 == holes.len();
-        let end_len = if is_last { 4 } else { 1 };
+        let end_len = if is_last { 3 } else { 1 };
         let mut span = hole.suffix.trim_start(1).trim_end(end_len);
 
         while let Some(i) = span.resolve(input).find('\n') {
