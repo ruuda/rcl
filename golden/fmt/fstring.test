@@ -2,12 +2,24 @@ let x = f"This f-string has {
   "a hole"
 } inside it.";
 
+let y = f"This f-string has {
+[
+// A list with a comment.
+"in a hole"
+]
+} inside it.";
+
 f"""
 This { let strtype = "f"; strtype }-string has a hole too.
 """
 
 # output:
 let x = f"This f-string has {"a hole"} inside it.";
+
+let y = f"This f-string has {[
+  // A list with a comment.
+  "in a hole"
+]} inside it.";
 
 f"""
 This {let strtype = "f"; strtype}-string has a hole too.

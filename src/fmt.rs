@@ -10,7 +10,7 @@
 //! The formatter converts the CST into a [`Doc`], which can subsequently be
 //! pretty-printed for formatting.
 
-use crate::cst::{Expr, NonCode, Prefixed, Seq};
+use crate::cst::{Expr, FormatHole, NonCode, Prefixed, Seq};
 use crate::lexer::QuoteStyle;
 use crate::pprint::{concat, flush_indent, group, indent, Config, Doc};
 use crate::source::Span;
@@ -93,7 +93,7 @@ impl<'a> Formatter<'a> {
     }
 
     /// Format a `"""`-quoted string literal.
-    fn triple_string(&self, span: Span) -> Doc<'a> {
+    fn string_triple(&self, span: Span) -> Doc<'a> {
         // Loop over the lines in the literal to see if there are multiple
         // lines. We abuse Result a bit for this.
         let is_multiline = string::fold_triple_string_lines(
@@ -137,6 +137,81 @@ impl<'a> Formatter<'a> {
 
         result.push("\"\"\"".into());
         flush_indent! { Doc::Concat(result) }
+    }
+
+    /// Format a `f"`-quoted format string.
+    fn format_string_double(&self, begin: Span, holes: &[FormatHole]) -> Doc<'a> {
+        let mut result = Vec::new();
+        result.push(self.raw_span(begin));
+        for hole in holes {
+            // TODO: Add soft breaks around the hole contents?
+            result.push(self.expr(&hole.body));
+            result.push(self.raw_span(hole.suffix));
+        }
+        Doc::Concat(result)
+    }
+
+    /// Format a `f"""`-quoted format string.
+    fn format_string_triple(&self, begin: Span, holes: &[FormatHole]) -> Doc<'a> {
+        // Loop over the lines in the literal to see if there are multiple
+        // lines. We abuse Result a bit for this.
+        let is_multiline = string::fold_triple_format_string_lines(
+            self.input,
+            begin,
+            holes,
+            (),
+            |_, line| {
+                if line.resolve(self.input).contains('\n') {
+                    Err(())
+                } else {
+                    Ok(())
+                }
+            },
+            // Holes are not interesting for finding newlines.
+            |_, _, _| Ok(()),
+        )
+        .is_err();
+
+        let mut result = Vec::new();
+        result.push("f\"\"\"".into());
+
+        if is_multiline {
+            result.push(Doc::HardBreak);
+        }
+
+        result = string::fold_triple_format_string_lines(
+            self.input,
+            begin,
+            holes,
+            result,
+            |mut result, line| {
+                let line = line.resolve(self.input);
+                if line.len() > 0 && line.as_bytes()[line.len() - 1] == b'\n' {
+                    debug_assert!(is_multiline);
+                    result.push(line[..line.len() - 1].into());
+                    result.push(Doc::HardBreak);
+                } else {
+                    result.push(line.into());
+                }
+                Ok::<_, ()>(result)
+            },
+            |mut result, _span, expr| {
+                // TODO: Add soft breaks around the hole contents?
+                result.push("{".into());
+                result.push(self.expr(expr));
+                result.push("}".into());
+                Ok::<_, ()>(result)
+            },
+        )
+        .expect("We don't return Err from the closure.");
+
+        result.push("\"\"\"".into());
+
+        if is_multiline {
+            flush_indent! { Doc::Concat(result) }
+        } else {
+            Doc::Concat(result)
+        }
     }
 
     pub fn prefixed_expr(&self, expr: &Prefixed<Expr>) -> Doc<'a> {
@@ -203,18 +278,18 @@ impl<'a> Formatter<'a> {
             Expr::BoolLit(span, ..) => self.span(*span),
 
             Expr::StringLit(QuoteStyle::Double, span) => self.raw_span(*span),
-            Expr::StringLit(QuoteStyle::Triple, span) => self.triple_string(*span),
+            Expr::StringLit(QuoteStyle::Triple, span) => self.string_triple(*span),
 
-            Expr::FormatString { begin, holes, .. } => {
-                let mut result = self.raw_span(*begin);
-                // TODO: Add soft breaks around the hole contents?
-                // TODO: Reformat triple-quoted string like `StringLit`.
-                for hole in holes {
-                    result = result + self.expr(&hole.body);
-                    result = result + self.raw_span(hole.suffix);
-                }
-                result
-            }
+            Expr::FormatString {
+                begin,
+                holes,
+                style: QuoteStyle::Double,
+            } => self.format_string_double(*begin, &holes),
+            Expr::FormatString {
+                begin,
+                holes,
+                style: QuoteStyle::Triple,
+            } => self.format_string_triple(*begin, &holes),
 
             Expr::NumHexadecimal(span) => {
                 // Normalize A-F to a-f.
