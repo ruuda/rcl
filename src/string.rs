@@ -276,13 +276,11 @@ where
     Ok(acc)
 }
 
-/// Execute callbacks for all lines of the string.
-///
-/// The span should _not_ include the opening and closing `"""`.
-/// The returned lines include a trailing newline, if applicable.
-pub fn fold_triple_string_lines<E, T, F>(
+/// Call `on_line` for every line in the input string, with leading indent stripped.
+fn fold_triple_string_lines_impl<E, T, F>(
     input: &str,
     span_inner: Span,
+    n_indent: usize,
     seed: T,
     mut on_line: F,
 ) -> std::result::Result<T, E>
@@ -290,16 +288,6 @@ where
     F: FnMut(T, Span) -> std::result::Result<T, E>,
 {
     let mut span = span_inner;
-    let n_indent = count_common_leading_spaces(span.resolve(input), None);
-    let n_indent = n_indent.unwrap_or(0);
-
-    // When a """ is immediately followed by a newline, that
-    // newline is not considered part of the string itself.
-    let first_byte = input.as_bytes()[span.start()];
-    if first_byte == b'\n' {
-        span = span.trim_start(1);
-    }
-
     let mut acc = seed;
 
     while span.len() > 0 {
@@ -324,6 +312,33 @@ where
     Ok(acc)
 }
 
+/// Execute callbacks for all lines of the string.
+///
+/// The span should _not_ include the opening and closing `"""`.
+/// The returned lines include a trailing newline, if applicable.
+pub fn fold_triple_string_lines<E, T, F>(
+    input: &str,
+    span_inner: Span,
+    seed: T,
+    on_line: F,
+) -> std::result::Result<T, E>
+where
+    F: FnMut(T, Span) -> std::result::Result<T, E>,
+{
+    let mut span = span_inner;
+    let n_indent = count_common_leading_spaces(span.resolve(input), None);
+    let n_indent = n_indent.unwrap_or(0);
+
+    // When a """ is immediately followed by a newline, that
+    // newline is not considered part of the string itself.
+    let first_byte = input.as_bytes()[span.start()];
+    if first_byte == b'\n' {
+        span = span.trim_start(1);
+    }
+
+    fold_triple_string_lines_impl(input, span, n_indent, seed, on_line)
+}
+
 /// Execute callbacks for all lines and holes of the format string.
 ///
 /// The begin span should include `f"""`, the hole spans should include the
@@ -342,6 +357,7 @@ where
     F: FnMut(T, Span) -> std::result::Result<T, E>,
     G: FnMut(T, Span, &Expr) -> std::result::Result<T, E>,
 {
+    let mut acc = seed;
     let mut span = begin.trim_start(4).trim_end(1);
     let mut n_indent = count_common_leading_spaces(span.resolve(input), None);
 
@@ -358,16 +374,10 @@ where
     // newline is not considered part of the string itself.
     let first_byte = input.as_bytes()[span.start()];
     if first_byte == b'\n' {
-        span = span.trim_start(1 + n_indent);
+        span = span.trim_start(1);
     }
 
-    let mut acc = seed;
-
-    while let Some(i) = span.resolve(input).find('\n') {
-        acc = on_line(acc, span.take(i + 1))?;
-        span = span.trim_start(i + 1 + n_indent);
-    }
-    acc = on_line(acc, span)?;
+    acc = fold_triple_string_lines_impl(input, span, n_indent, acc, &mut on_line)?;
 
     for (i, hole) in holes.iter().enumerate() {
         acc = on_hole(acc, hole.span, &hole.body)?;
@@ -376,11 +386,16 @@ where
         let end_len = if is_last { 3 } else { 1 };
         let mut span = hole.suffix.trim_start(1).trim_end(end_len);
 
-        while let Some(i) = span.resolve(input).find('\n') {
-            acc = on_line(acc, span.take(i + 1))?;
-            span = span.trim_start(i + 1 + n_indent);
+        // After a hole we have to run the line callback without stripping
+        // any indent, because we are not at the start of a line.
+        if let Some(line_end) = span.resolve(input).find('\n') {
+            acc = on_line(acc, span.take(line_end + 1))?;
+            span = span.trim_start(line_end + 1);
         }
-        acc = on_line(acc, span)?;
+
+        // Then after the first newline, we can continue calling it with the
+        // indent stripped.
+        acc = fold_triple_string_lines_impl(input, span, n_indent, acc, &mut on_line)?;
     }
 
     Ok(acc)

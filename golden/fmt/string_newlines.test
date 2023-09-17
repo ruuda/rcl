@@ -18,8 +18,16 @@ let s5 =
       because the closing quote is indented less.
     """;
 
-let regression_test =
+// The following two cases contain a blank line. Those should not reduce the
+// indent, despite technically making the whitespace that is common among the
+// lines the empty string.
+let regression_test_plain =
   """
+
+  """;
+let regression_test_format =
+  f"""
+  {1}
 
   """;
 
@@ -49,8 +57,16 @@ let s5 =
     because the closing quote is indented less.
   """;
 
-let regression_test =
+// The following two cases contain a blank line. Those should not reduce the
+// indent, despite technically making the whitespace that is common among the
+// lines the empty string.
+let regression_test_plain =
   """
+
+  """;
+let regression_test_format =
+  f"""
+  {1}
 
   """;
 
