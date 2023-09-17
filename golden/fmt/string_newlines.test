@@ -1,5 +1,5 @@
-let s0 = """This has no newlines, it can stay on one line.""";
-let s1 = """This has newlines,
+let s1 = """
+This has newlines,
 we would rather format it
 using proper indentation.""";
 let s2 = f"This format string fits again on {1} line.";
@@ -31,17 +31,17 @@ let regression_test_format =
 
   """;
 
-// The following string has a trailing newline on the first line, which disables
-// stripping leading space (the common leading space is empty), but more
-// importantly, when formatting, it should be made visible through an escape.
+// The following string has a trailing space on the first line, it is indented
+// more than the other lines. When formatting, this should be made visible
+// through an escape sequence.
 let trailing_newline =
-  """ 
+  """
+   
   """;
 
 true
 
 # output:
-let s0 = """This has no newlines, it can stay on one line.""";
 let s1 =
   """
   This has newlines,
@@ -77,12 +77,12 @@ let regression_test_format =
 
   """;
 
-// The following string has a trailing newline on the first line, which disables
-// stripping leading space (the common leading space is empty), but more
-// importantly, when formatting, it should be made visible through an escape.
+// The following string has a trailing space on the first line, it is indented
+// more than the other lines. When formatting, this should be made visible
+// through an escape sequence.
 let trailing_newline =
   """
   \u0020
-    """;
+  """;
 
 true

@@ -40,12 +40,16 @@ impl<'a> Abstractor<'a> {
     }
 
     /// Unescape the inner part of a string literal.
-    pub fn unescape(&self, str_inner: Span) -> Result<Rc<str>> {
+    fn unescape(&self, str_inner: Span) -> Result<Rc<str>> {
         Ok(string::unescape(self.input, str_inner)?.into())
     }
 
     /// Unescape a `"""`-quoted string literal.
-    pub fn unescape_triple(&self, str_inner: Span) -> Result<Rc<str>> {
+    fn unescape_triple(&self, str_inner: Span) -> Result<Rc<str>> {
+        if str_inner.resolve(self.input).find('\n').is_none() {
+            return self.unescape(str_inner);
+        }
+
         let result: Result<String> = string::fold_triple_string_lines(
             self.input,
             str_inner,

@@ -1,8 +1,8 @@
 [
-  // The following is a regression test.
-  """🕴︎︎
+  """
+  🕴︎︎
   """
 ]
 
 # output:
-["🕴︎︎\n  "]
+["🕴︎︎\n"]

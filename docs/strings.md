@@ -26,22 +26,22 @@ pairs.
 ## Multiline strings
 
 In all string literals, newlines are preserved verbatim. Inside a `"""`-quoted
-string, any shared leading whitespace gets removed, as well as the initial
-newline if it directly follows the `"""`. The following strings are identical:
+string, any shared leading whitespace gets removed, as well as the mandatory
+newline that directly follows the `"""`. If there is a trailing newline, then
+that one _is_ part of the string. The following strings are identical:
 
     let a = "Hello\n  World\n";
-    let b = """Hello\n  World\n""";
+    let b = "Hello
+      World\n";
     let c =
-        """
-        Hello
-          World
-        """;
+      """
+      Hello
+        World
+      """;
     let d =
-        """Hello
-          World
-        """;
-    let e = "Hello
-      World";
+      """
+        Hello
+          World\n""";
 
 Inside a `"`-quoted string, `"` itself needs to be escaped as `\"`, but inside
 a `"""`-quoted string, `"` does not need to be escaped. Inside a `"""`-quoted

@@ -287,7 +287,12 @@ fn fold_triple_string_lines_impl<E, T, F>(
 where
     F: FnMut(T, Span) -> std::result::Result<T, E>,
 {
-    let mut span = span_inner;
+    debug_assert!(
+        span_inner.len() > 0 && input.as_bytes()[span_inner.start()] == b'\n',
+        "The parser must ensure that triple-quoted strings start with a newline.",
+    );
+
+    let mut span = span_inner.trim_start(1);
     let mut acc = seed;
 
     while span.len() > 0 {
@@ -298,7 +303,7 @@ where
             .unwrap_or(span.len());
         let line_span = span.take(line_end);
         let line = line_span.resolve(input).as_bytes();
-        let has_newline = line.len() > 0 && line[line.len() - 1] == b'\n';
+        let has_newline = !line.is_empty() && line[line.len() - 1] == b'\n';
         let content_len = if has_newline {
             line.len() - 1
         } else {
@@ -325,20 +330,9 @@ pub fn fold_triple_string_lines<E, T, F>(
 where
     F: FnMut(T, Span) -> std::result::Result<T, E>,
 {
-    let mut span = span_inner;
-    let n_indent = count_common_leading_spaces(span.resolve(input), None);
-    let mut n_indent = n_indent.unwrap_or(0);
-
-    // When a """ is immediately followed by a newline, that
-    // newline is not considered part of the string itself.
-    let first_byte = input.as_bytes()[span.start()];
-    if first_byte == b'\n' {
-        span = span.trim_start(1);
-    } else {
-        n_indent = 0;
-    }
-
-    fold_triple_string_lines_impl(input, span, n_indent, seed, on_line)
+    let n_indent = count_common_leading_spaces(span_inner.resolve(input), None);
+    let n_indent = n_indent.unwrap_or(0);
+    fold_triple_string_lines_impl(input, span_inner, n_indent, seed, on_line)
 }
 
 /// Execute callbacks for all lines and holes of the format string.
@@ -360,7 +354,7 @@ where
     G: FnMut(T, Span, &Expr) -> std::result::Result<T, E>,
 {
     let mut acc = seed;
-    let mut span = begin.trim_start(4).trim_end(1);
+    let span = begin.trim_start(4).trim_end(1);
     let mut n_indent = count_common_leading_spaces(span.resolve(input), None);
 
     for (i, hole) in holes.iter().enumerate() {
@@ -370,16 +364,7 @@ where
         n_indent = count_common_leading_spaces(suffix_inner.resolve(input), n_indent);
     }
 
-    let mut n_indent = n_indent.unwrap_or(0);
-
-    // When a """ is immediately followed by a newline, that
-    // newline is not considered part of the string itself.
-    let first_byte = input.as_bytes()[span.start()];
-    if first_byte == b'\n' {
-        span = span.trim_start(1);
-    } else {
-        n_indent = 0;
-    }
+    let n_indent = n_indent.unwrap_or(0);
 
     acc = fold_triple_string_lines_impl(input, span, n_indent, acc, &mut on_line)?;
 
@@ -394,7 +379,7 @@ where
         // any indent, because we are not at the start of a line.
         if let Some(line_end) = span.resolve(input).find('\n') {
             acc = on_line(acc, span.take(line_end + 1))?;
-            span = span.trim_start(line_end + 1);
+            span = span.trim_start(line_end);
             // Then after the first newline, we can continue calling it with the
             // indent stripped.
             acc = fold_triple_string_lines_impl(input, span, n_indent, acc, &mut on_line)?;
@@ -494,8 +479,8 @@ mod test {
     }
 
     #[test]
-    fn fold_triple_string_lines_does_nto_slice_code_points() {
-        let s = "\u{1f574}\u{fe0e}\n    ";
+    fn fold_triple_string_lines_does_not_slice_code_points() {
+        let s = "\n\u{1f574}\u{fe0e}\n    ";
         let span = Span::new(DocId(0), 0, s.len());
         let lines = super::fold_triple_string_lines(s, span, Vec::new(), |mut acc, line| {
             acc.push(line.resolve(s));
