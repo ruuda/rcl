@@ -18,6 +18,11 @@ let s5 =
       because the closing quote is indented less.
     """;
 
+let regression_test =
+  """
+
+  """;
+
 true
 
 # output:
@@ -42,6 +47,11 @@ let s5 =
     This string is similar to the above one,
     but the inner indent must be preserved,
     because the closing quote is indented less.
+  """;
+
+let regression_test =
+  """
+
   """;
 
 true

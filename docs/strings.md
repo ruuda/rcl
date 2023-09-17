@@ -48,6 +48,19 @@ a `"""`-quoted string, `"` does not need to be escaped. Inside a `"""`-quoted
 string, `"""` itself needs to be escaped, but escaping one of the three quotes
 is sufficient.
 
+Blank lines inside the string do not defeat shared leading whitespace. This
+means that the following expression returns true without any of the lines in
+the document containing trailing whitespace:
+
+    let x =
+       """
+       Section 1
+
+       Section 2
+       """;
+    let y = "Section 1\n\nSection 2\n";
+    x == y
+
 ## Interpolation
 
 When an `f` precedes a string literal, this enables _interpolation_, and the

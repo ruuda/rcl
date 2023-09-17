@@ -230,10 +230,19 @@ pub fn count_common_leading_spaces(input: &str, current_min: Option<usize>) -> O
             .iter()
             .take_while(|ch| **ch == b' ')
             .count();
-        n_spaces = match n_spaces {
-            None => Some(n),
-            Some(m) => Some(m.min(n)),
-        };
+
+        // There may be a blank line in a multiline string literal that contains
+        // no spaces even though the other lines do have spaces, to avoid
+        // trailing whitespace. In that case we should not set the indent to
+        // zero, even though technically it is.
+        let is_blank_line = n == 0 && input.len() > i + 1 && input.as_bytes()[i + 1] == b'\n';
+
+        if !is_blank_line {
+            n_spaces = match n_spaces {
+                None => Some(n),
+                Some(m) => Some(m.min(n)),
+            };
+        }
         input = &input[i + 1 + n..];
     }
     n_spaces
@@ -288,16 +297,29 @@ where
     // newline is not considered part of the string itself.
     let first_byte = input.as_bytes()[span.start()];
     if first_byte == b'\n' {
-        span = span.trim_start(1 + n_indent);
+        span = span.trim_start(1);
     }
 
     let mut acc = seed;
 
-    while let Some(i) = span.resolve(input).find('\n') {
-        acc = on_line(acc, span.take(i + 1))?;
-        span = span.trim_start(i + 1 + n_indent);
+    while span.len() > 0 {
+        let line_end = span
+            .resolve(input)
+            .find('\n')
+            .map(|i| i + 1)
+            .unwrap_or(span.len());
+        let line_span = span.take(line_end);
+        let line = line_span.resolve(input).as_bytes();
+        let has_newline = line.len() > 0 && line[line.len() - 1] == b'\n';
+        let content_len = if has_newline {
+            line.len() - 1
+        } else {
+            line.len()
+        };
+        let n_trim = n_indent.min(content_len);
+        acc = on_line(acc, line_span.trim_start(n_trim))?;
+        span = span.trim_start(line_end);
     }
-    acc = on_line(acc, span)?;
 
     Ok(acc)
 }
