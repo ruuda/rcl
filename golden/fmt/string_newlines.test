@@ -1,0 +1,47 @@
+let s0 = """This has no newlines, it can stay on one line.""";
+let s1 = """This has newlines,
+we would rather format it
+using proper indentation.""";
+let s2 = f"This format string fits again on {1} line.";
+let s3 = f"""
+  For this format string,
+  the opening quotes should be moved to the {"next"} line.
+  """;
+let s4 =
+    """
+      This string has too much indentation.
+      We should adjust that.""";
+let s5 =
+    """
+      This string is similar to the above one,
+      but the inner indent must be preserved,
+      because the closing quote is indented less.
+    """;
+
+true
+
+# output:
+let s0 = """This has no newlines, it can stay on one line.""";
+let s1 =
+  """
+  This has newlines,
+  we would rather format it
+  using proper indentation.""";
+let s2 = f"This format string fits again on {1} line.";
+let s3 =
+  f"""
+  For this format string,
+  the opening quotes should be moved to the {"next"} line.
+  """;
+let s4 =
+  """
+  This string has too much indentation.
+  We should adjust that.""";
+let s5 =
+  """
+    This string is similar to the above one,
+    but the inner indent must be preserved,
+    because the closing quote is indented less.
+  """;
+
+true

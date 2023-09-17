@@ -11,8 +11,10 @@
 //! pretty-printed for formatting.
 
 use crate::cst::{Expr, NonCode, Prefixed, Seq};
+use crate::lexer::QuoteStyle;
 use crate::pprint::{concat, flush_indent, group, indent, Config, Doc};
 use crate::source::Span;
+use crate::string;
 
 /// Format a document.
 pub fn format_expr(input: &str, expr: &Prefixed<Expr>, config: &Config) -> String {
@@ -90,6 +92,53 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
+    /// Format a `"""`-quoted string literal.
+    fn triple_string(&self, span: Span) -> Doc<'a> {
+        // Loop over the lines in the literal to see if there are multiple
+        // lines. We abuse Result a bit for this.
+        let is_multiline = string::fold_triple_string_lines(
+            self.input,
+            span.trim_start(3).trim_end(3),
+            (),
+            |_, line| {
+                if line.resolve(self.input).contains('\n') {
+                    Err(())
+                } else {
+                    Ok(())
+                }
+            },
+        )
+        .is_err();
+
+        if !is_multiline {
+            return self.raw_span(span);
+        }
+
+        let mut result = Vec::new();
+        result.push("\"\"\"".into());
+        result.push(Doc::HardBreak);
+
+        result = string::fold_triple_string_lines(
+            self.input,
+            span.trim_start(3).trim_end(3),
+            result,
+            |mut result, line| {
+                let line = line.resolve(self.input);
+                if line.len() > 0 && line.as_bytes()[line.len() - 1] == b'\n' {
+                    result.push(line[..line.len() - 1].into());
+                    result.push(Doc::HardBreak);
+                } else {
+                    result.push(line.into());
+                }
+                Ok::<_, ()>(result)
+            },
+        )
+        .expect("We don't return Err from the closure.");
+
+        result.push("\"\"\"".into());
+        flush_indent! { Doc::Concat(result) }
+    }
+
     pub fn prefixed_expr(&self, expr: &Prefixed<Expr>) -> Doc<'a> {
         concat! {
             self.non_code(&expr.prefix)
@@ -153,9 +202,8 @@ impl<'a> Formatter<'a> {
 
             Expr::BoolLit(span, ..) => self.span(*span),
 
-            // TODO: We could reformat a triple-quoted string and indent it
-            // properly if needed.
-            Expr::StringLit(_style, span) => self.raw_span(*span),
+            Expr::StringLit(QuoteStyle::Double, span) => self.raw_span(*span),
+            Expr::StringLit(QuoteStyle::Triple, span) => self.triple_string(*span),
 
             Expr::FormatString { begin, holes, .. } => {
                 let mut result = self.raw_span(*begin);
