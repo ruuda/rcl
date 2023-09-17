@@ -391,11 +391,12 @@ where
         if let Some(line_end) = span.resolve(input).find('\n') {
             acc = on_line(acc, span.take(line_end + 1))?;
             span = span.trim_start(line_end + 1);
+            // Then after the first newline, we can continue calling it with the
+            // indent stripped.
+            acc = fold_triple_string_lines_impl(input, span, n_indent, acc, &mut on_line)?;
+        } else {
+            acc = on_line(acc, span)?;
         }
-
-        // Then after the first newline, we can continue calling it with the
-        // indent stripped.
-        acc = fold_triple_string_lines_impl(input, span, n_indent, acc, &mut on_line)?;
     }
 
     Ok(acc)
