@@ -92,6 +92,34 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
+    /// Push a line that is part of a `"""` or `f"""` string literal.
+    fn push_string_line(&self, span: Span, out: &mut Vec<Doc<'a>>) {
+        let mut has_newline = false;
+        let mut line = span.resolve(self.input);
+        let mut n_trailing_spaces = 0_u32;
+        if line.len() > 0 && line.as_bytes()[line.len() - 1] == b'\n' {
+            line = &line[..line.len() - 1];
+            has_newline = true;
+            // If there are trailing spaces, the pretty-printer would eat them.
+            // We can (and maybe should) fix this in the pretty printer, but
+            // trailing spaces are a hazard to humans too, so instead of
+            // preserving them verbatim, we escape them to make them visible.
+            // This has the nice side effects of removing trailing whitespace,
+            // so it doesn't get eaten.
+            while line.len() > 0 && line.as_bytes()[line.len() - 1] == b' ' {
+                line = &line[..line.len() - 1];
+                n_trailing_spaces += 1;
+            }
+        }
+        out.push(line.into());
+        for _ in 0..n_trailing_spaces {
+            out.push(r"\u0020".into());
+        }
+        if has_newline {
+            out.push(Doc::HardBreak);
+        }
+    }
+
     /// Format a `"""`-quoted string literal.
     fn string_triple(&self, span: Span) -> Doc<'a> {
         // Loop over the lines in the literal to see if there are multiple
@@ -123,13 +151,7 @@ impl<'a> Formatter<'a> {
             span.trim_start(3).trim_end(3),
             result,
             |mut result, line| {
-                let line = line.resolve(self.input);
-                if line.len() > 0 && line.as_bytes()[line.len() - 1] == b'\n' {
-                    result.push(line[..line.len() - 1].into());
-                    result.push(Doc::HardBreak);
-                } else {
-                    result.push(line.into());
-                }
+                self.push_string_line(line, &mut result);
                 Ok::<_, ()>(result)
             },
         )
@@ -185,14 +207,7 @@ impl<'a> Formatter<'a> {
             holes,
             result,
             |mut result, line| {
-                let line = line.resolve(self.input);
-                if line.len() > 0 && line.as_bytes()[line.len() - 1] == b'\n' {
-                    debug_assert!(is_multiline);
-                    result.push(line[..line.len() - 1].into());
-                    result.push(Doc::HardBreak);
-                } else {
-                    result.push(line.into());
-                }
+                self.push_string_line(line, &mut result);
                 Ok::<_, ()>(result)
             },
             |mut result, _span, expr| {

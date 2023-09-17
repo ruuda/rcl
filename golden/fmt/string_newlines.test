@@ -31,6 +31,13 @@ let regression_test_format =
 
   """;
 
+// The following string has a trailing newline on the first line, which disables
+// stripping leading space (the common leading space is empty), but more
+// importantly, when formatting, it should be made visible through an escape.
+let trailing_newline =
+  """ 
+  """;
+
 true
 
 # output:
@@ -69,5 +76,13 @@ let regression_test_format =
   {1}
 
   """;
+
+// The following string has a trailing newline on the first line, which disables
+// stripping leading space (the common leading space is empty), but more
+// importantly, when formatting, it should be made visible through an escape.
+let trailing_newline =
+  """
+  \u0020
+    """;
 
 true

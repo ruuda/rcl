@@ -522,8 +522,9 @@ mod printer {
             // Markdown is significant, and maybe you write Markdown in a
             // comment). Or even worse, there may be trailing whitespace in a
             // multiline string literal. But it is the quick and dirty fix for
-            // not emitting space after e.g. a multi-line `let` binding.
-            // TODO: Fix this the whitespace eating.
+            // not emitting space after e.g. a multi-line `let` binding. We work
+            // around this hack in string literals by escaping trailing spaces,
+            // which is arguably better anyway for visibility.
             self.out.truncate(self.out.trim_end_matches(' ').len());
 
             self.out.push('\n');
