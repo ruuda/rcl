@@ -21,11 +21,12 @@
             install_url = "https://releases.nixos.org/nix/nix-2.11.0/install";
           };
         },
+        for attribute in ["rcl", "coverage"]:
         {
-          name = "Build application";
+          name = f"Build {attribute}";
           run =
-            """
-            nix build --print-build-logs
+            f"""
+            nix build --print-build-logs .#{attribute}
             echo "Build ok"
             """;
         },
