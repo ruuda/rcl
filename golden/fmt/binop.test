@@ -3,7 +3,7 @@ let tall = "supercalifragilisticexpialidocious umbrella " +
            "supercalifragilisticexpialidocious umbrella " +
            "supercalifragilisticexpialidocious umbrella " ;
 
-wide + tall
+wide + tall + null
 
 # output:
 let wide = "a" + "b";
@@ -12,4 +12,4 @@ let tall =
   + "supercalifragilisticexpialidocious umbrella "
   + "supercalifragilisticexpialidocious umbrella ";
 
-wide + tall
+wide + tall + null
