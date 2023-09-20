@@ -1,0 +1,35 @@
+{
+  name = "Build";
+
+  on = {
+    push = { branches = ["master"]; };
+    workflow_dispatch = {};
+  };
+
+  jobs = {
+    "Build": {
+      runs-on = "ubuntu-22.04";
+      steps = [
+        {
+          name = "Checkout";
+          uses = "actions/checkout@v3.5.3";
+        },
+        {
+          name = "Install Nix";
+          uses = "cachix/install-nix-action@v18";
+          with = {
+            install_url = "https://releases.nixos.org/nix/nix-2.11.0/install";
+          };
+        },
+        {
+          name = "Build application";
+          run =
+            """
+            nix build --print-build-logs
+            echo "Build ok"
+            """;
+        },
+      ];
+    },
+  };
+}
