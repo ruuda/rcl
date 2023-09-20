@@ -46,10 +46,6 @@ impl<'a> Abstractor<'a> {
 
     /// Unescape a `"""`-quoted string literal.
     fn unescape_triple(&self, str_inner: Span) -> Result<Rc<str>> {
-        if str_inner.resolve(self.input).find('\n').is_none() {
-            return self.unescape(str_inner);
-        }
-
         let result: Result<String> = string::fold_triple_string_lines(
             self.input,
             str_inner,
