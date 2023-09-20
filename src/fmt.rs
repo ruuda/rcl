@@ -97,7 +97,7 @@ impl<'a> Formatter<'a> {
         let mut has_newline = false;
         let mut line = span.resolve(self.input);
         let mut n_trailing_spaces = 0_u32;
-        if line.len() > 0 && line.as_bytes()[line.len() - 1] == b'\n' {
+        if !line.is_empty() && line.as_bytes()[line.len() - 1] == b'\n' {
             line = &line[..line.len() - 1];
             has_newline = true;
             // If there are trailing spaces, the pretty-printer would eat them.
@@ -106,7 +106,7 @@ impl<'a> Formatter<'a> {
             // preserving them verbatim, we escape them to make them visible.
             // This has the nice side effects of removing trailing whitespace,
             // so it doesn't get eaten.
-            while line.len() > 0 && line.as_bytes()[line.len() - 1] == b' ' {
+            while !line.is_empty() && line.as_bytes()[line.len() - 1] == b' ' {
                 line = &line[..line.len() - 1];
                 n_trailing_spaces += 1;
             }

@@ -39,6 +39,13 @@ let trailing_newline =
    
   """;
 
+// The following string has a blank line and then a line with two spaces. Blank
+// lines do not contribute to the common indent, so all of the lines in this
+// string are empty.
+let leading_spaces = """
+
+  """;
+
 true
 
 # output:
@@ -83,6 +90,14 @@ let regression_test_format =
 let trailing_newline =
   """
   \u0020
+  """;
+
+// The following string has a blank line and then a line with two spaces. Blank
+// lines do not contribute to the common indent, so all of the lines in this
+// string are empty.
+let leading_spaces =
+  """
+
   """;
 
 true

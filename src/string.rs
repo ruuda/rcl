@@ -234,8 +234,9 @@ pub fn count_common_leading_spaces(input: &str, current_min: Option<usize>) -> O
         // There may be a blank line in a multiline string literal that contains
         // no spaces even though the other lines do have spaces, to avoid
         // trailing whitespace. In that case we should not set the indent to
-        // zero, even though technically it is.
-        let is_blank_line = n == 0 && input.len() > i + 1 && input.as_bytes()[i + 1] == b'\n';
+        // zero, even though technically it is. We also consider lines that have
+        // only spaces to be blank lines.
+        let is_blank_line = input.len() > i + n + 1 && input.as_bytes()[i + n + 1] == b'\n';
 
         if !is_blank_line {
             n_spaces = match n_spaces {
