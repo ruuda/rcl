@@ -1,0 +1,21 @@
+let
+
+
+weird1 = "this is allowed";
+let
+
+// But this is not.
+weird2 = "oh no!";
+
+# output:
+ --> stdin:7:0
+  |
+7 | // But this is not.
+  | ^~~~~~~~~~~~~~~~~~~
+Error: A comment is not allowed here.
+
+ --> stdin:5:0
+  |
+5 | let
+  | ^
+Note: Try inserting the comment above this instead.

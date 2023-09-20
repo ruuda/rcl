@@ -34,6 +34,7 @@ fn get_color(token: &Token) -> &'static str {
         | Token::KwIn
         | Token::KwLet
         | Token::KwNot
+        | Token::KwNull
         | Token::KwOr
         | Token::KwThen
         | Token::KwTrue => green,

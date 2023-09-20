@@ -1,0 +1,35 @@
+// This should become one line because there are no comments.
+let c1 =
+  if true
+  then 1
+  else
+  0;
+
+// A comment can be inside one of the bodies, which forces multiline mode.
+let c2 = if
+  // Check for enablement.
+  widget.enabled then
+  // Frobnication is only effective on enabled widgets.
+  widget.frobnicated() else
+  // Disabled widgets we return as-is.
+  widget;
+
+[c1, c2]
+
+# output:
+// This should become one line because there are no comments.
+let c1 = if true then 1 else 0;
+
+// A comment can be inside one of the bodies, which forces multiline mode.
+let c2 =
+  if
+    // Check for enablement.
+    widget.enabled
+  then
+    // Frobnication is only effective on enabled widgets.
+    widget.frobnicated()
+  else
+    // Disabled widgets we return as-is.
+    widget;
+
+[c1, c2]

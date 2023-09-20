@@ -1,5 +1,15 @@
-// This is a regression test.
-f"""\\ { 0 }"""
+[
+  // Two parts, no inner fragment.
+  f"""
+  Interpolated string: {"hello, world"}
+  """,
+
+  // Three parts, one inner fragment.
+  f"""
+  Begin {"hole1"
+  } inner {"hole2"} end.
+  """,
+]
 
 # output:
-"\\ 0"
+["Interpolated string: hello, world\n","Begin hole1 inner hole2 end.\n"]

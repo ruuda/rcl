@@ -1,0 +1,8 @@
+not
+not
+not
+not
+true
+
+# output:
+not not not not true

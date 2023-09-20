@@ -1,0 +1,38 @@
+let x = f"This f-string has {
+  "a hole"
+} inside it.";
+
+let y = f"This f-string has {
+[
+// A list with a comment.
+"in a hole"
+]
+} inside it.";
+
+// The next one is a regression test; a bug would drop the content after the
+// hole.
+let k =
+  f"""
+  {0}t""";
+
+f"""
+This { let strtype = "f"; strtype }-string has a hole too.
+"""
+
+# output:
+let x = f"This f-string has {"a hole"} inside it.";
+
+let y = f"This f-string has {[
+  // A list with a comment.
+  "in a hole"
+]} inside it.";
+
+// The next one is a regression test; a bug would drop the content after the
+// hole.
+let k =
+  f"""
+  {0}t""";
+
+f"""
+This {let strtype = "f"; strtype}-string has a hole too.
+"""

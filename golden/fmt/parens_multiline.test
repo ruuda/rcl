@@ -1,0 +1,17 @@
+let single = (x and y and z);
+let multi = (
+  // This comment forces the tall rather than wide form.
+  true
+  and x
+  and y
+  and z
+);
+single and multi
+
+# output:
+let single = (x and y and z);
+let multi = (
+  // This comment forces the tall rather than wide form.
+  true and x and y and z
+);
+single and multi

@@ -13,6 +13,25 @@ fn fuzz_eval(input: &str) -> rcl::error::Result<()> {
     Ok(())
 }
 
+/// Run the formatter once.
+fn run_fmt(input: &str) -> rcl::error::Result<String> {
+    let id = DocId(0);
+    let (_span, cst) = rcl::parser::parse(id, input)?;
+    // For the fuzzer, we set the format width somewhat lower than the default,
+    // so we can explore interesting behavior with smaller inputs.
+    let cfg = rcl::pprint::Config { width: 32 };
+    let result = rcl::fmt::format_expr(input, &cst, &cfg);
+    Ok(result)
+}
+
+/// Run the formatter twice and check for idempotency.
+fn fuzz_fmt(input: &str) -> rcl::error::Result<()> {
+    let out1 = run_fmt(input)?;
+    let out2 = run_fmt(&out1)?;
+    assert_eq!(out1, out2, "Formatting should be idempotent.");
+    Ok(())
+}
+
 fuzz_target!(|input: &str| {
     // The last byte of the input sets the fuzzing mode. We take the last byte,
     // such that the prefix of the input should at least be a valid input file,
@@ -34,7 +53,10 @@ fuzz_target!(|input: &str| {
         b'c' => {
             let _ = fuzz_eval(input);
         }
-        // TODO: Include fmt, json.
+        b'd' => {
+            let _ = fuzz_fmt(input);
+        }
+        // TODO: Include json after eval.
         _ => return,
     };
 });

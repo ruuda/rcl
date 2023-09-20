@@ -1,0 +1,24 @@
+{
+  name = "Begonia rex";
+  // The string literal should be preserved verbatim, even though its
+  // indentation would place other items further to the right.
+  water_remark = "Keep the soil evenly moist,
+water again when it is dry to the touch.";
+  note = "
+    The comment in the previous field already forces it to be tall, and the hard
+    break becomes irrelevant. This string is forced tall because of the hard
+    break inside it.";
+}
+
+# output:
+{
+  name = "Begonia rex";
+  // The string literal should be preserved verbatim, even though its
+  // indentation would place other items further to the right.
+  water_remark = "Keep the soil evenly moist,
+water again when it is dry to the touch.";
+  note = "
+    The comment in the previous field already forces it to be tall, and the hard
+    break becomes irrelevant. This string is forced tall because of the hard
+    break inside it.";
+}

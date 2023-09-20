@@ -16,6 +16,11 @@ pub type Result<T> = std::result::Result<T, ParseError>;
 pub fn parse(doc: DocId, input: &str) -> Result<(Span, Prefixed<Expr>)> {
     let tokens = lexer::lex(doc, input)?;
     let mut parser = Parser::new(doc, input, &tokens);
+
+    // Comments at the start of the document are allowed, but the document
+    // should not start with blank lines, those we drop.
+    parser.skip_blanks();
+
     let (span, result) = parser.parse_prefixed_expr()?;
     parser.parse_eof()?;
     Ok((span, result))
@@ -246,6 +251,13 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Skip over any blank line tokens.
+    fn skip_blanks(&mut self) {
+        while let Some(Token::Blank) = self.peek() {
+            self.consume();
+        }
+    }
+
     /// Skip over any non-code tokens.
     fn skip_non_code(&mut self) -> Result<()> {
         loop {
@@ -337,25 +349,21 @@ impl<'a> Parser<'a> {
     fn parse_expr_if(&mut self) -> Result<Expr> {
         // Consume the `if` keyword.
         let _if = self.consume();
+        let (condition_span, condition) = self.parse_prefixed_expr()?;
 
         self.skip_non_code()?;
-        let (condition_span, condition) = self.parse_expr()?;
-
-        let then_before = self.parse_non_code();
         self.parse_token(Token::KwThen, "Expected 'then' here.")?;
         let (then_span, then_body) = self.parse_prefixed_expr()?;
 
-        let else_before = self.parse_non_code();
+        self.skip_non_code()?;
         self.parse_token(Token::KwElse, "Expected 'else' here.")?;
         let (else_span, else_body) = self.parse_prefixed_expr()?;
 
         let result = Expr::IfThenElse {
             condition_span,
             condition: Box::new(condition),
-            then_before,
             then_span,
             then_body: Box::new(then_body),
-            else_before,
             else_span,
             else_body: Box::new(else_body),
         };
@@ -563,16 +571,59 @@ impl<'a> Parser<'a> {
                 Ok(result)
             }
             Some(Token::FormatOpen(style)) => self.parse_format_string(style),
+            Some(Token::Quoted(style)) => self.parse_string(style),
             Some(Token::KwNull) => Ok(Expr::NullLit(self.consume())),
             Some(Token::KwTrue) => Ok(Expr::BoolLit(self.consume(), true)),
             Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
-            Some(Token::Quoted(style)) => Ok(Expr::StringLit(style, self.consume())),
             Some(Token::NumHexadecimal) => Ok(Expr::NumHexadecimal(self.consume())),
             Some(Token::NumBinary) => Ok(Expr::NumBinary(self.consume())),
             Some(Token::NumDecimal) => Ok(Expr::NumDecimal(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),
             _ => self.error("Expected a term here."),
         }
+    }
+
+    /// Ensure that a multiline string starts with a newline.
+    ///
+    /// If we allowed content between the opening quote and the first line break,
+    /// the following string would be ambiguous:
+    /// ```text
+    /// let ambiguous = """  foo
+    ///     bar""";
+    /// let candidate1 = "  foo\n    bar";
+    /// let candidate2 = "foo\n  bar";
+    /// let candidate3 = "  foo\nbar";
+    /// ```
+    /// Which of the candidates do you expect the ambiguous string to be equal
+    /// to? To avoid such confusion, we do not allow this.
+    ///
+    /// There is a form we *could* allow: strings with no line breaks at all.
+    /// ```text
+    /// """"It's too bad she won't live!", said Gaff."""
+    /// ```
+    /// would be unambiguous, and it may be nice to not have to escape the `"`.
+    /// We might support this at a later time, but it makes handling of the
+    /// string literals messy, so for now we enforce the line break.
+    fn validate_multiline_string(&self, inner: Span) -> Result<()> {
+        let inner_str = inner.resolve(self.input);
+        if !inner_str.is_empty() && inner_str.as_bytes()[0] == b'\n' {
+            return Ok(());
+        }
+        let err = inner
+            .take(inner_str.find('\n').unwrap_or(inner_str.len()))
+            .error("Expected a line break after the \"\"\". Move this to the next line.");
+        Err(err)
+    }
+
+    fn parse_string(&mut self, style: QuoteStyle) -> Result<Expr> {
+        let span = self.consume();
+
+        if style == QuoteStyle::Triple {
+            let inner = span.trim_start(3).trim_end(3);
+            self.validate_multiline_string(inner)?;
+        }
+
+        Ok(Expr::StringLit(style, span))
     }
 
     /// Parse a format string (`f"` or `f"""`).
@@ -611,6 +662,10 @@ impl<'a> Parser<'a> {
                     begin,
                     holes,
                 };
+                if style == QuoteStyle::Triple {
+                    let begin_inner = begin.trim_start(4).trim_end(1);
+                    self.validate_multiline_string(begin_inner)?;
+                }
                 return Ok(result);
             }
         }

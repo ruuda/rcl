@@ -1,0 +1,18 @@
+let wide = {"a" : 1, "b" : 2};
+let tall = {
+  // The comment forces tall mode.
+  "a"
+  : 1,
+  "b":
+  2
+};
+wide | tall
+
+# output:
+let wide = {"a": 1, "b": 2};
+let tall = {
+  // The comment forces tall mode.
+  "a": 1,
+  "b": 2,
+};
+wide | tall

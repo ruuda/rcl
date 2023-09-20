@@ -7,25 +7,21 @@ evaluates to itself as json. RCL furthermore features the following constructs.
 
 The booleans are written `true` and `false`.
 
-## Strings
+## Strings and f-strings
 
 Strings are quoted with `"` and support the same escape sequences as json.
 
     "This is a string."
 
-Strings can also be quoted with `"""`. In that case, any whitespace that is
-common across all the lines of the string literal is not part of the contents
-of the string, and if the `"""` is followed directly by a newline, then that
-newline is not part of the string either. The following list contains two
-identical strings:
+Multi-line strings can be quoted with `"""`. In both cases, adding an `f` in
+front turns the string into a format string, which can have one or more _holes_
+delimited by `{}`, to interpolate content into it:
 
-    [
-      "This is\na string.\n",
-      """
-      This is
-      a string.
-      """,
-    ]
+    f"""
+    The answer to the ultimate question is {2 * 3 * 7}.
+    """
+
+See [the chapter on strings](strings.md) for the full details.
 
 ## Lists
 

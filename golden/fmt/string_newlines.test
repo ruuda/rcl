@@ -1,0 +1,103 @@
+let s1 = """
+This has newlines,
+we would rather format it
+using proper indentation.""";
+let s2 = f"This format string fits again on {1} line.";
+let s3 = f"""
+  For this format string,
+  the opening quotes should be moved to the {"next"} line.
+  """;
+let s4 =
+    """
+      This string has too much indentation.
+      We should adjust that.""";
+let s5 =
+    """
+      This string is similar to the above one,
+      but the inner indent must be preserved,
+      because the closing quote is indented less.
+    """;
+
+// The following two cases contain a blank line. Those should not reduce the
+// indent, despite technically making the whitespace that is common among the
+// lines the empty string.
+let regression_test_plain =
+  """
+
+  """;
+let regression_test_format =
+  f"""
+  {1}
+
+  """;
+
+// The following string has a trailing space on the first line, it is indented
+// more than the other lines. When formatting, this should be made visible
+// through an escape sequence.
+let trailing_space =
+  """
+   
+  """;
+
+// The following string has a blank line and then a line with two spaces. Blank
+// lines do not contribute to the common indent, so all of the lines in this
+// string are empty.
+let leading_spaces = """
+
+  """;
+
+true
+
+# output:
+let s1 =
+  """
+  This has newlines,
+  we would rather format it
+  using proper indentation.""";
+let s2 = f"This format string fits again on {1} line.";
+let s3 =
+  f"""
+  For this format string,
+  the opening quotes should be moved to the {"next"} line.
+  """;
+let s4 =
+  """
+  This string has too much indentation.
+  We should adjust that.""";
+let s5 =
+  """
+    This string is similar to the above one,
+    but the inner indent must be preserved,
+    because the closing quote is indented less.
+  """;
+
+// The following two cases contain a blank line. Those should not reduce the
+// indent, despite technically making the whitespace that is common among the
+// lines the empty string.
+let regression_test_plain =
+  """
+
+  """;
+let regression_test_format =
+  f"""
+  {1}
+
+  """;
+
+// The following string has a trailing space on the first line, it is indented
+// more than the other lines. When formatting, this should be made visible
+// through an escape sequence.
+let trailing_space =
+  """
+  \u0020
+  """;
+
+// The following string has a blank line and then a line with two spaces. Blank
+// lines do not contribute to the common indent, so all of the lines in this
+// string are empty.
+let leading_spaces =
+  """
+
+  """;
+
+true

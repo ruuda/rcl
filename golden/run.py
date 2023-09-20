@@ -44,7 +44,7 @@ import re
 import subprocess
 import sys
 
-from typing import Iterable, List, Iterator
+from typing import Iterable, Iterator, List, Optional
 
 
 STRIP_ESCAPES = re.compile("\x1b[^m]+m")
@@ -53,9 +53,10 @@ GREEN = "\x1b[32m"
 RESET = "\x1b[0m"
 
 
-def test_one(fname: str, *, rewrite_output: bool) -> bool:
+def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Optional[str]:
     """
-    Run the given golden test, return whether it was succesful.
+    Run the given golden test, return `None` if it was successful,
+    or the diff if it was not.
     """
     input_lines: List[str] = []
     golden_lines: List[str] = []
@@ -98,30 +99,21 @@ def test_one(fname: str, *, rewrite_output: bool) -> bool:
         for line in result.stdout.splitlines() + result.stderr.splitlines()
     ]
 
-    is_good = True
+    report_lines: List[str] = []
 
     for diff_line in difflib.unified_diff(
         a=output_lines,
         b=[line[:-1] for line in golden_lines],
-        fromfile="actual",
-        tofile="golden",
+        fromfile="actual " + fname_friendly,
+        tofile="golden " + fname_friendly,
         lineterm="",
     ):
-        if is_good:
-            print(f"\r[{RED}fail{RESET}]\n")
-            is_good = False
-
         if diff_line.startswith("-"):
-            print(RED + diff_line + RESET)
+            report_lines.append(RED + diff_line + RESET)
         elif diff_line.startswith("+"):
-            print(GREEN + diff_line + RESET)
+            report_lines.append(GREEN + diff_line + RESET)
         else:
-            print(diff_line)
-
-    if is_good:
-        print(f"\r[{GREEN} ok {RESET}]")
-    else:
-        print()
+            report_lines.append(diff_line)
 
     if rewrite_output:
         with open(fname, "w", encoding="utf-8") as f:
@@ -134,7 +126,10 @@ def test_one(fname: str, *, rewrite_output: bool) -> bool:
                 f.write(line)
                 f.write("\n")
 
-    return is_good
+    if len(report_lines) > 0:
+        return "\n".join(report_lines)
+    else:
+        return None
 
 
 def main() -> None:
@@ -159,15 +154,26 @@ def main() -> None:
 
     fnames.sort()
     num_good = 0
+    all_errors: List[str] = []
 
     for fname in fnames:
         # Print a status line. The test will later overwrite the status.
         prefix = os.path.commonpath([fname, golden_dir])
         fname_friendly = fname.removeprefix(prefix + "/")
-        print(f"[ .. ] {fname_friendly}", end="", flush=True)
-        num_good += int(test_one(fname, rewrite_output=rewrite_output))
+        errors = test_one(fname, fname_friendly, rewrite_output=rewrite_output)
+        if errors is None:
+            num_good += 1
+            print(f"[{GREEN} ok {RESET}] {fname_friendly}")
+        else:
+            all_errors.append(errors)
+            print(f"[{RED}FAIL{RESET}] {fname_friendly}")
+
+    for error in all_errors:
+        print()
+        print(error)
 
     num_bad = len(fnames) - num_good
+    print()
     print(f"Tested {len(fnames)} inputs, {num_good} good, {num_bad} bad.")
 
     if num_good == len(fnames):

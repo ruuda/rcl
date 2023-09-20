@@ -1,0 +1,8 @@
+
+
+// This file has leading blanks that should be dropped.
+true
+
+# output:
+// This file has leading blanks that should be dropped.
+true
