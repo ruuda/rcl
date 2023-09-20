@@ -490,4 +490,35 @@ mod test {
         .unwrap();
         assert_eq!(lines, ["\u{1f574}\u{fe0e}\n", "    "]);
     }
+
+    #[test]
+    fn count_common_leading_spaces_handles_blank_lines() {
+        assert_eq!(
+            super::count_common_leading_spaces("\n  X\n  Y", None),
+            Some(2)
+        );
+        assert_eq!(
+            super::count_common_leading_spaces("\n  X\n    Y", None),
+            Some(2)
+        );
+        assert_eq!(
+            super::count_common_leading_spaces("\n  X\n    Y\n ", None),
+            Some(1)
+        );
+        assert_eq!(
+            // Despite the zero-length blank line, the indent is 2.
+            super::count_common_leading_spaces("\n  X\n\n  Y", None),
+            Some(2)
+        );
+        assert_eq!(
+            // Also if the blank line is longer than the others.
+            super::count_common_leading_spaces("\n  X\n    \n  Y", None),
+            Some(2)
+        );
+        assert_eq!(
+            // Even if there are only blank lines, we should report the count.
+            super::count_common_leading_spaces("\n  \n  ", None),
+            Some(2)
+        );
+    }
 }
