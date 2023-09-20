@@ -293,6 +293,7 @@ where
         "The parser must ensure that triple-quoted strings start with a newline.",
     );
 
+    // Cut off that initial newline.
     let mut span = span_inner.trim_start(1);
     let mut acc = seed;
 
