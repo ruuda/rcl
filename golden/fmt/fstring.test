@@ -29,7 +29,9 @@ let y = f"This f-string has {[
 
 // The next one is a regression test; a bug would drop the content after the
 // hole.
-let k = f"""{0}t""";
+let k =
+  f"""
+  {0}t""";
 
 f"""
 This {let strtype = "f"; strtype}-string has a hole too.

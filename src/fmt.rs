@@ -122,29 +122,7 @@ impl<'a> Formatter<'a> {
 
     /// Format a `"""`-quoted string literal.
     fn string_triple(&self, span: Span) -> Doc<'a> {
-        // Loop over the lines in the literal to see if there are multiple
-        // lines. We abuse Result a bit for this.
-        let is_multiline = string::fold_triple_string_lines(
-            self.input,
-            span.trim_start(3).trim_end(3),
-            (),
-            |_, line| {
-                if line.resolve(self.input).contains('\n') {
-                    Err(())
-                } else {
-                    Ok(())
-                }
-            },
-        )
-        .is_err();
-
-        if !is_multiline {
-            return self.raw_span(span);
-        }
-
-        let mut result = Vec::new();
-        result.push("\"\"\"".into());
-        result.push(Doc::HardBreak);
+        let mut result = vec!["\"\"\"".into(), Doc::HardBreak];
 
         result = string::fold_triple_string_lines(
             self.input,
@@ -158,6 +136,7 @@ impl<'a> Formatter<'a> {
         .expect("We don't return Err from the closure.");
 
         result.push("\"\"\"".into());
+
         flush_indent! { Doc::Concat(result) }
     }
 
@@ -175,31 +154,7 @@ impl<'a> Formatter<'a> {
 
     /// Format a `f"""`-quoted format string.
     fn format_string_triple(&self, begin: Span, holes: &[FormatHole]) -> Doc<'a> {
-        // Loop over the lines in the literal to see if there are multiple
-        // lines. We abuse Result a bit for this.
-        let is_multiline = string::fold_triple_format_string_lines(
-            self.input,
-            begin,
-            holes,
-            (),
-            |_, line| {
-                if line.resolve(self.input).contains('\n') {
-                    Err(())
-                } else {
-                    Ok(())
-                }
-            },
-            // Holes are not interesting for finding newlines.
-            |_, _, _| Ok(()),
-        )
-        .is_err();
-
-        let mut result = Vec::new();
-        result.push("f\"\"\"".into());
-
-        if is_multiline {
-            result.push(Doc::HardBreak);
-        }
+        let mut result = vec!["f\"\"\"".into(), Doc::HardBreak];
 
         result = string::fold_triple_format_string_lines(
             self.input,
@@ -222,11 +177,7 @@ impl<'a> Formatter<'a> {
 
         result.push("\"\"\"".into());
 
-        if is_multiline {
-            flush_indent! { Doc::Concat(result) }
-        } else {
-            Doc::Concat(result)
-        }
+        flush_indent! { Doc::Concat(result) }
     }
 
     pub fn prefixed_expr(&self, expr: &Prefixed<Expr>) -> Doc<'a> {
