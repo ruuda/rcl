@@ -34,7 +34,7 @@ let regression_test_format =
 // The following string has a trailing space on the first line, it is indented
 // more than the other lines. When formatting, this should be made visible
 // through an escape sequence.
-let trailing_newline =
+let trailing_space =
   """
    
   """;
@@ -87,7 +87,7 @@ let regression_test_format =
 // The following string has a trailing space on the first line, it is indented
 // more than the other lines. When formatting, this should be made visible
 // through an escape sequence.
-let trailing_newline =
+let trailing_space =
   """
   \u0020
   """;
