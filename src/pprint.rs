@@ -156,7 +156,7 @@ impl<'a> Doc<'a> {
     pub fn empty() -> Doc<'a> {
         // We pick concat of empty vec over str of empty string, so that when
         // this later gets concatenated with something else, it disappears.
-        // An emty string would stick around as a node unless we added logic to
+        // An empty string would stick around as a node unless we added logic to
         // omit it during concat.
         Doc::Concat(Vec::new())
     }
