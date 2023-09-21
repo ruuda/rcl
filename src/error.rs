@@ -143,7 +143,7 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
     writeln!(
         &mut result,
         "{}--> {}:{}:{}",
-        line_num_pad, doc.path, line, column,
+        line_num_pad, doc.name, line, column,
     )
     .unwrap();
     writeln!(&mut result, "{} |", line_num_pad).unwrap();
@@ -165,6 +165,56 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
     .unwrap();
 
     result
+}
+
+/// We encountered some IO failure.
+#[derive(Debug)]
+pub struct IoError {
+    // TODO: Make optional.
+    pub span: Span,
+    pub message: String,
+}
+
+impl IoError {
+    pub fn new(message: String) -> IoError {
+        IoError {
+            span: Span::new(crate::source::DocId(0), 0, 0),
+            message,
+        }
+    }
+}
+
+impl From<String> for IoError {
+    fn from(err: String) -> Self {
+        IoError::new(err)
+    }
+}
+
+impl From<&str> for IoError {
+    fn from(err: &str) -> Self {
+        IoError::new(err.to_string())
+    }
+}
+
+impl From<IoError> for Box<dyn Error> {
+    fn from(err: IoError) -> Self {
+        Box::new(err)
+    }
+}
+
+impl Error for IoError {
+    fn span(&self) -> Span {
+        self.span
+    }
+    fn message(&self) -> &str {
+        &self.message
+    }
+    fn notes(&self) -> &[(Span, &str)] {
+        &[]
+    }
+    fn help(&self) -> Option<&str> {
+        None
+    }
 }
 
 /// A syntax error that causes lexing or parsing to fail.

@@ -14,6 +14,8 @@ use crate::string::escape_json;
 
 /// Render a value as json.
 pub fn format_json(caller: Span, v: &Value, into: &mut String) -> Result<()> {
+    // TODO: Instead of the caller span, we should have a dedicated error type
+    // for reporting runtime errors.
     match v {
         Value::Null => into.push_str("null"),
         Value::Bool(true) => into.push_str("true"),

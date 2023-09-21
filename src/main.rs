@@ -5,9 +5,10 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use rcl::error::{Error, Result};
+use rcl::error::Result;
+use rcl::loader::Loader;
 use rcl::runtime::Env;
-use rcl::source::{DocId, Document, Inputs};
+use rcl::source::DocId;
 
 const USAGE: &str = r#"
 RCL -- Ruud's Configuration Language.
@@ -17,150 +18,116 @@ Usage:
   rcl fmt <file>
   rcl highlight <file>
   rcl repl
+  rcl query <file> <expr>
   rcl -h | --help
 
 Arguments:
   <file>        The input file to process, or '-' for stdin.
+  <expr>        An RCL expression to evaluate against the input document.
 
 Options:
   -h --help     Show this screen.
 "#;
 
-fn main_eval(inputs: &Inputs) -> Result<()> {
-    let debug = false;
+fn main_eval(loader: &Loader, doc: DocId) -> Result<()> {
+    let mut env = Env::new();
+    let val = loader.evaluate(doc, &mut env)?;
 
-    for (i, doc) in inputs.iter().enumerate() {
-        let id = DocId(i as u32);
-        let tokens = rcl::lexer::lex(id, doc.data)?;
-        if debug {
-            for (token, span) in &tokens {
-                eprintln!("{span:?} {token:?}");
-            }
-        }
-
-        let (doc_span, cst) = rcl::parser::parse(id, doc.data)?;
-        if debug {
-            eprintln!("{cst:#?}");
-        }
-
-        let ast = rcl::abstraction::abstract_expr(doc.data, &cst)?;
-        if debug {
-            eprintln!("{ast:#?}");
-        }
-
-        let mut env = Env::new();
-        let val = rcl::eval::eval(&mut env, &ast)?;
-
-        let mut val_json = String::new();
-        rcl::json::format_json(doc_span, val.as_ref(), &mut val_json)?;
-        println!("{}", val_json);
-    }
-
+    let full_span = loader.get_span(doc);
+    let mut val_json = String::new();
+    rcl::json::format_json(full_span, val.as_ref(), &mut val_json)?;
+    println!("{}", val_json);
     Ok(())
 }
 
-fn main_fmt(inputs: &Inputs) -> Result<()> {
+fn main_query(loader: &Loader, input: DocId, query: DocId) -> Result<()> {
+    // First we evaluate the input document.
+    let mut env = Env::new();
+    let val_input = loader.evaluate(input, &mut env)?;
+
+    // Then we bind that to the variable `input`, and in that context, we
+    // evaluate the query expression.
+    let mut env = Env::new();
+    env.push("input".into(), val_input);
+    let val_result = loader.evaluate(query, &mut env)?;
+
+    let full_span = loader.get_span(query);
+    let mut val_json = String::new();
+    rcl::json::format_json(full_span, val_result.as_ref(), &mut val_json)?;
+    println!("{}", val_json);
+    Ok(())
+}
+
+fn main_fmt(loader: &Loader, doc: DocId) -> Result<()> {
     use std::io::Write;
-    for (i, doc) in inputs.iter().enumerate() {
-        let id = DocId(i as u32);
-        let (_doc_span, cst) = rcl::parser::parse(id, doc.data)?;
-        let cfg = rcl::pprint::Config::default();
-        let res = rcl::fmt::format_expr(doc.data, &cst, &cfg);
-        let mut out = std::io::stdout().lock();
-        let res = out.write_all(res.as_bytes());
-        if res.is_err() {
-            // If we fail to print to stdout, there is no point in printing
-            // an error, just exit then.
-            std::process::exit(1);
-        }
+    let data = loader.get_doc(doc).data;
+    let cst = loader.get_cst(doc)?;
+    let cfg = rcl::pprint::Config::default();
+    let res = rcl::fmt::format_expr(data, &cst, &cfg);
+    let mut out = std::io::stdout().lock();
+    let res = out.write_all(res.as_bytes());
+    if res.is_err() {
+        // If we fail to print to stdout, there is no point in printing
+        // an error, just exit then.
+        std::process::exit(1);
     }
     Ok(())
 }
 
-struct Data {
-    path: String,
-    data: String,
+fn main_highlight(loader: &Loader, doc: DocId) -> Result<()> {
+    let tokens = loader.get_tokens(doc)?;
+    let data = loader.get_doc(doc).data;
+    let mut stdout = std::io::stdout().lock();
+    let res = rcl::highlight::highlight(&mut stdout, &tokens, &data);
+    if res.is_err() {
+        // If we fail to print to stdout, there is no point in printing
+        // an error, just exit then.
+        std::process::exit(1);
+    }
+    Ok(())
 }
 
-impl Data {
-    fn load(fname: &str) -> Data {
-        use std::fs;
-        use std::io::{self, Read};
-        Data {
-            path: match fname {
-                "-" => "stdin".to_string(),
-                _ => fname.to_string(),
-            },
-            data: match fname {
-                // TODO: Add IO error to the error module.
-                "-" => {
-                    let mut buf = String::new();
-                    io::stdin()
-                        .read_to_string(&mut buf)
-                        .expect("Failed to read from stdin.");
-                    buf
-                }
-                _ => fs::read_to_string(fname).expect("Failed to read from file."),
-            },
-        }
-    }
-
-    fn as_ref(&self) -> Document {
-        Document {
-            path: &self.path,
-            data: &self.data,
-        }
-    }
-}
-
-fn main() {
+fn main_with_loader(loader: &mut Loader) -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let args_refs: Vec<&str> = args.iter().map(|a| &a[..]).collect();
+
     match &args_refs[..] {
         ["-h"] | ["--help"] => {
             println!("{}", USAGE.trim());
-            std::process::exit(0);
+            std::process::exit(0)
         }
         ["eval", fname] => {
-            let data = Data::load(fname);
-            let inputs = [data.as_ref()];
-            if let Err(err) = main_eval(&inputs) {
-                err.print(&inputs);
-                std::process::exit(1);
-            }
+            let doc = loader.load_from_cli_fname(fname)?;
+            main_eval(loader, doc)
         }
         ["fmt", fname] => {
-            let data = Data::load(fname);
-            let inputs = [data.as_ref()];
-            if let Err(err) = main_fmt(&inputs) {
-                err.print(&inputs);
-                std::process::exit(1);
-            }
+            let doc = loader.load_from_cli_fname(fname)?;
+            main_fmt(loader, doc)
         }
         ["highlight", fname] => {
-            let data = Data::load(fname);
-            let inputs = [data.as_ref()];
-            let tokens = match rcl::lexer::lex(DocId(0), &data.data) {
-                Ok(tokens) => tokens,
-                Err(err) => {
-                    Box::<dyn Error>::from(err).print(&inputs);
-                    std::process::exit(1);
-                }
-            };
-            let mut stdout = std::io::stdout().lock();
-            let res = rcl::highlight::highlight(&mut stdout, &tokens, &data.data);
-            if res.is_err() {
-                // If we fail to print to stdout, there is no point in printing
-                // an error, just exit then.
-                std::process::exit(1);
-            }
+            let doc = loader.load_from_cli_fname(fname)?;
+            main_highlight(loader, doc)
         }
         ["repl"] => {
             unimplemented!("TODO: Implement repl.");
+        }
+        ["query", fname, expr] => {
+            let input = loader.load_from_cli_fname(fname)?;
+            let query = loader.load_string(expr.to_string());
+            main_query(loader, input, query)
         }
         _ => {
             eprintln!("Failed to parse command line. Run with --help for usage.");
             std::process::exit(1);
         }
+    }
+}
+
+fn main() {
+    let mut loader = Loader::new();
+
+    if let Err(err) = main_with_loader(&mut loader) {
+        err.print(&loader.as_inputs());
+        std::process::exit(1);
     }
 }

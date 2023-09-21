@@ -6,7 +6,8 @@ use rcl::source::DocId;
 
 fn fuzz_eval(input: &str) -> rcl::error::Result<()> {
     let id = DocId(0);
-    let (_span, cst) = rcl::parser::parse(id, input)?;
+    let tokens = rcl::lexer::lex(id, input)?;
+    let (_span, cst) = rcl::parser::parse(id, input, &tokens)?;
     let ast = rcl::abstraction::abstract_expr(input, &cst)?;
     let mut env = rcl::runtime::Env::new();
     let _ = rcl::eval::eval(&mut env, &ast)?;
@@ -16,7 +17,8 @@ fn fuzz_eval(input: &str) -> rcl::error::Result<()> {
 /// Run the formatter once.
 fn run_fmt(input: &str) -> rcl::error::Result<String> {
     let id = DocId(0);
-    let (_span, cst) = rcl::parser::parse(id, input)?;
+    let tokens = rcl::lexer::lex(id, input)?;
+    let (_span, cst) = rcl::parser::parse(id, input, &tokens)?;
     // For the fuzzer, we set the format width somewhat lower than the default,
     // so we can explore interesting behavior with smaller inputs.
     let cfg = rcl::pprint::Config { width: 32 };
@@ -48,7 +50,8 @@ fuzz_target!(|input: &str| {
             let _ = rcl::lexer::lex(id, input);
         }
         b'b' => {
-            let _ = rcl::parser::parse(id, input);
+            use rcl::{lexer::lex, parser::parse};
+            let _ = lex(id, input).and_then(|tokens| parse(id, input, &tokens));
         }
         b'c' => {
             let _ = fuzz_eval(input);

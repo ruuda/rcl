@@ -7,14 +7,13 @@
 
 use crate::cst::{BinOp, Expr, FormatHole, NonCode, Prefixed, Seq, UnOp};
 use crate::error::{IntoParseError, ParseError};
-use crate::lexer::{self, QuoteStyle, Token};
+use crate::lexer::{Lexeme, QuoteStyle, Token};
 use crate::source::{DocId, Span};
 
 pub type Result<T> = std::result::Result<T, ParseError>;
 
 /// Parse an input document into a concrete syntax tree.
-pub fn parse(doc: DocId, input: &str) -> Result<(Span, Prefixed<Expr>)> {
-    let tokens = lexer::lex(doc, input)?;
+pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<(Span, Prefixed<Expr>)> {
     let mut parser = Parser::new(doc, input, &tokens);
 
     // Comments at the start of the document are allowed, but the document
