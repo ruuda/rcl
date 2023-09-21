@@ -1,4 +1,4 @@
-# Terminology
+# Glossary
 
 Many concepts are universal across formats and languages, but are known by
 various names nonetheless. RCL adopts the following terminology.
