@@ -14,19 +14,21 @@ const USAGE: &str = r#"
 RCL -- Ruud's Configuration Language.
 
 Usage:
-  rcl eval <file>
-  rcl fmt <file>
+  rcl evaluate <file>
+  rcl format <file>
   rcl highlight <file>
-  rcl repl
   rcl query <file> <expr>
+  rcl repl
   rcl -h | --help
 
 Arguments:
-  <file>        The input file to process, or '-' for stdin.
-  <expr>        An RCL expression to evaluate against the input document.
+  <file>      The input file to process, or '-' for stdin.
+  <expr>      An RCL expression to evaluate against the input document.
 
 Options:
-  -h --help     Show this screen.
+  -h --help   Show this screen.
+
+See the manual for a more elaborate usage guide.
 "#;
 
 fn main_eval(loader: &Loader, doc: DocId) -> Result<()> {
@@ -96,11 +98,11 @@ fn main_with_loader(loader: &mut Loader) -> Result<()> {
             println!("{}", USAGE.trim());
             std::process::exit(0)
         }
-        ["eval", fname] => {
+        ["e", fname] | ["eval", fname] | ["evaluate", fname] => {
             let doc = loader.load_from_cli_fname(fname)?;
             main_eval(loader, doc)
         }
-        ["fmt", fname] => {
+        ["f", fname] | ["fmt", fname] | ["format", fname] => {
             let doc = loader.load_from_cli_fname(fname)?;
             main_fmt(loader, doc)
         }
@@ -111,7 +113,7 @@ fn main_with_loader(loader: &mut Loader) -> Result<()> {
         ["repl"] => {
             unimplemented!("TODO: Implement repl.");
         }
-        ["query", fname, expr] => {
+        ["q", fname, expr] | ["query", fname, expr] => {
             let input = loader.load_from_cli_fname(fname)?;
             let query = loader.load_string(expr.to_string());
             main_query(loader, input, query)
