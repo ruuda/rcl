@@ -78,7 +78,7 @@ fn main_highlight(loader: &Loader, doc: DocId) -> Result<()> {
     let tokens = loader.get_tokens(doc)?;
     let data = loader.get_doc(doc).data;
     let mut stdout = std::io::stdout().lock();
-    let res = rcl::highlight::highlight(&mut stdout, &tokens, &data);
+    let res = rcl::highlight::highlight(&mut stdout, &tokens, data);
     if res.is_err() {
         // If we fail to print to stdout, there is no point in printing
         // an error, just exit then.

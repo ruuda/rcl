@@ -14,7 +14,7 @@ pub type Result<T> = std::result::Result<T, ParseError>;
 
 /// Parse an input document into a concrete syntax tree.
 pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<(Span, Prefixed<Expr>)> {
-    let mut parser = Parser::new(doc, input, &tokens);
+    let mut parser = Parser::new(doc, input, tokens);
 
     // Comments at the start of the document are allowed, but the document
     // should not start with blank lines, those we drop.

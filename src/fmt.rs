@@ -250,12 +250,12 @@ impl<'a> Formatter<'a> {
                 begin,
                 holes,
                 style: QuoteStyle::Double,
-            } => self.format_string_double(*begin, &holes),
+            } => self.format_string_double(*begin, holes),
             Expr::FormatString {
                 begin,
                 holes,
                 style: QuoteStyle::Triple,
-            } => self.format_string_triple(*begin, &holes),
+            } => self.format_string_triple(*begin, holes),
 
             Expr::NumHexadecimal(span) => {
                 // Normalize A-F to a-f.
