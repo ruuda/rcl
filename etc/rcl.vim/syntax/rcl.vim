@@ -43,6 +43,10 @@ syn region  rclFormatDouble  start='f"'   end='"'   skip='\\"\|\\{' contains=rcl
 syn region  rclFormatTriple  start='f"""' end='"""' skip='\\"\|\\{' contains=rclInterpolation
 
 syn cluster rclString contains=rclStringDouble,rclStringTriple,rclFormatDouble,rclFormatTriple
+highlight link rclStringDouble rclString
+highlight link rclStringTriple rclString
+highlight link rclFormatDobule rclString
+highlight link rclFormatTriple rclString
 
 syn cluster rclExpr contains=@rclKeyword,rclOperator,@rclNumber,rclComment,rclIdentifier,@rclString
 
@@ -55,7 +59,7 @@ highlight link rclKeyword     Keyword
 highlight link rclComment     Comment
 highlight link rclTodo        Todo
 highlight link rclIdentifier  Identifier
-highlight link @rclString     String
+highlight link rclString      String
 highlight link rclFloat       Float
 highlight link rclHexadecimal Number
 highlight link rlcBinary      Number
