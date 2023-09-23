@@ -68,15 +68,19 @@ Build:
 
 Evaluate an RCL expression to json:
 
-    target/debug/rcl eval examples/tags.rcl | jq
+    target/debug/rcl eval examples/tags.rcl
 
-Highlight an RCL expression in your terminal:
+Query an RCL or json document:
 
-    target/debug/rcl highlight examples/tags.rcl
+    target/debug/rcl query examples/tags.rcl input.tags.ams01
 
 Autoformat an RCL expression (non-destructive, prints to stdout):
 
     target/debug/rcl fmt examples/tags.rcl
+
+Highlight an RCL expression in your terminal:
+
+    target/debug/rcl highlight examples/tags.rcl
 
 ## Development
 

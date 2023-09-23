@@ -2,4 +2,4 @@ let xs = ["a", "b", "c"];
 [xs.contains("a"), xs.contains("d")]
 
 # output:
-[true,false]
+[true, false]

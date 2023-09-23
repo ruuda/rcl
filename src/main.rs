@@ -7,6 +7,7 @@
 
 use rcl::error::Result;
 use rcl::loader::Loader;
+use rcl::pprint;
 use rcl::runtime::Env;
 use rcl::source::DocId;
 
@@ -31,14 +32,27 @@ Options:
 See the manual for a more elaborate usage guide.
 "#;
 
+/// Pretty-print a document to stdout.
+fn pprint_stdout(cfg: &pprint::Config, doc: &pprint::Doc) {
+    use std::io::Write;
+    let result = doc.print(cfg);
+    let mut out = std::io::stdout().lock();
+    let res = out.write_all(result.as_bytes());
+    if res.is_err() {
+        // If we fail to print to stdout, there is no point in printing
+        // an error, just exit then.
+        std::process::exit(1);
+    }
+}
+
 fn main_eval(loader: &Loader, doc: DocId) -> Result<()> {
     let mut env = Env::new();
     let val = loader.evaluate(doc, &mut env)?;
 
     let full_span = loader.get_span(doc);
-    let mut val_json = String::new();
-    rcl::json::format_json(full_span, val.as_ref(), &mut val_json)?;
-    println!("{}", val_json);
+    let json = rcl::json::format_json(full_span, val.as_ref())?;
+    let json = json + pprint::Doc::HardBreak;
+    pprint_stdout(&pprint::Config::default(), &json);
     Ok(())
 }
 
@@ -54,25 +68,18 @@ fn main_query(loader: &Loader, input: DocId, query: DocId) -> Result<()> {
     let val_result = loader.evaluate(query, &mut env)?;
 
     let full_span = loader.get_span(query);
-    let mut val_json = String::new();
-    rcl::json::format_json(full_span, val_result.as_ref(), &mut val_json)?;
-    println!("{}", val_json);
+    let json = rcl::json::format_json(full_span, val_result.as_ref())?;
+    let json = json + pprint::Doc::HardBreak;
+    pprint_stdout(&pprint::Config::default(), &json);
     Ok(())
 }
 
 fn main_fmt(loader: &Loader, doc: DocId) -> Result<()> {
-    use std::io::Write;
     let data = loader.get_doc(doc).data;
     let cst = loader.get_cst(doc)?;
-    let cfg = rcl::pprint::Config::default();
-    let res = rcl::fmt::format_expr(data, &cst, &cfg);
-    let mut out = std::io::stdout().lock();
-    let res = out.write_all(res.as_bytes());
-    if res.is_err() {
-        // If we fail to print to stdout, there is no point in printing
-        // an error, just exit then.
-        std::process::exit(1);
-    }
+    let cfg = pprint::Config::default();
+    let res = rcl::fmt::format_expr(data, &cst) + pprint::Doc::HardBreak;
+    pprint_stdout(&cfg, &res);
     Ok(())
 }
 

@@ -12,18 +12,17 @@
 
 use crate::cst::{Expr, FormatHole, NonCode, Prefixed, Seq};
 use crate::lexer::QuoteStyle;
-use crate::pprint::{concat, flush_indent, group, indent, Config, Doc};
+use crate::pprint::{concat, flush_indent, group, indent, Doc};
 use crate::source::Span;
 use crate::string;
 
 /// Format a document.
-pub fn format_expr(input: &str, expr: &Prefixed<Expr>, config: &Config) -> String {
+pub fn format_expr<'a>(input: &'a str, expr: &'a Prefixed<Expr>) -> Doc<'a> {
     let formatter = Formatter::new(input);
     // Usually the entire thing is already wrapped in a group, but we need to
     // add one in case it is not, to enable wide formatting of expressions that
     // are not a group at the top level.
-    let doc = Doc::Group(Box::new(formatter.prefixed_expr(expr)));
-    doc.print(config)
+    Doc::Group(Box::new(formatter.prefixed_expr(expr)))
 }
 
 /// Helper so we can use methods for resolving spans against the input.

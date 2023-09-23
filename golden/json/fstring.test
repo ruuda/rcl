@@ -10,4 +10,8 @@
 ]
 
 # output:
-["Interpolated string: hello, world","Begin hole1 inner hole2 end.","Bool: true, integer: 42"]
+[
+  "Interpolated string: hello, world",
+  "Begin hole1 inner hole2 end.",
+  "Bool: true, integer: 42"
+]
