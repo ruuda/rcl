@@ -12,15 +12,15 @@ use crate::source::{Inputs, Span};
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 pub trait Error: std::fmt::Debug {
-    /// The source location of the error.
-    fn span(&self) -> Span;
-
     /// The error message.
     ///
     ///  * Shorter is better.
     ///  * Simpler is better (no jargon).
     ///  * The expected thing goes first, the actual thing goes second.
     fn message(&self) -> &str;
+
+    /// The source location of the error.
+    fn span(&self) -> Option<Span>;
 
     /// Optionally, a note about error.
     ///
@@ -37,9 +37,13 @@ impl dyn Error {
         let bold_yellow = "\x1b[33;1m";
         let reset = "\x1b[0m";
 
-        let highlight = highlight_span_in_line(inputs, self.span(), bold_red);
-        eprint!("{}", highlight);
-        eprintln!("{}Error:{} {}", bold_red, reset, self.message());
+        if let Some(span) = self.span() {
+            let highlight = highlight_span_in_line(inputs, span, bold_red);
+            eprint!("{}", highlight);
+            eprintln!("{}Error:{} {}", bold_red, reset, self.message());
+        } else {
+            eprintln!("{}Error:{} {}", bold_red, reset, self.message());
+        }
 
         for (note_span, note) in self.notes() {
             let highlight = highlight_span_in_line(inputs, *note_span, bold_yellow);
@@ -170,17 +174,12 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
 /// We encountered some IO failure.
 #[derive(Debug)]
 pub struct IoError {
-    // TODO: Make optional.
-    pub span: Span,
     pub message: String,
 }
 
 impl IoError {
     pub fn new(message: String) -> IoError {
-        IoError {
-            span: Span::new(crate::source::DocId(0), 0, 0),
-            message,
-        }
+        IoError { message }
     }
 }
 
@@ -203,11 +202,11 @@ impl From<IoError> for Box<dyn Error> {
 }
 
 impl Error for IoError {
-    fn span(&self) -> Span {
-        self.span
-    }
     fn message(&self) -> &str {
         &self.message
+    }
+    fn span(&self) -> Option<Span> {
+        None
     }
     fn notes(&self) -> &[(Span, &str)] {
         &[]
@@ -245,11 +244,11 @@ impl From<ParseError> for Box<dyn Error> {
 }
 
 impl Error for ParseError {
-    fn span(&self) -> Span {
-        self.span
-    }
     fn message(&self) -> &str {
         self.message
+    }
+    fn span(&self) -> Option<Span> {
+        Some(self.span)
     }
     fn notes(&self) -> &[(Span, &str)] {
         match self.note {
@@ -305,11 +304,11 @@ impl From<RuntimeError> for Box<dyn Error> {
 }
 
 impl Error for RuntimeError {
-    fn span(&self) -> Span {
-        self.span
-    }
     fn message(&self) -> &str {
         self.message
+    }
+    fn span(&self) -> Option<Span> {
+        Some(self.span)
     }
     fn notes(&self) -> &[(Span, &str)] {
         &self.notes[..]
@@ -355,11 +354,11 @@ impl From<ValueError> for Box<dyn Error> {
 }
 
 impl Error for ValueError {
-    fn span(&self) -> Span {
-        self.span
-    }
     fn message(&self) -> &str {
         self.message
+    }
+    fn span(&self) -> Option<Span> {
+        Some(self.span)
     }
     fn notes(&self) -> &[(Span, &str)] {
         &[]
