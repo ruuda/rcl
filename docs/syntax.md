@@ -3,9 +3,35 @@
 RCL is a superset of json. Any json document is a valid RCL expression which
 evaluates to itself as json. RCL furthermore features the following constructs.
 
-## Booleans
+## Comments
 
-The booleans are written `true` and `false`.
+Comments start with `//` and run until the end of the line. Comments in RCL are
+slightly unusual in that there are some locations where comments are not
+allowed.[^1] Generally, prefer to put comments on their own line, before the
+item they comment on.
+
+    // Comment like this.
+    let answer = 42;
+    let question = "unknown"; // The formatter would move this to the next line.
+    { question: answer }
+
+At the start of the document, a line that starts with `#!` is allowed, in order
+to support executable files. For example:
+
+    #!/usr/bin/env -S rcl eval
+    "This document prints this string when executed."
+
+[^1]: The reason for disallowing comments in arbitrary locations, is that RCL
+has a single syntax tree that is used both by the formatter and the evaluator.
+The upside of this, is that the formatter is much less likely to have subtle
+bugs where it will drop comments that are in weird locations that are not
+represented in the <abbr title="Concrete Syntax Tree">CST</abbr> (such as before
+the `in` in a `for ... in` construct). The downside is that the parser will
+sometimes ask you to move comments.
+
+## Booleans and null
+
+The booleans are written `true` and `false`, null is written `null`.
 
 ## Strings and f-strings
 
