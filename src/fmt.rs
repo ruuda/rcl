@@ -85,6 +85,10 @@ impl<'a> Formatter<'a> {
                     result.push(self.span(*span));
                     result.push(Doc::HardBreak);
                 }
+                NonCode::Shebang(span) => {
+                    result.push(self.span(*span));
+                    result.push(Doc::HardBreak);
+                }
             }
         }
 

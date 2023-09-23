@@ -236,6 +236,7 @@ impl<'a> Parser<'a> {
         loop {
             match self.peek() {
                 Some(Token::LineComment) => result.push(NonCode::LineComment(self.consume())),
+                Some(Token::Shebang) => result.push(NonCode::Shebang(self.consume())),
                 Some(Token::Blank) => result.push(NonCode::Blank(self.consume())),
                 _ => {
                     // If it's not a space, then this is the last location where

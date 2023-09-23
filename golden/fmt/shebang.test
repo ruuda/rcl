@@ -1,0 +1,20 @@
+#! A shebang line is allowed at the start of the document.
+
+// It is also allowed in the middle, just because that was easier to implement.
+// It ought to not be allowed, but it is. The shebang has no meaning, but is
+// preserved for formatting purposes.
+
+#! Another shebang line.
+
+true
+
+# output:
+#! A shebang line is allowed at the start of the document.
+
+// It is also allowed in the middle, just because that was easier to implement.
+// It ought to not be allowed, but it is. The shebang has no meaning, but is
+// preserved for formatting purposes.
+
+#! Another shebang line.
+
+true

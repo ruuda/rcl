@@ -65,8 +65,11 @@ pub enum NonCode {
     /// One or more blank lines.
     Blank(Span),
 
-    /// A comment that runs until the end of the line.
+    /// A comment that runs until the end of the line (excluding the newline).
     LineComment(Span),
+
+    /// A line that starts with `#!`, excluding the newline itself.
+    Shebang(Span),
 }
 
 /// An inner node that might be preceded by non-code.

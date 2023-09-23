@@ -45,10 +45,9 @@ pub enum Token {
     /// A sequence of ascii whitespace that contains at least two newlines.
     Blank,
 
-    /// A line that starts with `#!`.
+    /// A line that starts with `#!`, and runs until the end of the line.
     ///
-    /// Runs until the end of the line, and (unlike a comment token) includes
-    /// the newline itself.
+    /// Excludes the newline itself.
     Shebang,
 
     /// A comment that starts with `//` and runs until the end of the line.
@@ -445,8 +444,7 @@ impl<'a> Lexer<'a> {
 
     fn lex_in_shebang(&mut self) -> Lexeme {
         let contents = self.take_while(|ch| ch != b'\n');
-        let newline = self.span(1);
-        (Token::Shebang, contents.union(newline))
+        (Token::Shebang, contents)
     }
 
     fn lex_in_line_comment(&mut self) -> Lexeme {
