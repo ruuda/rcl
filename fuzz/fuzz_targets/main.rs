@@ -24,7 +24,7 @@ fn run_fmt(input: &str) -> rcl::error::Result<String> {
     // so we can explore interesting behavior with smaller inputs.
     let cfg = rcl::pprint::Config { width: 32 };
     let doc = rcl::fmt::format_expr(input, &cst);
-    let result = doc.print(&cfg);
+    let result = doc.println(&cfg);
     Ok(result)
 }
 
