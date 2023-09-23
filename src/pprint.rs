@@ -563,7 +563,7 @@ mod test {
     use super::{Config, Doc};
 
     fn print_width(doc: &Doc, width: u32) -> String {
-        doc.print(&Config { width })
+        doc.println(&Config { width })
     }
 
     #[test]
@@ -580,8 +580,8 @@ mod test {
             SoftBreak
             "]"
         };
-        assert_eq!(print_width(&doc, 80), "[elem0, elem1, elem2]");
-        assert_eq!(print_width(&doc, 5), "[\n  elem0,\n  elem1,\n  elem2,\n]");
+        assert_eq!(print_width(&doc, 80), "[elem0, elem1, elem2]\n");
+        assert_eq!(print_width(&doc, 5), "[\n  elem0,\n  elem1,\n  elem2,\n]\n");
     }
 
     #[test]
@@ -600,7 +600,7 @@ mod test {
         };
         // Despite fitting in 80 columns, we should still format tall because of
         // the hard break.
-        assert_eq!(print_width(&doc, 80), "[\n  // Comment.\n  elem0\n]");
+        assert_eq!(print_width(&doc, 80), "[\n  // Comment.\n  elem0\n]\n");
     }
 
     #[test]
@@ -628,14 +628,14 @@ mod test {
             SoftBreak
             "]"
         };
-        assert_eq!(print_width(&doc, 80), "[[a, b, c], elem0, elem1, elem2]");
+        assert_eq!(print_width(&doc, 80), "[[a, b, c], elem0, elem1, elem2]\n");
         assert_eq!(
             print_width(&doc, 15),
-            "[\n  [a, b, c],\n  elem0,\n  elem1,\n  elem2,\n]",
+            "[\n  [a, b, c],\n  elem0,\n  elem1,\n  elem2,\n]\n",
         );
         assert_eq!(
             print_width(&doc, 8),
-            "[\n  [\n    a,\n    b,\n    c,\n  ],\n  elem0,\n  elem1,\n  elem2,\n]",
+            "[\n  [\n    a,\n    b,\n    c,\n  ],\n  elem0,\n  elem1,\n  elem2,\n]\n",
         );
     }
 }
