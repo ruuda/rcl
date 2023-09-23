@@ -61,6 +61,7 @@ dependencies = [
 name = "rcl-fuzz"
 version = "0.0.0"
 dependencies = [
+ "arbitrary",
  "libfuzzer-sys",
  "rcl",
 ]
