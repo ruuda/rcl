@@ -1,9 +1,26 @@
 # Ruud’s Configuration Language
 
-**Vaporware warning:** This is a proof-of-concept toy project. I will probably
-lose interest in it before it reaches a point where it is usable and useful.
+> **Warning:** RCL is vaporware. It is a proof-of-concept toy project. I will
+> likely lose interest in it before it is mature enough for serious use.
 
-Why another config language? Because:
+Ruud’s Configuration Language, RCL for short, is a superset of json that extends
+json into a simple functional programming language similar to Python and
+[Nix][nix]. RCL expressions evaluate to json values. Use cases include:
+
+ * Querying json documents, like [`jq`][jq], but with a more familiar language.
+ * Generating repetitive configuration files, such as GitHub Actions workflows
+   or Terraform configuration.
+ * Enabling large repositories to split configuration into small reusable pieces
+   that can be referenced from a single consistent entry point, in the same way
+   that Nix enables this for [Nixpkgs][nixpkgs].
+
+[nix]:     https://nixos.org/manual/nix/stable/language/
+[jq]:      https://jqlang.github.io/jq/manual/
+[nixpkgs]: https://github.com/nixos/nixpkgs
+
+## Rationale
+
+Why another config language?
 
  * HCL is too ad-hoc to be suitable for any serious abstraction (`setunion` is
    variadic so it only works with a statically known number of sets; `flatten`
