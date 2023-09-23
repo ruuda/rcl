@@ -2,12 +2,14 @@
 
 ## Near term
 
- * Colored output for json.
+ * Ensure `{}` is a dict, not a set, for json compatibility.
+ * [WIP] Colored output for json.
  * The ability to turn coloring on or off, respect <https://no-color.org/>.
  * Absorb the `highlight` command into `fmt` and make it use the same coloring?
  * Different output modes, RCL in addition to json (so we can preserve sets);
    possibly yaml output.
  * Preserve insertion order in dicts and sets.
+ * Update terminology; I am calling them dicts, not records.
 
 ## Method vs. field access
 

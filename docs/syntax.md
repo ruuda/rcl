@@ -90,7 +90,7 @@ identical to the first one above.
     }
 
 Note, the empty collection `{}` is a set, not a record.
-TODO: Should infer the type.
+TODO: It _has_ to be a record, because in json it is a record. Need to fix!
 
 ## Sets
 
