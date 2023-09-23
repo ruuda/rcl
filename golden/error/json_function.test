@@ -2,8 +2,8 @@
 "frobnicator".len
 
 # output:
- --> stdin:2:0
+ --> stdin:1:0
   |
-2 | "frobnicator".len
-  | ^~~~~~~~~~~~~~~~~
+1 | // Note, .len is an unserializable function, we don't call it!
+  | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Error: Functions cannot be exported as json.

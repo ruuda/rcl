@@ -16,9 +16,14 @@ markdown_extensions:
 nav:
   - "Overview": "index.md"
   - "User guide":
-    - "Syntax highlighting": "syntax_highlighting.md"
-    - "Terminology": "terminology.md"
-    - "Syntax": "syntax.md"
-    - "Strings": "strings.md"
-    - "Null": "null.md"
+      - "Syntax highlighting": "syntax_highlighting.md"
+      - "Syntax": "syntax.md"
+      - "Strings": "strings.md"
+      - "Null": "null.md"
+      - "Glossary": "glossary.md"
+  - "Reference":
+      - "rcl evaluate": "rcl_evaluate.md"
+      - "rcl format": "rcl_format.md"
+      - "rcl highlight": "rcl_highlight.md"
+      - "rcl query": "rcl_query.md"
   - "Development": "development.md"

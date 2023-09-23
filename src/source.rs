@@ -10,16 +10,16 @@
 use std::fmt;
 
 /// A named input document.
-pub struct Document<'a> {
+pub struct Doc<'a> {
     /// Path can be a file path, but also a name such as "stdin".
-    pub path: &'a str,
+    pub name: &'a str,
 
     /// The contents of the file.
     pub data: &'a str,
 }
 
 /// A list of input documents.
-pub type Inputs<'a> = [Document<'a>];
+pub type Inputs<'a> = [Doc<'a>];
 
 /// The index of a document in the list of input files.
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
