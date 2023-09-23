@@ -50,10 +50,10 @@ impl Formatter {
         std::mem::swap(&mut self.path, &mut path);
 
         let err = ValueError::new(self.caller, path, message);
-        return Err(err.into());
+        Err(err.into())
     }
 
-    fn list<'s, 'a>(&'s mut self, vs: impl Iterator<Item = &'a Rc<Value>>) -> Result<Doc<'a>> {
+    fn list<'a>(&mut self, vs: impl Iterator<Item = &'a Rc<Value>>) -> Result<Doc<'a>> {
         let mut elements = Vec::new();
         let mut is_first = true;
         for (i, v) in vs.enumerate() {
@@ -76,8 +76,8 @@ impl Formatter {
         Ok(result)
     }
 
-    fn object<'s, 'a>(
-        &'s mut self,
+    fn object<'a>(
+        &mut self,
         vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>,
     ) -> Result<Doc<'a>> {
         let mut elements = Vec::new();
@@ -110,7 +110,7 @@ impl Formatter {
         Ok(result)
     }
 
-    fn value<'s, 'a>(&'s mut self, v: &'a Value) -> Result<Doc<'a>> {
+    fn value<'a>(&mut self, v: &'a Value) -> Result<Doc<'a>> {
         let result: Doc = match v {
             Value::Null => "null".into(),
             Value::Bool(true) => "true".into(),
