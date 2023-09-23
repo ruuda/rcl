@@ -294,10 +294,18 @@ impl<'a> Doc<'a> {
         }
     }
 
-    /// Pretty-print the document.
+    /// Pretty-print the document. The document may not have a trailing newline.
     pub fn print(&self, config: &Config) -> String {
         let mut printer = Printer::new(config);
         self.print_to(&mut printer, Mode::Tall);
+        printer.into_inner()
+    }
+
+    /// Pretty-print the document. Ensure the document ends in a newline.
+    pub fn println(&self, config: &Config) -> String {
+        let mut printer = Printer::new(config);
+        self.print_to(&mut printer, Mode::Tall);
+        printer.flush_newline();
         printer.into_inner()
     }
 }

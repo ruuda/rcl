@@ -52,21 +52,19 @@ fn fuzz_eval_json(input: &str) -> rcl::error::Result<()> {
 
     let full_span = loader.get_span(doc_1);
     let json = rcl::json::format_json(full_span, val_1.as_ref())?;
-    let json = json + rcl::pprint::Doc::HardBreak;
 
     // TODO: Take the config from the fuzz input?
     let cfg = rcl::pprint::Config { width: 32 };
-    let out_1 = json.print(&cfg);
+    let out_1 = json.println(&cfg);
     let doc_2 = loader.load_string(out_1);
     let val_2 = loader.evaluate(doc_2, &mut env)?;
 
     let full_span = loader.get_span(doc_2);
     let json = rcl::json::format_json(full_span, val_2.as_ref())?;
-    let json = json + rcl::pprint::Doc::HardBreak;
-    let out_2 = json.print(&cfg);
+    let out_2 = json.println(&cfg);
 
     assert_eq!(
-        loader.get_doc(doc_1).data,
+        loader.get_doc(doc_2).data,
         out_2,
         "Evaluation to json should be idempotent.",
     );
@@ -74,33 +72,40 @@ fn fuzz_eval_json(input: &str) -> rcl::error::Result<()> {
     Ok(())
 }
 
-fuzz_target!(|input: &str| {
+fuzz_target!(|input: &[u8]| {
+    if input.is_empty() {
+        return;
+    }
+
     // The last byte of the input sets the fuzzing mode. We take the last byte,
     // such that the prefix of the input should at least be a valid input file,
     // which makes it easier to inspect.
-    let mode = match input.as_bytes().last() {
-        None => return,
-        Some(m) => m,
+    let n = input.len();
+    let mode = input[n - 1];
+
+    let input_str = match std::str::from_utf8(&input[..n - 1]) {
+        Ok(s) => s,
+        Err(..) => return,
     };
 
     let id = DocId(0);
 
     match mode {
         b'a' => {
-            let _ = rcl::lexer::lex(id, input);
+            let _ = rcl::lexer::lex(id, input_str);
         }
         b'b' => {
             use rcl::{lexer::lex, parser::parse};
-            let _ = lex(id, input).and_then(|tokens| parse(id, input, &tokens));
+            let _ = lex(id, input_str).and_then(|tokens| parse(id, input_str, &tokens));
         }
         b'c' => {
-            let _ = fuzz_eval(input);
+            let _ = fuzz_eval(input_str);
         }
         b'd' => {
-            let _ = fuzz_fmt(input);
+            let _ = fuzz_fmt(input_str);
         }
         b'e' => {
-            let _ = fuzz_eval_json(input);
+            let _ = fuzz_eval_json(input_str);
         }
         _ => return,
     };

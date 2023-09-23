@@ -35,7 +35,7 @@ See the manual for a more elaborate usage guide.
 /// Pretty-print a document to stdout.
 fn pprint_stdout(cfg: &pprint::Config, doc: &pprint::Doc) {
     use std::io::Write;
-    let result = doc.print(cfg);
+    let result = doc.println(cfg);
     let mut out = std::io::stdout().lock();
     let res = out.write_all(result.as_bytes());
     if res.is_err() {
@@ -51,7 +51,6 @@ fn main_eval(loader: &Loader, doc: DocId) -> Result<()> {
 
     let full_span = loader.get_span(doc);
     let json = rcl::json::format_json(full_span, val.as_ref())?;
-    let json = json + pprint::Doc::HardBreak;
     pprint_stdout(&pprint::Config::default(), &json);
     Ok(())
 }
@@ -69,7 +68,6 @@ fn main_query(loader: &Loader, input: DocId, query: DocId) -> Result<()> {
 
     let full_span = loader.get_span(query);
     let json = rcl::json::format_json(full_span, val_result.as_ref())?;
-    let json = json + pprint::Doc::HardBreak;
     pprint_stdout(&pprint::Config::default(), &json);
     Ok(())
 }
@@ -78,7 +76,7 @@ fn main_fmt(loader: &Loader, doc: DocId) -> Result<()> {
     let data = loader.get_doc(doc).data;
     let cst = loader.get_cst(doc)?;
     let cfg = pprint::Config::default();
-    let res = rcl::fmt::format_expr(data, &cst) + pprint::Doc::HardBreak;
+    let res = rcl::fmt::format_expr(data, &cst);
     pprint_stdout(&cfg, &res);
     Ok(())
 }
