@@ -396,7 +396,7 @@ pub(crate) use flush_indent;
 /// Helper module for pretty printing.
 ///
 /// This is a separate module to be able to hide some of the printer internals
-/// from the [`Doc::print`] implementation.
+/// from the [`Doc::println`] implementation.
 mod printer {
     use super::{Config, Markup, MarkupMode};
 
