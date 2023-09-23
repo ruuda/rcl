@@ -1,7 +1,5 @@
 # rcl highlight
 
-## Synopsis
-
     rcl highlight <input>
 
 ## Description

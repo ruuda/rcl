@@ -1,7 +1,5 @@
 # rcl query
 
-## Synopsis
-
     rcl query <input> <expr>
 
 Shorthands:

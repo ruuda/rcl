@@ -1,7 +1,5 @@
 # rcl evaluate
 
-## Synopsis
-
     rcl evaluate <input>
 
 Shorthands:

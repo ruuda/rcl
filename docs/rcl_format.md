@@ -1,7 +1,5 @@
 # rcl format
 
-## Synopsis
-
     rcl format <input>
 
 Shorthands:
