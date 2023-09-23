@@ -18,11 +18,10 @@ use std::rc::Rc;
 use crate::ast::{Expr as AExpr, FormatFragment, Seq as ASeq};
 use crate::cst::Prefixed;
 use crate::cst::{Expr as CExpr, FormatHole, Seq as CSeq};
-use crate::error::Result;
+use crate::error::{IntoParseError, Result};
 use crate::lexer::QuoteStyle;
 use crate::source::Span;
 use crate::string;
-use crate::todo_placeholder;
 
 /// Abstract an expression.
 pub fn abstract_expr(input: &str, expr: &Prefixed<CExpr>) -> Result<AExpr> {
@@ -170,10 +169,10 @@ impl<'a> Abstractor<'a> {
                 let num_str = span.trim_start(2).resolve(self.input).replace('_', "");
                 match i64::from_str_radix(&num_str, 16) {
                     Ok(i) => AExpr::IntegerLit(i),
-                    Err(..) => todo_placeholder!(
-                        "TODO: Handle overflow when parsing binary literal.",
-                        AExpr::IntegerLit(0),
-                    ),
+                    Err(..) => {
+                        let err = span.error("Overflow in integer literal.");
+                        return Err(err.into());
+                    }
                 }
             }
 
@@ -182,21 +181,22 @@ impl<'a> Abstractor<'a> {
                 let num_str = span.trim_start(2).resolve(self.input).replace('_', "");
                 match i64::from_str_radix(&num_str, 2) {
                     Ok(i) => AExpr::IntegerLit(i),
-                    Err(..) => todo_placeholder!(
-                        "TODO: Handle overflow when parsing binary literal.",
-                        AExpr::IntegerLit(0),
-                    ),
+                    Err(..) => {
+                        let err = span.error("Overflow in integer literal.");
+                        return Err(err.into());
+                    }
                 }
             }
 
             CExpr::NumDecimal(span) => {
+                // TODO: Handle floats.
                 let num_str = span.resolve(self.input).replace('_', "");
                 match i64::from_str_radix(&num_str, 10) {
                     Ok(i) => AExpr::IntegerLit(i),
-                    Err(..) => todo_placeholder!(
-                        "TODO: Implement parsing of non-integer number literals.",
-                        AExpr::IntegerLit(42),
-                    ),
+                    Err(..) => {
+                        let err = span.error("Overflow in integer literal.");
+                        return Err(err.into());
+                    }
                 }
             }
 

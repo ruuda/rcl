@@ -1,0 +1,13 @@
+[
+  // Still okay:
+  9223372036854775807,
+  // Overflow:
+  9223372036854775808,
+]
+
+# output:
+ --> stdin:5:2
+  |
+5 |   9223372036854775808,
+  |   ^~~~~~~~~~~~~~~~~~~
+Error: Overflow in integer literal.
