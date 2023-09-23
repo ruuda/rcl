@@ -51,7 +51,10 @@ fn main_eval(loader: &Loader, doc: DocId) -> Result<()> {
 
     let full_span = loader.get_span(doc);
     let json = rcl::json::format_json(full_span, val.as_ref())?;
-    pprint_stdout(&pprint::Config::default(), &json);
+    let cfg = pprint::Config::default();
+    // TODO: Detect if stdout is a tty, respect NO_COLOR.
+    // cfg.markup = rcl::markup::MarkupMode::Ansi;
+    pprint_stdout(&cfg, &json);
     Ok(())
 }
 

@@ -19,6 +19,7 @@ pub mod highlight;
 pub mod json;
 pub mod lexer;
 pub mod loader;
+pub mod markup;
 pub mod parser;
 pub mod pprint;
 pub mod runtime;

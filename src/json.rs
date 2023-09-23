@@ -10,6 +10,7 @@
 use std::rc::Rc;
 
 use crate::error::{PathElement, Result, ValueError};
+use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
@@ -53,6 +54,12 @@ impl Formatter {
         Err(err.into())
     }
 
+    fn string<'a>(&self, s: &str) -> Doc<'a> {
+        let mut into = String::with_capacity(s.len());
+        escape_json(s, &mut into);
+        concat! { "\"" into "\"" }
+    }
+
     fn list<'a>(&mut self, vs: impl Iterator<Item = &'a Rc<Value>>) -> Result<Doc<'a>> {
         let mut elements = Vec::new();
         let mut is_first = true;
@@ -90,7 +97,7 @@ impl Formatter {
             match k.as_ref() {
                 Value::String(k_str) => {
                     self.path.push(PathElement::Key(k_str.clone()));
-                    elements.push(self.value(k)?)
+                    elements.push(self.string(k_str).with_markup(Markup::Identifier))
                 }
                 // TODO: Include information about the encountered type.
                 _ => return self.error("To export as json, keys must be strings."),
@@ -112,15 +119,11 @@ impl Formatter {
 
     fn value<'a>(&mut self, v: &'a Value) -> Result<Doc<'a>> {
         let result: Doc = match v {
-            Value::Null => "null".into(),
-            Value::Bool(true) => "true".into(),
-            Value::Bool(false) => "false".into(),
-            Value::Int(i) => i.to_string().into(),
-            Value::String(s) => {
-                let mut into = String::with_capacity(s.len());
-                escape_json(s, &mut into);
-                concat! { "\"" into "\"" }
-            }
+            Value::Null => Doc::from("null").with_markup(Markup::Keyword),
+            Value::Bool(true) => Doc::from("true").with_markup(Markup::Keyword),
+            Value::Bool(false) => Doc::from("false").with_markup(Markup::Keyword),
+            Value::Int(i) => Doc::from(i.to_string()).with_markup(Markup::Number),
+            Value::String(s) => self.string(s).with_markup(Markup::String),
             Value::List(vs) => self.list(vs.iter())?,
             Value::Set(vs) => self.list(vs.iter())?,
             Value::Map(vs) => self.object(vs.iter())?,

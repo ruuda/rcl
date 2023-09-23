@@ -3,8 +3,9 @@
 use libfuzzer_sys::fuzz_target;
 use arbitrary::{Arbitrary, Unstructured};
 
-use rcl::source::DocId;
+use rcl::markup::MarkupMode;
 use rcl::pprint;
+use rcl::source::DocId;
 
 #[derive(Debug)]
 enum Mode {
@@ -160,11 +161,11 @@ fuzz_target!(|input: Input| {
             let _ = fuzz_eval(input.data);
         }
         Mode::Format { width } => {
-            let cfg = pprint::Config { width };
+            let cfg = pprint::Config { width, markup: MarkupMode::None };
             let _ = fuzz_fmt(input.data, cfg);
         }
         Mode::EvalJson { width } => {
-            let cfg = pprint::Config { width };
+            let cfg = pprint::Config { width, markup: MarkupMode::None };
             let _ = fuzz_eval_json(input.data, cfg);
         }
     };

@@ -16,6 +16,7 @@
 //!
 //! [wadler2003]: https://homepages.inf.ed.ac.uk/wadler/papers/prettier/prettier.pdf
 
+use crate::markup::{Markup, MarkupMode};
 use crate::pprint::printer::{PrintResult, Printer};
 
 /// Whether to format a node in wide mode or tall mode.
@@ -30,6 +31,9 @@ pub struct Config {
     /// The pretty printer will try to avoid creating lines longer than `width`
     /// columns, but this is not always possible.
     pub width: u32,
+
+    /// How to output color and other markup hints.
+    pub markup: MarkupMode,
 }
 
 impl Default for Config {
@@ -41,6 +45,7 @@ impl Default for Config {
             // ), in my tests (based on not that much data so far) I preferred
             // just 80.
             width: 80,
+            markup: MarkupMode::None,
         }
     }
 }
@@ -149,6 +154,9 @@ pub enum Doc<'a> {
     ///
     /// In wide mode, this is a no-op.
     FlushIndent(Box<Doc<'a>>),
+
+    /// Apply markup to the inner document.
+    Markup(Markup, Box<Doc<'a>>),
 }
 
 impl<'a> Doc<'a> {
@@ -213,6 +221,10 @@ impl<'a> Doc<'a> {
             result.push(elem)
         }
         Doc::Concat(result)
+    }
+
+    pub fn with_markup(self, markup: Markup) -> Doc<'a> {
+        Doc::Markup(markup, Box::new(self))
     }
 
     /// Whether any of the nodes in this tree force tall mode.
@@ -291,6 +303,7 @@ impl<'a> Doc<'a> {
                     }
                 }
             },
+            Doc::Markup(markup, inner) => printer.with_markup(*markup, |p| inner.print_to(p, mode)),
         }
     }
 
@@ -385,7 +398,7 @@ pub(crate) use flush_indent;
 /// This is a separate module to be able to hide some of the printer internals
 /// from the [`Doc::print`] implementation.
 mod printer {
-    use super::Config;
+    use super::{Config, Markup, MarkupMode};
 
     /// Whether printing in a particular mode fitted or not.
     ///
@@ -421,6 +434,12 @@ mod printer {
 
         /// Whether indentation has been written for the current line.
         needs_indent: bool,
+
+        /// The currently applied markup.
+        markup: Option<Markup>,
+
+        /// How to apply markup.
+        markup_mode: MarkupMode,
     }
 
     impl Printer {
@@ -432,6 +451,8 @@ mod printer {
                 line_width: 0,
                 indent: 0,
                 needs_indent: true,
+                markup: None,
+                markup_mode: config.markup,
             }
         }
 
@@ -459,6 +480,24 @@ mod printer {
             self.indent += 2;
             let result = f(self);
             self.indent -= 2;
+            result
+        }
+
+        /// Execute `f` with markup applied.
+        pub fn with_markup<F: FnOnce(&mut Printer) -> PrintResult>(
+            &mut self,
+            markup: Markup,
+            f: F,
+        ) -> PrintResult {
+            let prev = self.markup;
+            let next = Some(markup);
+            let switch_on = self.markup_mode.get_switch(prev, next);
+            let switch_off = self.markup_mode.get_switch(next, prev);
+            self.out.push_str(switch_on);
+            self.markup = next;
+            let result = f(self);
+            self.markup = prev;
+            self.out.push_str(switch_off);
             result
         }
 
@@ -560,10 +599,13 @@ mod printer {
 
 #[cfg(test)]
 mod test {
-    use super::{Config, Doc};
+    use super::{Config, Doc, MarkupMode};
 
     fn print_width(doc: &Doc, width: u32) -> String {
-        doc.println(&Config { width })
+        doc.println(&Config {
+            width,
+            markup: MarkupMode::None,
+        })
     }
 
     #[test]
