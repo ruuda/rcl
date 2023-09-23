@@ -8,57 +8,74 @@
 //! Conversion from and to json.
 
 use crate::error::{Result, ValueError};
+use crate::pprint::{concat, group, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
 use crate::string::escape_json;
 
 /// Render a value as json.
-pub fn format_json(caller: Span, v: &Value, into: &mut String) -> Result<()> {
+pub fn format_json(caller: Span, v: &Value) -> Result<Doc> {
     // TODO: Instead of the caller span, we should have a dedicated error type
     // for reporting runtime errors.
-    match v {
-        Value::Null => into.push_str("null"),
-        Value::Bool(true) => into.push_str("true"),
-        Value::Bool(false) => into.push_str("false"),
-        Value::Int(i) => into.push_str(&i.to_string()),
+    let result: Doc = match v {
+        Value::Null => "null".into(),
+        Value::Bool(true) => "true".into(),
+        Value::Bool(false) => "false".into(),
+        Value::Int(i) => i.to_string().into(),
         Value::String(s) => {
-            into.push('"');
-            escape_json(s, into);
-            into.push('"');
+            let mut into = String::with_capacity(s.len());
+            escape_json(s, &mut into);
+            concat! { "\"" into "\"" }
         }
         Value::List(vs) => {
-            into.push('[');
+            let mut elements = Vec::new();
             let mut is_first = true;
             for v in vs {
                 if !is_first {
-                    into.push(',');
+                    elements.push(",".into());
+                    elements.push(Doc::Sep);
                 }
-                format_json(caller, v, into)?;
+                elements.push(format_json(caller, v)?);
                 is_first = false;
             }
-            into.push(']');
+            group! {
+                "["
+                Doc::SoftBreak
+                indent! { Doc::Concat(elements) }
+                Doc::SoftBreak
+                "]"
+            }
         }
         Value::Set(vs) => {
-            into.push('[');
+            // TODO: Deduplicate between list/set.
+            let mut elements = Vec::new();
             let mut is_first = true;
             for v in vs {
                 if !is_first {
-                    into.push(',');
+                    elements.push(",".into());
+                    elements.push(Doc::Sep);
                 }
-                format_json(caller, v, into)?;
+                elements.push(format_json(caller, v)?);
                 is_first = false;
             }
-            into.push(']');
+            group! {
+                "["
+                Doc::SoftBreak
+                indent! { Doc::Concat(elements) }
+                Doc::SoftBreak
+                "]"
+            }
         }
         Value::Map(vs) => {
-            into.push('{');
+            let mut elements = Vec::new();
             let mut is_first = true;
             for (k, v) in vs {
                 if !is_first {
-                    into.push(',');
+                    elements.push(",".into());
+                    elements.push(Doc::Sep);
                 }
                 match k.as_ref() {
-                    Value::String(..) => format_json(caller, k, into)?,
+                    Value::String(..) => elements.push(format_json(caller, k)?),
                     _ => {
                         let err = ValueError {
                             span: caller,
@@ -68,11 +85,17 @@ pub fn format_json(caller: Span, v: &Value, into: &mut String) -> Result<()> {
                         return Err(err.into());
                     }
                 };
-                into.push(':');
-                format_json(caller, v, into)?;
+                elements.push(": ".into());
+                elements.push(format_json(caller, v)?);
                 is_first = false;
             }
-            into.push('}');
+            group! {
+                "{"
+                Doc::SoftBreak
+                indent! { Doc::Concat(elements) }
+                Doc::SoftBreak
+                "}"
+            }
         }
         Value::Builtin(..) => {
             let err = ValueError {
@@ -81,7 +104,7 @@ pub fn format_json(caller: Span, v: &Value, into: &mut String) -> Result<()> {
             };
             return Err(err.into());
         }
-    }
+    };
 
-    Ok(())
+    Ok(result)
 }

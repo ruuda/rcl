@@ -12,4 +12,4 @@
 ]
 
 # output:
-["Interpolated string: hello, world\n","Begin hole1 inner hole2 end.\n"]
+["Interpolated string: hello, world\n", "Begin hole1 inner hole2 end.\n"]

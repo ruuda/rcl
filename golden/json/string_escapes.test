@@ -10,4 +10,10 @@
 }
 
 # output:
-{"json_escapes":"\\/\b\f\n\r\t\n","newline":"\n","quote":"\"","triple":".\".\"\"\".\n\n","unicode_escapes":"\u007f🕴︎"}
+{
+  "json_escapes": "\\/\b\f\n\r\t\n",
+  "newline": "\n",
+  "quote": "\"",
+  "triple": ".\".\"\"\".\n\n",
+  "unicode_escapes": "\u007f🕴︎"
+}

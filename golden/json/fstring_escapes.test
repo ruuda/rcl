@@ -4,4 +4,4 @@
 ]
 
 # output:
-["{0}","{ inside non-f-string behaves regularly."]
+["{0}", "{ inside non-f-string behaves regularly."]

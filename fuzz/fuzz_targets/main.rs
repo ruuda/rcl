@@ -22,7 +22,8 @@ fn run_fmt(input: &str) -> rcl::error::Result<String> {
     // For the fuzzer, we set the format width somewhat lower than the default,
     // so we can explore interesting behavior with smaller inputs.
     let cfg = rcl::pprint::Config { width: 32 };
-    let result = rcl::fmt::format_expr(input, &cst, &cfg);
+    let doc = rcl::fmt::format_expr(input, &cst);
+    let result = doc.print(&cfg);
     Ok(result)
 }
 

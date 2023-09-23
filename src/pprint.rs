@@ -295,7 +295,6 @@ impl<'a> Doc<'a> {
     }
 
     /// Pretty-print the document.
-    ///
     pub fn print(&self, config: &Config) -> String {
         let mut printer = Printer::new(config);
         self.print_to(&mut printer, Mode::Tall);

@@ -7,4 +7,4 @@ let xs = ["apple", "orange", "pear"];
 }
 
 # output:
-{"apple":5,"orange":6}
+{"apple": 5, "orange": 6}
