@@ -9,7 +9,7 @@
 
 use std::rc::Rc;
 
-use crate::error::{Result, ValueError};
+use crate::error::{PathElement, Result, ValueError};
 use crate::pprint::{concat, group, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
@@ -19,12 +19,6 @@ use crate::string::escape_json;
 pub fn format_json(caller: Span, v: &Value) -> Result<Doc> {
     let mut formatter = Formatter::new(caller);
     formatter.value(v)
-}
-
-/// Element of a path through a value.
-enum PathElement {
-    Key(Rc<str>),
-    Index(usize),
 }
 
 /// Helper for formatting values as json.
@@ -48,12 +42,14 @@ impl Formatter {
     }
 
     /// Report an error at the current value path.
-    fn error<T>(&self, message: &'static str) -> Result<T> {
-        // TODO: Enable the path in ValueError.
-        let err = ValueError {
-            span: self.caller,
-            message,
-        };
+    fn error<T>(&mut self, message: &'static str) -> Result<T> {
+        // Steal the path from the formatter and move it into the error. We have
+        // to leave an empty path in its place. This is fine, because returning
+        // the error prevents further formatting.
+        let mut path = Vec::new();
+        std::mem::swap(&mut self.path, &mut path);
+
+        let err = ValueError::new(self.caller, path, message);
         return Err(err.into());
     }
 

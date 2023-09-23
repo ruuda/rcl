@@ -1,0 +1,35 @@
+{
+  top_level = {
+    priority = 7;
+    widgets = [
+      {
+        name = "W1";
+        enabled = true;
+      },
+      {
+        name = "W2";
+        enabled = false;
+      },
+      {
+        name = "W3";
+        properties = {
+          color = "blue";
+          // Note, we assign the function, we don't call it!
+          len_getter = "blue".len;
+        };
+      }
+    ];
+  };
+}
+
+# output:
+ --> stdin:1:0
+  |
+1 | {
+  | ^
+Error: Functions cannot be exported as json.
+  at key "len_getter"
+  at key "properties"
+  at index 2
+  at key "widgets"
+  at key "top_level"
