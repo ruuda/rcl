@@ -1,0 +1,13 @@
+[
+  // Still okay:
+  0x7fffffffffffffff,
+  // Overflow:
+  0x8000000000000000,
+]
+
+# output:
+ --> stdin:5:2
+  |
+5 |   0x8000000000000000,
+  |   ^~~~~~~~~~~~~~~~~~
+Error: Overflow in integer literal.

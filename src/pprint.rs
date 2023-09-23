@@ -294,10 +294,11 @@ impl<'a> Doc<'a> {
         }
     }
 
-    /// Pretty-print the document.
-    pub fn print(&self, config: &Config) -> String {
+    /// Pretty-print the document. Ensure the document ends in a newline.
+    pub fn println(&self, config: &Config) -> String {
         let mut printer = Printer::new(config);
         self.print_to(&mut printer, Mode::Tall);
+        printer.flush_newline();
         printer.into_inner()
     }
 }
