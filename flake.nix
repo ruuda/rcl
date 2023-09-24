@@ -21,9 +21,30 @@
           version = "0.0.0";
           pkgs = import nixpkgs { inherit system; };
 
-          python = pkgs.python3.withPackages (ps: [
+          python = pkgs.python3.override {
+            packageOverrides = self: super: {
+              # This package is not in Nixpkgs, define it here.
+              # I should consider upstreaming it.
+              types-pygments = self.buildPythonPackage rec {
+                pname = "types-Pygments";
+                version = "2.16.0.0";
+                format = "setuptools";
+                nativeBuildInputs = with self; [
+                  types-setuptools
+                  types-docutils
+                ];
+                src = self.fetchPypi {
+                  inherit pname version;
+                  hash = "sha256-qpPkZk4tbP6nVwzeFW45Zr+Tn5x9c2zRecTI6U92ALI=";
+                };
+              };
+            };
+          };
+
+          pythonEnv = python.withPackages (ps: [
             ps.mypy
             ps.pygments
+            ps.types-pygments
             # These two need to be in here for PyCharm to be able to find
             # dependencies from our fake virtualenv.
             ps.pip
@@ -58,7 +79,7 @@
                 pkgs.black
                 pkgs.mkdocs
                 pkgs.rustup
-                python
+                pythonEnv
               ];
 
               # Put something in .venv that looks enough like a traditional
@@ -67,7 +88,7 @@
               shellHook =
                 ''
                 mkdir -p .venv/bin
-                ln -sf ${python}/bin/python .venv/bin/python
+                ln -sf ${pythonEnv}/bin/python .venv/bin/python
                 '';
             };
 
@@ -110,6 +131,8 @@
 
               typecheckPython = pkgs.runCommand
                 "check-typecheck-python"
+                # TODO: Should import pythonEnv here for the types.
+                # This will be a good test if the flake check works.
                 { buildInputs = [ pkgs.mypy ]; }
                 ''
                 mypy --strict ${pythonSources}
