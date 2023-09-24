@@ -158,8 +158,6 @@
 
               default = rcl;
 
-              pygments = python.pkgs.toPythonApplication python.pkgs.pygments;
-
               coverage = pkgs.runCommand
                 "rcl-coverage"
                 { buildInputs = [ pkgs.python3 pkgs.grcov ]; }
