@@ -10,3 +10,8 @@
 # Nix
 /result*
 
+# Python venv managed by Nix
+/.venv
+
+# MkDocs
+/site

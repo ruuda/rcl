@@ -6,17 +6,23 @@ inspiration from Nix and Rust. All json strings are valid in RCL[^1].
 
 Strings can be quoted with double quotes:
 
-    "Hello, world"
+```rcl
+"Hello, world"
+```
 
 Or with triple double quotes:
 
-    """
-    Hello, world
-    """
+```rcl
+"""
+Hello, world
+"""
+```
 
 In both cases, add an `f` to enable interpolation.
 
-    f"Hello {greetee}"
+```rcl
+f"Hello {greetee}"
+```
 
 [^1]: Except for `\u` escape sequences that encode surrogate code points
 (U+D800 through U+DFFF). While a pair of such escape sequences may together be
@@ -30,18 +36,20 @@ string, any shared leading whitespace gets removed, as well as the mandatory
 newline that directly follows the `"""`. If there is a trailing newline, then
 that one _is_ part of the string. The following strings are identical:
 
-    let a = "Hello\n  World\n";
-    let b = "Hello
-      World\n";
-    let c =
-      """
-      Hello
-        World
-      """;
-    let d =
-      """
-        Hello
-          World\n""";
+```rcl
+let a = "Hello\n  World\n";
+let b = "Hello
+  World\n";
+let c =
+  """
+  Hello
+    World
+  """;
+let d =
+  """
+    Hello
+      World\n""";
+```
 
 Inside a `"`-quoted string, `"` itself needs to be escaped as `\"`, but inside
 a `"""`-quoted string, `"` does not need to be escaped. Inside a `"""`-quoted
@@ -52,14 +60,16 @@ Blank lines inside the string do not defeat shared leading whitespace. This
 means that the following expression returns true without any of the lines in
 the document containing trailing whitespace:
 
-    let x =
-       """
-       Section 1
+```rcl
+let x =
+   """
+   Section 1
 
-       Section 2
-       """;
-    let y = "Section 1\n\nSection 2\n";
-    x == y
+   Section 2
+   """;
+let y = "Section 1\n\nSection 2\n";
+x == y
+```
 
 ## Interpolation
 
@@ -72,15 +82,17 @@ is no nesting limitation. (Like in Nix, but unlike Python.)
 
 An example of string interpolation:
 
-    let generations = {
-      "Leon Kowalski": 6,
-      "Rachael": 7,
-      "Roy Batty": 6,
-    };
-    [
-      for name, generation in generations:
-      f"{name} was a Nexus-{generation} replicant."
-    ]
+```rcl
+let generations = {
+  "Leon Kowalski": 6,
+  "Rachael": 7,
+  "Roy Batty": 6,
+};
+[
+  for name, generation in generations:
+  f"{name} was a Nexus-{generation} replicant."
+]
+```
 
 ## Escape sequences
 
@@ -92,7 +104,9 @@ can be followed by either exactly 4 hex digits (like in json and Python), or by
 a variable number of hex digits enclosed in `[]` (like in Rust, except enclosed
 in `[]` instead of `{}`). The following strings are identical:
 
-    let a = "\n";
-    let b = "\u000a";
-    let c = "\u[0a]";
-    let d = "\u[00000a]";
+```rcl
+let a = "\n";
+let b = "\u000a";
+let c = "\u[0a]";
+let d = "\u[00000a]";
+```

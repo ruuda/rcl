@@ -10,16 +10,20 @@ slightly unusual in that there are some locations where comments are not
 allowed.[^1] Generally, prefer to put comments on their own line, before the
 item they comment on.
 
-    // Comment like this.
-    let answer = 42;
-    let question = "unknown"; // The formatter would move this to the next line.
-    { question: answer }
+```rcl
+// Comment like this.
+let answer = 42;
+let question = "unknown"; // The formatter would move this to the next line.
+{ question: answer }
+```
 
 At the start of the document, a line that starts with `#!` is allowed, in order
 to support executable files. For example:
 
-    #!/usr/bin/env -S rcl eval
-    "This document prints this string when executed."
+```rcl
+#!/usr/bin/env -S rcl eval
+"This document prints this string when executed."
+```
 
 [^1]: The reason for disallowing comments in arbitrary locations, is that RCL
 has a single syntax tree that is used both by the formatter and the evaluator.
@@ -37,15 +41,19 @@ The booleans are written `true` and `false`, null is written `null`.
 
 Strings are quoted with `"` and support the same escape sequences as json.
 
-    "This is a string."
+```rcl
+"This is a string."
+```
 
 Multi-line strings can be quoted with `"""`. In both cases, adding an `f` in
 front turns the string into a format string, which can have one or more _holes_
 delimited by `{}`, to interpolate content into it:
 
-    f"""
-    The answer to the ultimate question is {2 * 3 * 7}.
-    """
+```rcl
+f"""
+The answer to the ultimate question is {2 * 3 * 7}.
+"""
+```
 
 See [the chapter on strings](strings.md) for the full details.
 
@@ -54,10 +62,12 @@ See [the chapter on strings](strings.md) for the full details.
 Lists are surrounded by `[]`. The list separator is `,` and a trailing comma is
 allowed but not required.
 
-    [
-      ["Apple", "Banana", "Pear"],
-      ["Eggplant", "Pepper", "Zuccini"],
-    ]
+```rcl
+[
+  ["Apple", "Banana", "Pear"],
+  ["Eggplant", "Pepper", "Zuccini"],
+]
+```
 
 ## Dictionaries
 
@@ -66,29 +76,35 @@ in json form, where the left-hand side is an expression. Then the key and value
 are separated by `:` and the element separator is `,`. A trailing comma is
 optional.
 
-    {
-      "name": "apple",
-      "flavor": "sweet",
-    }
+```rcl
+{
+  "name": "apple",
+  "flavor": "sweet",
+}
+```
 
 The left-hand side does not have to be a string, although using other types than
 strings precludes serialization to json.
 
-    {
-      1: "I",
-      5: "V",
-      5 + 5: "X",
-    }
+```rcl
+{
+  1: "I",
+  5: "V",
+  5 + 5: "X",
+}
+```
 
 Alternatively, dicts can be written in record form, where the left-hand side
 is an identifier. Then the key and value are separated by `=` and the element
 separator is `;`. A trailing semicolon is optional. The following value is
 identical to the first one above.
 
-    {
-      name = "apple";
-      flavor = "sweet";
-    }
+```rcl
+{
+  name = "apple";
+  flavor = "sweet";
+}
+```
 
 Note, the empty collection `{}` is a dict, not a set.
 
@@ -97,25 +113,31 @@ Note, the empty collection `{}` is a dict, not a set.
 Sets are surrounded by `{}` and work otherwise the same as lists. The following
 list contains two identical sets:
 
-    [
-      {"Apple", "Pear"},
-      {"Apple", "Pear", "Apple"},
-    ]
+```rcl
+[
+  {"Apple", "Pear"},
+  {"Apple", "Pear", "Apple"},
+]
+```
 
 Note, the empty collection `{}` is a dict, not a set. There is currently no
 literal for the empty set. It is possible to work around this using
 comprehensions:
 
-    // An empty set.
-    {for x in []: x}
+```rcl
+// An empty set.
+{for x in []: x}
+```
 
 ## Let bindings
 
 Values can be bound to names with a let-binding.
 
-    let name = "apple";
-    let flavor = "sweet";
-    [name, flavor]
+```rcl
+let name = "apple";
+let flavor = "sweet";
+[name, flavor]
+```
 
 A let-binding is an _expression_, not an assignment statement. The expression
 evaluates to the expression after `;`.
@@ -135,15 +157,17 @@ Unlike most other languages (but [like Pony][pony-ops]), RCL does not have
 different precedence levels. To avoid confusing combinations of operators, you
 have to use parentheses:
 
-    // Invalid: Unclear whether this means (X and Y) or Z, or X and (Y or Z).
-    let should_log_verbose =
-      settings.contains("log") and settings.log_level >= 2
-      or settings.contains("debug");
+```rcl
+// Invalid: Unclear whether this means (X and Y) or Z, or X and (Y or Z).
+let should_log_verbose =
+  settings.contains("log") and settings.log_level >= 2
+  or settings.contains("debug");
 
-    // Disambiguate with parens:
-    let should_log_verbose =
-      (settings.contains("log") and (settings.log_level >= 2))
-      or settings.contains("debug");
+// Disambiguate with parens:
+let should_log_verbose =
+  (settings.contains("log") and (settings.log_level >= 2))
+  or settings.contains("debug");
+```
 
 [pony-ops]: https://tutorial.ponylang.io/expressions/ops.html#precedence
 
@@ -153,40 +177,46 @@ Inside collection literals (lists, dicts, and sets), aside from single
 elements, it is possible to use comprehensions. There are three supported
 constructs: `for`, `if`, and `let`.
 
-    let dict = {"name": "pear", "flavor": "sweet"};
-    [for key, value in dict: value]
-    // Evaluates to:
-    ["pear", "sweet"]
+```rcl
+let dict = {"name": "pear", "flavor": "sweet"};
+[for key, value in dict: value]
+// Evaluates to:
+["pear", "sweet"]
 
-    [if log_level >= 2: "Verbose message"]
-    // When log_level < 2, evaluates to:
-    []
-    // When log_level >= 2, evaluates to:
-    ["Verbose message"]
+[if log_level >= 2: "Verbose message"]
+// When log_level < 2, evaluates to:
+[]
+// When log_level >= 2, evaluates to:
+["Verbose message"]
 
-    {let x = 10; "value": x}
-    // Evaluates to:
-    {"value": 10}
+{let x = 10; "value": x}
+// Evaluates to:
+{"value": 10}
+```
 
 These can be combined arbitrarily:
 
-    let labels = {
-      for server in servers:
-      let all_server_labels = server_labels[server] | default_labels;
-      for label in all_server_labels:
-      if not excluded_labels.contains(label):
-      label
-    };
+```rcl
+let labels = {
+  for server in servers:
+  let all_server_labels = server_labels[server] | default_labels;
+  for label in all_server_labels:
+  if not excluded_labels.contains(label):
+  label
+};
+```
 
 There can be multiple loops per collection, and they can be mixed with single
 elements:
 
-    let small_numbers = [1, 2, 3];
-    let large_numbers = [100, 200, 300];
-    [
-      for n in small_numbers: n,
-      10,
-      for n in large_numbers: n,
-    ]
-    // Evaluates to:
-    [1, 2, 3, 10, 100, 200, 300]
+```rcl
+let small_numbers = [1, 2, 3];
+let large_numbers = [100, 200, 300];
+[
+  for n in small_numbers: n,
+  10,
+  for n in large_numbers: n,
+]
+// Evaluates to:
+[1, 2, 3, 10, 100, 200, 300]
+```

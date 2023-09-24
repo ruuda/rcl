@@ -16,8 +16,8 @@ A test runner for running the golden tests.
 
 The runner takes golden input files, splits them into inputs and expectations,
 and then prints whether they match. Inputs and expectations are separated by a
-a line that contains "# output:". Blank lines preceding it are not considered
-Part of the input.
+line that contains "# output:". Blank lines preceding it are not considered part
+of the input.
 
 SYNOPSIS
 

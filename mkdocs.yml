@@ -8,6 +8,7 @@ theme:
   custom_dir: docs/theme
 
 markdown_extensions:
+  - codehilite
   - footnotes
   - toc:
       permalink: true
@@ -28,4 +29,5 @@ nav:
       - "rcl format": "rcl_format.md"
       - "rcl highlight": "rcl_highlight.md"
       - "rcl query": "rcl_query.md"
-  - "Development": "development.md"
+  - "Development":
+      - "Testing": "testing.md"

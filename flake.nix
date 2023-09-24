@@ -21,6 +21,52 @@
           version = "0.0.0";
           pkgs = import nixpkgs { inherit system; };
 
+          python = pkgs.python3.override {
+            packageOverrides = self: super: {
+              # This package is not in Nixpkgs, define it here.
+              # I should consider upstreaming it.
+              types-pygments = self.buildPythonPackage rec {
+                pname = "types-Pygments";
+                version = "2.14.0.0";
+                format = "setuptools";
+                nativeBuildInputs = with self; [
+                  types-setuptools
+                  types-docutils
+                ];
+                src = self.fetchPypi {
+                  inherit pname version;
+                  hash = "sha256-G5R3cD3VeyzCU6Frii7WppK/zDO7OQWdEAiqnLA/xng=";
+                };
+              };
+
+              # Build a custom version of Pygments that has our lexer enabled.
+              # This enables MkDocs to highlight RCL code blocks.
+              pygments = super.pygments.overridePythonAttrs (attrs: {
+                postPatch = (attrs.postPatch or "") +
+                  ''
+                  # Copy our RCL lexer into the Pygments source tree, next to
+                  # the other lexers.
+                  cp ${./etc/pygments/rcl.py} pygments/lexers/rcl.py
+
+                  # Regenerate pygments/lexers/_mapping.py, which contains all
+                  # supported languages.
+                  python scripts/gen_mapfiles.py
+                  '';
+              });
+            };
+          };
+
+          pythonEnv = python.withPackages (ps: [
+            ps.mypy
+            ps.pygments
+            ps.types-pygments
+            ps.mkdocs
+            # These two need to be in here for PyCharm to be able to find
+            # dependencies from our fake virtualenv.
+            ps.pip
+            ps.setuptools
+          ]);
+
           rustSources = pkgs.lib.sourceFilesBySuffices ./. [
             ".rs"
             "Cargo.lock"
@@ -46,13 +92,19 @@
           rec {
             devShells.default = pkgs.mkShell {
               nativeBuildInputs = [
-                (with pkgs.python3.pkgs; toPythonApplication pygments)
                 pkgs.black
-                pkgs.mkdocs
-                pkgs.mypy
-                pkgs.python3
                 pkgs.rustup
+                pythonEnv
               ];
+
+              # Put something in .venv that looks enough like a traditional
+              # virtualenv that it works with PyCharm autocomplete and jump to
+              # definition and such.
+              shellHook =
+                ''
+                mkdir -p .venv/bin
+                ln -sf ${pythonEnv}/bin/python .venv/bin/python
+                '';
             };
 
             checks = rec {
@@ -94,7 +146,7 @@
 
               typecheckPython = pkgs.runCommand
                 "check-typecheck-python"
-                { buildInputs = [ pkgs.mypy ]; }
+                { buildInputs = [ pythonEnv ]; }
                 ''
                 mypy --strict ${pythonSources}
                 touch $out
@@ -105,6 +157,8 @@
               inherit rcl;
 
               default = rcl;
+
+              pygments = python.pkgs.toPythonApplication python.pkgs.pygments;
 
               coverage = pkgs.runCommand
                 "rcl-coverage"
