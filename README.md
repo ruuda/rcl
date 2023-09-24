@@ -20,6 +20,16 @@ cases include:
 [jq]:      https://jqlang.github.io/jq/manual/
 [nixpkgs]: https://github.com/nixos/nixpkgs
 
+## Getting started
+
+See [the manual](https://docs.ruuda.nl/rcl/) for more information. The most
+useful chapters to get started:
+
+ * [Installation](https://docs.ruuda.nl/rcl/installation/)
+ * [Syntax guide](https://docs.ruuda.nl/rcl/syntax/)
+
+You may also find the examples in the `examples` directory instructive.
+
 ## Rationale
 
 Why another config language?
