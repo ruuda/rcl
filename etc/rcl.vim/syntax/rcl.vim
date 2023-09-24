@@ -33,14 +33,18 @@ syn match   rclBinary      '\<0b[01_]\+\>'
 syn match   rclDecimal     '\<[0-9_]\+\>'
 syn cluster rclNumber      contains=rclFloat,rclHexadecimal,rclBinary,rclDecimal
 
-syn match   rclIdentifier '\<[a-zA-Z_][a-zA-Z0-9_-]*\>'
-
 syn region  rclStringDouble start='"' end='"' skip='\\"'
 syn region  rclStringTriple start='"""' end='"""' skip='\\"'
 
 syn region  rclInterpolation matchgroup=rclInterpolationDelimiter start="{" end="}" contained contains=@rclExpr
 syn region  rclFormatDouble  start='f"'   end='"'   skip='\\"\|\\{' contains=rclInterpolation
 syn region  rclFormatTriple  start='f"""' end='"""' skip='\\"\|\\{' contains=rclInterpolation
+
+syn match   rclIdentifier '\<[a-zA-Z_][a-zA-Z0-9_-]*\>'
+
+" See also https://vi.stackexchange.com/questions/5966/ for why the `contains`
+" needs to end in `[]`.
+syn keyword rclBuiltin contains[] get len
 
 syn cluster rclString contains=rclStringDouble,rclStringTriple,rclFormatDouble,rclFormatTriple
 highlight link rclStringDouble rclString
@@ -59,6 +63,7 @@ highlight link rclKeyword     Keyword
 highlight link rclComment     Comment
 highlight link rclTodo        Todo
 highlight link rclIdentifier  Identifier
+highlight link rclBuiltin     Special
 highlight link rclString      String
 highlight link rclFloat       Float
 highlight link rclHexadecimal Number
