@@ -146,9 +146,7 @@
 
               typecheckPython = pkgs.runCommand
                 "check-typecheck-python"
-                # TODO: Should import pythonEnv here for the types.
-                # This will be a good test if the flake check works.
-                { buildInputs = [ pkgs.mypy ]; }
+                { buildInputs = [ pythonEnv ]; }
                 ''
                 mypy --strict ${pythonSources}
                 touch $out
