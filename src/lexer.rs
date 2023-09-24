@@ -14,7 +14,7 @@ pub type Result<T> = std::result::Result<T, ParseError>;
 ///
 /// Yes, the names _double_ and _triple_ are slightly misleading because the
 /// triple variant has three times as many quotes as the double one. _Double_
-/// refers to the double quote charater (`"` as opposed to `'`) while _triple_
+/// refers to the double quote character (`"` as opposed to `'`) while _triple_
 /// refers to the number of such characters.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum QuoteStyle {
