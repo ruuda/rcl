@@ -136,6 +136,16 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                         None => Err(err_unknown_field.into()),
                     }
                 }
+                Value::Set(..) => {
+                    let builtin = match field_name.as_ref() {
+                        "contains" => Some(builtin_set_contains(inner.clone())),
+                        _ => None,
+                    };
+                    match builtin {
+                        Some(b) => Ok(Rc::new(Value::Builtin(b))),
+                        None => Err(err_unknown_field.into()),
+                    }
+                }
                 _other => Err(err_unknown_field.into()),
             }
         }
@@ -518,6 +528,26 @@ fn builtin_list_contains(v: Rc<Value>) -> Builtin {
     };
     Builtin {
         name: "List.contains",
+        f: Box::new(f),
+    }
+}
+
+fn builtin_set_contains(v: Rc<Value>) -> Builtin {
+    let f = move |span: Span, args: &[Rc<Value>]| {
+        let arg = match args {
+            [a] => a,
+            _ => return Err(span.error("Set.contains takes a single argument.").into()),
+        };
+        match v.as_ref() {
+            Value::Set(m) => {
+                let contains = m.contains(arg);
+                Ok(Rc::new(Value::Bool(contains)))
+            }
+            _not_set => panic!("Should not have made a Set.contains for this value."),
+        }
+    };
+    Builtin {
+        name: "Set.contains",
         f: Box::new(f),
     }
 }

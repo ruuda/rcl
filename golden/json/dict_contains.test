@@ -1,0 +1,8 @@
+let xs = {
+  "a": 1,
+  "b": 2,
+};
+[xs.contains("a"), xs.contains("c")]
+
+# output:
+[true, false]
