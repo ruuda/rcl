@@ -321,10 +321,6 @@ enum SeqOut {
 impl SeqOut {
     fn values(&mut self, scalar: Span) -> Result<&mut Values> {
         match self {
-            SeqOut::SetOrDict => {
-                *self = SeqOut::Set(scalar, Vec::new());
-                self.values(scalar)
-            }
             SeqOut::List(values) => Ok(values),
             SeqOut::Set(_first, values) => Ok(values),
             SeqOut::Dict(first, _keys, _values) => {
@@ -336,15 +332,12 @@ impl SeqOut {
                     );
                 Err(err.into())
             }
+            SeqOut::SetOrDict => unreachable!("Should have been replaced by now."),
         }
     }
 
     fn keys_values(&mut self, kv: Span) -> Result<(&mut Values, &mut Values)> {
         match self {
-            SeqOut::SetOrDict => {
-                *self = SeqOut::Dict(kv, Vec::new(), Vec::new());
-                self.keys_values(kv)
-            }
             SeqOut::List(_values) => {
                 let err = kv
                     .error("Expected scalar element, not key-value.")
@@ -363,11 +356,25 @@ impl SeqOut {
                 Err(err.into())
             }
             SeqOut::Dict(_first, keys, values) => Ok((keys, values)),
+            SeqOut::SetOrDict => unreachable!("Should have been replaced by now."),
         }
     }
 }
 
 fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
+    // For a collection enclosed in {}, now that we have a concrete seq, that
+    // determines whether this is a set comprehension or a dict comprehension.
+    // We really have to look at the syntax of the seq, we cannot resolve the
+    // ambiguity later when we get to evaluating the inner seq, because that
+    // part may be skipped due to a conditional.
+    if let SeqOut::SetOrDict = out {
+        match seq.innermost() {
+            Seq::Elem { span, .. } => *out = SeqOut::Set(*span, Vec::new()),
+            Seq::Assoc { op_span, .. } => *out = SeqOut::Dict(*op_span, Vec::new(), Vec::new()),
+            _ => unreachable!("Innermost must be Elem or Assoc."),
+        }
+    }
+
     match seq {
         Seq::Elem {
             span,

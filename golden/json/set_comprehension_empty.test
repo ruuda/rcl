@@ -1,0 +1,8 @@
+// This is a set comprehension, which when converted to json becomes a list.
+// This is a regression test: an empty {}-collection literal is a dict, but
+// even when the collection is empty at runtime, if it is not syntactically
+// empty, then we should still recognize it's a set.
+{for x in [10, 11, 12]: if x < 10: x}
+
+# output:
+[]

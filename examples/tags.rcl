@@ -44,7 +44,7 @@ let var = {
     let device_tags = var.device_tags.get(host, []);
     let group_tags = {
       for group, tags in var.group_tags:
-      if var.group_devices.get(group, {}).contains(host):
+      if var.group_devices.get(group, []).contains(host):
       for tag in tags:
       tag
     };

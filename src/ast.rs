@@ -171,3 +171,23 @@ pub enum Seq {
         body: Box<Seq>,
     },
 }
+
+impl Seq {
+    /// Return the innermost seq, which is either an `Elem` or `Assoc`.
+    pub fn innermost(&self) -> &Seq {
+        match self {
+            Seq::Elem { .. } => self,
+            Seq::Assoc { .. } => self,
+            Seq::Let { body, .. } => body.innermost(),
+            Seq::For { body, .. } => body.innermost(),
+            Seq::If { body, .. } => body.innermost(),
+        }
+    }
+
+    /// Return whether this sequence produces scalar values (`Elem`).
+    ///
+    /// The alternative is that it produces key-value pairs (`Assoc`).
+    pub fn is_scalar(&self) -> bool {
+        matches!(self.innermost(), Seq::Elem { .. })
+    }
+}
