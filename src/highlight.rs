@@ -11,7 +11,7 @@ use std::io::{Result, Write};
 
 use crate::lexer::{Lexeme, Token};
 
-fn get_color(token: &Token) -> &'static str {
+fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
     let red = "\x1b[31m";
     let green = "\x1b[32m";
     let blue = "\x1b[34m";
@@ -25,7 +25,11 @@ fn get_color(token: &Token) -> &'static str {
         Token::Quoted(..) => red,
         Token::FormatOpen(..) | Token::FormatInner(..) | Token::FormatClose(..) => red,
         Token::NumBinary | Token::NumHexadecimal | Token::NumDecimal => cyan,
-        Token::Ident => reset,
+        Token::Ident => match token_bytes {
+            // Give the builtins a different color.
+            b"contains" | b"get" | b"len" => red,
+            _ => reset,
+        },
         Token::KwAnd
         | Token::KwElse
         | Token::KwFalse
@@ -48,7 +52,8 @@ pub fn highlight(out: &mut dyn Write, tokens: &[Lexeme], input: &str) -> Result<
     let mut color = "";
 
     for (token, span) in tokens {
-        let new_color = get_color(token);
+        let token_bytes = &input[span.start()..span.end()];
+        let new_color = get_color(token, token_bytes);
         if new_color != color {
             out.write_all(new_color.as_bytes())?;
             color = new_color;
@@ -60,7 +65,7 @@ pub fn highlight(out: &mut dyn Write, tokens: &[Lexeme], input: &str) -> Result<
             out.write_all(&input[end..span.start()])?;
         }
 
-        out.write_all(&input[span.start()..span.end()])?;
+        out.write_all(token_bytes)?;
         end = span.end();
     }
 
