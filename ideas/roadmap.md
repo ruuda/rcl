@@ -2,9 +2,10 @@
 
 ## Near term
 
+* [WIP] Colored output for json.
  * Ensure `{}` is a dict, not a set, for json compatibility.
- * [WIP] Colored output for json.
  * The ability to turn coloring on or off, respect <https://no-color.org/>.
+ * Add assertions.
  * Absorb the `highlight` command into `fmt` and make it use the same coloring?
  * Different output modes, RCL in addition to json (so we can preserve sets);
    possibly yaml output.
