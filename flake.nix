@@ -21,6 +21,15 @@
           version = "0.0.0";
           pkgs = import nixpkgs { inherit system; };
 
+          python = pkgs.python3.withPackages (ps: [
+            ps.mypy
+            ps.pygments
+            # These two need to be in here for PyCharm to be able to find
+            # dependencies from our fake virtualenv.
+            ps.pip
+            ps.setuptools
+          ]);
+
           rustSources = pkgs.lib.sourceFilesBySuffices ./. [
             ".rs"
             "Cargo.lock"
@@ -46,13 +55,20 @@
           rec {
             devShells.default = pkgs.mkShell {
               nativeBuildInputs = [
-                (with pkgs.python3.pkgs; toPythonApplication pygments)
                 pkgs.black
                 pkgs.mkdocs
-                pkgs.mypy
-                pkgs.python3
                 pkgs.rustup
+                python
               ];
+
+              # Put something in .venv that looks enough like a traditional
+              # virtualenv that it works with PyCharm autocomplete and jump to
+              # definition and such.
+              shellHook =
+                ''
+                mkdir -p .venv/bin
+                ln -sf ${python}/bin/python .venv/bin/python
+                '';
             };
 
             checks = rec {
