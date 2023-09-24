@@ -16,5 +16,5 @@ Error: Expected '}'.
   | ^
 Note: Unmatched '{' opened here.
 
-Help: To use 'key = value;' record syntax, the left-hand side must be an identifier.
+Help: To use 'key = value;' record notation, the left-hand side must be an identifier.
 When that is not possible, use json-style '"key": value' instead.

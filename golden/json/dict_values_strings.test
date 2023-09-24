@@ -1,4 +1,4 @@
-let record = {
+let dict = {
   name = "Rachael";
   model = "NEXUS-7 N7FAA52318";
   description =
@@ -9,7 +9,7 @@ let record = {
 };
 
 // TODO: Should be made to preserve insertion order.
-[ for _key, value in record: value ]
+[ for _key, value in dict: value ]
 
 # output:
 [

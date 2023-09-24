@@ -3,7 +3,6 @@
 ## Near term
 
 * [WIP] Colored output for json.
-* [WIP] Update terminology; I am calling them dicts, not records.
  * The ability to turn coloring on or off, respect <https://no-color.org/>.
  * Add assertions.
  * Absorb the `highlight` command into `fmt` and make it use the same coloring?

@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-// Note, we can write record fields in two ways: With `:` or with `=`. In the
+// Note, we can write dict fields in two ways: With `:` or with `=`. In the
 // former case, both sides are expressions. This means that the keys can be
 // determined at runtime, for example in a comprehension. In the latter case,
 // the left-hand side must be an identifier, and we save one character on the

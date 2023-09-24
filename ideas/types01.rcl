@@ -79,7 +79,7 @@ let empty: $4 = {};
 where $4 in {Dict[$1, $2], Set[$3]}
 
 // But now we get nominal types ... if we are going to add row types for the
-// records anyway, maybe methods should work in the same way?
+// dicts anyway, maybe methods should work in the same way?
 let has_name: $2 -> Bool = (x: $2) => x.contains("name");
 where
   $1
@@ -91,7 +91,7 @@ department->employees.contains("Deckard");
 // It is kind of acceptable I'd say.
 let tags = {for server in config->servers: for tag in server->tags: tags};
 
-// But let's stick with the row type idea. Maybe everything is a record with
+// But let's stick with the row type idea. Maybe everything is a dict with
 // fields, but they behave differently with respect to serialization etc.? Or
 // maybe this is where "prototypes" come in, and I need to look up methods in
 // a type's prototype when the fields are not there? But then how would it work?
@@ -142,8 +142,7 @@ type Person = { first_name: String, last_name: String, ... };
 // And `type` would do the same but for yet another namespace. Then when a
 // module (a file) evaluates to some value, we might take the environment in
 // which that value was produced as the exported types and impls. Or maybe I do
-// give dicts/records a dual purpose, and they can carry values as well as
-// types.
+// give dicts a dual purpose, and they can carry values as well as types.
 
 // person.rcl:
 type Person = { name: String, age: Int };

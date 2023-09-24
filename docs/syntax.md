@@ -129,7 +129,7 @@ The following operators are supported. Most of them are similar to Python.
 | `not`    | unary  | Boolean negation |
 | `and`    | binary | Boolean <abbr>AND</abbr> |
 | `or`     | binary | Boolean <abbr>OR</abbr> |
-| `|`      | binary | Set or record union, right-biased for records |
+| `|`      | binary | Set or dict union, right-biased for dicts |
 
 Unlike most other languages (but [like Pony][pony-ops]), RCL does not have
 different precedence levels. To avoid confusing combinations of operators, you
@@ -149,12 +149,12 @@ have to use parentheses:
 
 ## Comprehensions
 
-Inside collection literals (lists, records, and sets), aside from single
+Inside collection literals (lists, dicts, and sets), aside from single
 elements, it is possible to use comprehensions. There are three supported
 constructs: `for`, `if`, and `let`.
 
-    let record = {"name": "pear", "flavor": "sweet"};
-    [for key, value in record: value]
+    let dict = {"name": "pear", "flavor": "sweet"};
+    [for key, value in dict: value]
     // Evaluates to:
     ["pear", "sweet"]
 

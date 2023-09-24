@@ -25,7 +25,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             match out {
                 // If we have no keys, it’s a dict, because json has no sets,
                 // and `{}` is a json value that should evaluate to itself.
-                SeqOut::SetOrDict => Ok(Rc::new(Value::Map(BTreeMap::new()))),
+                SeqOut::SetOrDict => Ok(Rc::new(Value::Dict(BTreeMap::new()))),
                 SeqOut::Set(_, values) => {
                     let result = values.into_iter().collect();
                     Ok(Rc::new(Value::Set(result)))
@@ -41,7 +41,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     for (k, v) in keys.into_iter().zip(values) {
                         result.insert(k, v);
                     }
-                    Ok(Rc::new(Value::Map(result)))
+                    Ok(Rc::new(Value::Dict(result)))
                 }
                 SeqOut::List(_) => unreachable!("Did not start out as list."),
             }
@@ -109,7 +109,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                         None => Err(err_unknown_field.into()),
                     }
                 }
-                Value::Map(fields) => {
+                Value::Dict(fields) => {
                     // First test for the builtin names, they shadow the values,
                     // if there are any values.
                     let builtin = match field_name.as_ref() {
@@ -120,7 +120,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     if let Some(b) = builtin {
                         return Ok(Rc::new(Value::Builtin(b)));
                     }
-                    // If it wasn't a builtin, look for a key in the map.
+                    // If it wasn't a builtin, look for a key in the dict.
                     match fields.get(&field_name_value) {
                         Some(v) => Ok(v.clone()),
                         None => Err(err_unknown_field.into()),
@@ -239,12 +239,12 @@ fn eval_unop(op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {
 
 fn eval_binop(op: BinOp, op_span: Span, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
     match (op, lhs.as_ref(), rhs.as_ref()) {
-        (BinOp::Union, Value::Map(xs), Value::Map(ys)) => {
+        (BinOp::Union, Value::Dict(xs), Value::Dict(ys)) => {
             let mut result = xs.clone();
             for (k, v) in ys.iter() {
                 result.insert(k.clone(), v.clone());
             }
-            Ok(Rc::new(Value::Map(result)))
+            Ok(Rc::new(Value::Dict(result)))
         }
         (BinOp::Union, Value::Set(xs), Value::Set(ys)) => {
             let result = xs.union(ys).cloned().collect();
@@ -419,7 +419,7 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                     );
                     Err(err.into())
                 }
-                ([k_name, v_name], Value::Map(xs)) => {
+                ([k_name, v_name], Value::Dict(xs)) => {
                     for (k, v) in xs {
                         env.push(k_name.clone(), k.clone());
                         env.push(v_name.clone(), v.clone());
@@ -429,7 +429,7 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                     }
                     Ok(())
                 }
-                (_names, Value::Map(..)) => {
+                (_names, Value::Dict(..)) => {
                     let err = idents_span
                         .error("Expected two variables in dict iteration.")
                         .with_note(
@@ -489,11 +489,11 @@ fn builtin_dict_contains(v: Rc<Value>) -> Builtin {
             _ => return Err(span.error("Dict.contains takes a single argument.").into()),
         };
         match v.as_ref() {
-            Value::Map(m) => {
+            Value::Dict(m) => {
                 let contains = m.contains_key(arg);
                 Ok(Rc::new(Value::Bool(contains)))
             }
-            _not_map => panic!("Should not have made a Dict.contains for this value."),
+            _not_dict => panic!("Should not have made a Dict.contains for this value."),
         }
     };
     Builtin {
@@ -513,7 +513,7 @@ fn builtin_list_contains(v: Rc<Value>) -> Builtin {
                 let contains = m.contains(arg);
                 Ok(Rc::new(Value::Bool(contains)))
             }
-            _not_map => panic!("Should not have made a List.contains for this value."),
+            _not_list => panic!("Should not have made a List.contains for this value."),
         }
     };
     Builtin {
@@ -529,15 +529,15 @@ fn builtin_dict_get(v: Rc<Value>) -> Builtin {
             _ => return Err(span.error("Dict.get takes two arguments.").into()),
         };
         match v.as_ref() {
-            Value::Map(m) => match m.get(k) {
+            Value::Dict(m) => match m.get(k) {
                 Some(v) => Ok(v.clone()),
                 None => Ok(default.clone()),
             },
-            _not_map => panic!("Should not have made a Dict.get for this value."),
+            _not_dict => panic!("Should not have made a Dict.get for this value."),
         }
     };
     Builtin {
-        name: "Map.get",
+        name: "Dict.get",
         f: Box::new(f),
     }
 }

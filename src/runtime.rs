@@ -65,7 +65,7 @@ pub enum Value {
     Set(BTreeSet<Rc<Value>>),
 
     // TODO: Should preserve insertion order.
-    Map(BTreeMap<Rc<Value>, Rc<Value>>),
+    Dict(BTreeMap<Rc<Value>, Rc<Value>>),
 
     Builtin(Builtin),
 }

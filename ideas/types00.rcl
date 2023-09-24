@@ -2,7 +2,6 @@
 // Generic types are instantiated using square brackets.
 let e1 = {}: Set[Int];
 let e2 = {}: Dict[String, Int];
-// TODO: Dict after all? What about records ...
 
 // Bindings can also carry type annotations.
 let e1: Set[Int] = {};
@@ -15,7 +14,7 @@ let f = (x: Int) => x * 2;
 // Is there syntax for function types? Sure.
 let f: (Int) -> Int = x => x * 2;
 
-// Records types are written with {}.
+// Dicts types are written with {}.
 let deckard: { name: String, age: Int } = { name = "Deckard"; age = 36; };
 
 // As we can bind values to names with 'let', we can bind types to names with
@@ -30,13 +29,13 @@ type Person = {
 // imports values:
 let y = import "y.rcl";
 
-// But if the file contains a record, we can specify what to import, which would
+// But if the file contains a dict, we can specify what to import, which would
 // aid in laziness if we ever switch to partially lazy evaluation, because we
 // could avoid evaluating many parts of the dict.
 let y2 = import "y.rcl" (x, y, "non-identifier key");
 
-// But how to import types? We may export types as part of a record. For the
-// purposes of json serialization etc., records only hold their fields. But they
+// But how to import types? We may export types as part of a dict. For the
+// purposes of json serialization etc., dict only hold their fields. But they
 // might also have type members.
 let data = {
   type Person = { name: String, age: Int };
@@ -54,6 +53,6 @@ import "data.rcl" (type Person);
 // Or maybe pattern matching?
 let { type Person, people } = import "data.rcl";
 
-// If types can live in records, then we have to mix values and types. Is that a
+// If types can live in dict, then we have to mix values and types. Is that a
 // problem?
 let x: { name = "foo"; type Bar = Int; }.Bar = 32;

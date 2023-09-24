@@ -83,7 +83,7 @@ impl Formatter {
         Ok(result)
     }
 
-    fn object<'a>(
+    fn dict<'a>(
         &mut self,
         vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>,
     ) -> Result<Doc<'a>> {
@@ -126,7 +126,7 @@ impl Formatter {
             Value::String(s) => self.string(s).with_markup(Markup::String),
             Value::List(vs) => self.list(vs.iter())?,
             Value::Set(vs) => self.list(vs.iter())?,
-            Value::Map(vs) => self.object(vs.iter())?,
+            Value::Dict(vs) => self.dict(vs.iter())?,
             Value::Builtin(..) => self.error("Functions cannot be exported as json.")?,
         };
         Ok(result)

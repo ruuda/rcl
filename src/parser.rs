@@ -762,7 +762,7 @@ impl<'a> Parser<'a> {
                 Some(Token::Eq) => {
                     let mut err = self.pop_bracket().expect_err("We are in a seq.");
                     err.help = Some(
-                        "To use 'key = value;' record syntax, \
+                        "To use 'key = value;' record notation, \
                         the left-hand side must be an identifier.\n\
                         When that is not possible, \
                         use json-style '\"key\": value' instead.",
