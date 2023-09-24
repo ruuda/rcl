@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # RCL -- A sane configuration language.
 # Copyright 2023 Ruud van Asseldonk
 
