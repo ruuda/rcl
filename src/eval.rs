@@ -18,18 +18,18 @@ use crate::source::Span;
 pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
     match expr {
         Expr::BraceLit(seqs) => {
-            let mut out = SeqOut::SetOrRecord;
+            let mut out = SeqOut::SetOrDict;
             for seq in seqs {
                 eval_seq(env, seq, &mut out)?;
             }
             match out {
                 // If we have no keys, it’s a set.
-                SeqOut::SetOrRecord => Ok(Rc::new(Value::Set(BTreeSet::new()))),
+                SeqOut::SetOrDict => Ok(Rc::new(Value::Set(BTreeSet::new()))),
                 SeqOut::Set(_, values) => {
                     let result = values.into_iter().collect();
                     Ok(Rc::new(Value::Set(result)))
                 }
-                SeqOut::Record(_, keys, values) => {
+                SeqOut::Dict(_, keys, values) => {
                     assert_eq!(
                         keys.len(),
                         values.len(),
@@ -298,30 +298,30 @@ enum SeqOut {
     /// The span contains the previous scalar as evidence.
     Set(Span, Values),
 
-    /// The sequence is definitely a record, because the first element is kv.
+    /// The sequence is definitely a dict, because the first element is kv.
     ///
     /// The span contains the previous key-value as evidence.
-    Record(Span, Values, Values),
+    Dict(Span, Values, Values),
 
-    /// It's still unclear whether this is a set or a record.
-    SetOrRecord,
+    /// It's still unclear whether this is a set or a dict.
+    SetOrDict,
 }
 
 impl SeqOut {
     fn values(&mut self, scalar: Span) -> Result<&mut Values> {
         match self {
-            SeqOut::SetOrRecord => {
+            SeqOut::SetOrDict => {
                 *self = SeqOut::Set(scalar, Vec::new());
                 self.values(scalar)
             }
             SeqOut::List(values) => Ok(values),
             SeqOut::Set(_first, values) => Ok(values),
-            SeqOut::Record(first, _keys, _values) => {
+            SeqOut::Dict(first, _keys, _values) => {
                 let err = scalar
                     .error("Expected key-value, not a scalar element.")
                     .with_note(
                         *first,
-                        "The collection is a record and not a set, because of this key-value.",
+                        "The collection is a dict and not a set, because of this key-value.",
                     );
                 Err(err.into())
             }
@@ -330,15 +330,15 @@ impl SeqOut {
 
     fn keys_values(&mut self, kv: Span) -> Result<(&mut Values, &mut Values)> {
         match self {
-            SeqOut::SetOrRecord => {
-                *self = SeqOut::Record(kv, Vec::new(), Vec::new());
+            SeqOut::SetOrDict => {
+                *self = SeqOut::Dict(kv, Vec::new(), Vec::new());
                 self.keys_values(kv)
             }
             SeqOut::List(_values) => {
                 let err = kv
                     .error("Expected scalar element, not key-value.")
                     .with_help(
-                    "Key-value pairs are allowed in records, which are enclosed in '{}', not '[]'.",
+                    "Key-value pairs are allowed in dicts, which are enclosed in '{}', not '[]'.",
                 );
                 Err(err.into())
             }
@@ -347,11 +347,11 @@ impl SeqOut {
                     .error("Expected scalar element, not key-value.")
                     .with_note(
                         *first,
-                        "The collection is a set and not a record, because of this scalar value.",
+                        "The collection is a set and not a dict, because of this scalar value.",
                     );
                 Err(err.into())
             }
-            SeqOut::Record(_first, keys, values) => Ok((keys, values)),
+            SeqOut::Dict(_first, keys, values) => Ok((keys, values)),
         }
     }
 }
@@ -430,10 +430,10 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                 }
                 (_names, Value::Map(..)) => {
                     let err = idents_span
-                        .error("Expected two variables in record iteration.")
+                        .error("Expected two variables in dict iteration.")
                         .with_note(
                             *collection_span,
-                            "This is a record, it yields a key and value per iteration.",
+                            "This is a dict, it yields a key and value per iteration.",
                         );
                     Err(err.into())
                 }
