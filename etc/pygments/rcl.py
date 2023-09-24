@@ -14,6 +14,8 @@
 from pygments.lexer import RegexLexer, words
 from pygments import token
 
+__all__ = ["RclLexer"]
+
 # Due to the handling of string interpolation, we have a few states that are
 # almost identical to the root state, but differ in the handling of `}`.
 # Therefore we extract the common tokens here.
@@ -64,7 +66,10 @@ _root_base = [
         token.Name.Builtin,
     ),
     (r"[_a-z][_a-z0-9-]*", token.Name),
-    (r"\s+", token.Whitespace),
+    # There is a dedicated whitespace token, but if we use it, the html output
+    # (and console output too) gets very polluted, so make whitespace a regular
+    # unclassified token.
+    (r"\s+", token.Token),
     # In the Rust lexer the punctuation is split out, and then further
     # into digraphs and monographs. Here we instead split them out by
     # token type.

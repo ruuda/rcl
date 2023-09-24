@@ -8,6 +8,7 @@ theme:
   custom_dir: docs/theme
 
 markdown_extensions:
+  - codehilite
   - footnotes
   - toc:
       permalink: true

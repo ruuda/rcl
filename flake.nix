@@ -27,7 +27,7 @@
               # I should consider upstreaming it.
               types-pygments = self.buildPythonPackage rec {
                 pname = "types-Pygments";
-                version = "2.16.0.0";
+                version = "2.14.0.0";
                 format = "setuptools";
                 nativeBuildInputs = with self; [
                   types-setuptools
@@ -35,9 +35,24 @@
                 ];
                 src = self.fetchPypi {
                   inherit pname version;
-                  hash = "sha256-qpPkZk4tbP6nVwzeFW45Zr+Tn5x9c2zRecTI6U92ALI=";
+                  hash = "sha256-G5R3cD3VeyzCU6Frii7WppK/zDO7OQWdEAiqnLA/xng=";
                 };
               };
+
+              # Build a custom version of Pygments that has our lexer enabled.
+              # This enables MkDocs to highlight RCL code blocks.
+              pygments = super.pygments.overridePythonAttrs (attrs: {
+                postPatch = (attrs.postPatch or "") +
+                  ''
+                  # Copy our RCL lexer into the Pygments source tree, next to
+                  # the other lexers.
+                  cp ${./etc/pygments/rcl.py} pygments/lexers/rcl.py
+
+                  # Regenerate pygments/lexers/_mapping.py, which contains all
+                  # supported languages.
+                  python scripts/gen_mapfiles.py
+                  '';
+              });
             };
           };
 
@@ -45,6 +60,7 @@
             ps.mypy
             ps.pygments
             ps.types-pygments
+            ps.mkdocs
             # These two need to be in here for PyCharm to be able to find
             # dependencies from our fake virtualenv.
             ps.pip
@@ -77,7 +93,6 @@
             devShells.default = pkgs.mkShell {
               nativeBuildInputs = [
                 pkgs.black
-                pkgs.mkdocs
                 pkgs.rustup
                 pythonEnv
               ];
@@ -144,6 +159,8 @@
               inherit rcl;
 
               default = rcl;
+
+              pygments = python.pkgs.toPythonApplication python.pkgs.pygments;
 
               coverage = pkgs.runCommand
                 "rcl-coverage"
