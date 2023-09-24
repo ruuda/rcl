@@ -7,7 +7,7 @@
 
 //! Evaluation turns ASTs into values.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, FormatFragment, Seq, UnOp};
@@ -136,9 +136,10 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                         None => Err(err_unknown_field.into()),
                     }
                 }
-                Value::Set(..) => {
+                Value::Set(s) => {
                     let builtin = match field_name.as_ref() {
                         "contains" => Some(builtin_set_contains(inner.clone())),
+                        "len" => Some(builtin_set_len(s)),
                         _ => None,
                     };
                     match builtin {
@@ -482,6 +483,20 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
             env.pop();
             Ok(())
         }
+    }
+}
+
+fn builtin_set_len(s: &BTreeSet<Rc<Value>>) -> Builtin {
+    let n = Rc::new(Value::Int(s.len() as _));
+    let f = move |span: Span, args: &[Rc<Value>]| {
+        if !args.is_empty() {
+            return Err(span.error("Set.len takes no arguments.").into());
+        };
+        Ok(n.clone())
+    };
+    Builtin {
+        name: "Set.len",
+        f: Box::new(f),
     }
 }
 
