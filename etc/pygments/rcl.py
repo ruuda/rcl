@@ -7,6 +7,10 @@
 # you may not use this file except in compliance with the License.
 # A copy of the License has been included in the root of the repository.
 
+# To test this lexer:
+# python -m pygments -x -l etc/pygments/rcl.py:RclLexer examples/tags.rcl
+# See also <https://pygments.org/docs/lexerdevelopment/>.
+
 from pygments.lexer import RegexLexer, words
 from pygments import token
 
@@ -26,9 +30,9 @@ class RclLexer(RegexLexer):
             (r"#!.*?$", token.Comment.Hashbang),
             (r"//.*?$", token.Comment),
             (r'f"""', token.String, "format_triple_open"),
-            (r'"""', token.String, "triple_open"),
+            (r'"""', token.String, "string_triple"),
             (r'f"', token.String, "format_double_open"),
-            (r'"', token.String, "double_open"),
+            (r'"', token.String, "string_double"),
             # TODO: Handle the }
             (r"0b[01_]+", token.Number.Bin),
             (r"0x[0-9a-fA-F_]+", token.Number.Hex),
@@ -79,6 +83,22 @@ class RclLexer(RegexLexer):
         ],
         "format_double_open": [],
         "format_triple_open": [],
-        "double_open": [],
-        "triple_open": [],
+        "string_double": [
+            (r'[^\\"]+', token.String),
+            (r"\\", token.String.Escape, "escape"),
+            (r'"', token.String, "#pop"),
+        ],
+        "string_triple": [
+            (r'[^\\"]+', token.String),
+            # Only """ ends the string, but " cannot occur in the above state,
+            # so list those two explicitly.
+            (r'""|"', token.String),
+            (r"\\", token.String.Escape, "escape"),
+            (r'"""', token.String, "#pop"),
+        ],
+        "escape": [
+            (r'["\\/bfnrt{]', token.String.Escape, "#pop"),
+            (r"u\[[0-9a-fA-F]+\]", token.String.Escape, "#pop"),
+            (r"u[0-9a-fA-F]{4}", token.String.Escape, "#pop"),
+        ],
     }
