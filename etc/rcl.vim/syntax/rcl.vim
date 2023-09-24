@@ -40,8 +40,6 @@ syn region  rclInterpolation matchgroup=rclInterpolationDelimiter start="{" end=
 syn region  rclFormatDouble  start='f"'   end='"'   skip='\\"\|\\{' contains=rclInterpolation
 syn region  rclFormatTriple  start='f"""' end='"""' skip='\\"\|\\{' contains=rclInterpolation
 
-syn match   rclIdentifier '\<[a-zA-Z_][a-zA-Z0-9_-]*\>'
-
 " See also https://vi.stackexchange.com/questions/5966/ for why the `contains`
 " needs to end in `[]`.
 syn keyword rclBuiltin contains[] get len
@@ -52,7 +50,7 @@ highlight link rclStringTriple rclString
 highlight link rclFormatDobule rclString
 highlight link rclFormatTriple rclString
 
-syn cluster rclExpr contains=@rclKeyword,rclOperator,@rclNumber,rclComment,rclIdentifier,@rclString
+syn cluster rclExpr contains=@rclKeyword,rclOperator,@rclNumber,rclComment,rclBuiltin,@rclString
 
 highlight link rclBoolean     Boolean
 highlight link rclConditional Conditional
@@ -62,8 +60,7 @@ highlight link rclNull        Keyword
 highlight link rclKeyword     Keyword
 highlight link rclComment     Comment
 highlight link rclTodo        Todo
-highlight link rclIdentifier  Identifier
-highlight link rclBuiltin     Special
+highlight link rclBuiltin     Function
 highlight link rclString      String
 highlight link rclFloat       Float
 highlight link rclHexadecimal Number
