@@ -5,10 +5,10 @@
   |
 1 | [for kv in {"key": "value"}: kv]
   |      ^~
-Error: Expected two variables in record iteration.
+Error: Expected two variables in dict iteration.
 
  --> stdin:1:11
   |
 1 | [for kv in {"key": "value"}: kv]
   |            ^~~~~~~~~~~~~~~~
-Note: This is a record, it yields a key and value per iteration.
+Note: This is a dict, it yields a key and value per iteration.

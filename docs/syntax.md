@@ -59,11 +59,12 @@ allowed but not required.
       ["Eggplant", "Pepper", "Zuccini"],
     ]
 
-## Records
+## Dictionaries
 
-Records are surrounded by `{}`. Records can be written in json form, where the
-left-hand side is an expression. Then the key and value are separated by `:` and
-the element separator is `,`. A trailing comma is optional.
+Dictionaries, _dicts_ for short, are surrounded by `{}`.  Dicts can be written
+in json form, where the left-hand side is an expression. Then the key and value
+are separated by `:` and the element separator is `,`. A trailing comma is
+optional.
 
     {
       "name": "apple",
@@ -79,7 +80,7 @@ strings precludes serialization to json.
       5 + 5: "X",
     }
 
-Alternatively, records can be written in record form, where the left-hand side
+Alternatively, dicts can be written in record form, where the left-hand side
 is an identifier. Then the key and value are separated by `=` and the element
 separator is `;`. A trailing semicolon is optional. The following value is
 identical to the first one above.
@@ -89,19 +90,24 @@ identical to the first one above.
       flavor = "sweet";
     }
 
-Note, the empty collection `{}` is a set, not a record.
-TODO: It _has_ to be a record, because in json it is a record. Need to fix!
+Note, the empty collection `{}` is a dict, not a set.
 
 ## Sets
 
-Sets are surrounded by `{}` and work otherwise the same as lists. The empty
-collection `{}` is a set, not a record. The following list contains two
-identical sets:
+Sets are surrounded by `{}` and work otherwise the same as lists. The following
+list contains two identical sets:
 
     [
       {"Apple", "Pear"},
       {"Apple", "Pear", "Apple"},
     ]
+
+Note, the empty collection `{}` is a dict, not a set. There is currently no
+literal for the empty set. It is possible to work around this using
+comprehensions:
+
+    // An empty set.
+    {for x in []: x}
 
 ## Let bindings
 

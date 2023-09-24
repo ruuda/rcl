@@ -7,7 +7,7 @@
 
 //! Evaluation turns ASTs into values.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, FormatFragment, Seq, UnOp};
@@ -23,8 +23,9 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                 eval_seq(env, seq, &mut out)?;
             }
             match out {
-                // If we have no keys, it’s a set.
-                SeqOut::SetOrDict => Ok(Rc::new(Value::Set(BTreeSet::new()))),
+                // If we have no keys, it’s a dict, because json has no sets,
+                // and `{}` is a json value that should evaluate to itself.
+                SeqOut::SetOrDict => Ok(Rc::new(Value::Map(BTreeMap::new()))),
                 SeqOut::Set(_, values) => {
                     let result = values.into_iter().collect();
                     Ok(Rc::new(Value::Set(result)))

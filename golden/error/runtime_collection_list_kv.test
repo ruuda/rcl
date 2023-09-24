@@ -7,4 +7,4 @@
   |       ^
 Error: Expected scalar element, not key-value.
 
-Help: Key-value pairs are allowed in records, which are enclosed in '{}', not '[]'.
+Help: Key-value pairs are allowed in dicts, which are enclosed in '{}', not '[]'.
