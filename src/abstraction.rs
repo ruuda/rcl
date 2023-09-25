@@ -15,7 +15,7 @@
 
 use std::rc::Rc;
 
-use crate::ast::{Expr as AExpr, FormatFragment, Seq as ASeq};
+use crate::ast::{Expr as AExpr, FormatFragment, Seq as ASeq, Yield};
 use crate::cst::Prefixed;
 use crate::cst::{Expr as CExpr, FormatHole, Seq as CSeq};
 use crate::error::{IntoParseError, Result};
@@ -264,21 +264,21 @@ impl<'a> Abstractor<'a> {
     /// Abstract a sequence element.
     pub fn seq(&self, seq: &CSeq) -> Result<ASeq> {
         let result = match seq {
-            CSeq::Elem { span, value } => ASeq::Elem {
+            CSeq::Elem { span, value } => ASeq::Yield(Yield::Elem {
                 span: *span,
                 value: Box::new(self.expr(value)?),
-            },
+            }),
 
             CSeq::AssocExpr {
                 op_span,
                 field,
                 value,
                 ..
-            } => ASeq::Assoc {
+            } => ASeq::Yield(Yield::Assoc {
                 op_span: *op_span,
                 key: Box::new(self.expr(field)?),
                 value: Box::new(self.expr(value)?),
-            },
+            }),
 
             CSeq::AssocIdent {
                 op_span,
@@ -290,11 +290,11 @@ impl<'a> Abstractor<'a> {
                 // `"key": value` so we can treat them uniformly from here on.
                 let key_str = field.resolve(self.input);
                 let key_expr = AExpr::StringLit(key_str.into());
-                ASeq::Assoc {
+                ASeq::Yield(Yield::Assoc {
                     op_span: *op_span,
                     key: Box::new(key_expr),
                     value: Box::new(self.expr(value)?),
-                }
+                })
             }
 
             CSeq::Let {

@@ -131,9 +131,9 @@ pub enum Expr {
     },
 }
 
-/// One or more elements of a sequence.
+/// The innermost part of comprehension ([`Seq`]).
 #[derive(Debug)]
-pub enum Seq {
+pub enum Yield {
     /// A single element.
     Elem { span: Span, value: Box<Expr> },
 
@@ -144,6 +144,13 @@ pub enum Seq {
         key: Box<Expr>,
         value: Box<Expr>,
     },
+}
+
+/// One or more elements of a sequence.
+#[derive(Debug)]
+pub enum Seq {
+    /// Yield a value or key-value pair.
+    Yield(Yield),
 
     /// Let in the middle of a sequence literal.
     ///
@@ -174,20 +181,12 @@ pub enum Seq {
 
 impl Seq {
     /// Return the innermost seq, which is either an `Elem` or `Assoc`.
-    pub fn innermost(&self) -> &Seq {
+    pub fn innermost(&self) -> &Yield {
         match self {
-            Seq::Elem { .. } => self,
-            Seq::Assoc { .. } => self,
+            Seq::Yield(y) => y,
             Seq::Let { body, .. } => body.innermost(),
             Seq::For { body, .. } => body.innermost(),
             Seq::If { body, .. } => body.innermost(),
         }
-    }
-
-    /// Return whether this sequence produces scalar values (`Elem`).
-    ///
-    /// The alternative is that it produces key-value pairs (`Assoc`).
-    pub fn is_scalar(&self) -> bool {
-        matches!(self.innermost(), Seq::Elem { .. })
     }
 }

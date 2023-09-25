@@ -10,7 +10,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Expr, FormatFragment, Seq, UnOp};
+use crate::ast::{BinOp, Expr, FormatFragment, Seq, UnOp, Yield};
 use crate::error::{IntoRuntimeError, Result};
 use crate::runtime::{Builtin, Env, Value};
 use crate::source::Span;
@@ -370,27 +370,26 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
     // part may be skipped due to a conditional.
     if let SeqOut::SetOrDict = out {
         match seq.innermost() {
-            Seq::Elem { span, .. } => *out = SeqOut::Set(*span, Vec::new()),
-            Seq::Assoc { op_span, .. } => *out = SeqOut::Dict(*op_span, Vec::new(), Vec::new()),
-            _ => unreachable!("Innermost must be Elem or Assoc."),
+            Yield::Elem { span, .. } => *out = SeqOut::Set(*span, Vec::new()),
+            Yield::Assoc { op_span, .. } => *out = SeqOut::Dict(*op_span, Vec::new(), Vec::new()),
         }
     }
 
     match seq {
-        Seq::Elem {
+        Seq::Yield(Yield::Elem {
             span,
             value: value_expr,
-        } => {
+        }) => {
             let out_values = out.values(*span)?;
             let value = eval(env, value_expr)?;
             out_values.push(value);
             Ok(())
         }
-        Seq::Assoc {
+        Seq::Yield(Yield::Assoc {
             op_span,
             key: key_expr,
             value: value_expr,
-        } => {
+        }) => {
             let (out_keys, out_values) = out.keys_values(*op_span)?;
             let key = eval(env, key_expr)?;
             let value = eval(env, value_expr)?;
