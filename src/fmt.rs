@@ -192,9 +192,10 @@ impl<'a> Formatter<'a> {
                 condition, message, ..
             } => {
                 concat! {
-                    "assert "
+                    "assert"
                     group! {
-                        flush_indent! {
+                        indent! {
+                            Doc::Sep
                             self.expr(condition)
                             ","
                             Doc::Sep
