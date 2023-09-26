@@ -1,0 +1,10 @@
+assert false, "This assertion should fail.";
+0
+
+# output:
+Assertion failed: String("This assertion should fail.")
+ --> stdin:1:0
+  |
+1 | assert false, "This assertion should fail.";
+  | ^~~~~~
+Error: Assertion failed.
