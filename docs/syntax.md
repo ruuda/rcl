@@ -220,3 +220,46 @@ let large_numbers = [100, 200, 300];
 // Evaluates to:
 [1, 2, 3, 10, 100, 200, 300]
 ```
+
+## Assertions
+
+You can use assertions in expressions and inside comprehensions:
+
+```rcl
+// Expression form:
+assert condition, "Message for when the assertion fails.";
+body
+
+// Comprehension form:
+[
+  for widget in widgets:
+  assert widget.is_valid(), f"Widget {widget.id} is invalid.";
+  widget
+]
+```
+
+The message is mandatory (unlike in Python). When the assertion fails,
+evaluation aborts with the given message. The message does not have to be a
+string, it can be an arbitrary value. When the assertion succeeds, the message
+does not get evaluated at all.
+
+## Debug tracing
+
+In larger programs it can sometimes be useful to print what is going on during
+evaluation. However, RCL is a purely functional language without side effects;
+the only output it can produce is the final value. To still aid debugging,
+`trace` acts as an escape hatch: it has the side effect of printing a value to
+stderr during evaluation.
+
+Like assertions, you can use `trace` in expressions and inside comprehensions:
+
+```rcl
+// Expression form:
+trace "Value that gets printed just before we evaluate `body`.";
+body
+
+// Comprehension form:
+let widget_ids = [for widget in widgets: trace widget; widget.id];
+```
+
+The message does not have to be a string, it can be an arbitrary value.
