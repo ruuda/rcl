@@ -289,6 +289,10 @@ fn eval_binop(op: BinOp, op_span: Span, lhs: Rc<Value>, rhs: Rc<Value>) -> Resul
         (BinOp::Gt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x > *y))),
         (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x <= *y))),
         (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x >= *y))),
+        // TODO: Throw a type error when the types are not the same, instead of
+        // enabling comparing values of different types.
+        (BinOp::Eq, x, y) => Ok(Rc::new(Value::Bool(*x == *y))),
+        (BinOp::Neq, x, y) => Ok(Rc::new(Value::Bool(*x != *y))),
         _ => {
             // TODO: Add a proper type error.
             Err(op_span

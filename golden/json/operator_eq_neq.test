@@ -1,0 +1,66 @@
+{
+  eqs = [
+    "a" == "a",
+    "a" == "b",
+    0 == 0,
+    0 == 1,
+    ["a"] == ["a"],
+    ["a"] == [],
+    {k = 0} == {k = 0},
+    {k = 0} == {m = 0},
+    {"a"} == {"a"},
+    {"a"} == {},
+    false == false,
+    // TODO: This should be rejected as a type error.
+    // But for now we can test it.
+    false == null,
+  ];
+  neqs = [
+    "a" != "a",
+    "a" != "b",
+    0 != 0,
+    0 != 1,
+    ["a"] != ["a"],
+    ["a"] != [],
+    {k = 0} != {k = 0},
+    {k = 0} != {m = 0},
+    {"a"} != {"a"},
+    {"a"} != {},
+    false != false,
+    // TODO: This should be rejected as a type error.
+    // But for now we can test it.
+    false != null,
+  ];
+}
+
+# output:
+{
+  "eqs": [
+    true,
+    false,
+    true,
+    false,
+    true,
+    false,
+    true,
+    false,
+    true,
+    false,
+    true,
+    false
+  ],
+  "neqs": [
+    false,
+    true,
+    false,
+    true,
+    false,
+    true,
+    false,
+    true,
+    false,
+    true,
+    false,
+    true
+  ]
+}
