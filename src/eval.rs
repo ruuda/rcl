@@ -386,7 +386,10 @@ fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
                     let message = eval(env, message_expr)?;
                     // TODO: Include the message in the error. We need a way to
                     // attach values in addition to source locations ...
+                    #[cfg(not(fuzzing))]
                     eprintln!("Assertion failed: {message:?}");
+                    #[cfg(fuzzing)]
+                    let _ = message;
                     return Err(assert_span.error("Assertion failed.").into());
                 }
                 _ => {
@@ -403,7 +406,10 @@ fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
             // TODO: Implement proper reporting, format in the same way as
             // errors, pretty-print the value, ...
             let message = eval(env, message_expr)?;
+            #[cfg(not(fuzzing))]
             eprintln!("Trace from {trace_span:?}: {message:?}");
+            #[cfg(fuzzing)]
+            let _ = (message, trace_span);
         }
     }
     Ok(())
