@@ -36,6 +36,7 @@ _root_base = [
         words(
             (
                 "and",
+                "assert",
                 "else",
                 "false",
                 "for",
@@ -46,6 +47,7 @@ _root_base = [
                 "null",
                 "or",
                 "then",
+                "trace",
                 "true",
             ),
             suffix=r"\b",

@@ -1,5 +1,6 @@
 # Keywords
 "and"
+"assert"
 "else"
 "false"
 "for"
@@ -9,6 +10,7 @@
 "not"
 "or"
 "then"
+"trace"
 "true"
 
 # Operators

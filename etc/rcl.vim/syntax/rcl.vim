@@ -11,7 +11,8 @@ syn keyword rclConditional  if then else
 syn keyword rclRepeat       for
 syn keyword rclOperator     and not or
 syn keyword rclKeyword      in let
-syn cluster rclKeyword      contains=rclBoolean,rclConditional,rclRepeat,rclOperator,rclKeyword
+syn keyword rclException    assert trace
+syn cluster rclKeyword      contains=rclBoolean,rclConditional,rclRepeat,rclOperator,rclKeyword,rclException
 
 syn match rclOperator '<='
 syn match rclOperator '>='

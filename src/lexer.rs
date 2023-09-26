@@ -82,6 +82,9 @@ pub enum Token {
     /// `and`
     KwAnd,
 
+    /// `assert`
+    KwAssert,
+
     /// `false`
     KwFalse,
 
@@ -111,6 +114,9 @@ pub enum Token {
 
     /// `then`
     KwThen,
+
+    /// `trace`
+    KwTrace,
 
     /// `true`
     KwTrue,
@@ -431,6 +437,7 @@ impl<'a> Lexer<'a> {
         let span = self.take_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'-');
         let ident = span.resolve(self.input);
         let token = match ident {
+            "assert" => Token::KwAssert,
             "and" => Token::KwAnd,
             "else" => Token::KwElse,
             "false" => Token::KwFalse,
@@ -442,6 +449,7 @@ impl<'a> Lexer<'a> {
             "null" => Token::KwNull,
             "or" => Token::KwOr,
             "then" => Token::KwThen,
+            "trace" => Token::KwTrace,
             "true" => Token::KwTrue,
             _ => Token::Ident,
         };
