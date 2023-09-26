@@ -101,13 +101,41 @@ pub struct FormatHole {
     pub suffix: Span,
 }
 
+/// A `let`-binding, `assert`, or `trace`.
+///
+/// RCL does not have statements that have side effects, but it does have
+/// constructs that look like statements, which evaluate a left-hand side,
+/// and then evaluate a body in a modified environment. For lack of a better
+/// name, we call those _statements_.
 #[derive(Debug)]
-pub enum Expr {
+pub enum Stmt {
     /// A let-binding that binds `value` to the name `ident` in `body`.
     Let {
         ident: Span,
         value_span: Span,
         value: Box<Expr>,
+    },
+
+    /// An assertion with a failure message.
+    Assert {
+        condition_span: Span,
+        condition: Box<Expr>,
+        message_span: Span,
+        message: Box<Expr>,
+    },
+
+    /// Trace prints the message (for debugging) and then evaluates to the body.
+    Trace {
+        message_span: Span,
+        message: Box<Expr>,
+    },
+}
+
+#[derive(Debug)]
+pub enum Expr {
+    /// A statement-like expression.
+    Stmt {
+        stmt: Stmt,
         body_span: Span,
         body: Box<Prefixed<Expr>>,
     },
@@ -246,14 +274,13 @@ pub enum Seq {
         value: Box<Expr>,
     },
 
-    /// Let in the middle of a sequence literal.
+    /// A "statement" in the middle of a sequence literal.
     ///
-    /// This is syntactically different from a let before an expression, because
-    /// associations are not first-class values.
-    Let {
-        ident: Span,
-        value_span: Span,
-        value: Box<Expr>,
+    /// This is syntactically different from a let, assert, and trace before an
+    /// expression, because associations are not first-class values.
+    Stmt {
+        stmt: Stmt,
+        body_span: Span,
         body: Box<Prefixed<Seq>>,
     },
 

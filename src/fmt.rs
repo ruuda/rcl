@@ -10,7 +10,7 @@
 //! The formatter converts the CST into a [`Doc`], which can subsequently be
 //! pretty-printed for formatting.
 
-use crate::cst::{Expr, FormatHole, NonCode, Prefixed, Seq};
+use crate::cst::{Expr, FormatHole, NonCode, Prefixed, Seq, Stmt};
 use crate::lexer::QuoteStyle;
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
 use crate::source::Span;
@@ -190,17 +190,45 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    pub fn stmt(&self, stmt: &Stmt) -> Doc<'a> {
+        // TODO: Make statement chains a first class construct, so we can format
+        // them either wide or tall.
+        match stmt {
+            Stmt::Let { ident, value, .. } => {
+                concat! {
+                    "let " self.span(*ident) " = " self.expr(value) ";"
+                }
+            }
+            Stmt::Assert {
+                condition, message, ..
+            } => {
+                concat! {
+                    "assert "
+                    group! {
+                        flush_indent! {
+                            self.expr(condition)
+                            ","
+                            Doc::Sep
+                            self.expr(message)
+                            ";"
+                        }
+                    }
+                }
+            }
+            Stmt::Trace { message, .. } => {
+                concat! { "trace " self.expr(message) ";" }
+            }
+        }
+    }
+
     pub fn expr(&self, expr: &Expr) -> Doc<'a> {
         match expr {
-            // TODO: Make let-chains a first class construct, so we can format
-            // them either wide or tall.
-            Expr::Let {
-                ident, value, body, ..
-            } => {
+            Expr::Stmt { stmt, body, .. } => {
                 group! {
-                    "let " self.span(*ident) " = " self.expr(value) ";"
+                    self.stmt(stmt)
                     Doc::Sep
-                    self.prefixed_expr(body)
+                    self.non_code(&body.prefix)
+                    self.expr(&body.inner)
                 }
             }
 
@@ -400,11 +428,9 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Seq::Let {
-                ident, value, body, ..
-            } => {
-                concat! {
-                    "let " self.span(*ident) " = " self.expr(value) ";"
+            Seq::Stmt { stmt, body, .. } => {
+                group! {
+                    self.stmt(stmt)
                     Doc::Sep
                     self.non_code(&body.prefix)
                     self.seq(&body.inner, sep_mode)
