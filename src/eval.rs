@@ -373,7 +373,7 @@ fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
             env.push(ident.clone(), v);
         }
         Stmt::Assert {
-            assert_span,
+            condition_span,
             condition,
             message: message_expr,
         } => {
@@ -390,11 +390,12 @@ fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
                     eprintln!("Assertion failed: {message:?}");
                     #[cfg(fuzzing)]
                     let _ = message;
-                    return Err(assert_span.error("Assertion failed.").into());
+                    return Err(condition_span.error("Assertion failed.").into());
                 }
                 _ => {
                     // TODO: Report a proper type error.
-                    let err = assert_span.error("Assertion condition must evaluate to a boolean.");
+                    let err =
+                        condition_span.error("Assertion condition must evaluate to a boolean.");
                     return Err(err.into());
                 }
             }

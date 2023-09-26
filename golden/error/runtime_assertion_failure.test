@@ -3,8 +3,8 @@ assert false, "This assertion should fail.";
 
 # output:
 Assertion failed: String("This assertion should fail.")
- --> stdin:1:0
+ --> stdin:1:7
   |
 1 | assert false, "This assertion should fail.";
-  | ^~~~~~
+  |        ^~~~~
 Error: Assertion failed.

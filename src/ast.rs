@@ -66,8 +66,8 @@ pub enum Stmt {
 
     /// Evaluate to the body if true, fail with the message if false.
     Assert {
-        /// The span of the `assert` keyword. Here we report the error from.
-        assert_span: Span,
+        /// The span of the condition. Here we report the error from.
+        condition_span: Span,
         condition: Box<Expr>,
         message: Box<Expr>,
     },

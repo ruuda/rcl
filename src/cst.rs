@@ -118,7 +118,6 @@ pub enum Stmt {
 
     /// An assertion with a failure message.
     Assert {
-        assert_span: Span,
         condition_span: Span,
         condition: Box<Expr>,
         message_span: Span,

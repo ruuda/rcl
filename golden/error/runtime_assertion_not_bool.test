@@ -2,8 +2,8 @@ assert 0, "The condition should be a boolean.";
 0
 
 # output:
- --> stdin:1:0
+ --> stdin:1:7
   |
 1 | assert 0, "The condition should be a boolean.";
-  | ^~~~~~
+  |        ^
 Error: Assertion condition must evaluate to a boolean.

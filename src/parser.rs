@@ -427,7 +427,6 @@ impl<'a> Parser<'a> {
         )?;
 
         let result = Stmt::Assert {
-            assert_span,
             condition_span,
             condition: Box::new(condition),
             message_span,
