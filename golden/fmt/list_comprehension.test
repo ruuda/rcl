@@ -17,7 +17,8 @@ a + b
 let tall = [
   for x in some_very_long_function_name():
   if x.frobnicator.is_activated_on("Tuesday"):
-  let marzlevanes = x.hydrocoptics.marzlevanes; marzlevanes
+  let marzlevanes = x.hydrocoptics.marzlevanes;
+  marzlevanes
 ];
 let wide = [for x in tall: if x.active_on_tuesday(): x.inner];
 // TODO: All-or-nothing let chain wide or tall.

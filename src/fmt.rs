@@ -225,10 +225,12 @@ impl<'a> Formatter<'a> {
         match expr {
             Expr::Stmt { stmt, body, .. } => {
                 group! {
-                    self.stmt(stmt)
-                    Doc::Sep
-                    self.non_code(&body.prefix)
-                    self.expr(&body.inner)
+                    flush_indent! {
+                        self.stmt(stmt)
+                        Doc::Sep
+                        self.non_code(&body.prefix)
+                        self.expr(&body.inner)
+                    }
                 }
             }
 
@@ -429,7 +431,7 @@ impl<'a> Formatter<'a> {
             }
 
             Seq::Stmt { stmt, body, .. } => {
-                group! {
+                concat! {
                     self.stmt(stmt)
                     Doc::Sep
                     self.non_code(&body.prefix)
