@@ -390,7 +390,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt_assert(&mut self) -> Result<Stmt> {
         // Consume the `assert` keyword.
-        let assert_ = self.consume();
+        let assert_span = self.consume();
 
         self.skip_non_code()?;
         let (condition_span, condition) = self.parse_expr()?;
@@ -422,11 +422,12 @@ impl<'a> Parser<'a> {
         self.parse_token_with_note(
             Token::Semicolon,
             "Expected ';' here to close the assertion.",
-            assert_,
+            assert_span,
             "Assertion opened here.",
         )?;
 
         let result = Stmt::Assert {
+            assert_span,
             condition_span,
             condition: Box::new(condition),
             message_span,
@@ -468,7 +469,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt_trace(&mut self) -> Result<Stmt> {
         // Consume the `trace` keyword.
-        let trace = self.consume();
+        let trace_span = self.consume();
 
         self.skip_non_code()?;
         let (message_span, message) = self.parse_expr()?;
@@ -477,11 +478,12 @@ impl<'a> Parser<'a> {
         self.parse_token_with_note(
             Token::Semicolon,
             "Expected ';' here to close the trace expression.",
-            trace,
+            trace_span,
             "Trace opened here.",
         )?;
 
         let result = Stmt::Trace {
+            trace_span,
             message_span,
             message: Box::new(message),
         };

@@ -373,13 +373,37 @@ fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
             env.push(ident.clone(), v);
         }
         Stmt::Assert {
-            condition: _,
-            message: _,
+            assert_span,
+            condition,
+            message: message_expr,
         } => {
-            unimplemented!("TODO: Implement assert.");
+            let v = eval(env, condition)?;
+            match *v {
+                Value::Bool(true) => {
+                    // Ok, the assertion passed, nothing else to do.
+                }
+                Value::Bool(false) => {
+                    let message = eval(env, message_expr)?;
+                    // TODO: Include the message in the error. We need a way to
+                    // attach values in addition to source locations ...
+                    eprintln!("Assertion failed: {message:?}");
+                    return Err(assert_span.error("Assertion failed.").into());
+                }
+                _ => {
+                    // TODO: Report a proper type error.
+                    let err = assert_span.error("Assertion condition must evaluate to a boolean.");
+                    return Err(err.into());
+                }
+            }
         }
-        Stmt::Trace { message: _ } => {
-            unimplemented!("TODO: Implement trace.");
+        Stmt::Trace {
+            trace_span,
+            message: message_expr,
+        } => {
+            // TODO: Implement proper reporting, format in the same way as
+            // errors, pretty-print the value, ...
+            let message = eval(env, message_expr)?;
+            eprintln!("Trace from {trace_span:?}: {message:?}");
         }
     }
     Ok(())

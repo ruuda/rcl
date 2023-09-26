@@ -118,6 +118,7 @@ pub enum Stmt {
 
     /// An assertion with a failure message.
     Assert {
+        assert_span: Span,
         condition_span: Span,
         condition: Box<Expr>,
         message_span: Span,
@@ -126,6 +127,7 @@ pub enum Stmt {
 
     /// Trace prints the message (for debugging) and then evaluates to the body.
     Trace {
+        trace_span: Span,
         message_span: Span,
         message: Box<Expr>,
     },

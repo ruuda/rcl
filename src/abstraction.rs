@@ -118,12 +118,21 @@ impl<'a> Abstractor<'a> {
                 value: Box::new(self.expr(value)?),
             },
             CStmt::Assert {
-                condition, message, ..
+                assert_span,
+                condition,
+                message,
+                ..
             } => AStmt::Assert {
+                assert_span: *assert_span,
                 condition: Box::new(self.expr(condition)?),
                 message: Box::new(self.expr(message)?),
             },
-            CStmt::Trace { message, .. } => AStmt::Trace {
+            CStmt::Trace {
+                trace_span,
+                message,
+                ..
+            } => AStmt::Trace {
+                trace_span: *trace_span,
                 message: Box::new(self.expr(message)?),
             },
         };
