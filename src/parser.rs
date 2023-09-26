@@ -336,8 +336,8 @@ impl<'a> Parser<'a> {
         // We need tail calls or loops to handle them in the parser ...
         self.increase_depth()?;
         let result = match self.peek() {
-            Some(Token::KwLet) => {
-                let stmt = self.parse_stmt_let()?;
+            Some(Token::KwAssert | Token::KwLet | Token::KwTrace) => {
+                let stmt = self.parse_stmt()?;
                 let (body_span, body) = self.parse_prefixed_expr()?;
                 Expr::Stmt {
                     stmt,
@@ -377,6 +377,65 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
+    /// If there is a statement under the cursor, parse it.
+    #[inline]
+    fn parse_stmt(&mut self) -> Result<Stmt> {
+        match self.peek() {
+            Some(Token::KwAssert) => self.parse_stmt_assert(),
+            Some(Token::KwLet) => self.parse_stmt_let(),
+            Some(Token::KwTrace) => self.parse_stmt_trace(),
+            _ => panic!("Should only be called at 'assert', 'let', or 'trace'."),
+        }
+    }
+
+    fn parse_stmt_assert(&mut self) -> Result<Stmt> {
+        // Consume the `assert` keyword.
+        let assert_ = self.consume();
+
+        self.skip_non_code()?;
+        let (condition_span, condition) = self.parse_expr()?;
+
+        // After the condition is a comma, but if the user wrote a semicolon,
+        // then explain that the message is not optional (unlike in Python).
+        self.skip_non_code()?;
+        match self.peek() {
+            Some(Token::Comma) => self.consume(),
+            Some(Token::Semicolon) => {
+                return self
+                    .error("Expected ',' here between the assertion condition and message.")
+                    .map_err(|e| {
+                        e.with_help(
+                            "An assertion has the form 'assert <condition>, <message>;'. \
+                        The message is not optional.",
+                        )
+                    })
+            }
+            _ => {
+                return self.error("Expected ',' here between the assertion condition and message.")
+            }
+        };
+
+        self.skip_non_code()?;
+        let (message_span, message) = self.parse_expr()?;
+
+        self.skip_non_code()?;
+        self.parse_token_with_note(
+            Token::Semicolon,
+            "Expected ';' here to close the assertion.",
+            assert_,
+            "Assertion opened here.",
+        )?;
+
+        let result = Stmt::Assert {
+            condition_span,
+            condition: Box::new(condition),
+            message_span,
+            message: Box::new(message),
+        };
+
+        Ok(result)
+    }
+
     fn parse_stmt_let(&mut self) -> Result<Stmt> {
         // Consume the `let` keyword.
         let let_ = self.consume();
@@ -402,6 +461,29 @@ impl<'a> Parser<'a> {
             ident,
             value_span,
             value: Box::new(value),
+        };
+
+        Ok(result)
+    }
+
+    fn parse_stmt_trace(&mut self) -> Result<Stmt> {
+        // Consume the `trace` keyword.
+        let trace = self.consume();
+
+        self.skip_non_code()?;
+        let (message_span, message) = self.parse_expr()?;
+
+        self.skip_non_code()?;
+        self.parse_token_with_note(
+            Token::Semicolon,
+            "Expected ';' here to close the trace expression.",
+            trace,
+            "Trace opened here.",
+        )?;
+
+        let result = Stmt::Trace {
+            message_span,
+            message: Box::new(message),
         };
 
         Ok(result)
@@ -812,8 +894,8 @@ impl<'a> Parser<'a> {
             // parse an expression, and re-interpret it later if it reads like a
             // variable access?
             (Some(Token::Ident), Some(Token::Eq1)) => self.parse_seq_assoc_ident()?,
-            (Some(Token::KwLet), _) => {
-                let stmt = self.parse_stmt_let()?;
+            (Some(Token::KwAssert | Token::KwLet | Token::KwTrace), _) => {
+                let stmt = self.parse_stmt()?;
                 let (body_span, body) = self.parse_prefixed_seq()?;
                 Seq::Stmt {
                     stmt,
