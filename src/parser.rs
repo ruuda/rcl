@@ -377,7 +377,7 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    /// If there is a statement under the cursor, parse it.
+    /// Parse the statement under the cursor.
     #[inline]
     fn parse_stmt(&mut self) -> Result<Stmt> {
         match self.peek() {
