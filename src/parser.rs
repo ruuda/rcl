@@ -683,6 +683,13 @@ impl<'a> Parser<'a> {
             if self.peek() == Some(Token::RParen) {
                 // TODO: In this case we lose the prefix that we parsed.
                 // See also the comment in `parse_seqs` below.
+                // TODO: One idea to remediate this, is to make peeking mutable,
+                // and to have anything that asks for the next token skip over
+                // noncode, but store it internally. Then we have another method
+                // to take all the noncode up to that point. It would make
+                // looking a head a bit easier, but it might also cause cases
+                // where we accidentally move comments over items if we are not
+                // careful.
                 return Ok(result.into_boxed_slice());
             }
 
