@@ -145,8 +145,14 @@ pub enum Token {
     /// `>=`
     GtEq,
 
-    /// `=`
-    Eq,
+    /// `==` (two equals signs)
+    Eq2,
+
+    /// `!=`
+    Neq,
+
+    /// `=` (a single equals sign)
+    Eq1,
 
     /// `!`
     Bang,
@@ -625,6 +631,8 @@ impl<'a> Lexer<'a> {
         let token = match &input[..2] {
             b"<=" => Token::LtEq,
             b">=" => Token::GtEq,
+            b"==" => Token::Eq2,
+            b"!=" => Token::Neq,
             _ => return None,
         };
 
@@ -662,7 +670,7 @@ impl<'a> Lexer<'a> {
             }
             b'<' => Token::Lt,
             b'>' => Token::Gt,
-            b'=' => Token::Eq,
+            b'=' => Token::Eq1,
             b'!' => Token::Bang,
             b'*' => Token::Star,
             b'+' => Token::Plus,

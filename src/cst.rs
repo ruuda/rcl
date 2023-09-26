@@ -57,6 +57,12 @@ pub enum BinOp {
 
     /// `>=`: Greater than or equal.
     GtEq,
+
+    /// `==`: Equals.
+    Eq,
+
+    /// `!=`: Does not equal.
+    Neq,
 }
 
 /// Not code, but a piece of the document relevant to preserve for formatting.

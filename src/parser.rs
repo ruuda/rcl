@@ -43,6 +43,8 @@ fn to_binop(token: Token) -> Option<BinOp> {
         Token::Gt => Some(BinOp::Gt),
         Token::LtEq => Some(BinOp::LtEq),
         Token::GtEq => Some(BinOp::GtEq),
+        Token::Eq2 => Some(BinOp::Eq),
+        Token::Neq => Some(BinOp::Neq),
         _ => None,
     }
 }
@@ -378,7 +380,7 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
 
         self.skip_non_code()?;
-        self.parse_token(Token::Eq, "Expected '=' here.")?;
+        self.parse_token(Token::Eq1, "Expected '=' here.")?;
 
         self.skip_non_code()?;
         let (value_span, value) = self.parse_expr()?;
@@ -759,7 +761,7 @@ impl<'a> Parser<'a> {
                 // as the problem, because it is. The pop will fail. If we see
                 // an '=' maybe the user tried to make a key-value mapping and
                 // we can report a better error.
-                Some(Token::Eq) => {
+                Some(Token::Eq1) => {
                     let mut err = self.pop_bracket().expect_err("We are in a seq.");
                     err.help = Some(
                         "To use 'key = value;' record notation, \
@@ -792,7 +794,7 @@ impl<'a> Parser<'a> {
             // TODO: Would need to skip noncode here ... maybe it's better to
             // parse an expression, and re-interpret it later if it reads like a
             // variable access?
-            (Some(Token::Ident), Some(Token::Eq)) => self.parse_seq_assoc_ident(),
+            (Some(Token::Ident), Some(Token::Eq1)) => self.parse_seq_assoc_ident(),
             (Some(Token::KwLet), _) => self.parse_seq_let(),
             (Some(Token::KwFor), _) => self.parse_seq_for(),
             (Some(Token::KwIf), _) => self.parse_seq_if(),
@@ -829,7 +831,7 @@ impl<'a> Parser<'a> {
         let ident = self.consume();
 
         self.skip_non_code()?;
-        let op = self.parse_token(Token::Eq, "Expected '=' here.")?;
+        let op = self.parse_token(Token::Eq1, "Expected '=' here.")?;
 
         self.skip_non_code()?;
         let (value_span, value) = self.parse_expr()?;
@@ -851,7 +853,7 @@ impl<'a> Parser<'a> {
         let ident = self.parse_token(Token::Ident, "Expected identifier here.")?;
 
         self.skip_non_code()?;
-        self.parse_token(Token::Eq, "Expected '=' here.")?;
+        self.parse_token(Token::Eq1, "Expected '=' here.")?;
 
         self.skip_non_code()?;
         let (value_span, value) = self.parse_expr()?;
