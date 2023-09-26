@@ -59,6 +59,7 @@ highlight link rclRepeat      Repeat
 highlight link rclOperator    Operator
 highlight link rclNull        Keyword
 highlight link rclKeyword     Keyword
+highlight link rclException   Keyword
 highlight link rclComment     Comment
 highlight link rclTodo        Todo
 highlight link rclBuiltin     Function
