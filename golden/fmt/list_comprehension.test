@@ -6,6 +6,17 @@ let tall = [
     x.hydrocoptics.marzlevanes; marzlevanes,
 ];
 let wide = [for x in tall: if x.active_on_tuesday(): x.inner];
+// The next one demonstrates that we should be able to have two comprehensions
+// in a collection, and if the comprehension itself fits, it should not
+// line-wrap.
+let double_comprehension = [
+  for m in extract_marzlevanes():
+  if m.is_hydrocoptic():
+  m.frobnicated(),
+  for h in extract_hydrocoptics():
+  if h.is_marzlevane():
+  h.frobnicated(),
+];
 // TODO: All-or-nothing let chain wide or tall.
 let b = [
   1,
@@ -21,5 +32,12 @@ let tall = [
   marzlevanes
 ];
 let wide = [for x in tall: if x.active_on_tuesday(): x.inner];
+// The next one demonstrates that we should be able to have two comprehensions
+// in a collection, and if the comprehension itself fits, it should not
+// line-wrap.
+let double_comprehension = [
+  for m in extract_marzlevanes(): if m.is_hydrocoptic(): m.frobnicated(),
+  for h in extract_hydrocoptics(): if h.is_marzlevane(): h.frobnicated(),
+];
 // TODO: All-or-nothing let chain wide or tall.
 let b = [1]; a + b

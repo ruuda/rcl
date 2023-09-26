@@ -32,17 +32,6 @@ struct Formatter<'a> {
     input: &'a str,
 }
 
-/// How to terminate an item in a collection literal.
-#[derive(Copy, Clone, Debug)]
-enum Separator {
-    /// Unconditionally append a separator.
-    Unconditional,
-    /// Append the separator only in tall mode.
-    Trailer,
-    /// Do not append a separator.
-    None,
-}
-
 impl<'a> Formatter<'a> {
     pub fn new(input: &'a str) -> Self {
         Self { input }
@@ -376,30 +365,30 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Emit the separator according to the termination mode.
-    pub fn separator(&self, separator: &'a str, mode: Separator) -> Doc<'a> {
-        match mode {
-            Separator::Unconditional => Doc::str(separator),
-            Separator::Trailer => Doc::tall(separator),
-            Separator::None => Doc::empty(),
-        }
-    }
-
     pub fn seqs(&self, elements: &[Prefixed<Seq>]) -> Doc<'a> {
         let mut result = Vec::new();
         for (i, elem) in elements.iter().enumerate() {
+            let (elem_doc, sep_str) = self.seq(&elem.inner);
+
+            // We wrap the inner Seq in a group, so you can have a collection
+            // that consists of multiple comprehensions, and each one fits on
+            // a line, so they are all formatted wide, but the collection itself
+            // is formatted tall.
+            result.push(self.non_code(&elem.prefix));
+            result.push(group! { elem_doc });
+
             let is_last = i + 1 == elements.len();
-            let sep_mode = match i {
+            let sep_doc = match i {
                 // For collections that contain a single seq, do not add a
                 // separator, even when they are multi-line. It makes
                 // comprehensions look weird, which are regularly multi-line but
                 // only rarely are there multiple seqs in the collection.
-                _ if elements.len() == 1 => Separator::None,
-                _ if is_last => Separator::Trailer,
-                _ => Separator::Unconditional,
+                _ if elements.len() == 1 => Doc::empty(),
+                _ if is_last => Doc::tall(sep_str),
+                _ => Doc::str(sep_str),
             };
-            result.push(self.non_code(&elem.prefix));
-            result.push(self.seq(&elem.inner, sep_mode));
+            result.push(sep_doc);
+
             if !is_last {
                 result.push(Doc::Sep)
             }
@@ -407,36 +396,28 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
-    pub fn seq(&self, seq: &Seq, sep_mode: Separator) -> Doc<'a> {
+    /// Format a sequence. Return that and the trailing separator.
+    pub fn seq(&self, seq: &Seq) -> (Doc<'a>, &'static str) {
         match seq {
-            Seq::Elem { value, .. } => {
-                concat! {
-                    self.expr(value)
-                    self.separator(",", sep_mode)
-                }
-            }
+            Seq::Elem { value, .. } => (self.expr(value), ","),
 
             Seq::AssocExpr { field, value, .. } => {
-                concat! {
-                    self.expr(field) ": " self.expr(value)
-                    self.separator(",", sep_mode)
-                }
+                (concat! { self.expr(field) ": " self.expr(value) }, ",")
             }
 
             Seq::AssocIdent { field, value, .. } => {
-                concat! {
-                    self.span(*field) " = " self.expr(value)
-                    self.separator(";", sep_mode)
-                }
+                (concat! { self.span(*field) " = " self.expr(value) }, ";")
             }
 
             Seq::Stmt { stmt, body, .. } => {
-                concat! {
+                let (body_doc, sep) = self.seq(&body.inner);
+                let result = concat! {
                     self.stmt(stmt)
                     Doc::Sep
                     self.non_code(&body.prefix)
-                    self.seq(&body.inner, sep_mode)
-                }
+                    body_doc
+                };
+                (result, sep)
             }
 
             Seq::For {
@@ -445,7 +426,8 @@ impl<'a> Formatter<'a> {
                 body,
                 ..
             } => {
-                concat! {
+                let (body_doc, sep) = self.seq(&body.inner);
+                let result = concat! {
                     "for "
                     // TODO: This does not use a proper sep, which means we
                     // cannot break this over multiple lines. But maybe that's
@@ -459,21 +441,24 @@ impl<'a> Formatter<'a> {
                     ":"
                     Doc::Sep
                     self.non_code(&body.prefix)
-                    self.seq(&body.inner, sep_mode)
-                }
+                    body_doc
+                };
+                (result, sep)
             }
 
             Seq::If {
                 condition, body, ..
             } => {
-                concat! {
+                let (body_doc, sep) = self.seq(&body.inner);
+                let result = concat! {
                     "if "
                     self.expr(condition)
                     ":"
                     Doc::Sep
                     self.non_code(&body.prefix)
-                    self.seq(&body.inner, sep_mode)
-                }
+                    body_doc
+                };
+                (result, sep)
             }
         }
     }
