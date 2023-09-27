@@ -5,6 +5,8 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+use std::io::Stdout;
+
 use rcl::error::Result;
 use rcl::loader::Loader;
 use rcl::pprint;
@@ -33,10 +35,10 @@ See the manual for a more elaborate usage guide.
 "#;
 
 /// Pretty-print a document to stdout.
-fn pprint_stdout(cfg: &pprint::Config, doc: &pprint::Doc) {
+fn pprint_stdout(stdout: Stdout, cfg: &pprint::Config, doc: &pprint::Doc) {
     use std::io::Write;
     let result = doc.println(cfg);
-    let mut out = std::io::stdout().lock();
+    let mut out = stdout.lock();
     let res = out.write_all(result.as_bytes());
     if res.is_err() {
         // If we fail to print to stdout, there is no point in printing
@@ -51,10 +53,9 @@ fn main_eval(loader: &Loader, doc: DocId) -> Result<()> {
 
     let full_span = loader.get_span(doc);
     let json = rcl::json::format_json(full_span, val.as_ref())?;
-    let cfg = pprint::Config::default();
-    // TODO: Detect if stdout is a tty, respect NO_COLOR.
-    // cfg.markup = rcl::markup::MarkupMode::Ansi;
-    pprint_stdout(&cfg, &json);
+    let stdout = std::io::stdout();
+    let cfg = pprint::Config::default_for_fd(&stdout);
+    pprint_stdout(stdout, &cfg, &json);
     Ok(())
 }
 
@@ -71,16 +72,19 @@ fn main_query(loader: &Loader, input: DocId, query: DocId) -> Result<()> {
 
     let full_span = loader.get_span(query);
     let json = rcl::json::format_json(full_span, val_result.as_ref())?;
-    pprint_stdout(&pprint::Config::default(), &json);
+    let stdout = std::io::stdout();
+    let cfg = pprint::Config::default_for_fd(&stdout);
+    pprint_stdout(stdout, &cfg, &json);
     Ok(())
 }
 
 fn main_fmt(loader: &Loader, doc: DocId) -> Result<()> {
     let data = loader.get_doc(doc).data;
     let cst = loader.get_cst(doc)?;
-    let cfg = pprint::Config::default();
     let res = rcl::fmt::format_expr(data, &cst);
-    pprint_stdout(&cfg, &res);
+    let stdout = std::io::stdout();
+    let cfg = pprint::Config::default_for_fd(&stdout);
+    pprint_stdout(stdout, &cfg, &res);
     Ok(())
 }
 

@@ -41,3 +41,5 @@ pub trait CouldBeTerminal: AsRawFd {
         }
     }
 }
+
+impl<T: AsRawFd> CouldBeTerminal for T {}

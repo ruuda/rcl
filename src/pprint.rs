@@ -17,6 +17,7 @@
 //! [wadler2003]: https://homepages.inf.ed.ac.uk/wadler/papers/prettier/prettier.pdf
 
 use crate::markup::{Markup, MarkupMode};
+use crate::platform_utils::CouldBeTerminal;
 use crate::pprint::printer::{PrintResult, Printer};
 
 /// Whether to format a node in wide mode or tall mode.
@@ -46,6 +47,21 @@ impl Default for Config {
             // just 80.
             width: 80,
             markup: MarkupMode::None,
+        }
+    }
+}
+
+impl Config {
+    /// Get the default print configuration for a file descriptor.
+    pub fn default_for_fd<T: CouldBeTerminal>(fd: &T) -> Config {
+        let markup = if fd.should_color() {
+            MarkupMode::Ansi
+        } else {
+            MarkupMode::None
+        };
+        Config {
+            markup,
+            ..Config::default()
         }
     }
 }
