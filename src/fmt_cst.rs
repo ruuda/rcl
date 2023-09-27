@@ -228,6 +228,19 @@ impl<'a> Formatter<'a> {
                 }
             }
 
+            Expr::Import { path } => {
+                group! {
+                    concat! {
+                        "import"
+                        indent! {
+                            Doc::Sep
+                            self.non_code(&path.prefix)
+                            self.expr(&path.inner)
+                        }
+                    }
+                }
+            }
+
             Expr::BraceLit { elements, .. } => {
                 if elements.is_empty() {
                     Doc::str("{}")

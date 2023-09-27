@@ -36,6 +36,11 @@ impl<'a> Evaluator<'a> {
 
     fn eval_expr(&mut self, env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
         match expr {
+            Expr::Import { path: path_expr } => {
+                let path = self.eval_expr(env, path_expr)?;
+                unimplemented!("TODO: Implement import: {path:?}");
+            }
+
             Expr::BraceLit(seqs) => {
                 let mut out = SeqOut::SetOrDict;
                 for seq in seqs {

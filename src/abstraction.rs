@@ -133,6 +133,10 @@ impl<'a> Abstractor<'a> {
                 body: Box::new(self.expr(&body.inner)?),
             },
 
+            CExpr::Import { path } => AExpr::Import {
+                path: Box::new(self.expr(&path.inner)?),
+            },
+
             CExpr::BraceLit { elements, .. } => AExpr::BraceLit(
                 elements
                     .iter()

@@ -139,6 +139,9 @@ pub enum Expr {
         body: Box<Prefixed<Expr>>,
     },
 
+    /// Import an expression from a given file path.
+    Import { path: Box<Prefixed<Expr>> },
+
     /// A `{}`-enclosed collection literal.
     BraceLit {
         open: Span,
