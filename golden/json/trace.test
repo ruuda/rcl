@@ -1,0 +1,5 @@
+trace "Value to trace."; 0
+
+# output:
+0
+Trace from d0[0..5]: String("Value to trace.")

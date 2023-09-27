@@ -1,0 +1,17 @@
+{
+  outer_thing = let inner_thing = some_long_expression
+      (
+          "with some",
+          "long input"
+      );
+      inner_thing;
+  outer_second_thing = 2;
+}
+
+# output:
+{
+  outer_thing =
+    let inner_thing = some_long_expression("with some", "long input");
+    inner_thing;
+  outer_second_thing = 2;
+}

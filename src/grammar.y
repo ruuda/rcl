@@ -19,11 +19,11 @@
 
 expr
   : expr_op
-  | expr_let
+  | expr_stmt
   | expr_if
   ;
 
-expr_let: "let" IDENT '=' expr ';' expr;
+expr_stmt: stmt expr;
 expr_if: "if" expr "then" expr "else" expr;
 
 // There is no operator precedence, so if there is an operator, its args must
@@ -74,6 +74,12 @@ fstring
   | expr FSTRING_INNER fstring
   ;
 
+stmt
+  : "let" IDENT '=' expr ';'
+  | "assert" expr ',' expr ';'
+  | "trace" expr ';'
+  ;
+
 seqs
   : %empty
   | seq
@@ -87,7 +93,7 @@ seq
   : expr_op
   | expr_op ':' expr
   | IDENT '=' expr ';' seq
-  | "let" IDENT '=' expr ';' seq
+  | stmt seq
   | "for" idents "in" expr ':' seq
   | "if" expr ':' seq
   ;

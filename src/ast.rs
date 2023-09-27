@@ -53,15 +53,38 @@ pub struct FormatFragment {
     pub body: Expr,
 }
 
+/// A statement-like expression.
+///
+/// RCL does not have statements that have side effects, but it does have
+/// constructs that look like statements, which evaluate a left-hand side,
+/// and then evaluate a body in a modified environment. For lack of a better
+/// name, we do call those _statements_.
+#[derive(Debug)]
+pub enum Stmt {
+    /// A let-binding.
+    Let { ident: Ident, value: Box<Expr> },
+
+    /// Evaluate to the body if true, fail with the message if false.
+    Assert {
+        /// The span of the condition. Here we report the error from.
+        condition_span: Span,
+        condition: Box<Expr>,
+        message: Box<Expr>,
+    },
+
+    /// Print the message for debugging.
+    Trace {
+        /// The span of the `trace` keyword. Here we report the trace from.
+        trace_span: Span,
+        message: Box<Expr>,
+    },
+}
+
 /// An expression.
 #[derive(Debug)]
 pub enum Expr {
-    /// A let-binding. First is the bound value, then the result expression.
-    Let {
-        ident: Ident,
-        value: Box<Expr>,
-        body: Box<Expr>,
-    },
+    /// A statement-like expression.
+    Stmt { stmt: Stmt, body: Box<Expr> },
 
     /// A dict or set literal (depending on the element types) enclosed in `{}`.
     BraceLit(Vec<Seq>),
@@ -152,15 +175,11 @@ pub enum Seq {
     /// Yield a value or key-value pair.
     Yield(Yield),
 
-    /// Let in the middle of a sequence literal.
+    /// A statement in the middle of a sequence literal.
     ///
-    /// This is syntactically different from a let before an expression, because
-    /// associations are not first-class values.
-    Let {
-        ident: Ident,
-        value: Box<Expr>,
-        body: Box<Seq>,
-    },
+    /// This is syntactically different from a statement before an expression,
+    /// because associations are not first-class values.
+    Stmt { stmt: Stmt, body: Box<Seq> },
 
     /// Loop over the collection, binding the values to `idents`.
     For {
@@ -184,7 +203,7 @@ impl Seq {
     pub fn innermost(&self) -> &Yield {
         match self {
             Seq::Yield(y) => y,
-            Seq::Let { body, .. } => body.innermost(),
+            Seq::Stmt { body, .. } => body.innermost(),
             Seq::For { body, .. } => body.innermost(),
             Seq::If { body, .. } => body.innermost(),
         }

@@ -31,6 +31,7 @@ fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
             _ => reset,
         },
         Token::KwAnd
+        | Token::KwAssert
         | Token::KwElse
         | Token::KwFalse
         | Token::KwFor
@@ -41,6 +42,7 @@ fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
         | Token::KwNull
         | Token::KwOr
         | Token::KwThen
+        | Token::KwTrace
         | Token::KwTrue => green,
         _ => blue,
     }

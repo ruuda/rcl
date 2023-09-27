@@ -76,6 +76,10 @@ pub struct Env {
     bindings: Vec<(Ident, Rc<Value>)>,
 }
 
+/// References a version of an environment that we can later restore to.
+#[derive(Copy, Clone)]
+pub struct EnvCheckpoint(usize);
+
 impl Env {
     pub fn new() -> Env {
         Env {
@@ -91,12 +95,35 @@ impl Env {
             .map(|(_k, v)| v)
     }
 
-    pub fn push(&mut self, name: Ident, value: Rc<Value>) {
-        self.bindings.push((name, value));
+    /// Return a checkpoint of the environment to later [`pop`] to.
+    ///
+    /// Note, the environment is a stack and the pushes and pops have to be
+    /// balanced; popping can only remove bindings from the environment again,
+    /// it does not _restore_ the environment to that state, like something
+    /// transactional would, or a persistent data structure.
+    pub fn checkpoint(&self) -> EnvCheckpoint {
+        EnvCheckpoint(self.bindings.len())
     }
 
-    pub fn pop(&mut self) {
-        self.bindings.pop().expect("Environment stack underflow.");
+    /// Push a binding into the environment.
+    ///
+    /// If the name already existed, the new push will shadow the old one.
+    ///
+    /// Returns a checkpoint of the environment before the push.
+    pub fn push(&mut self, name: Ident, value: Rc<Value>) -> EnvCheckpoint {
+        let checkpoint = self.checkpoint();
+        self.bindings.push((name, value));
+        checkpoint
+    }
+
+    /// Pop bindings to get back to a previous version of the environment.
+    pub fn pop(&mut self, to: EnvCheckpoint) {
+        let EnvCheckpoint(n) = to;
+        debug_assert!(
+            self.bindings.len() >= n,
+            "Cannot restore to checkpoint, more got popped already.",
+        );
+        self.bindings.truncate(n);
     }
 }
 

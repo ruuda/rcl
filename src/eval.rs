@@ -10,7 +10,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Expr, FormatFragment, Seq, UnOp, Yield};
+use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
 use crate::error::{IntoRuntimeError, Result};
 use crate::runtime::{Builtin, Env, Value};
 use crate::source::Span;
@@ -151,13 +151,11 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
             }
         }
 
-        Expr::Let { ident, value, body } => {
-            // Note, this is not a recursive let, the variable is not bound when
-            // we evaluate the expression.
-            let v_value = eval(env, value)?;
-            env.push(ident.clone(), v_value);
+        Expr::Stmt { stmt, body } => {
+            let ck = env.checkpoint();
+            eval_stmt(env, stmt)?;
             let result = eval(env, body)?;
-            env.pop();
+            env.pop(ck);
             Ok(result)
         }
 
@@ -366,6 +364,58 @@ impl SeqOut {
     }
 }
 
+fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
+    match stmt {
+        Stmt::Let { ident, value } => {
+            // Note, this is not a recursive let, the variable is not bound when
+            // we evaluate the expression.
+            let v = eval(env, value)?;
+            env.push(ident.clone(), v);
+        }
+        Stmt::Assert {
+            condition_span,
+            condition,
+            message: message_expr,
+        } => {
+            let v = eval(env, condition)?;
+            match *v {
+                Value::Bool(true) => {
+                    // Ok, the assertion passed, nothing else to do.
+                }
+                Value::Bool(false) => {
+                    let message = eval(env, message_expr)?;
+                    // TODO: Include the message in the error. We need a way to
+                    // attach values in addition to source locations ...
+                    #[cfg(not(fuzzing))]
+                    eprintln!("Assertion failed: {message:?}");
+                    #[cfg(fuzzing)]
+                    let _ = message;
+                    return Err(condition_span.error("Assertion failed.").into());
+                }
+                _ => {
+                    // TODO: Report a proper type error.
+                    let err =
+                        condition_span.error("Assertion condition must evaluate to a boolean.");
+                    return Err(err.into());
+                }
+            }
+        }
+        Stmt::Trace {
+            trace_span,
+            message: message_expr,
+        } => {
+            // TODO: Implement proper reporting, format in the same way as
+            // errors, pretty-print the value, ...
+            let message = eval(env, message_expr)?;
+            #[cfg(not(fuzzing))]
+            eprintln!("Trace from {trace_span:?}: {message:?}");
+            #[cfg(fuzzing)]
+            let _ = (message, trace_span);
+        }
+    }
+    Ok(())
+}
+
 fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
     // For a collection enclosed in {}, now that we have a concrete seq, that
     // determines whether this is a set comprehension or a dict comprehension.
@@ -412,9 +462,9 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
             match (&idents[..], collection_value.as_ref()) {
                 ([name], Value::List(xs)) => {
                     for x in xs {
-                        env.push(name.clone(), x.clone());
+                        let ck = env.push(name.clone(), x.clone());
                         eval_seq(env, body, out)?;
-                        env.pop();
+                        env.pop(ck);
                     }
                     Ok(())
                 }
@@ -427,9 +477,9 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                 }
                 ([name], Value::Set(xs)) => {
                     for x in xs {
-                        env.push(name.clone(), x.clone());
+                        let ck = env.push(name.clone(), x.clone());
                         eval_seq(env, body, out)?;
-                        env.pop();
+                        env.pop(ck);
                     }
                     Ok(())
                 }
@@ -442,11 +492,11 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                 }
                 ([k_name, v_name], Value::Dict(xs)) => {
                     for (k, v) in xs {
+                        let ck = env.checkpoint();
                         env.push(k_name.clone(), k.clone());
                         env.push(v_name.clone(), v.clone());
                         eval_seq(env, body, out)?;
-                        env.pop();
-                        env.pop();
+                        env.pop(ck);
                     }
                     Ok(())
                 }
@@ -479,11 +529,11 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
                 }
             }
         }
-        Seq::Let { ident, value, body } => {
-            let v = eval(env, value)?;
-            env.push(ident.clone(), v);
+        Seq::Stmt { stmt, body } => {
+            let ck = env.checkpoint();
+            eval_stmt(env, stmt)?;
             eval_seq(env, body, out)?;
-            env.pop();
+            env.pop(ck);
             Ok(())
         }
     }

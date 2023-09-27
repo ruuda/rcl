@@ -15,9 +15,9 @@
 
 use std::rc::Rc;
 
-use crate::ast::{Expr as AExpr, FormatFragment, Seq as ASeq, Yield};
+use crate::ast::{Expr as AExpr, FormatFragment, Seq as ASeq, Stmt as AStmt, Yield};
 use crate::cst::Prefixed;
-use crate::cst::{Expr as CExpr, FormatHole, Seq as CSeq};
+use crate::cst::{Expr as CExpr, FormatHole, Seq as CSeq, Stmt as CStmt};
 use crate::error::{IntoParseError, Result};
 use crate::lexer::QuoteStyle;
 use crate::source::Span;
@@ -110,14 +110,40 @@ impl<'a> Abstractor<'a> {
         Ok(AExpr::Format(fragments?))
     }
 
+    /// Abstract a statement.
+    pub fn stmt(&self, stmt: &CStmt) -> Result<AStmt> {
+        let result = match stmt {
+            CStmt::Let { ident, value, .. } => AStmt::Let {
+                ident: ident.resolve(self.input).into(),
+                value: Box::new(self.expr(value)?),
+            },
+            CStmt::Assert {
+                condition_span,
+                condition,
+                message,
+                ..
+            } => AStmt::Assert {
+                condition_span: *condition_span,
+                condition: Box::new(self.expr(condition)?),
+                message: Box::new(self.expr(message)?),
+            },
+            CStmt::Trace {
+                trace_span,
+                message,
+                ..
+            } => AStmt::Trace {
+                trace_span: *trace_span,
+                message: Box::new(self.expr(message)?),
+            },
+        };
+        Ok(result)
+    }
+
     /// Abstract an expression.
     pub fn expr(&self, expr: &CExpr) -> Result<AExpr> {
         let result = match expr {
-            CExpr::Let {
-                ident, value, body, ..
-            } => AExpr::Let {
-                ident: ident.resolve(self.input).into(),
-                value: Box::new(self.expr(value)?),
+            CExpr::Stmt { stmt, body, .. } => AExpr::Stmt {
+                stmt: self.stmt(stmt)?,
                 body: Box::new(self.expr(&body.inner)?),
             },
 
@@ -297,11 +323,8 @@ impl<'a> Abstractor<'a> {
                 })
             }
 
-            CSeq::Let {
-                ident, value, body, ..
-            } => ASeq::Let {
-                ident: ident.resolve(self.input).into(),
-                value: Box::new(self.expr(value)?),
+            CSeq::Stmt { stmt, body, .. } => ASeq::Stmt {
+                stmt: self.stmt(stmt)?,
                 body: Box::new(self.seq(&body.inner)?),
             },
 

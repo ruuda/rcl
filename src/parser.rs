@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::cst::{BinOp, Expr, FormatHole, NonCode, Prefixed, Seq, UnOp};
+use crate::cst::{BinOp, Expr, FormatHole, NonCode, Prefixed, Seq, Stmt, UnOp};
 use crate::error::{IntoParseError, ParseError};
 use crate::lexer::{Lexeme, QuoteStyle, Token};
 use crate::source::{DocId, Span};
@@ -336,16 +336,21 @@ impl<'a> Parser<'a> {
         // We need tail calls or loops to handle them in the parser ...
         self.increase_depth()?;
         let result = match self.peek() {
-            Some(Token::KwLet) => self.parse_expr_let(),
-            Some(Token::KwIf) => self.parse_expr_if(),
-            _ => self.parse_expr_op(),
+            Some(Token::KwAssert | Token::KwLet | Token::KwTrace) => {
+                let stmt = self.parse_stmt()?;
+                let (body_span, body) = self.parse_prefixed_expr()?;
+                Expr::Stmt {
+                    stmt,
+                    body_span,
+                    body: Box::new(body),
+                }
+            }
+            Some(Token::KwIf) => self.parse_expr_if()?,
+            _ => self.parse_expr_op()?,
         };
         self.decrease_depth();
 
-        match result {
-            Ok(expr) => Ok((self.end_span(), expr)),
-            Err(err) => Err(err),
-        }
+        Ok((self.end_span(), result))
     }
 
     fn parse_expr_if(&mut self) -> Result<Expr> {
@@ -372,7 +377,66 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    fn parse_expr_let(&mut self) -> Result<Expr> {
+    /// Parse the statement under the cursor.
+    #[inline]
+    fn parse_stmt(&mut self) -> Result<Stmt> {
+        match self.peek() {
+            Some(Token::KwAssert) => self.parse_stmt_assert(),
+            Some(Token::KwLet) => self.parse_stmt_let(),
+            Some(Token::KwTrace) => self.parse_stmt_trace(),
+            _ => panic!("Should only be called at 'assert', 'let', or 'trace'."),
+        }
+    }
+
+    fn parse_stmt_assert(&mut self) -> Result<Stmt> {
+        // Consume the `assert` keyword.
+        let assert_span = self.consume();
+
+        self.skip_non_code()?;
+        let (condition_span, condition) = self.parse_expr()?;
+
+        // After the condition is a comma, but if the user wrote a semicolon,
+        // then explain that the message is not optional (unlike in Python).
+        self.skip_non_code()?;
+        match self.peek() {
+            Some(Token::Comma) => self.consume(),
+            Some(Token::Semicolon) => {
+                return self
+                    .error("Expected ',' here between the assertion condition and message.")
+                    .map_err(|e| {
+                        e.with_help(
+                            "An assertion has the form 'assert <condition>, <message>;'. \
+                        The message is not optional.",
+                        )
+                    })
+            }
+            _ => {
+                return self.error("Expected ',' here between the assertion condition and message.")
+            }
+        };
+
+        self.skip_non_code()?;
+        let (message_span, message) = self.parse_expr()?;
+
+        self.skip_non_code()?;
+        self.parse_token_with_note(
+            Token::Semicolon,
+            "Expected ';' here to close the assertion.",
+            assert_span,
+            "Assertion opened here.",
+        )?;
+
+        let result = Stmt::Assert {
+            condition_span,
+            condition: Box::new(condition),
+            message_span,
+            message: Box::new(message),
+        };
+
+        Ok(result)
+    }
+
+    fn parse_stmt_let(&mut self) -> Result<Stmt> {
         // Consume the `let` keyword.
         let let_ = self.consume();
 
@@ -393,14 +457,34 @@ impl<'a> Parser<'a> {
             "Let-binding opened here.",
         )?;
 
-        let (body_span, body) = self.parse_prefixed_expr()?;
-
-        let result = Expr::Let {
+        let result = Stmt::Let {
             ident,
             value_span,
             value: Box::new(value),
-            body_span,
-            body: Box::new(body),
+        };
+
+        Ok(result)
+    }
+
+    fn parse_stmt_trace(&mut self) -> Result<Stmt> {
+        // Consume the `trace` keyword.
+        let trace_span = self.consume();
+
+        self.skip_non_code()?;
+        let (message_span, message) = self.parse_expr()?;
+
+        self.skip_non_code()?;
+        self.parse_token_with_note(
+            Token::Semicolon,
+            "Expected ';' here to close the trace expression.",
+            trace_span,
+            "Trace opened here.",
+        )?;
+
+        let result = Stmt::Trace {
+            trace_span,
+            message_span,
+            message: Box::new(message),
         };
 
         Ok(result)
@@ -682,6 +766,13 @@ impl<'a> Parser<'a> {
             if self.peek() == Some(Token::RParen) {
                 // TODO: In this case we lose the prefix that we parsed.
                 // See also the comment in `parse_seqs` below.
+                // TODO: One idea to remediate this, is to make peeking mutable,
+                // and to have anything that asks for the next token skip over
+                // noncode, but store it internally. Then we have another method
+                // to take all the noncode up to that point. It would make
+                // looking a head a bit easier, but it might also cause cases
+                // where we accidentally move comments over items if we are not
+                // careful.
                 return Ok(result.into_boxed_slice());
             }
 
@@ -730,12 +821,12 @@ impl<'a> Parser<'a> {
                 return Ok(result.into_boxed_slice());
             }
 
-            let seq = self.parse_seq()?;
+            let (_span, seq) = self.parse_seq()?;
             let expected_terminator = match seq {
                 Seq::Elem { .. } => Token::Comma,
                 Seq::AssocExpr { .. } => Token::Comma,
                 Seq::AssocIdent { .. } => Token::Semicolon,
-                Seq::Let { .. } => Token::Comma,
+                Seq::Stmt { .. } => Token::Comma,
                 Seq::For { .. } => Token::Comma,
                 Seq::If { .. } => Token::Comma,
             };
@@ -779,25 +870,42 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_prefixed_seq(&mut self) -> Result<Prefixed<Seq>> {
-        self.parse_prefixed(|s| s.parse_seq())
+    pub fn parse_prefixed_seq(&mut self) -> Result<(Span, Prefixed<Seq>)> {
+        let ps = self.parse_prefixed(|s| s.parse_seq())?;
+        Ok((
+            ps.inner.0,
+            Prefixed {
+                prefix: ps.prefix,
+                inner: ps.inner.1,
+            },
+        ))
     }
 
-    fn parse_seq(&mut self) -> Result<Seq> {
+    fn parse_seq(&mut self) -> Result<(Span, Seq)> {
+        self.begin_span();
+
         // Here we have a lookahead of two tokens ... not great if we want to
         // keep the grammar simple, but for making the syntax prettier it is
         // worth some complications to allow { a = b; p = q } notation.
         let next1 = self.peek();
         let next2 = self.peek_n(1);
 
-        match (next1, next2) {
+        let result = match (next1, next2) {
             // TODO: Would need to skip noncode here ... maybe it's better to
             // parse an expression, and re-interpret it later if it reads like a
             // variable access?
-            (Some(Token::Ident), Some(Token::Eq1)) => self.parse_seq_assoc_ident(),
-            (Some(Token::KwLet), _) => self.parse_seq_let(),
-            (Some(Token::KwFor), _) => self.parse_seq_for(),
-            (Some(Token::KwIf), _) => self.parse_seq_if(),
+            (Some(Token::Ident), Some(Token::Eq1)) => self.parse_seq_assoc_ident()?,
+            (Some(Token::KwAssert | Token::KwLet | Token::KwTrace), _) => {
+                let stmt = self.parse_stmt()?;
+                let (body_span, body) = self.parse_prefixed_seq()?;
+                Seq::Stmt {
+                    stmt,
+                    body_span,
+                    body: Box::new(body),
+                }
+            }
+            (Some(Token::KwFor), _) => self.parse_seq_for()?,
+            (Some(Token::KwIf), _) => self.parse_seq_if()?,
             _ => {
                 let before = self.peek_span();
                 let expr = self.parse_expr_op()?;
@@ -805,7 +913,7 @@ impl<'a> Parser<'a> {
                 // whitespace.
                 let expr_span = before.until(self.peek_span());
                 self.skip_non_code()?;
-                let result = match self.peek() {
+                match self.peek() {
                     Some(Token::Colon) => {
                         let op = self.consume();
                         self.skip_non_code()?;
@@ -821,10 +929,11 @@ impl<'a> Parser<'a> {
                         span: expr_span,
                         value: Box::new(expr),
                     },
-                };
-                Ok(result)
+                }
             }
-        }
+        };
+
+        Ok((self.end_span(), result))
     }
 
     fn parse_seq_assoc_ident(&mut self) -> Result<Seq> {
@@ -841,38 +950,6 @@ impl<'a> Parser<'a> {
             field: ident,
             value_span,
             value: Box::new(value),
-        };
-
-        Ok(result)
-    }
-
-    fn parse_seq_let(&mut self) -> Result<Seq> {
-        let let_ = self.consume();
-
-        self.skip_non_code()?;
-        let ident = self.parse_token(Token::Ident, "Expected identifier here.")?;
-
-        self.skip_non_code()?;
-        self.parse_token(Token::Eq1, "Expected '=' here.")?;
-
-        self.skip_non_code()?;
-        let (value_span, value) = self.parse_expr()?;
-
-        self.skip_non_code()?;
-        self.parse_token_with_note(
-            Token::Semicolon,
-            "Expected ';' here to close the let-binding.",
-            let_,
-            "Let-binding opened here.",
-        )?;
-
-        let body = self.parse_prefixed_seq()?;
-
-        let result = Seq::Let {
-            ident,
-            value_span,
-            value: Box::new(value),
-            body: Box::new(body),
         };
 
         Ok(result)
@@ -907,7 +984,7 @@ impl<'a> Parser<'a> {
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' after the collection.")?;
 
-        let body = self.parse_prefixed_seq()?;
+        let (_body_span, body) = self.parse_prefixed_seq()?;
 
         let result = Seq::For {
             idents: idents.into_boxed_slice(),
@@ -942,7 +1019,7 @@ impl<'a> Parser<'a> {
             _ => return self.error("Expected ':' after the condition."),
         };
 
-        let body = self.parse_prefixed_seq()?;
+        let (_body_span, body) = self.parse_prefixed_seq()?;
 
         let result = Seq::If {
             condition_span,
