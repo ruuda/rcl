@@ -7,10 +7,14 @@
      """;
   json_escapes = "\\\/\b\f\n\r\t\u000a";
   unicode_escapes = "\u[7f]\u[1f574]\u[fe0e]";
+  // Despite there being a \ before the closing quote, that backslash does not
+  // escape it! This is a regression test.
+  backslash_before_newline = "\\";
 }
 
 # output:
 {
+  "backslash_before_newline": "\\",
   "json_escapes": "\\/\b\f\n\r\t\n",
   "newline": "\n",
   "quote": "\"",
