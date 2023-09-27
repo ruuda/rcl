@@ -113,6 +113,9 @@ pub enum Token {
     /// `if`
     KwIf,
 
+    /// `import`
+    KwImport,
+
     /// `in`
     KwIn,
 
@@ -475,12 +478,13 @@ impl<'a> Lexer<'a> {
     /// Return which keyword the string is, or identifier otherwise.
     fn get_keyword_or_ident(ident: &str) -> Token {
         match ident {
-            "assert" => Token::KwAssert,
             "and" => Token::KwAnd,
+            "assert" => Token::KwAssert,
             "else" => Token::KwElse,
             "false" => Token::KwFalse,
             "for" => Token::KwFor,
             "if" => Token::KwIf,
+            "import" => Token::KwImport,
             "in" => Token::KwIn,
             "let" => Token::KwLet,
             "not" => Token::KwNot,
