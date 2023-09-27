@@ -4,8 +4,8 @@
 }
 
 # output:
- --> stdin:1:0
-  |
-1 | {
-  | ^
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
 Error: To export as json, keys must be strings.

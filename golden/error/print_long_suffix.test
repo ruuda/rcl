@@ -3,8 +3,8 @@ this is a syntax error, but a turbo_encabulator = { baseplate = "prefabulated al
 true
 
 # output:
- --> stdin:2:5
-  |
-2 | this is a syntax error, but…
-  |      ^~
+stdin:2:6
+  ╷
+2 │ this is a syntax error, but…
+  ╵      ^~
 Error: Unexpected content after the main expression.

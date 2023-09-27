@@ -1,8 +1,8 @@
 !true
 
 # output:
- --> stdin:1:0
-  |
-1 | !true
-  | ^
+stdin:1:1
+  ╷
+1 │ !true
+  ╵ ^
 Error: Invalid operator. Negation is written with keyword 'not' instead of '!'.

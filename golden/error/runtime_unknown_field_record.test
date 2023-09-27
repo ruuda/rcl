@@ -5,8 +5,8 @@ let widget = {
 widget.is_prefabulated
 
 # output:
- --> stdin:5:7
-  |
-5 | widget.is_prefabulated
-  |        ^~~~~~~~~~~~~~~
+stdin:5:8
+  ╷
+5 │ widget.is_prefabulated
+  ╵        ^~~~~~~~~~~~~~~
 Error: Unknown field.

@@ -1,8 +1,8 @@
 "Invalid: \u[d800]"
 
 # output:
- --> stdin:1:13
-  |
-1 | "Invalid: \u[d800]"
-  |              ^~~~
+stdin:1:14
+  ╷
+1 │ "Invalid: \u[d800]"
+  ╵              ^~~~
 Error: Invalid escape sequence: not a Unicode scalar value.

@@ -1,8 +1,8 @@
 *
 
 # output:
- --> stdin:1:0
-  |
-1 | *
-  | ^
+stdin:1:1
+  ╷
+1 │ *
+  ╵ ^
 Error: Expected a term here.

@@ -1,8 +1,8 @@
 f"This cannot be interpolated: {{x = 1}.contains}."
 
 # output:
- --> stdin:1:32
-  |
-1 | f"This cannot be interpolated: {{x = 1}.contains}."
-  |                                 ^~~~~~~~~~~~~~~~
+stdin:1:33
+  ╷
+1 │ f"This cannot be interpolated: {{x = 1}.contains}."
+  ╵                                 ^~~~~~~~~~~~~~~~
 Error: This value cannot be interpolated into a string.

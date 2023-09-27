@@ -2,10 +2,10 @@
 be broken like this."
 
 # output:
- --> stdin:1:18
-  |
-1 | "A string can not \
-  |                   ^
+stdin:1:19
+  ╷
+1 │ "A string can not \
+  ╵                   ^
 Error: Invalid escape sequence.
 
 Help: To break a long string across lines, break it into multiple strings and concatenate them with '+'.

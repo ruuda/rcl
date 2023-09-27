@@ -91,10 +91,8 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
     }
 
     // Save this for reporting the error location, in case we adjust the line
-    // start below. TODO: It has an off by one, column should start counting at
-    // 1. But I need to rewrite all the goldens if I change this, better to do
-    // it later.
-    let column = span.start() - line_start;
+    // start below. Add 1 because the first column is column 1, not 0.
+    let column = 1 + span.start() - line_start;
 
     // If there is a really long line (for example, because you are evaluating
     // a multi-megabyte json document that is formatted without whitespace, on
@@ -146,25 +144,20 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
 
     let mut result = String::new();
     // Note, the unwraps here are safe because writing to a string does not fail.
+    writeln!(&mut result, "{}:{}:{}", doc.name, line, column,).unwrap();
+    writeln!(&mut result, "{} {}╷{}", line_num_pad, highlight_ansi, reset).unwrap();
     writeln!(
         &mut result,
-        "{}--> {}:{}:{}",
-        line_num_pad, doc.name, line, column,
-    )
-    .unwrap();
-    writeln!(&mut result, "{} |", line_num_pad).unwrap();
-    writeln!(
-        &mut result,
-        "{} | {}{}{}",
-        line_num_str, trunc_prefix, line_content, trunc_suffix
+        "{} {}│{} {}{}{}",
+        line_num_str, highlight_ansi, reset, trunc_prefix, line_content, trunc_suffix
     )
     .unwrap();
     writeln!(
         &mut result,
-        "{} | {}{}^{}{}",
+        "{} {}╵ {}^{}{}",
         line_num_pad,
-        mark_indent,
         highlight_ansi,
+        mark_indent,
         &mark_under[1..],
         reset
     )

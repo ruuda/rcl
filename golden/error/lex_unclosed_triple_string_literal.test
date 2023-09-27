@@ -2,8 +2,8 @@
 This is unclosed as well
 
 # output:
- --> stdin:1:0
-  |
-1 | """
-  | ^~~
+stdin:1:1
+  ╷
+1 │ """
+  ╵ ^~~
 Error: Unexpected end of input, string literal is not closed.

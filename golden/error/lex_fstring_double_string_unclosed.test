@@ -1,8 +1,8 @@
 f"There is no {"closing"} quote there -->
 
 # output:
- --> stdin:1:24
-  |
-1 | f"There is no {"closing"} quote there -->
-  |                         ^~~~~~~~~~~~~~~~~
+stdin:1:25
+  ╷
+1 │ f"There is no {"closing"} quote there -->
+  ╵                         ^~~~~~~~~~~~~~~~~
 Error: Unexpected end of input, string literal is not closed.

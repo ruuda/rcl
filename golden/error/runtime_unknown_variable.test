@@ -1,8 +1,8 @@
 unknown
 
 # output:
- --> stdin:1:0
-  |
-1 | unknown
-  | ^~~~~~~
+stdin:1:1
+  ╷
+1 │ unknown
+  ╵ ^~~~~~~
 Error: Unknown variable.

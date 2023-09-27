@@ -1,14 +1,14 @@
 [for k, v in {"a", "b"}: k]
 
 # output:
- --> stdin:1:5
-  |
-1 | [for k, v in {"a", "b"}: k]
-  |      ^~~~
+stdin:1:6
+  ╷
+1 │ [for k, v in {"a", "b"}: k]
+  ╵      ^~~~
 Error: Expected a single variable.
 
- --> stdin:1:13
-  |
-1 | [for k, v in {"a", "b"}: k]
-  |              ^~~~~~~~~~
+stdin:1:14
+  ╷
+1 │ [for k, v in {"a", "b"}: k]
+  ╵              ^~~~~~~~~~
 Note: This is a set, it yields one element per iteration.

@@ -3,8 +3,8 @@ let turbo_encabulator = { baseplate = "prefabulated aluminite"; casing = "surmou
 true
 
 # output:
- --> stdin:2:189
-  |
-2 | …_unknown_variable = this-causes-an-error; };
-  |                      ^~~~~~~~~~~~~~~~~~~~
+stdin:2:190
+  ╷
+2 │ …_unknown_variable = this-causes-an-error; };
+  ╵                      ^~~~~~~~~~~~~~~~~~~~
 Error: Unknown variable.

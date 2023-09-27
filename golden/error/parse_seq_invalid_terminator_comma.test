@@ -1,8 +1,8 @@
 [let x = 32; x; 10]
 
 # output:
- --> stdin:1:14
-  |
-1 | [let x = 32; x; 10]
-  |               ^
+stdin:1:15
+  ╷
+1 │ [let x = 32; x; 10]
+  ╵               ^
 Error: Expected ',' instead of ';' here.

@@ -23,10 +23,10 @@
 }
 
 # output:
- --> stdin:1:0
-  |
-1 | {
-  | ^
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
 Error: Functions cannot be exported as json.
   at key "len_getter"
   at key "properties"

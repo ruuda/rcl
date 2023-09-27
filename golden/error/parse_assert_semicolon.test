@@ -2,10 +2,10 @@ assert false;
 0
 
 # output:
- --> stdin:1:12
-  |
-1 | assert false;
-  |             ^
+stdin:1:13
+  ╷
+1 │ assert false;
+  ╵             ^
 Error: Expected ',' here between the assertion condition and message.
 
 Help: An assertion has the form 'assert <condition>, <message>;'. The message is not optional.

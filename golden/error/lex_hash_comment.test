@@ -1,10 +1,10 @@
 # This is not a comment.
 
 # output:
- --> stdin:1:0
-  |
-1 | # This is not a comment.
-  | ^
+stdin:1:1
+  ╷
+1 │ # This is not a comment.
+  ╵ ^
 Error: Unrecognized punctuation here.
 
 Help: Comments are written with '//', not with '#'.

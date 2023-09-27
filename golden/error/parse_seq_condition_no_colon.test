@@ -1,8 +1,8 @@
 [if true else 0]
 
 # output:
- --> stdin:1:9
-  |
-1 | [if true else 0]
-  |          ^~~~
+stdin:1:10
+  ╷
+1 │ [if true else 0]
+  ╵          ^~~~
 Error: Expected ':' after the condition.

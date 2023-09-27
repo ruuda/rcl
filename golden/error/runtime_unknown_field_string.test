@@ -1,8 +1,8 @@
 "turbo encabulator".is_prefabulated
 
 # output:
- --> stdin:1:20
-  |
-1 | "turbo encabulator".is_prefabulated
-  |                     ^~~~~~~~~~~~~~~
+stdin:1:21
+  ╷
+1 │ "turbo encabulator".is_prefabulated
+  ╵                     ^~~~~~~~~~~~~~~
 Error: Unknown field.

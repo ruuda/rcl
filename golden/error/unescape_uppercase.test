@@ -1,10 +1,10 @@
 "Valid: \u000A; Invalid: \U000A."
 
 # output:
- --> stdin:1:25
-  |
-1 | "Valid: \u000A; Invalid: \U000A."
-  |                          ^~
+stdin:1:26
+  ╷
+1 │ "Valid: \u000A; Invalid: \U000A."
+  ╵                          ^~
 Error: Invalid escape sequence.
 
 Help: Escape sequences are written lowercase.

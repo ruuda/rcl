@@ -1,8 +1,8 @@
 "Invalid: \u0nothex"
 
 # output:
- --> stdin:1:12
-  |
-1 | "Invalid: \u0nothex"
-  |             ^~~~
+stdin:1:13
+  ╷
+1 │ "Invalid: \u0nothex"
+  ╵             ^~~~
 Error: Expected four hex digits after '\u' escape sequence.

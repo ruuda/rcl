@@ -1,8 +1,8 @@
 123.456e
 
 # output:
- --> stdin:1:8
-  |
-1 | 123.456e
-  |         ^
+stdin:1:9
+  ╷
+1 │ 123.456e
+  ╵         ^
 Error: Expected a digit of the number's exponent here.
