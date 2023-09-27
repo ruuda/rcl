@@ -5,6 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+#![allow(clippy::comparison_to_empty)]
 #![allow(clippy::from_str_radix_10)]
 #![allow(clippy::len_without_is_empty)]
 #![allow(clippy::manual_range_contains)]
@@ -21,6 +22,7 @@ pub mod lexer;
 pub mod loader;
 pub mod markup;
 pub mod parser;
+pub mod platform_utils;
 pub mod pprint;
 pub mod runtime;
 pub mod source;
