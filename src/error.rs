@@ -230,6 +230,11 @@ impl ParseError {
         self.note = Some((at, note));
         self
     }
+
+    /// Wrap the error in a `Result::Err`.
+    pub fn err<T>(self) -> std::result::Result<T, Self> {
+        Err(self)
+    }
 }
 
 impl From<ParseError> for Box<dyn Error> {
