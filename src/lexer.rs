@@ -300,14 +300,14 @@ impl<'a> Lexer<'a> {
     }
 
     /// Pop a closing delimiter while verifying that it is the right one.
-    fn pop_delimiter(&mut self) -> Result<State> {
-        let actual_end = self.input.as_bytes()[self.start];
+    fn pop_delimiter(&mut self, span: Span) -> Result<State> {
+        let actual_end = self.input.as_bytes()[span.start()];
 
         let top = match self.state.pop() {
             None => match actual_end {
-                b')' => return self.span(1).error("Found unmatched ')'.").err(),
-                b'}' => return self.span(1).error("Found unmatched '}'.").err(),
-                b']' => return self.span(1).error("Found unmatched ']'.").err(),
+                b')' => return span.error("Found unmatched ')'.").err(),
+                b'}' => return span.error("Found unmatched '}'.").err(),
+                b']' => return span.error("Found unmatched ']'.").err(),
                 invalid => unreachable!("Invalid byte for `pop_delimiter`: 0x{:x}", invalid),
             },
             Some(t) => t,
@@ -324,7 +324,6 @@ impl<'a> Lexer<'a> {
             return Ok(top.1);
         }
 
-        let span = self.span(1);
         let err = match expected_end {
             b')' => span
                 .error("Expected ')'.")
@@ -612,7 +611,7 @@ impl<'a> Lexer<'a> {
     /// Try to lex punctuation of a single byte in length.
     fn lex_in_punct_monograph(&mut self) -> Result<Lexeme> {
         let span = self.span(1);
-        let token = match self.input.as_bytes()[self.start] {
+        let token = match self.input.as_bytes()[span.start()] {
             b'(' => {
                 self.state.push((span, State::Paren));
                 Token::LParen
@@ -626,17 +625,15 @@ impl<'a> Lexer<'a> {
                 Token::LBrace
             }
             b')' => {
-                self.pop_delimiter()?;
+                self.pop_delimiter(span)?;
                 Token::RParen
             }
             b']' => {
-                self.pop_delimiter()?;
+                self.pop_delimiter(span)?;
                 Token::RBracket
             }
             b'}' => {
-                // Note, here we do not pop the delimiter, we have already
-                // popped it before when deciding whether it was the end of an
-                // interpolation hole or a regular bracket.
+                self.pop_delimiter(span)?;
                 Token::RBrace
             }
             b'<' => Token::Lt,
@@ -721,8 +718,12 @@ impl<'a> Lexer<'a> {
         }
 
         match style {
-            QuoteStyle::Double if input[0] == b'"' => Ok(Some((Token::QuoteClose, self.span(1)))),
+            QuoteStyle::Double if input[0] == b'"' => {
+                self.state.pop();
+                Ok(Some((Token::QuoteClose, self.span(1))))
+            }
             QuoteStyle::Triple if input.starts_with(b"\"\"\"") => {
+                self.state.pop();
                 Ok(Some((Token::QuoteClose, self.span(3))))
             }
             _ => Ok(None),
