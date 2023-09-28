@@ -60,7 +60,7 @@ fn unescape_single(span: Span, ch: u8, output: &mut String) -> Result<()> {
                 .error("Invalid escape sequence.")
                 .with_help(
                     "To break a long string across lines, break it into \
-                        multiple strings and concatenate them with '+'.",
+                    multiple strings and concatenate them with '+'.",
                 )
                 .err()
         }
