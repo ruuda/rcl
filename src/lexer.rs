@@ -283,37 +283,6 @@ impl<'a> Lexer<'a> {
         Span::new(self.doc, start, start + len)
     }
 
-    /// Build a parse error at the current cursor location.
-    fn error_while<F: FnMut(u8) -> bool, T>(
-        &mut self,
-        include: F,
-        message: &'static str,
-    ) -> Result<T> {
-        Err(self.take_while(include).error(message))
-    }
-
-    /// Build an error of the given length at the current cursor location.
-    fn error<T>(&mut self, len: usize, message: &'static str) -> Result<T> {
-        Err(self.span(len).error(message))
-    }
-
-    /// Build an error at the given span, with a note at the given span.
-    fn error_with_note<T>(
-        &mut self,
-        error_span: Span,
-        message: &'static str,
-        note_span: Span,
-        note: &'static str,
-    ) -> Result<T> {
-        let error = ParseError {
-            span: error_span,
-            message,
-            note: Some((note_span, note)),
-            help: None,
-        };
-        Err(error)
-    }
-
     /// Take `skip` bytes, and then more until `include` returns false.
     fn skip_take_while<F: FnMut(u8) -> bool>(&mut self, skip: usize, mut include: F) -> Span {
         let input = &self.input.as_bytes()[self.start + skip..];
@@ -336,9 +305,9 @@ impl<'a> Lexer<'a> {
 
         let top = match self.state.pop() {
             None => match actual_end {
-                b')' => return self.error(1, "Found unmatched ')'."),
-                b'}' => return self.error(1, "Found unmatched '}'."),
-                b']' => return self.error(1, "Found unmatched ']'."),
+                b')' => return self.span(1).error("Found unmatched ')'.").err(),
+                b'}' => return self.span(1).error("Found unmatched '}'.").err(),
+                b']' => return self.span(1).error("Found unmatched ']'.").err(),
                 invalid => unreachable!("Invalid byte for `pop_delimiter`: 0x{:x}", invalid),
             },
             Some(t) => t,
@@ -355,13 +324,20 @@ impl<'a> Lexer<'a> {
             return Ok(top.1);
         }
 
-        let s = self.span(1);
-        match expected_end {
-            b')' => self.error_with_note(s, "Expected ')'.", top.0, "Unmatched '(' opened here."),
-            b'}' => self.error_with_note(s, "Expected '}'.", top.0, "Unmatched '{' opened here."),
-            b']' => self.error_with_note(s, "Expected ']'.", top.0, "Unmatched '[' opened here."),
+        let span = self.span(1);
+        let err = match expected_end {
+            b')' => span
+                .error("Expected ')'.")
+                .with_note(top.0, "Unmatched '(' opened here."),
+            b'}' => span
+                .error("Expected '}'.")
+                .with_note(top.0, "Unmatched '{' opened here."),
+            b']' => span
+                .error("Expected ']'.")
+                .with_note(top.0, "Unmatched '[' opened here."),
             _ => unreachable!("End byte is one of the above three."),
-        }
+        };
+        Err(err)
     }
 
     /// Lex one token. The input must not be empty.
@@ -445,20 +421,20 @@ impl<'a> Lexer<'a> {
         }
 
         if input[0].is_ascii_control() {
-            return self.error_while(
-                |ch| ch.is_ascii_control(),
-                "Control characters are not supported here.",
-            );
+            return self
+                .take_while(|ch| ch.is_ascii_control())
+                .error("Control characters are not supported here.")
+                .err();
         }
 
         if input[0] > 127 {
             // Multi-byte sequences of non-ascii code points are fine in
             // strings and comments, but not in the source code where we
             // expect identifiers.
-            return self.error_while(
-                |ch| ch > 127,
-                "Non-ascii characters are not supported here.",
-            );
+            return self
+                .take_while(|ch| ch > 127)
+                .error("Non-ascii characters are not supported here.")
+                .err();
         }
 
         unreachable!(
@@ -562,10 +538,10 @@ impl<'a> Lexer<'a> {
         if let Some(b'.') = input.first() {
             if input[1..].first().map(|ch| ch.is_ascii_digit()) != Some(true) {
                 self.start += n;
-                return self.error_while(
-                    |_| false,
-                    "Expected a digit to follow the decimal point in this number.",
-                );
+                return self
+                    .span(1)
+                    .error("Expected a digit to follow the decimal point in this number.")
+                    .err();
             }
 
             let m = input[1..]
@@ -589,7 +565,9 @@ impl<'a> Lexer<'a> {
             if input.first().map(|ch| ch.is_ascii_digit()) != Some(true) {
                 self.start += n;
                 return self
-                    .error_while(|_| false, "Expected a digit of the number's exponent here.");
+                    .span(1)
+                    .error("Expected a digit of the number's exponent here.")
+                    .err();
             }
 
             n += input
