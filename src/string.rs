@@ -7,24 +7,105 @@
 
 //! Utilities for working with strings.
 
-use crate::cst::{Expr, FormatHole};
+use crate::cst::{Escape, Expr, FormatHoleOld, StringPart};
 use crate::error::{IntoParseError, ParseError};
 use crate::source::Span;
 
 pub type Result<T> = std::result::Result<T, ParseError>;
 
+/// Convert an escape sequence into the string it represents.
+pub fn unescape_into(input: &str, span: Span, escape: Escape, output: &mut String) -> Result<()> {
+    let span_str = span.resolve(input);
+    let span_bytes = span_str.as_bytes();
+
+    match escape {
+        Escape::Single => {
+            debug_assert_eq!(&span_str[..1], "\\");
+            debug_assert_eq!(span_bytes.len(), 2);
+            unescape_single(span, span_bytes[1], output)
+        }
+        Escape::Unicode4 => {
+            debug_assert_eq!(&span_str[..2], "\\u");
+            debug_assert_eq!(span_bytes.len(), 6);
+            unescape_unicode(span, &span_str[2..], output)
+        }
+        Escape::UnicodeDelim => {
+            let n = span_str.len();
+            debug_assert_eq!(&span_str[..3], "\\u{");
+            debug_assert_eq!(&span_str[n - 1..], "}");
+            unescape_unicode(span, &span_str[3..n - 1], output)
+        }
+    }
+}
+
+fn unescape_single(span: Span, ch: u8, output: &mut String) -> Result<()> {
+    match ch {
+        // The following escape sequences are identical to json.
+        b'"' => output.push('"'),
+        b'\\' => output.push('\\'),
+        b'/' => output.push('/'),
+        b'b' => output.push('\x08'),
+        b'f' => output.push('\x0c'),
+        b'n' => output.push('\n'),
+        b'r' => output.push('\r'),
+        b't' => output.push('\t'),
+
+        // This one is not part of json. We add it to escape { in f-strings,
+        // but for consistency it can be used in any string literal.
+        b'{' => output.push('{'),
+
+        // The other cases are errors.
+        b'\n' | b'\r' => {
+            return span
+                .error("Invalid escape sequence.")
+                .with_help(
+                    "To break a long string across lines, break it into \
+                        multiple strings and concatenate them with '+'.",
+                )
+                .err()
+        }
+        ch if ch.is_ascii_uppercase() => {
+            return span
+                .error("Invalid escape sequence.")
+                .with_help("Escape sequences are written lowercase.")
+                .err()
+        }
+        _ => return span.error("Invalid escape sequence.").err(),
+    }
+    Ok(())
+}
+
+fn unescape_unicode(span: Span, hex: &str, output: &mut String) -> Result<()> {
+    if hex.len() > 6 {
+        return span
+            .error("Escape sequence too long, expected at most 6 hex digits.")
+            .err();
+    }
+    match u32::from_str_radix(hex, 16) {
+        Err(..) => span
+            .error("Expected hex digits in '\\u' escape sequence.")
+            .err(),
+        Ok(u) => match char::from_u32(u) {
+            Some(ch) => Ok(output.push(ch)),
+            None => span
+                .error("Invalid escape sequence: not a Unicode scalar value.")
+                .err(),
+        },
+    }
+}
+
 /// Convert a string literal into the string it represents.
 ///
 /// Expects the input span to not contain the surrounding quotes of the string
 /// literal.
-pub fn unescape(input: &str, span: Span) -> Result<String> {
+pub fn unescape_old(input: &str, span: Span) -> Result<String> {
     let mut output = String::with_capacity(span.len());
-    unescape_into(input, span, &mut output)?;
+    unescape_into_old(input, span, &mut output)?;
     Ok(output)
 }
 
 /// See [`unescape`].
-pub fn unescape_into(input: &str, span: Span, output: &mut String) -> Result<()> {
+pub fn unescape_into_old(input: &str, span: Span, output: &mut String) -> Result<()> {
     let mut input = span.resolve(input);
     let mut offset = 0;
 
@@ -218,11 +299,46 @@ pub fn escape_json(str: &str, into: &mut String) {
     }
 }
 
+pub fn count_common_leading_spaces(input: &str, parts: &[StringPart]) -> usize {
+    let mut n_spaces = None;
+
+    // The lexer already breaks strings up into lines, so a part contains at
+    // most one newline. But a line may contain multiple parts, in the case of
+    // holes.
+    for (i, part) in parts.iter().enumerate() {
+        let line = match part {
+            StringPart::String(span) => span.resolve(input),
+            _ => continue,
+        };
+        if !line.starts_with('\n') {
+            continue;
+        }
+        let n = line.as_bytes().iter().take_while(|ch| **ch == b' ').count();
+
+        // There may be a blank line in a multiline string literal that contains
+        // no spaces even though the other lines do have spaces, to avoid
+        // trailing whitespace. In that case we should not set the indent to
+        // zero, even though technically it is. We also consider lines that have
+        // only spaces to be blank lines.
+        let has_next_line = matches!(parts.get(i + 1), Some(StringPart::String(..)));
+        let is_blank_line = n == line.len() && has_next_line;
+
+        if !is_blank_line {
+            n_spaces = match n_spaces {
+                None => Some(n),
+                Some(m) => Some(m.min(n)),
+            };
+        }
+    }
+
+    n_spaces.unwrap_or(0)
+}
+
 /// Count common leading spaces.
 ///
 /// For every line in the input, counts the number of spaces that follow it,
 /// then take the minimum.
-pub fn count_common_leading_spaces(input: &str, current_min: Option<usize>) -> Option<usize> {
+pub fn count_common_leading_spaces_old(input: &str, current_min: Option<usize>) -> Option<usize> {
     let mut input = input;
     let mut n_spaces = current_min;
     while let Some(i) = input.find('\n') {
@@ -254,7 +370,7 @@ pub fn count_common_leading_spaces(input: &str, current_min: Option<usize>) -> O
 /// The callbacks receive the inner spans, with surrounding quotes removed.
 pub fn fold_double_format_string<E, T, F, G>(
     begin: Span,
-    holes: &[FormatHole],
+    holes: &[FormatHoleOld],
     seed: T,
     mut on_span: F,
     mut on_hole: G,
@@ -332,7 +448,7 @@ pub fn fold_triple_string_lines<E, T, F>(
 where
     F: FnMut(T, Span) -> std::result::Result<T, E>,
 {
-    let n_indent = count_common_leading_spaces(span_inner.resolve(input), None);
+    let n_indent = count_common_leading_spaces_old(span_inner.resolve(input), None);
     let n_indent = n_indent.unwrap_or(0);
     fold_triple_string_lines_impl(input, span_inner, n_indent, seed, on_line)
 }
@@ -346,7 +462,7 @@ where
 pub fn fold_triple_format_string_lines<E, T, F, G>(
     input: &str,
     begin: Span,
-    holes: &[FormatHole],
+    holes: &[FormatHoleOld],
     seed: T,
     mut on_line: F,
     mut on_hole: G,
@@ -357,13 +473,13 @@ where
 {
     let mut acc = seed;
     let span = begin.trim_start(4).trim_end(1);
-    let mut n_indent = count_common_leading_spaces(span.resolve(input), None);
+    let mut n_indent = count_common_leading_spaces_old(span.resolve(input), None);
 
     for (i, hole) in holes.iter().enumerate() {
         let is_last = i + 1 == holes.len();
         let end_len = if is_last { 3 } else { 1 };
         let suffix_inner = hole.suffix.trim_start(1).trim_end(end_len);
-        n_indent = count_common_leading_spaces(suffix_inner.resolve(input), n_indent);
+        n_indent = count_common_leading_spaces_old(suffix_inner.resolve(input), n_indent);
     }
 
     let n_indent = n_indent.unwrap_or(0);
@@ -400,7 +516,7 @@ mod test {
 
     fn unescape(inner: &str) -> super::Result<String> {
         let span = Span::new(DocId(0), 0, inner.len());
-        super::unescape(inner, span)
+        super::unescape_old(inner, span)
     }
 
     fn escape_json(str: &str) -> String {
@@ -493,32 +609,32 @@ mod test {
     }
 
     #[test]
-    fn count_common_leading_spaces_handles_blank_lines() {
+    fn count_common_leading_spaces_handles_blank_lines_old() {
         assert_eq!(
-            super::count_common_leading_spaces("\n  X\n  Y", None),
+            super::count_common_leading_spaces_old("\n  X\n  Y", None),
             Some(2)
         );
         assert_eq!(
-            super::count_common_leading_spaces("\n  X\n    Y", None),
+            super::count_common_leading_spaces_old("\n  X\n    Y", None),
             Some(2)
         );
         assert_eq!(
-            super::count_common_leading_spaces("\n  X\n    Y\n ", None),
+            super::count_common_leading_spaces_old("\n  X\n    Y\n ", None),
             Some(1)
         );
         assert_eq!(
             // Despite the zero-length blank line, the indent is 2.
-            super::count_common_leading_spaces("\n  X\n\n  Y", None),
+            super::count_common_leading_spaces_old("\n  X\n\n  Y", None),
             Some(2)
         );
         assert_eq!(
             // Also if the blank line is longer than the others.
-            super::count_common_leading_spaces("\n  X\n    \n  Y", None),
+            super::count_common_leading_spaces_old("\n  X\n    \n  Y", None),
             Some(2)
         );
         assert_eq!(
             // Even if there are only blank lines, we should report the count.
-            super::count_common_leading_spaces("\n  \n  ", None),
+            super::count_common_leading_spaces_old("\n  \n  ", None),
             Some(2)
         );
     }

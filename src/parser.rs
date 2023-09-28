@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::cst::{BinOp, Expr, FormatHole, NonCode, Prefixed, Seq, Stmt, UnOp};
+use crate::cst::{BinOp, Expr, FormatHoleOld, NonCode, Prefixed, Seq, Stmt, UnOp};
 use crate::error::{IntoParseError, ParseError};
 use crate::lexer::{Lexeme, QuoteStyle, Token};
 use crate::source::{DocId, Span};
@@ -709,7 +709,7 @@ impl<'a> Parser<'a> {
             self.validate_multiline_string(inner)?;
         }
 
-        Ok(Expr::StringLit(style, span))
+        Ok(Expr::StringLitOld(style, span))
     }
 
     /// Parse a format string (`f"` or `f"""`).
@@ -738,12 +738,12 @@ impl<'a> Parser<'a> {
             };
 
             let suffix = self.consume();
-            let hole = FormatHole { span, body, suffix };
+            let hole = FormatHoleOld { span, body, suffix };
             holes.push(hole);
             prefix = suffix;
 
             if is_close {
-                let result = Expr::FormatString {
+                let result = Expr::FormatStringOld {
                     style,
                     begin,
                     holes,

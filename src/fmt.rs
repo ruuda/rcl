@@ -10,7 +10,7 @@
 //! The formatter converts the CST into a [`Doc`], which can subsequently be
 //! pretty-printed for formatting.
 
-use crate::cst::{Expr, FormatHole, NonCode, Prefixed, Seq, Stmt};
+use crate::cst::{Expr, NonCode, Prefixed, Seq, Stmt, StringPart};
 use crate::lexer::QuoteStyle;
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
 use crate::source::Span;
@@ -112,60 +112,61 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Format a `"""`-quoted string literal.
-    fn string_triple(&self, span: Span) -> Doc<'a> {
-        let mut result = vec!["\"\"\"".into(), Doc::HardBreak];
+    /// Format a `"` or `f"` quoted string or format string.
+    fn string_double(&self, open: &'static str, parts: &[StringPart]) -> Doc<'a> {
+        let mut result = vec![open.into()];
 
-        result = string::fold_triple_string_lines(
-            self.input,
-            span.trim_start(3).trim_end(3),
-            result,
-            |mut result, line| {
-                self.push_string_line(line, &mut result);
-                Ok::<_, ()>(result)
-            },
-        )
-        .expect("We don't return Err from the closure.");
-
-        result.push("\"\"\"".into());
-
-        flush_indent! { Doc::Concat(result) }
-    }
-
-    /// Format a `f"`-quoted format string.
-    fn format_string_double(&self, begin: Span, holes: &[FormatHole]) -> Doc<'a> {
-        let mut result = Vec::new();
-        result.push(self.raw_span(begin));
-        for hole in holes {
-            // TODO: Add soft breaks around the hole contents?
-            result.push(self.expr(&hole.body));
-            result.push(self.raw_span(hole.suffix));
+        for part in parts {
+            match part {
+                StringPart::String(span) => {
+                    result.push(self.raw_span(*span));
+                }
+                StringPart::Escape(span, _esc) => {
+                    result.push(self.span(*span));
+                }
+                StringPart::Hole(_span, expr) => {
+                    // TODO: Add soft breaks around the hole contents?
+                    result.push("{".into());
+                    result.push(self.expr(expr));
+                    result.push("}".into());
+                }
+            }
         }
+
+        result.push("\"".into());
+
         Doc::Concat(result)
     }
 
-    /// Format a `f"""`-quoted format string.
-    fn format_string_triple(&self, begin: Span, holes: &[FormatHole]) -> Doc<'a> {
-        let mut result = vec!["f\"\"\"".into(), Doc::HardBreak];
+    /// Format a `"""` or `f"""` quoted string or format string.
+    fn string_triple(&self, open: &'static str, parts: &[StringPart]) -> Doc<'a> {
+        let n_strip = string::count_common_leading_spaces(self.input, parts);
+        let mut result = vec![open.into()];
 
-        result = string::fold_triple_format_string_lines(
-            self.input,
-            begin,
-            holes,
-            result,
-            |mut result, line| {
-                self.push_string_line(line, &mut result);
-                Ok::<_, ()>(result)
-            },
-            |mut result, _span, expr| {
-                // TODO: Add soft breaks around the hole contents?
-                result.push("{".into());
-                result.push(self.expr(expr));
-                result.push("}".into());
-                Ok::<_, ()>(result)
-            },
-        )
-        .expect("We don't return Err from the closure.");
+        for part in parts {
+            match part {
+                StringPart::String(span) => {
+                    let line = span.resolve(self.input);
+                    if line.starts_with('\n') {
+                        result.push(Doc::HardBreak);
+                        // TODO: Need to use push_string_line to deal with the
+                        // trailing whitespace.
+                        result.push(line[1 + n_strip..].into());
+                    } else {
+                        result.push(line.into());
+                    }
+                }
+                StringPart::Escape(span, _esc) => {
+                    result.push(self.span(*span));
+                }
+                StringPart::Hole(_span, expr) => {
+                    // TODO: Add soft breaks around the hole contents?
+                    result.push("{".into());
+                    result.push(self.expr(expr));
+                    result.push("}".into());
+                }
+            }
+        }
 
         result.push("\"\"\"".into());
 
@@ -266,19 +267,27 @@ impl<'a> Formatter<'a> {
 
             Expr::BoolLit(span, ..) => self.span(*span),
 
-            Expr::StringLit(QuoteStyle::Double, span) => self.raw_span(*span),
-            Expr::StringLit(QuoteStyle::Triple, span) => self.string_triple(*span),
+            Expr::StringLit { style, parts, .. } => match style {
+                QuoteStyle::Double => self.string_double("\"", parts),
+                QuoteStyle::Triple => self.string_triple("\"\"\"", parts),
+            },
+            Expr::FormatString { style, parts, .. } => match style {
+                QuoteStyle::Double => self.string_double("f\"", parts),
+                QuoteStyle::Triple => self.string_triple("f\"\"\"", parts),
+            },
 
-            Expr::FormatString {
+            Expr::StringLitOld(QuoteStyle::Double, span) => todo!("Remove."),
+            Expr::StringLitOld(QuoteStyle::Triple, span) => todo!("Remove."),
+            Expr::FormatStringOld {
                 begin,
                 holes,
                 style: QuoteStyle::Double,
-            } => self.format_string_double(*begin, holes),
-            Expr::FormatString {
+            } => todo!("Remove."),
+            Expr::FormatStringOld {
                 begin,
                 holes,
                 style: QuoteStyle::Triple,
-            } => self.format_string_triple(*begin, holes),
+            } => todo!("Remove."),
 
             Expr::NumHexadecimal(span) => {
                 // Normalize A-F to a-f.

@@ -88,9 +88,31 @@ pub struct Prefixed<T> {
     pub inner: T,
 }
 
+/// An escape sequence inside a string literal.
+#[derive(Copy, Clone, Debug)]
+pub enum Escape {
+    /// A single-character escape sequence, e.g. `\n` or `\\`.
+    Single,
+    /// A `\u` escape sequence followed by 4 hex digits.
+    Unicode4,
+    /// A `\u{...}` escape sequence.
+    UnicodeDelim,
+}
+
+/// A part of a string literal or format string.
+#[derive(Debug)]
+pub enum StringPart {
+    /// A fragment of a line. The `\n` is leading, not trailing.
+    String(Span),
+    /// An escape sequence.
+    Escape(Span, Escape),
+    /// An interpolation hole (only inside format strings).
+    Hole(Span, Expr),
+}
+
 /// A hole in a format string.
 #[derive(Debug)]
-pub struct FormatHole {
+pub struct FormatHoleOld {
     /// The span of the expression that fills the hole, excluding `}` and `{`.
     pub span: Span,
 
@@ -169,17 +191,41 @@ pub enum Expr {
     /// A boolean literal.
     BoolLit(Span, bool),
 
+    /// A string literal (regular, not format string).
+    StringLit {
+        /// Whether the string is double (`"`) or triple (`"""`) quoted.
+        style: QuoteStyle,
+        /// The opening quote.
+        open: Span,
+        /// The closing quote.
+        close: Span,
+        /// Inner parts of the string literal, split by line.
+        parts: Vec<StringPart>,
+    },
+
+    /// A format string.
+    FormatString {
+        /// Whether the string is double (`f"`) or triple (`f"""`) quoted.
+        style: QuoteStyle,
+        /// The opening quote.
+        open: Span,
+        /// The closing quote.
+        close: Span,
+        /// Inner parts of the string literal, split by line, and holes.
+        parts: Vec<StringPart>,
+    },
+
     /// A string literal quoted in double or triple quotes (`"`).
-    StringLit(QuoteStyle, Span),
+    StringLitOld(QuoteStyle, Span),
 
     /// A format string, also called f-string.
-    FormatString {
+    FormatStringOld {
         /// Whether the string is double (`f"`) or triple (`f"""`) quoted.
         style: QuoteStyle,
         /// The string literal up to and including the `{` of the first hole.
         begin: Span,
         /// Contents of a hole followed by the string literal after it.
-        holes: Vec<FormatHole>,
+        holes: Vec<FormatHoleOld>,
     },
 
     /// An integer in hexadecimal notation.
