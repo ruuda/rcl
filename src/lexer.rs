@@ -294,6 +294,13 @@ impl<'a> Lexer<'a> {
         self.skip_take_while(0, include)
     }
 
+    /// Take until `include` returns false, then take n_add more.
+    fn take_while_and<F: FnMut(u8) -> bool>(&mut self, include: F, n_add: usize) -> Span {
+        let s1 = self.skip_take_while(0, include);
+        let s2 = self.span(n_add);
+        s1.union(s2)
+    }
+
     /// Return the top of the state stack (without popping).
     fn top_state(&self) -> Option<&State> {
         self.state.last().map(|(_off, state)| state)
@@ -704,7 +711,7 @@ impl<'a> Lexer<'a> {
         if input.starts_with(b"\\u{") {
             return Ok(Some((
                 Token::EscapeUnicodeDelim,
-                self.take_while(|ch| ch != b'}'),
+                self.take_while_and(|ch| ch != b'}', 1),
             )));
         }
         if input.starts_with(b"\\u") {
