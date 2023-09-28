@@ -133,7 +133,7 @@ class RclLexer(RegexLexer):
         ],
         "escape": [
             (r'["\\/bfnrt{]', token.String.Escape, "#pop"),
-            (r"u\[[0-9a-fA-F]+\]", token.String.Escape, "#pop"),
+            (r"u\{[0-9a-fA-F]+\}", token.String.Escape, "#pop"),
             (r"u[0-9a-fA-F]{4}", token.String.Escape, "#pop"),
         ],
     }
