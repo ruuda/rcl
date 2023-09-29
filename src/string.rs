@@ -89,7 +89,10 @@ fn unescape_unicode(span: Span, hex: &str, output: &mut String) -> Result<()> {
     }
     let u = u32::from_str_radix(hex, 16).expect("The lexer only admits hex digit bytes.");
     match char::from_u32(u) {
-        Some(ch) => Ok(output.push(ch)),
+        Some(ch) => {
+            output.push(ch);
+            Ok(())
+        },
         None => span
             .error("Invalid escape sequence: not a Unicode scalar value.")
             .with_help(
