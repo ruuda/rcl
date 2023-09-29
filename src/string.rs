@@ -148,7 +148,7 @@ pub fn count_common_leading_spaces(input: &str, parts: &[StringPart]) -> usize {
         // zero, even though technically it is. We also consider lines that have
         // only spaces to be blank lines.
         let has_next_line = matches!(parts.get(i + 1), Some(StringPart::String(..)));
-        let is_blank_line = n == line.len() && has_next_line;
+        let is_blank_line = n + 1 == line.len() && has_next_line;
 
         if !is_blank_line {
             n_spaces = match n_spaces {
@@ -164,11 +164,58 @@ pub fn count_common_leading_spaces(input: &str, parts: &[StringPart]) -> usize {
 // Note, most testing is done through golden tests and fuzzing, not unit tests.
 #[cfg(test)]
 mod test {
-    use crate::source::{DocId, Span};
-    use crate::string::count_common_leading_spaces;
+    use crate::cst::StringPart;
+    use crate::source::DocId;
 
-    fn unescape(inner: &str) -> super::Result<String> {
-        panic!("TODO: Rely on lexer to parse string.")
+    fn parse_string_raw(input: &str) -> Vec<StringPart> {
+        use crate::cst::Expr::StringLit;
+        let doc = DocId(0);
+        let tokens = crate::lexer::lex(doc, input).unwrap();
+        let (_span, expr) = crate::parser::parse(doc, input, &tokens).unwrap();
+        match expr.inner {
+            StringLit { parts, .. } => parts,
+            _ => panic!("Should have parsed a string."),
+        }
+    }
+
+    fn parse_string(input: &str) -> Vec<&str> {
+        let mut result = Vec::new();
+        for part in parse_string_raw(input) {
+            let span = match part {
+                StringPart::String(span) => span,
+                StringPart::Escape(span, _) => span,
+                StringPart::Hole(span, _) => span,
+            };
+            result.push(span.resolve(input));
+        }
+        result
+    }
+
+    fn count_common_leading_spaces(input: &str) -> usize {
+        let quoted_input = format!("\"\"\"{input}\"\"\"");
+        let parts = parse_string_raw(&quoted_input);
+        super::count_common_leading_spaces(&quoted_input, &parts)
+    }
+
+    fn unescape(input: &str) -> crate::error::Result<String> {
+        use crate::ast::Expr::{Format, StringLit};
+        let doc = DocId(0);
+        let tokens = crate::lexer::lex(doc, input)?;
+        let (_span, expr) = crate::parser::parse(doc, input, &tokens)?;
+        let ast = crate::abstraction::abstract_expr(input, &expr)?;
+        let mut out = String::new();
+        match ast {
+            Format(fragments) => {
+                for fragment in fragments {
+                    match fragment.body {
+                        StringLit(s) => out.push_str(s.as_ref()),
+                        bad => panic!("Expected only string fragments, got {bad:?}."),
+                    }
+                }
+            }
+            bad => panic!("Expected only strings, got {bad:?}."),
+        }
+        Ok(out)
     }
 
     fn escape_json(str: &str) -> String {
@@ -179,28 +226,28 @@ mod test {
 
     #[test]
     fn unescape_handles_json_escape_sequences() {
-        assert_eq!(unescape(r"abc").unwrap(), "abc");
-        assert_eq!(unescape(r#"\"\\\/\b"#).unwrap(), "\"\\/\x08");
-        assert_eq!(unescape(r#"\f\r\n\t"#).unwrap(), "\x0c\r\n\t");
-        assert_eq!(unescape(r#"a\u0008c"#).unwrap(), "a\x08c");
-        assert_eq!(unescape(r#"a\u[0008]\u[8]c"#).unwrap(), "a\x08\x08c");
+        assert_eq!(unescape(r#""abc""#).unwrap(), "abc");
+        assert_eq!(unescape(r#""\"\\\/\b""#).unwrap(), "\"\\/\x08");
+        assert_eq!(unescape(r#""\f\r\n\t""#).unwrap(), "\x0c\r\n\t");
+        assert_eq!(unescape(r#""a\u0008c""#).unwrap(), "a\x08c");
+        assert_eq!(unescape(r#""a\u{0008}\u{8}c""#).unwrap(), "a\x08\x08c");
     }
 
     #[test]
     fn unescape_does_not_crash_on_early_end() {
         // This is a regression test.
-        assert!(unescape(r"\u").is_err());
+        assert!(unescape(r#""\u""#).is_err());
     }
 
     #[test]
     fn unescape_does_not_slice_code_points() {
         // This is a regression test.
-        assert!(unescape(r"\u000ö").is_err());
+        assert!(unescape(r#""\u000ö""#).is_err());
     }
 
     #[test]
     fn unescape_handles_escaped_backslash_at_end() {
-        assert_eq!(unescape(r"\\").unwrap(), "\\");
+        assert_eq!(unescape(r#""\\""#).unwrap(), "\\");
     }
 
     // Note, the main tests for unescaping are the golden tests.
@@ -221,53 +268,47 @@ mod test {
     // Note, the main test for json escaping is the `escapes` fuzzer.
 
     #[test]
-    fn fold_triple_string_lines_works() {
-        let s = r#"
+    fn parsing_triple_string_works() {
+        let s = r#""""
         Line 1
           Line 2
         Line 3
-        "#;
-        let span = Span::new(DocId(0), 0, s.len());
-        // TODO: Use lexer for this.
-        // assert_eq!(lines, ["Line 1\n", "  Line 2\n", "Line 3\n", ""]);
+        """"#;
+        assert_eq!(unescape(s).unwrap(), "Line 1\n  Line 2\nLine 3\n");
 
-        let s = r#"
+        let s = r#""""
             Line 1
           Line 2
-        Line 3"#;
-        let span = Span::new(DocId(0), 0, s.len());
-        // assert_eq!(lines, ["    Line 1\n", "  Line 2\n", "Line 3"]);
+        Line 3""""#;
+        assert_eq!(unescape(s).unwrap(), "    Line 1\n  Line 2\nLine 3");
     }
 
     #[test]
-    fn fold_triple_string_lines_does_not_slice_code_points() {
-        let s = "\n\u{1f574}\u{fe0e}\n    ";
-        let span = Span::new(DocId(0), 0, s.len());
-        let lines = todo!("Restore this test, but with the lexer.");
-        // assert_eq!(lines, ["\u{1f574}\u{fe0e}\n", "    "]);
+    fn parse_string_does_not_slice_code_points() {
+        let s = "\"\"\"\n\u{1f574}\u{fe0e}\n    \"\"\"";
+        let parts = parse_string(s);
+        assert_eq!(parts, ["\n\u{1f574}\u{fe0e}", "\n    "]);
     }
 
     #[test]
-    fn count_common_leading_spaces_handles_blank_lines_old() {
-        let count_common_leading_spaces_old: fn(&str) -> Option<usize> =
-            todo!("Restore this test.");
-        assert_eq!(count_common_leading_spaces_old("\n  X\n  Y"), Some(2));
-        assert_eq!(count_common_leading_spaces_old("\n  X\n    Y"), Some(2));
-        assert_eq!(count_common_leading_spaces_old("\n  X\n    Y\n "), Some(1));
+    fn count_common_leading_spaces_handles_blank_lines() {
+        assert_eq!(count_common_leading_spaces("\n  X\n  Y"), 2);
+        assert_eq!(count_common_leading_spaces("\n  X\n    Y"), 2);
+        assert_eq!(count_common_leading_spaces("\n  X\n    Y\n "), 1);
         assert_eq!(
             // Despite the zero-length blank line, the indent is 2.
-            count_common_leading_spaces_old("\n  X\n\n  Y"),
-            Some(2)
+            count_common_leading_spaces("\n  X\n\n  Y"),
+            2
         );
         assert_eq!(
             // Also if the blank line is longer than the others.
-            count_common_leading_spaces_old("\n  X\n    \n  Y"),
-            Some(2)
+            count_common_leading_spaces("\n  X\n    \n  Y"),
+            2
         );
         assert_eq!(
             // Even if there are only blank lines, we should report the count.
-            count_common_leading_spaces_old("\n  \n  "),
-            Some(2)
+            count_common_leading_spaces("\n  \n  "),
+            2
         );
     }
 }

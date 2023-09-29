@@ -84,34 +84,6 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
-    /// Push a line that is part of a `"""` or `f"""` string literal.
-    fn push_string_line(&self, span: Span, out: &mut Vec<Doc<'a>>) {
-        let mut has_newline = false;
-        let mut line = span.resolve(self.input);
-        let mut n_trailing_spaces = 0_u32;
-        if !line.is_empty() && line.as_bytes()[line.len() - 1] == b'\n' {
-            line = &line[..line.len() - 1];
-            has_newline = true;
-            // If there are trailing spaces, the pretty-printer would eat them.
-            // We can (and maybe should) fix this in the pretty printer, but
-            // trailing spaces are a hazard to humans too, so instead of
-            // preserving them verbatim, we escape them to make them visible.
-            // This has the nice side effects of removing trailing whitespace,
-            // so it doesn't get eaten.
-            while !line.is_empty() && line.as_bytes()[line.len() - 1] == b' ' {
-                line = &line[..line.len() - 1];
-                n_trailing_spaces += 1;
-            }
-        }
-        out.push(line.into());
-        for _ in 0..n_trailing_spaces {
-            out.push(r"\u0020".into());
-        }
-        if has_newline {
-            out.push(Doc::HardBreak);
-        }
-    }
-
     /// Format a `"` or `f"` quoted string or format string.
     fn string_double(&self, open: &'static str, parts: &[StringPart]) -> Doc<'a> {
         let mut result = vec![open.into()];
@@ -138,22 +110,53 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
+    /// Push a line that is part of a `"""` or `f"""` string literal.
+    ///
+    /// The line contents should not contain `\n`.
+    fn push_string_line(&self, line: &'a str, out: &mut Vec<Doc<'a>>) {
+        let mut line = line;
+        let mut n_trailing_spaces = 0_u32;
+
+        // If there are trailing spaces, the pretty-printer would eat them.
+        // We can (and maybe should) fix this in the pretty printer, but
+        // trailing spaces are a hazard to humans too, so instead of
+        // preserving them verbatim, we escape them to make them visible.
+        // This has the nice side effects of removing trailing whitespace,
+        // so it doesn't get eaten.
+        while !line.is_empty() && line.as_bytes()[line.len() - 1] == b' ' {
+            line = &line[..line.len() - 1];
+            n_trailing_spaces += 1;
+        }
+
+        out.push(line.into());
+        for _ in 0..n_trailing_spaces {
+            out.push(r"\u0020".into());
+        }
+    }
+
     /// Format a `"""` or `f"""` quoted string or format string.
     fn string_triple(&self, open: &'static str, parts: &[StringPart]) -> Doc<'a> {
         let n_strip = string::count_common_leading_spaces(self.input, parts);
         let mut result = vec![open.into()];
 
-        for part in parts {
+        for (i, part) in parts.iter().enumerate() {
             match part {
                 StringPart::String(span) => {
-                    let line = span.resolve(self.input);
+                    let mut line = span.resolve(self.input);
+
+                    // If we are at the start of a new line, strip the leading
+                    // whitespace and emit the line break to the document.
                     if line.starts_with('\n') {
                         result.push(Doc::HardBreak);
-                        // TODO: Need to use push_string_line to deal with the
-                        // trailing whitespace.
-                        result.push(line[1 + n_strip..].into());
-                    } else {
-                        result.push(line.into());
+                        line = span.trim_start(1 + n_strip).resolve(self.input);
+                    }
+
+                    // If we are at the end of a line, and there is a next line,
+                    // then we need to be careful about how to emit the line
+                    // without creating trailing whitespace.
+                    match parts.get(i + 1) {
+                        Some(StringPart::String(..)) => self.push_string_line(line, &mut result),
+                        _ => result.push(line.into()),
                     }
                 }
                 StringPart::Escape(span, _esc) => {
