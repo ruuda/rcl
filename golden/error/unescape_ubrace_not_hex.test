@@ -1,8 +1,8 @@
-"Invalid: \u[nothex]"
+"Invalid: \u{nothex}"
 
 # output:
 stdin:1:14
   ╷
-1 │ "Invalid: \u[nothex]"
+1 │ "Invalid: \u{nothex}"
   ╵              ^~~~~~
 Error: Expected hex digits between '[]' in '\u' escape sequence.

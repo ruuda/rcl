@@ -749,13 +749,13 @@ impl<'a> Lexer<'a> {
                 .error("Expected ']'.")
                 .with_note(top.0, "Unmatched '[' opened here."),
             State::Hole => span
-                .error("Expected '}' to close f-string hole.")
+                .error("Expected '}' here to close format string hole.")
                 .with_note(top.0, "Unmatched '{' opened here."),
             State::String(..) => span
                 .error("Unexpected end of input, string literal is not closed.")
                 .with_note(top.0, "String literal opened here."),
             State::Format(..) => span
-                .error("Unexpected end of input, f-string is not closed.")
+                .error("Unexpected end of input, format string is not closed.")
                 .with_note(top.0, "Format string opened here."),
         };
         Err(err)

@@ -50,12 +50,14 @@ impl<'a> Abstractor<'a> {
         let mut current = String::new();
         let mut current_span = None;
 
-        for part in parts {
+        for (i, part) in parts.iter().enumerate() {
             match part {
                 StringPart::String(span) => {
                     let line = span.resolve(self.input);
                     if line.starts_with('\n') {
-                        current.push('\n');
+                        if i != 0 {
+                            current.push('\n');
+                        }
                         current.push_str(&line[1 + n_strip..]);
                     } else {
                         current.push_str(line);

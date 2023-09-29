@@ -703,6 +703,7 @@ impl<'a> Parser<'a> {
     fn parse_string(&mut self, prefix: StringPrefix, style: QuoteStyle) -> Result<Expr> {
         let open = self.consume();
         let mut parts = Vec::new();
+        let mut has_hole = false;
 
         loop {
             match self.peek() {
@@ -723,14 +724,20 @@ impl<'a> Parser<'a> {
                     parts.push(StringPart::Hole(span, expr));
                     self.parse_token_with_note(
                         Token::HoleClose,
-                        "Expected '}' here to close the hole.",
+                        "Expected '}' here to close format string hole.",
                         hole_open,
-                        "Hole opened here.",
+                        "Unmatched '{' opened here.",
                     )?;
+                    has_hole = true;
                 }
                 Some(Token::QuoteClose) => {
-                    // TODO: Raise error for unnecessary f-string.
                     let close = self.consume();
+                    if prefix == StringPrefix::Format && !has_hole {
+                        let span = open.union(close);
+                        return span
+                            .error("This format string has no holes, it can be a regular string.")
+                            .err();
+                    }
                     let result = Expr::StringLit {
                         prefix,
                         style,

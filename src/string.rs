@@ -85,11 +85,18 @@ fn unescape_unicode(span: Span, hex: &str, output: &mut String) -> Result<()> {
     match u32::from_str_radix(hex, 16) {
         Err(..) => span
             .error("Expected hex digits in '\\u' escape sequence.")
+            .with_help(
+                "The code point must be exactly four hex digits, \
+                or enclosed in '{}'. For example '\\u000a' or '\\u{0a}'.",
+            )
             .err(),
         Ok(u) => match char::from_u32(u) {
             Some(ch) => Ok(output.push(ch)),
             None => span
                 .error("Invalid escape sequence: not a Unicode scalar value.")
+                .with_help(
+                    "For code points beyond U+FFFF, use '\\u{xxxxxx}' instead of a surrogate pair.",
+                )
                 .err(),
         },
     }
@@ -131,7 +138,12 @@ pub fn count_common_leading_spaces(input: &str, parts: &[StringPart]) -> usize {
         if !line.starts_with('\n') {
             continue;
         }
-        let n = line.as_bytes().iter().take_while(|ch| **ch == b' ').count();
+        let n = line
+            .as_bytes()
+            .iter()
+            .skip(1)
+            .take_while(|ch| **ch == b' ')
+            .count();
 
         // There may be a blank line in a multiline string literal that contains
         // no spaces even though the other lines do have spaces, to avoid

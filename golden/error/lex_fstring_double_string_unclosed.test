@@ -1,8 +1,14 @@
 f"There is no {"closing"} quote there -->
 
 # output:
-stdin:1:25
+stdin:2:1
+  ╷
+2 │ 
+  ╵ ^
+Error: Unexpected end of input, format string is not closed.
+
+stdin:1:1
   ╷
 1 │ f"There is no {"closing"} quote there -->
-  ╵                         ^~~~~~~~~~~~~~~~~
-Error: Unexpected end of input, string literal is not closed.
+  ╵ ^~
+Note: Format string opened here.

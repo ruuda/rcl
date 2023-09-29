@@ -1,0 +1,8 @@
+"Invalid: \u{000a"
+
+# output:
+stdin:1:13
+  ╷
+1 │ "Invalid: \u{000a"
+  ╵             ^~~~~
+Error: Unclosed '\u{' escape sequence, expected '}'.
