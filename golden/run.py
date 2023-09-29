@@ -146,7 +146,9 @@ def main() -> None:
     fnames = sys.argv[1:]
     golden_dir = os.path.dirname(os.path.abspath(__file__))
 
-    if len(fnames) == 0:
+    if len(fnames) > 0:
+        fnames = [os.path.abspath(fname) for fname in fnames]
+    else:
         for root, _dirs, files in os.walk(golden_dir):
             for fname in files:
                 if fname.endswith(".test"):
