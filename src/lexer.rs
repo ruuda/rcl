@@ -96,18 +96,6 @@ pub enum Token {
     /// The `}` that closes a hole inside an f-string.
     HoleClose,
 
-    /// A string enclosed in double or triple quotes.
-    Quoted(QuoteStyle),
-
-    /// An f-string until its first hole, e.g. `f" str {`.
-    FormatOpen(QuoteStyle),
-
-    /// An f-string between two holes, e.g. `} str {`.
-    FormatInner(QuoteStyle),
-
-    /// An f-string after the last hole, e.g. `} str"`.
-    FormatClose(QuoteStyle),
-
     /// A hexadecimal integer literal prefixed by `0x`.
     NumHexadecimal,
 

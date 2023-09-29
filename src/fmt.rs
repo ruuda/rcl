@@ -286,19 +286,6 @@ impl<'a> Formatter<'a> {
                 QuoteStyle::Triple => self.string_triple("f\"\"\"", parts),
             },
 
-            Expr::StringLitOld(QuoteStyle::Double, span) => todo!("Remove."),
-            Expr::StringLitOld(QuoteStyle::Triple, span) => todo!("Remove."),
-            Expr::FormatStringOld {
-                begin,
-                holes,
-                style: QuoteStyle::Double,
-            } => todo!("Remove."),
-            Expr::FormatStringOld {
-                begin,
-                holes,
-                style: QuoteStyle::Triple,
-            } => todo!("Remove."),
-
             Expr::NumHexadecimal(span) => {
                 // Normalize A-F to a-f.
                 span.resolve(self.input).to_ascii_lowercase().into()

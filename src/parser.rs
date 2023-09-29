@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::cst::{BinOp, Expr, FormatHoleOld, NonCode, Prefixed, Seq, Stmt, StringPart, UnOp};
+use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, UnOp};
 use crate::error::{IntoParseError, ParseError};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
 use crate::source::{DocId, Span};
@@ -657,8 +657,6 @@ impl<'a> Parser<'a> {
                 Ok(result)
             }
             Some(Token::QuoteOpen(prefix, style)) => self.parse_string(prefix, style),
-            Some(Token::FormatOpen(style)) => self.parse_format_string(style),
-            Some(Token::Quoted(style)) => self.parse_string_old(style),
             Some(Token::KwNull) => Ok(Expr::NullLit(self.consume())),
             Some(Token::KwTrue) => Ok(Expr::BoolLit(self.consume(), true)),
             Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
@@ -670,7 +668,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Ensure that a multiline string starts with a newline.
+    /// Consume the span, ensuring that a multiline string starts with a newline.
     ///
     /// If we allowed content between the opening quote and the first line break,
     /// the following string would be ambiguous:
@@ -691,15 +689,15 @@ impl<'a> Parser<'a> {
     /// would be unambiguous, and it may be nice to not have to escape the `"`.
     /// We might support this at a later time, but it makes handling of the
     /// string literals messy, so for now we enforce the line break.
-    fn validate_multiline_string(&self, inner: Span) -> Result<()> {
+    fn consume_initial_multiline_string(&mut self) -> Result<Span> {
+        let inner = self.consume();
         let inner_str = inner.resolve(self.input);
-        if !inner_str.is_empty() && inner_str.as_bytes()[0] == b'\n' {
-            return Ok(());
+        if inner_str.is_empty() || inner_str.as_bytes()[0] != b'\n' {
+            return inner
+                .error("Expected a line break after the \"\"\". Move this to the next line.")
+                .err();
         }
-        let err = inner
-            .take(inner_str.find('\n').unwrap_or(inner_str.len()))
-            .error("Expected a line break after the \"\"\". Move this to the next line.");
-        Err(err)
+        Ok(inner)
     }
 
     fn parse_string(&mut self, prefix: StringPrefix, style: QuoteStyle) -> Result<Expr> {
@@ -709,7 +707,11 @@ impl<'a> Parser<'a> {
         loop {
             match self.peek() {
                 Some(Token::StringInner) => {
-                    parts.push(StringPart::String(self.consume()));
+                    let span = match (style, parts.len()) {
+                        (QuoteStyle::Triple, 0) => self.consume_initial_multiline_string()?,
+                        _ => self.consume(),
+                    };
+                    parts.push(StringPart::String(span));
                 }
                 Some(Token::Escape(esc)) => {
                     parts.push(StringPart::Escape(self.consume(), esc));
@@ -739,62 +741,6 @@ impl<'a> Parser<'a> {
                     return Ok(result);
                 }
                 invalid => panic!("The lexer should not have produced {invalid:?} in a string."),
-            }
-        }
-    }
-
-    fn parse_string_old(&mut self, style: QuoteStyle) -> Result<Expr> {
-        let span = self.consume();
-
-        if style == QuoteStyle::Triple {
-            let inner = span.trim_start(3).trim_end(3);
-            self.validate_multiline_string(inner)?;
-        }
-
-        Ok(Expr::StringLitOld(style, span))
-    }
-
-    /// Parse a format string (`f"` or `f"""`).
-    fn parse_format_string(&mut self, style: QuoteStyle) -> Result<Expr> {
-        debug_assert_eq!(self.peek(), Some(Token::FormatOpen(style)));
-
-        let begin = self.consume();
-        let mut holes = Vec::new();
-        let mut prefix = begin;
-
-        loop {
-            self.skip_non_code()?;
-            let (span, body) = self.parse_expr()?;
-            self.skip_non_code()?;
-
-            let is_close = match self.peek() {
-                Some(Token::FormatInner(..)) => false,
-                Some(Token::FormatClose(..)) => true,
-                _ => {
-                    return self.error_with_note(
-                        "Unclosed hole in f-string, expected '}' here.",
-                        prefix.trim_start(prefix.len() - 1),
-                        "Hole opened here.",
-                    )
-                }
-            };
-
-            let suffix = self.consume();
-            let hole = FormatHoleOld { span, body, suffix };
-            holes.push(hole);
-            prefix = suffix;
-
-            if is_close {
-                let result = Expr::FormatStringOld {
-                    style,
-                    begin,
-                    holes,
-                };
-                if style == QuoteStyle::Triple {
-                    let begin_inner = begin.trim_start(4).trim_end(1);
-                    self.validate_multiline_string(begin_inner)?;
-                }
-                return Ok(result);
             }
         }
     }

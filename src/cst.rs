@@ -99,19 +99,6 @@ pub enum StringPart {
     Hole(Span, Expr),
 }
 
-/// A hole in a format string.
-#[derive(Debug)]
-pub struct FormatHoleOld {
-    /// The span of the expression that fills the hole, excluding `}` and `{`.
-    pub span: Span,
-
-    /// The expression that fills the hole.
-    pub body: Expr,
-
-    /// The string literal following the hole, including `}`.
-    pub suffix: Span,
-}
-
 /// A `let`-binding, `assert`, or `trace`.
 ///
 /// RCL does not have statements that have side effects, but it does have
@@ -159,7 +146,7 @@ pub enum Expr {
         elements: Box<[Prefixed<Seq>]>,
     },
 
-    /// A `[]`-encosed collection literal.
+    /// A `[]`-enclosed collection literal.
     BracketLit {
         open: Span,
         close: Span,
@@ -192,19 +179,6 @@ pub enum Expr {
         close: Span,
         /// Inner parts of the string literal, split by line, and holes.
         parts: Vec<StringPart>,
-    },
-
-    /// A string literal quoted in double or triple quotes (`"`).
-    StringLitOld(QuoteStyle, Span),
-
-    /// A format string, also called f-string.
-    FormatStringOld {
-        /// Whether the string is double (`f"`) or triple (`f"""`) quoted.
-        style: QuoteStyle,
-        /// The string literal up to and including the `{` of the first hole.
-        begin: Span,
-        /// Contents of a hole followed by the string literal after it.
-        holes: Vec<FormatHoleOld>,
     },
 
     /// An integer in hexadecimal notation.

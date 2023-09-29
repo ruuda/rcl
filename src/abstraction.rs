@@ -152,9 +152,6 @@ impl<'a> Abstractor<'a> {
 
             CExpr::StringLit { style, parts, .. } => self.string(*style, parts)?,
 
-            CExpr::StringLitOld(..) => todo!("Remove."),
-            CExpr::FormatStringOld { .. } => todo!("Remove."),
-
             CExpr::NumHexadecimal(span) => {
                 // Cut off the 0x, then parse the rest.
                 let num_str = span.trim_start(2).resolve(self.input).replace('_', "");
