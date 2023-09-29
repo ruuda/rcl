@@ -77,28 +77,25 @@ fn unescape_single(span: Span, ch: u8, output: &mut String) -> Result<()> {
 }
 
 fn unescape_unicode(span: Span, hex: &str, output: &mut String) -> Result<()> {
-    if hex.len() > 6 {
+    if hex.is_empty() {
         return span
-            .error("Escape sequence too long, expected at most 6 hex digits.")
+            .error("Unicode escape sequence is empty, expected at least one hex digit.")
             .err();
     }
-    match u32::from_str_radix(hex, 16) {
-        Err(..) => span
-            .error("Expected hex digits in '\\u' escape sequence.")
+    if hex.len() > 6 {
+        return span
+            .error("Unicode escape sequence too long, expected at most 6 hex digits.")
+            .err();
+    }
+    let u = u32::from_str_radix(hex, 16).expect("The lexer only admits hex digit bytes.");
+    match char::from_u32(u) {
+        Some(ch) => Ok(output.push(ch)),
+        None => span
+            .error("Invalid escape sequence: not a Unicode scalar value.")
             .with_help(
-                "The code point must be exactly four hex digits, \
-                or enclosed in '{}'. For example '\\u000a' or '\\u{0a}'.",
+                "For code points beyond U+FFFF, use '\\u{xxxxxx}' instead of a surrogate pair.",
             )
             .err(),
-        Ok(u) => match char::from_u32(u) {
-            Some(ch) => Ok(output.push(ch)),
-            None => span
-                .error("Invalid escape sequence: not a Unicode scalar value.")
-                .with_help(
-                    "For code points beyond U+FFFF, use '\\u{xxxxxx}' instead of a surrogate pair.",
-                )
-                .err(),
-        },
     }
 }
 

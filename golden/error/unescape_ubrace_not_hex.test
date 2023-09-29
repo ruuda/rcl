@@ -4,5 +4,5 @@
 stdin:1:14
   ╷
 1 │ "Invalid: \u{nothex}"
-  ╵              ^~~~~~
-Error: Expected hex digits between '[]' in '\u' escape sequence.
+  ╵              ^
+Error: Expected '}' to close Unicode escape sequence.

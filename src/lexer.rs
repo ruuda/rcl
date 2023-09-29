@@ -287,13 +287,6 @@ impl<'a> Lexer<'a> {
         self.skip_take_while(0, include)
     }
 
-    /// Take until `include` returns false, then take n_add more.
-    fn take_while_and<F: FnMut(u8) -> bool>(&mut self, include: F, n_add: usize) -> Span {
-        let s1 = self.skip_take_while(0, include);
-        let s2 = self.span(n_add);
-        s1.union(s2)
-    }
-
     /// Return the top of the state stack (without popping).
     fn top_state(&self) -> Option<&State> {
         self.state.last().map(|(_off, state)| state)
@@ -702,13 +695,45 @@ impl<'a> Lexer<'a> {
         );
 
         if input.starts_with(b"\\u{") {
-            return Ok(Some((
-                Token::Escape(Escape::UnicodeDelim),
-                self.take_while_and(|ch| ch != b'}', 1),
-            )));
+            // Take only hex digits, stop at anything else, even if we haven't
+            // encountered the closing `}` yet. If we only stopped at `}`, then
+            // we might continue past the closing quote of the string, and that
+            // would result in very puzzling errors.
+            let mut span = self.skip_take_while(3, |ch| ch.is_ascii_hexdigit());
+            let input = &self.input.as_bytes()[self.start..];
+            if !input.is_empty() && input[0] == b'}' {
+                span = self.span(1).union(span);
+                return Ok(Some((Token::Escape(Escape::UnicodeDelim), span)));
+            } else {
+                return span
+                    .trim_start(span.len())
+                    .error("Expected '}' to close Unicode escape sequence.")
+                    .err();
+            }
         }
         if input.starts_with(b"\\u") {
-            return Ok(Some((Token::Escape(Escape::Unicode4), self.span(6))));
+            // Also here, we cannot blindly take 6 bytes, because in the error
+            // case, that might eat the closing quote and lead to very puzzling
+            // errors.
+            let input = &self.input.as_bytes()[self.start..];
+            let n = input
+                .iter()
+                .skip(2)
+                .take_while(|ch| ch.is_ascii_hexdigit())
+                .take(4)
+                .count();
+            if n == 4 {
+                return Ok(Some((Token::Escape(Escape::Unicode4), self.span(6))));
+            } else {
+                return self
+                    .span(2 + n)
+                    .error("Expected 4 hex digits after '\\u' Unicode escape sequence.")
+                    .with_help(
+                        "You can also use up to six hex digits enclosed in '{}'. \
+                        For example '\\u{1F574}' or '\\u{0a}'.",
+                    )
+                    .err();
+            }
         }
         if input[0] == b'\\' {
             // Note, even if the document ends and we get only one byte, that

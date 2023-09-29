@@ -1,8 +1,8 @@
 "Invalid: \u{000a"
 
 # output:
-stdin:1:13
+stdin:1:18
   ╷
 1 │ "Invalid: \u{000a"
-  ╵             ^~~~~
-Error: Unclosed '\u{' escape sequence, expected '}'.
+  ╵                  ^
+Error: Expected '}' to close Unicode escape sequence.

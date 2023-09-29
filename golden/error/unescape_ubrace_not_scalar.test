@@ -1,8 +1,10 @@
 "Invalid: \u{d800}"
 
 # output:
-stdin:1:14
+stdin:1:11
   ╷
 1 │ "Invalid: \u{d800}"
-  ╵              ^~~~
+  ╵           ^~~~~~~~
 Error: Invalid escape sequence: not a Unicode scalar value.
+
+Help: For code points beyond U+FFFF, use '\u{xxxxxx}' instead of a surrogate pair.
