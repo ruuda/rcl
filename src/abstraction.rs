@@ -35,27 +35,13 @@ impl<'a> Abstractor<'a> {
         Self { input }
     }
 
-    /// Abstract a regular string literal (not a format string).
+    /// Abstract a string or format string.
+    ///
+    /// For uniformity, we convert all string types into `Expr::Format`. Even if
+    /// the format has no holes, it may still consist of multiple lines that had
+    /// their leading spaces stripped, and we only glue those back together
+    /// during evaluation.
     fn string(&self, style: QuoteStyle, parts: &[StringPart]) -> Result<AExpr> {
-        let mut fragments = self.string_impl(style, parts)?;
-        debug_assert_eq!(
-            fragments.len(),
-            1,
-            "String should consist of a single fragment."
-        );
-        Ok(fragments
-            .pop()
-            .expect("String should consist of a single fragment.")
-            .body)
-    }
-
-    /// Abstract a format string.
-    fn format_string(&self, style: QuoteStyle, parts: &[StringPart]) -> Result<AExpr> {
-        Ok(AExpr::Format(self.string_impl(style, parts)?))
-    }
-
-    /// Shared implementation for abstracting all strings (format strings and regular).
-    fn string_impl(&self, style: QuoteStyle, parts: &[StringPart]) -> Result<Vec<FormatFragment>> {
         let n_strip = match style {
             QuoteStyle::Double => 0,
             QuoteStyle::Triple => string::count_common_leading_spaces(self.input, parts),
@@ -104,7 +90,7 @@ impl<'a> Abstractor<'a> {
             });
         }
 
-        Ok(fragments)
+        Ok(AExpr::Format(fragments))
     }
 
     /// Abstract a statement.
@@ -165,9 +151,8 @@ impl<'a> Abstractor<'a> {
             CExpr::BoolLit(_span, b) => AExpr::BoolLit(*b),
 
             CExpr::StringLit { style, parts, .. } => self.string(*style, parts)?,
-            CExpr::FormatString { style, parts, .. } => self.format_string(*style, parts)?,
 
-            CExpr::StringLitOld(style, span) => todo!("Remove."),
+            CExpr::StringLitOld(..) => todo!("Remove."),
             CExpr::FormatStringOld { .. } => todo!("Remove."),
 
             CExpr::NumHexadecimal(span) => {

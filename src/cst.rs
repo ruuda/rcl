@@ -18,7 +18,7 @@
 //! implied by the structure of the tree. For example, for a let-binding, it
 //! does not store the span of the `let` keyword nor of the `=` after the name.
 
-use crate::lexer::QuoteStyle;
+use crate::lexer::{Escape, QuoteStyle, StringPrefix};
 use crate::source::Span;
 
 /// A unary operator.
@@ -86,17 +86,6 @@ pub struct Prefixed<T> {
 
     /// The tree node itself.
     pub inner: T,
-}
-
-/// An escape sequence inside a string literal.
-#[derive(Copy, Clone, Debug)]
-pub enum Escape {
-    /// A single-character escape sequence, e.g. `\n` or `\\`.
-    Single,
-    /// A `\u` escape sequence followed by 4 hex digits.
-    Unicode4,
-    /// A `\u{...}` escape sequence.
-    UnicodeDelim,
 }
 
 /// A part of a string literal or format string.
@@ -191,21 +180,11 @@ pub enum Expr {
     /// A boolean literal.
     BoolLit(Span, bool),
 
-    /// A string literal (regular, not format string).
+    /// A string literal (both regular and format string).
     StringLit {
+        /// Whether the string is a format string or not.
+        prefix: StringPrefix,
         /// Whether the string is double (`"`) or triple (`"""`) quoted.
-        style: QuoteStyle,
-        /// The opening quote.
-        open: Span,
-        /// The closing quote.
-        close: Span,
-        /// Inner parts of the string literal, split by line.
-        parts: Vec<StringPart>,
-    },
-
-    /// A format string.
-    FormatString {
-        /// Whether the string is double (`f"`) or triple (`f"""`) quoted.
         style: QuoteStyle,
         /// The opening quote.
         open: Span,

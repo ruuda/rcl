@@ -11,7 +11,7 @@
 //! pretty-printed for formatting.
 
 use crate::cst::{Expr, NonCode, Prefixed, Seq, Stmt, StringPart};
-use crate::lexer::QuoteStyle;
+use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
 use crate::source::Span;
 use crate::string;
@@ -267,11 +267,21 @@ impl<'a> Formatter<'a> {
 
             Expr::BoolLit(span, ..) => self.span(*span),
 
-            Expr::StringLit { style, parts, .. } => match style {
+            Expr::StringLit {
+                prefix: StringPrefix::None,
+                style,
+                parts,
+                ..
+            } => match style {
                 QuoteStyle::Double => self.string_double("\"", parts),
                 QuoteStyle::Triple => self.string_triple("\"\"\"", parts),
             },
-            Expr::FormatString { style, parts, .. } => match style {
+            Expr::StringLit {
+                prefix: StringPrefix::Format,
+                style,
+                parts,
+                ..
+            } => match style {
                 QuoteStyle::Double => self.string_double("f\"", parts),
                 QuoteStyle::Triple => self.string_triple("f\"\"\"", parts),
             },

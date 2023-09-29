@@ -30,14 +30,11 @@ fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
             _ => blue,
         },
 
-        Token::QuoteOpenString(..)
-        | Token::QuoteOpenFormat(..)
-        | Token::QuoteClose
-        | Token::StringInner => cyan,
+        Token::QuoteOpen(..) | Token::QuoteClose | Token::StringInner => cyan,
 
         Token::HoleOpen | Token::HoleClose => red,
 
-        Token::EscapeUnicode4 | Token::EscapeUnicodeDelim | Token::EscapeSingle => magenta,
+        Token::Escape(..) => magenta,
 
         Token::KwAnd
         | Token::KwAssert

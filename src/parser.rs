@@ -5,9 +5,9 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::cst::{BinOp, Expr, FormatHoleOld, NonCode, Prefixed, Seq, Stmt, UnOp};
+use crate::cst::{BinOp, Expr, FormatHoleOld, NonCode, Prefixed, Seq, Stmt, StringPart, UnOp};
 use crate::error::{IntoParseError, ParseError};
-use crate::lexer::{Lexeme, QuoteStyle, Token};
+use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
 use crate::source::{DocId, Span};
 
 pub type Result<T> = std::result::Result<T, ParseError>;
@@ -656,8 +656,9 @@ impl<'a> Parser<'a> {
                 };
                 Ok(result)
             }
+            Some(Token::QuoteOpen(prefix, style)) => self.parse_string(prefix, style),
             Some(Token::FormatOpen(style)) => self.parse_format_string(style),
-            Some(Token::Quoted(style)) => self.parse_string(style),
+            Some(Token::Quoted(style)) => self.parse_string_old(style),
             Some(Token::KwNull) => Ok(Expr::NullLit(self.consume())),
             Some(Token::KwTrue) => Ok(Expr::BoolLit(self.consume(), true)),
             Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
@@ -701,7 +702,48 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    fn parse_string(&mut self, style: QuoteStyle) -> Result<Expr> {
+    fn parse_string(&mut self, prefix: StringPrefix, style: QuoteStyle) -> Result<Expr> {
+        let open = self.consume();
+        let mut parts = Vec::new();
+
+        loop {
+            match self.peek() {
+                Some(Token::StringInner) => {
+                    parts.push(StringPart::String(self.consume()));
+                }
+                Some(Token::Escape(esc)) => {
+                    parts.push(StringPart::Escape(self.consume(), esc));
+                }
+                Some(Token::HoleOpen) => {
+                    // Consume the opening `{`.
+                    let hole_open = self.consume();
+                    let (span, expr) = self.parse_expr()?;
+                    parts.push(StringPart::Hole(span, expr));
+                    self.parse_token_with_note(
+                        Token::HoleClose,
+                        "Expected '}' here to close the hole.",
+                        hole_open,
+                        "Hole opened here.",
+                    )?;
+                }
+                Some(Token::QuoteClose) => {
+                    // TODO: Raise error for unnecessary f-string.
+                    let close = self.consume();
+                    let result = Expr::StringLit {
+                        prefix,
+                        style,
+                        open,
+                        close,
+                        parts,
+                    };
+                    return Ok(result);
+                }
+                invalid => panic!("The lexer should not have produced {invalid:?} in a string."),
+            }
+        }
+    }
+
+    fn parse_string_old(&mut self, style: QuoteStyle) -> Result<Expr> {
         let span = self.consume();
 
         if style == QuoteStyle::Triple {

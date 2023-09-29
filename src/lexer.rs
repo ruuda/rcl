@@ -34,6 +34,26 @@ impl QuoteStyle {
     }
 }
 
+/// An escape sequence inside a string literal.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Escape {
+    /// A single-character escape sequence, e.g. `\n` or `\\`.
+    Single,
+    /// A `\u` escape sequence followed by 4 hex digits.
+    Unicode4,
+    /// A `\u{...}` escape sequence.
+    UnicodeDelim,
+}
+
+/// Whether a string literal is a format string or a regular string.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum StringPrefix {
+    /// No prefix, just the quotes: a regular string literal.
+    None,
+    /// An `f` prefix that indicates a format string.
+    Format,
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Token {
     /// A sequence of ascii whitespace not significant for reformatting.
@@ -58,11 +78,8 @@ pub enum Token {
     /// A sequence of ascii alphanumeric or _, not starting with a digit.
     Ident,
 
-    /// An opening quote of a string, either `"` or `"""`.
-    QuoteOpenString(QuoteStyle),
-
-    /// An opening quote of a format string, either `f"` or `f"""`.
-    QuoteOpenFormat(QuoteStyle),
+    /// An opening quote of a string, either `"`, `f"`, `"""`, or `f"""`.
+    QuoteOpen(StringPrefix, QuoteStyle),
 
     /// A closing quote of a string, either `"` or `"""`.
     QuoteClose,
@@ -70,20 +87,8 @@ pub enum Token {
     /// An inner part of a string literal or format string.
     StringInner,
 
-    /// A single-character escape sequence inside a string literal.
-    ///
-    /// Includes the backslash, e.g. `\n` or `\"`.
-    EscapeSingle,
-
-    /// An escape sequence that indicates a code point with 4 hex digits.
-    ///
-    /// For example `\u000a`.
-    EscapeUnicode4,
-
-    /// An escape sequence that indicates a code point enclosed in {}.
-    ///
-    /// For example `\u{1F574}`.
-    EscapeUnicodeDelim,
+    /// An escape sequence inside a string literal.
+    Escape(Escape),
 
     /// The `{` that opens a hole inside an f-string.
     HoleOpen,
@@ -375,28 +380,28 @@ impl<'a> Lexer<'a> {
             let style = QuoteStyle::Triple;
             let span = self.span(4);
             self.state.push((span, State::Format(style)));
-            return Ok((Token::QuoteOpenFormat(style), span));
+            return Ok((Token::QuoteOpen(StringPrefix::Format, style), span));
         }
 
         if input.starts_with(b"\"\"\"") {
             let style = QuoteStyle::Triple;
             let span = self.span(3);
             self.state.push((span, State::String(style)));
-            return Ok((Token::QuoteOpenString(style), span));
+            return Ok((Token::QuoteOpen(StringPrefix::None, style), span));
         }
 
         if input.starts_with(b"f\"") {
             let style = QuoteStyle::Double;
             let span = self.span(2);
             self.state.push((span, State::Format(style)));
-            return Ok((Token::QuoteOpenFormat(style), span));
+            return Ok((Token::QuoteOpen(StringPrefix::Format, style), span));
         }
 
         if input[0] == b'"' {
             let style = QuoteStyle::Double;
             let span = self.span(1);
             self.state.push((span, State::String(style)));
-            return Ok((Token::QuoteOpenString(style), span));
+            return Ok((Token::QuoteOpen(StringPrefix::None, style), span));
         }
 
         // What state to continue lexing in after the closing '}', depends on
@@ -710,18 +715,18 @@ impl<'a> Lexer<'a> {
 
         if input.starts_with(b"\\u{") {
             return Ok(Some((
-                Token::EscapeUnicodeDelim,
+                Token::Escape(Escape::UnicodeDelim),
                 self.take_while_and(|ch| ch != b'}', 1),
             )));
         }
         if input.starts_with(b"\\u") {
-            return Ok(Some((Token::EscapeUnicode4, self.span(6))));
+            return Ok(Some((Token::Escape(Escape::Unicode4), self.span(6))));
         }
         if input[0] == b'\\' {
             // Note, even if the document ends and we get only one byte, that
             // will get reported as an unclosed string at the end of lexing, so
             // if lexing succeeds, all EscapeSingle tokens have length 2.
-            return Ok(Some((Token::EscapeSingle, self.span(2))));
+            return Ok(Some((Token::Escape(Escape::Single), self.span(2))));
         }
 
         match style {

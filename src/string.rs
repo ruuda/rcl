@@ -7,8 +7,9 @@
 
 //! Utilities for working with strings.
 
-use crate::cst::{Escape, Expr, FormatHoleOld, StringPart};
+use crate::cst::{Expr, FormatHoleOld, StringPart};
 use crate::error::{IntoParseError, ParseError};
+use crate::lexer::Escape;
 use crate::source::Span;
 
 pub type Result<T> = std::result::Result<T, ParseError>;
