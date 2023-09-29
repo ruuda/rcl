@@ -1,0 +1,9 @@
+// This is a regression test.
+"\🕴︎︎"
+
+# output:
+stdin:2:2
+  ╷
+2 │ "\🕴︎︎"
+  ╵  ^~
+Error: Invalid escape sequence.

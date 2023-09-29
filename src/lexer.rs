@@ -738,8 +738,18 @@ impl<'a> Lexer<'a> {
         if input[0] == b'\\' {
             // Note, even if the document ends and we get only one byte, that
             // will get reported as an unclosed string at the end of lexing, so
-            // if lexing succeeds, all EscapeSingle tokens have length 2.
-            return Ok(Some((Token::Escape(Escape::Single), self.span(2))));
+            // if lexing succeeds, all EscapeSingle tokens have at least length
+            // 2. We also need to make sure to not slice in the middle of a code
+            // point, so we can't blindly take a span of length 1.
+            let mut n = 2;
+            while self.start + n <= self.input.len() && self.input.is_char_boundary(self.start + n)
+            {
+                n += 1;
+            }
+            return match n {
+                2 => Ok(Some((Token::Escape(Escape::Single), self.span(2)))),
+                _ => self.span(n).error("Invalid escape sequence.").err(),
+            };
         }
 
         match style {

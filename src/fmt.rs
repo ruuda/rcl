@@ -94,7 +94,7 @@ impl<'a> Formatter<'a> {
                     result.push(self.raw_span(*span));
                 }
                 StringPart::Escape(span, _esc) => {
-                    result.push(self.span(*span));
+                    result.push(self.raw_span(*span));
                 }
                 StringPart::Hole(_span, expr) => {
                     // TODO: Add soft breaks around the hole contents?
@@ -160,7 +160,10 @@ impl<'a> Formatter<'a> {
                     }
                 }
                 StringPart::Escape(span, _esc) => {
-                    result.push(self.span(*span));
+                    // We need to use raw_span here, because at this point we
+                    // haven't yet validated that the escape sequence is valid,
+                    // and it may contain a newline.
+                    result.push(self.raw_span(*span));
                 }
                 StringPart::Hole(_span, expr) => {
                     // TODO: Add soft breaks around the hole contents?

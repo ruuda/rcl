@@ -92,7 +92,7 @@ fn unescape_unicode(span: Span, hex: &str, output: &mut String) -> Result<()> {
         Some(ch) => {
             output.push(ch);
             Ok(())
-        },
+        }
         None => span
             .error("Invalid escape sequence: not a Unicode scalar value.")
             .with_help(
