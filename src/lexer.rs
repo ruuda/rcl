@@ -736,14 +736,33 @@ impl<'a> Lexer<'a> {
             }
         }
         if input[0] == b'\\' {
-            // Note, even if the document ends and we get only one byte, that
-            // will get reported as an unclosed string at the end of lexing, so
-            // if lexing succeeds, all EscapeSingle tokens have at least length
-            // 2. We also need to make sure to not slice in the middle of a code
-            // point, so we can't blindly take a span of length 1.
+            if input.len() == 1 {
+                return self
+                    .span(1)
+                    .error("Unexpected end of input in escape sequence.")
+                    .err();
+            }
+
+            // Special-case newlines for two reasons:
+            // 1. So we can report a special message that \ does not escape the
+            //    end of the line.
+            // 2. So we don't end up with newlines in the escape sequences,
+            //    because the pretty-printer does not expect those.
+            if input[1] == b'\r' || input[1] == b'\n' {
+                return self
+                    .span(2)
+                    .error("Invalid escape sequence.")
+                    .with_help(
+                        "To break a long string across lines, break it into \
+                        multiple strings and concatenate them with '+'.",
+                    )
+                    .err();
+            }
+
+            // We cannot just take the next character, because it may not lie
+            // inside a code point boundary.
             let mut n = 2;
-            while self.start + n <= self.input.len() && self.input.is_char_boundary(self.start + n)
-            {
+            while !self.input.is_char_boundary(self.start + n) {
                 n += 1;
             }
             return match n {

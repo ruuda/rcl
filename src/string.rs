@@ -55,16 +55,6 @@ fn unescape_single(span: Span, ch: u8, output: &mut String) -> Result<()> {
         // but for consistency it can be used in any string literal.
         b'{' => output.push('{'),
 
-        // The other cases are errors.
-        b'\n' | b'\r' => {
-            return span
-                .error("Invalid escape sequence.")
-                .with_help(
-                    "To break a long string across lines, break it into \
-                    multiple strings and concatenate them with '+'.",
-                )
-                .err()
-        }
         ch if ch.is_ascii_uppercase() => {
             return span
                 .error("Invalid escape sequence.")
