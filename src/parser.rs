@@ -5,9 +5,11 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::cst::{BinOp, Expr, FormatHole, NonCode, Prefixed, Seq, Stmt, UnOp};
+//! The parser converts a sequence of tokens into a Concrete Syntax Tree.
+
+use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, UnOp};
 use crate::error::{IntoParseError, ParseError};
-use crate::lexer::{Lexeme, QuoteStyle, Token};
+use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
 use crate::source::{DocId, Span};
 
 pub type Result<T> = std::result::Result<T, ParseError>;
@@ -656,8 +658,7 @@ impl<'a> Parser<'a> {
                 };
                 Ok(result)
             }
-            Some(Token::FormatOpen(style)) => self.parse_format_string(style),
-            Some(Token::Quoted(style)) => self.parse_string(style),
+            Some(Token::QuoteOpen(prefix, style)) => self.parse_string(prefix, style),
             Some(Token::KwNull) => Ok(Expr::NullLit(self.consume())),
             Some(Token::KwTrue) => Ok(Expr::BoolLit(self.consume(), true)),
             Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
@@ -669,7 +670,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Ensure that a multiline string starts with a newline.
+    /// Consume a string inner span, ensuring that multiline strings start with a newline.
     ///
     /// If we allowed content between the opening quote and the first line break,
     /// the following string would be ambiguous:
@@ -690,69 +691,76 @@ impl<'a> Parser<'a> {
     /// would be unambiguous, and it may be nice to not have to escape the `"`.
     /// We might support this at a later time, but it makes handling of the
     /// string literals messy, so for now we enforce the line break.
-    fn validate_multiline_string(&self, inner: Span) -> Result<()> {
+    ///
+    /// In addition, this method ensures that if two [`StringPart::String`] are
+    /// consecutive, the second one starts with a line break. The lexer may break
+    /// up the string into multiple tokens, but here we merge them again. It
+    /// simplifies the formatter when it can assume that consecutive string
+    /// parts are really separate lines.
+    fn parse_string_inner(&mut self, style: QuoteStyle, into: &mut Vec<StringPart>) -> Result<()> {
+        let inner = self.consume();
         let inner_str = inner.resolve(self.input);
-        if !inner_str.is_empty() && inner_str.as_bytes()[0] == b'\n' {
-            return Ok(());
-        }
-        let err = inner
-            .take(inner_str.find('\n').unwrap_or(inner_str.len()))
-            .error("Expected a line break after the \"\"\". Move this to the next line.");
-        Err(err)
-    }
 
-    fn parse_string(&mut self, style: QuoteStyle) -> Result<Expr> {
-        let span = self.consume();
+        let is_new_line = !inner_str.is_empty() && inner_str.as_bytes()[0] == b'\n';
 
-        if style == QuoteStyle::Triple {
-            let inner = span.trim_start(3).trim_end(3);
-            self.validate_multiline_string(inner)?;
+        if style == QuoteStyle::Triple && into.is_empty() && !is_new_line {
+            return inner
+                .error("Expected a line break after the \"\"\". Move this to the next line.")
+                .err();
         }
 
-        Ok(Expr::StringLit(style, span))
+        match into.last_mut() {
+            Some(StringPart::String(span)) if !is_new_line => *span = span.union(inner),
+            _ => into.push(StringPart::String(inner)),
+        }
+
+        Ok(())
     }
 
-    /// Parse a format string (`f"` or `f"""`).
-    fn parse_format_string(&mut self, style: QuoteStyle) -> Result<Expr> {
-        debug_assert_eq!(self.peek(), Some(Token::FormatOpen(style)));
-
-        let begin = self.consume();
-        let mut holes = Vec::new();
-        let mut prefix = begin;
+    fn parse_string(&mut self, prefix: StringPrefix, style: QuoteStyle) -> Result<Expr> {
+        let open = self.consume();
+        let mut parts = Vec::new();
+        let mut has_hole = false;
 
         loop {
-            self.skip_non_code()?;
-            let (span, body) = self.parse_expr()?;
-            self.skip_non_code()?;
-
-            let is_close = match self.peek() {
-                Some(Token::FormatInner(..)) => false,
-                Some(Token::FormatClose(..)) => true,
-                _ => {
-                    return self.error_with_note(
-                        "Unclosed hole in f-string, expected '}' here.",
-                        prefix.trim_start(prefix.len() - 1),
-                        "Hole opened here.",
-                    )
+            match self.peek() {
+                Some(Token::StringInner) => {
+                    self.parse_string_inner(style, &mut parts)?;
                 }
-            };
-
-            let suffix = self.consume();
-            let hole = FormatHole { span, body, suffix };
-            holes.push(hole);
-            prefix = suffix;
-
-            if is_close {
-                let result = Expr::FormatString {
-                    style,
-                    begin,
-                    holes,
-                };
-                if style == QuoteStyle::Triple {
-                    let begin_inner = begin.trim_start(4).trim_end(1);
-                    self.validate_multiline_string(begin_inner)?;
+                Some(Token::Escape(esc)) => {
+                    parts.push(StringPart::Escape(self.consume(), esc));
                 }
-                return Ok(result);
+                Some(Token::HoleOpen) => {
+                    // Consume the opening `{`.
+                    let hole_open = self.consume();
+                    let (span, expr) = self.parse_expr()?;
+                    parts.push(StringPart::Hole(span, expr));
+                    self.parse_token_with_note(
+                        Token::HoleClose,
+                        "Expected '}' here to close format string hole.",
+                        hole_open,
+                        "Unmatched '{' opened here.",
+                    )?;
+                    has_hole = true;
+                }
+                Some(Token::QuoteClose) => {
+                    let close = self.consume();
+                    if prefix == StringPrefix::Format && !has_hole {
+                        let span = open.union(close);
+                        return span
+                            .error("This format string has no holes, it can be a regular string.")
+                            .err();
+                    }
+                    let result = Expr::StringLit {
+                        prefix,
+                        style,
+                        open,
+                        close,
+                        parts,
+                    };
+                    return Ok(result);
+                }
+                invalid => panic!("The lexer should not have produced {invalid:?} in a string."),
             }
         }
     }

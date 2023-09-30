@@ -5,4 +5,4 @@ stdin:1:1
   ╷
 1 │ f"This f-string has no holes."
   ╵ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Error: This f-string has no holes, it can be a regular string.
+Error: This format string has no holes, it can be a regular string.

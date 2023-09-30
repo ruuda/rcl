@@ -48,7 +48,7 @@ syn keyword rclBuiltin contains[] get len
 syn cluster rclString contains=rclStringDouble,rclStringTriple,rclFormatDouble,rclFormatTriple
 highlight link rclStringDouble rclString
 highlight link rclStringTriple rclString
-highlight link rclFormatDobule rclString
+highlight link rclFormatDouble rclString
 highlight link rclFormatTriple rclString
 
 syn cluster rclExpr contains=@rclKeyword,rclOperator,@rclNumber,rclComment,rclBuiltin,@rclString

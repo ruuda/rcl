@@ -1,8 +1,10 @@
 "Invalid: \u00"
 
 # output:
-stdin:1:13
+stdin:1:11
   ╷
 1 │ "Invalid: \u00"
-  ╵             ^~
-Error: Expected four hex digits after '\u' escape sequence.
+  ╵           ^~~~
+Error: Expected four hex digits after '\u' Unicode escape sequence.
+
+Help: You can also use up to six hex digits enclosed in '{}'. For example '\u{1F574}' or '\u{0a}'.

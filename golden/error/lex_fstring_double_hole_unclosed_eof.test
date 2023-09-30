@@ -5,7 +5,7 @@ stdin:2:1
   ╷
 2 │ 
   ╵ ^
-Error: Expected '}'.
+Error: Expected '}' here to close format string hole.
 
 stdin:1:31
   ╷

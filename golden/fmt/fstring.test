@@ -15,6 +15,13 @@ let k =
   f"""
   {0}t""";
 
+let z0 = f"This string \n has an {"escape"} sequence \u{1F574} in it.";
+let z1 = f"""
+  As does
+  \t this one.
+  {"^ Tab above."}
+  """;
+
 f"""
 This { let strtype = "f"; strtype }-string has a hole too.
 """
@@ -32,6 +39,14 @@ let y = f"This f-string has {[
 let k =
   f"""
   {0}t""";
+
+let z0 = f"This string \n has an {"escape"} sequence \u{1F574} in it.";
+let z1 =
+  f"""
+  As does
+  \t this one.
+  {"^ Tab above."}
+  """;
 
 f"""
 This {let strtype = "f"; strtype}-string has a hole too.

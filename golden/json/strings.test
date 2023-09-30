@@ -1,8 +1,20 @@
 [
   """
   🕴︎︎
+  """,
   """
+  This string has a shared indent to be stripped,
+  even though the next line has no spaces on it:
+
+  """,
+  "
+  This string starts with a newline that should not be eaten.
+  "
 ]
 
 # output:
-["🕴︎︎\n"]
+[
+  "🕴︎︎\n",
+  "This string has a shared indent to be stripped,\neven though the next line has no spaces on it:\n\n",
+  "\n  This string starts with a newline that should not be eaten.\n  "
+]

@@ -5,6 +5,8 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+//! The lexer splits a string into a sequence of tokens.
+
 use crate::error::{IntoParseError, ParseError};
 use crate::source::{DocId, Span};
 
@@ -24,14 +26,24 @@ pub enum QuoteStyle {
     Triple,
 }
 
-impl QuoteStyle {
-    /// The byte length of the quotes.
-    pub fn len(&self) -> usize {
-        match self {
-            QuoteStyle::Double => 1,
-            QuoteStyle::Triple => 3,
-        }
-    }
+/// An escape sequence inside a string literal.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Escape {
+    /// A single-character escape sequence, e.g. `\n` or `\\`.
+    Single,
+    /// A `\u` escape sequence followed by 4 hex digits.
+    Unicode4,
+    /// A `\u{...}` escape sequence.
+    UnicodeDelim,
+}
+
+/// Whether a string literal is a format string or a regular string.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum StringPrefix {
+    /// No prefix, just the quotes: a regular string literal.
+    None,
+    /// An `f` prefix that indicates a format string.
+    Format,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -58,17 +70,23 @@ pub enum Token {
     /// A sequence of ascii alphanumeric or _, not starting with a digit.
     Ident,
 
-    /// A string enclosed in double or triple quotes.
-    Quoted(QuoteStyle),
+    /// An opening quote of a string, either `"`, `f"`, `"""`, or `f"""`.
+    QuoteOpen(StringPrefix, QuoteStyle),
 
-    /// An f-string until its first hole, e.g. `f" str {`.
-    FormatOpen(QuoteStyle),
+    /// A closing quote of a string, either `"` or `"""`.
+    QuoteClose,
 
-    /// An f-string between two holes, e.g. `} str {`.
-    FormatInner(QuoteStyle),
+    /// An inner part of a string literal or format string.
+    StringInner,
 
-    /// An f-string after the last hole, e.g. `} str"`.
-    FormatClose(QuoteStyle),
+    /// An escape sequence inside a string literal.
+    Escape(Escape),
+
+    /// The `{` that opens a hole inside an f-string.
+    HoleOpen,
+
+    /// The `}` that closes a hole inside an f-string.
+    HoleClose,
 
     /// A hexadecimal integer literal prefixed by `0x`.
     NumHexadecimal,
@@ -185,27 +203,21 @@ pub enum Token {
     Pipe,
 }
 
-/// The an element of the string interpolation stack.
-enum Delimiter {
+/// A state in the state stack of the lexer.
+#[derive(Debug)]
+enum State {
     /// Inside a `{}` in expression context.
     Brace,
     /// Inside a `()` in expression context.
     Paren,
     /// Inside a `[]` in expression context.
     Bracket,
+    /// Inside a string literal.
+    String(QuoteStyle),
+    /// Inside an f-string (in the string part, not the hole part).
+    Format(QuoteStyle),
     /// Inside a hole in an f-string.
-    Hole(QuoteStyle),
-}
-
-/// What type of string literal we are lexing.
-#[derive(Copy, Clone)]
-enum QuoteMode {
-    /// Not a format string.
-    Regular,
-    /// A format string before the first hole.
-    FormatOpen,
-    /// A format string after a hole.
-    FormatInner,
+    Hole,
 }
 
 pub type Lexeme = (Token, Span);
@@ -232,10 +244,10 @@ struct Lexer<'a> {
     doc: DocId,
     start: usize,
 
-    /// A stack of delimiters to determine what we are parsing.
+    /// A stack of states to determine what we are parsing.
     ///
-    /// Also the offset at which we encountered it.
-    delimiters: Vec<(Delimiter, usize)>,
+    /// Also the span at which we entered this state.
+    state: Vec<(Span, State)>,
 }
 
 impl<'a> Lexer<'a> {
@@ -244,7 +256,7 @@ impl<'a> Lexer<'a> {
             input,
             doc,
             start: 0,
-            delimiters: Vec::new(),
+            state: Vec::new(),
         }
     }
 
@@ -254,36 +266,6 @@ impl<'a> Lexer<'a> {
         let len = len.min(self.input.len() - start);
         self.start += len;
         Span::new(self.doc, start, start + len)
-    }
-
-    /// Build a parse error at the current cursor location.
-    fn error_while<F: FnMut(u8) -> bool, T>(
-        &mut self,
-        include: F,
-        message: &'static str,
-    ) -> Result<T> {
-        Err(self.take_while(include).error(message))
-    }
-
-    /// Build an error of the given length at the current cursor location.
-    fn error<T>(&mut self, len: usize, message: &'static str) -> Result<T> {
-        Err(self.span(len).error(message))
-    }
-
-    /// Build an error of length 1, with a note at the given offset.
-    fn error_with_note<T>(
-        &mut self,
-        message: &'static str,
-        note_offset: usize,
-        note: &'static str,
-    ) -> Result<T> {
-        let error = ParseError {
-            span: self.span(1),
-            message,
-            note: Some((Span::new(self.doc, note_offset, note_offset + 1), note)),
-            help: None,
-        };
-        Err(error)
     }
 
     /// Take `skip` bytes, and then more until `include` returns false.
@@ -297,45 +279,61 @@ impl<'a> Lexer<'a> {
         self.skip_take_while(0, include)
     }
 
-    /// Push a delimiter on the stack. Does not advance the cursor.
-    fn push_delimiter(&mut self, delimiter: Delimiter, offset: usize) {
-        self.delimiters.push((delimiter, offset));
+    /// Return the top of the state stack (without popping).
+    fn top_state(&self) -> Option<&State> {
+        self.state.last().map(|(_off, state)| state)
     }
 
     /// Pop a closing delimiter while verifying that it is the right one.
-    fn pop_delimiter(&mut self) -> Result<Delimiter> {
-        let actual_end = self.input.as_bytes()[self.start];
+    fn pop_delimiter(&mut self, span: Span) -> Result<State> {
+        let actual_end = self.input.as_bytes()[span.start()];
 
-        let top = match self.delimiters.pop() {
+        let top = match self.state.pop() {
             None => match actual_end {
-                b')' => return self.error(1, "Found unmatched ')'."),
-                b'}' => return self.error(1, "Found unmatched '}'."),
-                b']' => return self.error(1, "Found unmatched ']'."),
+                b')' => return span.error("Found unmatched ')'.").err(),
+                b'}' => return span.error("Found unmatched '}'.").err(),
+                b']' => return span.error("Found unmatched ']'.").err(),
                 invalid => unreachable!("Invalid byte for `pop_delimiter`: 0x{:x}", invalid),
             },
             Some(t) => t,
         };
-        let expected_end = match top.0 {
-            Delimiter::Paren => b')',
-            Delimiter::Brace => b'}',
-            Delimiter::Bracket => b']',
-            Delimiter::Hole(..) => b'}',
+        let expected_end = match top.1 {
+            State::Paren => b')',
+            State::Brace => b'}',
+            State::Bracket => b']',
+            State::Hole => b'}',
+            bad => panic!("Should not call `pop_delimiter` from {bad:?}."),
         };
 
         if actual_end == expected_end {
-            return Ok(top.0);
+            return Ok(top.1);
         }
 
-        match expected_end {
-            b')' => self.error_with_note("Expected ')'.", top.1, "Unmatched '(' opened here."),
-            b'}' => self.error_with_note("Expected '}'.", top.1, "Unmatched '{' opened here."),
-            b']' => self.error_with_note("Expected ']'.", top.1, "Unmatched '[' opened here."),
+        let err = match expected_end {
+            b')' => span
+                .error("Expected ')'.")
+                .with_note(top.0, "Unmatched '(' opened here."),
+            b'}' => span
+                .error("Expected '}'.")
+                .with_note(top.0, "Unmatched '{' opened here."),
+            b']' => span
+                .error("Expected ']'.")
+                .with_note(top.0, "Unmatched '[' opened here."),
             _ => unreachable!("End byte is one of the above three."),
-        }
+        };
+        Err(err)
     }
 
     /// Lex one token. The input must not be empty.
     fn next(&mut self) -> Result<Lexeme> {
+        match self.state.last() {
+            Some((_, State::String(style))) => self.next_in_string(*style),
+            Some((_, State::Format(style))) => self.next_in_format(*style),
+            _ => self.next_normal(),
+        }
+    }
+
+    fn next_normal(&mut self) -> Result<Lexeme> {
         let input = &self.input.as_bytes()[self.start..];
 
         debug_assert!(
@@ -352,26 +350,39 @@ impl<'a> Lexer<'a> {
         }
 
         if input.starts_with(b"f\"\"\"") {
-            return self.lex_in_quote(QuoteStyle::Triple, QuoteMode::FormatOpen);
+            let style = QuoteStyle::Triple;
+            let span = self.span(4);
+            self.state.push((span, State::Format(style)));
+            return Ok((Token::QuoteOpen(StringPrefix::Format, style), span));
         }
 
         if input.starts_with(b"\"\"\"") {
-            return self.lex_in_quote(QuoteStyle::Triple, QuoteMode::Regular);
+            let style = QuoteStyle::Triple;
+            let span = self.span(3);
+            self.state.push((span, State::String(style)));
+            return Ok((Token::QuoteOpen(StringPrefix::None, style), span));
         }
 
         if input.starts_with(b"f\"") {
-            return self.lex_in_quote(QuoteStyle::Double, QuoteMode::FormatOpen);
+            let style = QuoteStyle::Double;
+            let span = self.span(2);
+            self.state.push((span, State::Format(style)));
+            return Ok((Token::QuoteOpen(StringPrefix::Format, style), span));
         }
 
         if input[0] == b'"' {
-            return self.lex_in_quote(QuoteStyle::Double, QuoteMode::Regular);
+            let style = QuoteStyle::Double;
+            let span = self.span(1);
+            self.state.push((span, State::String(style)));
+            return Ok((Token::QuoteOpen(StringPrefix::None, style), span));
         }
 
         // What state to continue lexing in after the closing '}', depends on
         // whether it was closing an expression or a string interpolation.
         if input[0] == b'}' {
-            if let Delimiter::Hole(style) = self.pop_delimiter()? {
-                return self.lex_in_quote(style, QuoteMode::FormatInner);
+            if let Some(State::Hole) = self.top_state() {
+                self.state.pop();
+                return Ok((Token::HoleClose, self.span(1)));
             }
             // If it was a regular delimiter, then we continue lexing
             // normally.
@@ -394,20 +405,20 @@ impl<'a> Lexer<'a> {
         }
 
         if input[0].is_ascii_control() {
-            return self.error_while(
-                |ch| ch.is_ascii_control(),
-                "Control characters are not supported here.",
-            );
+            return self
+                .take_while(|ch| ch.is_ascii_control())
+                .error("Control characters are not supported here.")
+                .err();
         }
 
         if input[0] > 127 {
             // Multi-byte sequences of non-ascii code points are fine in
             // strings and comments, but not in the source code where we
             // expect identifiers.
-            return self.error_while(
-                |ch| ch > 127,
-                "Non-ascii characters are not supported here.",
-            );
+            return self
+                .take_while(|ch| ch > 127)
+                .error("Non-ascii characters are not supported here.")
+                .err();
         }
 
         unreachable!(
@@ -465,73 +476,6 @@ impl<'a> Lexer<'a> {
         (Token::LineComment, self.take_while(|ch| ch != b'\n'))
     }
 
-    fn lex_in_quote(&mut self, style: QuoteStyle, mode: QuoteMode) -> Result<Lexeme> {
-        let input = &self.input.as_bytes()[self.start..];
-
-        // The length of the start of the string literal depends on the quote
-        // style and whether it has the prefix 'f', or whether it was a hole.
-        let n_skip = match (style, mode) {
-            (style, QuoteMode::Regular) => style.len(),
-            (style, QuoteMode::FormatOpen) => style.len() + 1,
-            (_stle, QuoteMode::FormatInner) => 1,
-        };
-
-        let mut n_consecutive = 0;
-
-        for (i, &ch) in input.iter().enumerate().skip(n_skip) {
-            if ch != b'"' {
-                n_consecutive = 0;
-            }
-
-            // Indexing does not go out of bounds here because we start at 1.
-            if ch == b'"' && input[i - 1] == b'\\' {
-                // An escaped quote should not end the token.
-                continue;
-            }
-            if ch == b'{' && input[i - 1] == b'\\' {
-                // An escaped { should not open a hole.
-                continue;
-            }
-            if ch == b'{' {
-                let token = match mode {
-                    // Holes are only meaningful if we are in an f-string.
-                    QuoteMode::Regular => continue,
-                    QuoteMode::FormatOpen => Token::FormatOpen(style),
-                    QuoteMode::FormatInner => Token::FormatInner(style),
-                };
-                self.push_delimiter(Delimiter::Hole(style), self.start + i);
-                return Ok((token, self.span(i + 1)));
-            }
-            if ch == b'"' {
-                if style == QuoteStyle::Triple {
-                    n_consecutive += 1;
-                    if n_consecutive < 3 {
-                        continue;
-                    }
-                }
-                match mode {
-                    QuoteMode::Regular => {
-                        return Ok((Token::Quoted(style), self.span(i + 1)));
-                    }
-                    QuoteMode::FormatInner => {
-                        return Ok((Token::FormatClose(style), self.span(i + 1)));
-                    }
-                    QuoteMode::FormatOpen => {
-                        return self.error(
-                            i + 1,
-                            "This f-string has no holes, it can be a regular string.",
-                        );
-                    }
-                }
-            }
-        }
-
-        self.error_while(
-            |_| true,
-            "Unexpected end of input, string literal is not closed.",
-        )
-    }
-
     fn lex_in_number(&mut self) -> Result<Lexeme> {
         let mut input = &self.input.as_bytes()[self.start..];
         let mut n = 0;
@@ -578,10 +522,10 @@ impl<'a> Lexer<'a> {
         if let Some(b'.') = input.first() {
             if input[1..].first().map(|ch| ch.is_ascii_digit()) != Some(true) {
                 self.start += n;
-                return self.error_while(
-                    |_| false,
-                    "Expected a digit to follow the decimal point in this number.",
-                );
+                return self
+                    .span(1)
+                    .error("Expected a digit to follow the decimal point in this number.")
+                    .err();
             }
 
             let m = input[1..]
@@ -605,7 +549,9 @@ impl<'a> Lexer<'a> {
             if input.first().map(|ch| ch.is_ascii_digit()) != Some(true) {
                 self.start += n;
                 return self
-                    .error_while(|_| false, "Expected a digit of the number's exponent here.");
+                    .span(1)
+                    .error("Expected a digit of the number's exponent here.")
+                    .err();
             }
 
             n += input
@@ -649,31 +595,30 @@ impl<'a> Lexer<'a> {
 
     /// Try to lex punctuation of a single byte in length.
     fn lex_in_punct_monograph(&mut self) -> Result<Lexeme> {
-        let token = match self.input.as_bytes()[self.start] {
+        let span = self.span(1);
+        let token = match self.input.as_bytes()[span.start()] {
             b'(' => {
-                self.push_delimiter(Delimiter::Paren, self.start);
+                self.state.push((span, State::Paren));
                 Token::LParen
             }
             b'[' => {
-                self.push_delimiter(Delimiter::Bracket, self.start);
+                self.state.push((span, State::Bracket));
                 Token::LBracket
             }
             b'{' => {
-                self.push_delimiter(Delimiter::Brace, self.start);
+                self.state.push((span, State::Brace));
                 Token::LBrace
             }
             b')' => {
-                self.pop_delimiter()?;
+                self.pop_delimiter(span)?;
                 Token::RParen
             }
             b']' => {
-                self.pop_delimiter()?;
+                self.pop_delimiter(span)?;
                 Token::RBracket
             }
             b'}' => {
-                // Note, here we do not pop the delimiter, we have already
-                // popped it before when deciding whether it was the end of an
-                // interpolation hole or a regular bracket.
+                self.pop_delimiter(span)?;
                 Token::RBrace
             }
             b'<' => Token::Lt,
@@ -688,37 +633,177 @@ impl<'a> Lexer<'a> {
             b';' => Token::Semicolon,
             b'|' => Token::Pipe,
             b'#' => {
-                let err = self
-                    .span(1)
+                return span
                     .error("Unrecognized punctuation here.")
-                    .with_help("Comments are written with '//', not with '#'.");
-                return Err(err);
+                    .with_help("Comments are written with '//', not with '#'.")
+                    .err();
             }
-            _ => return self.error(1, "Unrecognized punctuation here."),
+            _ => return span.error("Unrecognized punctuation here.").err(),
         };
 
-        Ok((token, self.span(1)))
+        Ok((token, span))
+    }
+
+    /// Continue lexing inside a regular (non-format) string.
+    fn next_in_string(&mut self, style: QuoteStyle) -> Result<Lexeme> {
+        if let Some(lexeme) = self.lex_in_string(style)? {
+            return Ok(lexeme);
+        }
+        // We know that one character is not a \ or " for sure, then we take
+        // until one is, or until a newline. This ensures that we break up the
+        // inner parts of the string into lines, where every '\n' occurs at the
+        // start of a line. This makes it easy to strip the leading whitespace
+        // later in """-strings.
+        let span = self.skip_take_while(1, |ch| !matches!(ch, b'\\' | b'"' | b'\n'));
+        Ok((Token::StringInner, span))
+    }
+
+    /// Continue lexing inside a format string.
+    fn next_in_format(&mut self, style: QuoteStyle) -> Result<Lexeme> {
+        if let Some(lexeme) = self.lex_in_string(style)? {
+            return Ok(lexeme);
+        }
+
+        // This does not go index out of bounds; all continuations should have
+        // at least one byte, and `lex_in_string` also checks this.
+        if self.input.as_bytes()[self.start] == b'{' {
+            let span = self.span(1);
+            self.state.push((span, State::Hole));
+            return Ok((Token::HoleOpen, span));
+        }
+
+        // Same as in `next_in_string`, but also stopping at `{`.
+        let span = self.skip_take_while(1, |ch| !matches!(ch, b'\\' | b'"' | b'{' | b'\n'));
+        Ok((Token::StringInner, span))
+    }
+
+    /// Lex the cases in a string literal shared between strings and f-strings.
+    fn lex_in_string(&mut self, style: QuoteStyle) -> Result<Option<Lexeme>> {
+        let input = &self.input.as_bytes()[self.start..];
+
+        debug_assert!(
+            !input.is_empty(),
+            "Must have input before continuing to lex."
+        );
+
+        if input.starts_with(b"\\u{") {
+            // Take only hex digits, stop at anything else, even if we haven't
+            // encountered the closing `}` yet. If we only stopped at `}`, then
+            // we might continue past the closing quote of the string, and that
+            // would result in very puzzling errors.
+            let mut span = self.skip_take_while(3, |ch| ch.is_ascii_hexdigit());
+            let input = &self.input.as_bytes()[self.start..];
+            if !input.is_empty() && input[0] == b'}' {
+                span = self.span(1).union(span);
+                return Ok(Some((Token::Escape(Escape::UnicodeDelim), span)));
+            } else {
+                return span
+                    .trim_start(span.len())
+                    .error("Expected '}' to close Unicode escape sequence.")
+                    .err();
+            }
+        }
+        if input.starts_with(b"\\u") {
+            // Also here, we cannot blindly take 6 bytes, because in the error
+            // case, that might eat the closing quote and lead to very puzzling
+            // errors.
+            let input = &self.input.as_bytes()[self.start..];
+            let n = input
+                .iter()
+                .skip(2)
+                .take_while(|ch| ch.is_ascii_hexdigit())
+                .take(4)
+                .count();
+            if n == 4 {
+                return Ok(Some((Token::Escape(Escape::Unicode4), self.span(6))));
+            } else {
+                return self
+                    .span(2 + n)
+                    .error("Expected four hex digits after '\\u' Unicode escape sequence.")
+                    .with_help(
+                        "You can also use up to six hex digits enclosed in '{}'. \
+                        For example '\\u{1F574}' or '\\u{0a}'.",
+                    )
+                    .err();
+            }
+        }
+        if input[0] == b'\\' {
+            if input.len() == 1 {
+                return self
+                    .span(1)
+                    .error("Unexpected end of input in escape sequence.")
+                    .err();
+            }
+
+            // Special-case newlines for two reasons:
+            // 1. So we can report a special message that \ does not escape the
+            //    end of the line.
+            // 2. So we don't end up with newlines in the escape sequences,
+            //    because the pretty-printer does not expect those.
+            if input[1] == b'\r' || input[1] == b'\n' {
+                return self
+                    .span(2)
+                    .error("Invalid escape sequence.")
+                    .with_help(
+                        "To break a long string across lines, break it into \
+                        multiple strings and concatenate them with '+'.",
+                    )
+                    .err();
+            }
+
+            // We cannot just take the next character, because it may not lie
+            // inside a code point boundary.
+            let mut n = 2;
+            while !self.input.is_char_boundary(self.start + n) {
+                n += 1;
+            }
+            return match n {
+                2 => Ok(Some((Token::Escape(Escape::Single), self.span(2)))),
+                _ => self.span(n).error("Invalid escape sequence.").err(),
+            };
+        }
+
+        match style {
+            QuoteStyle::Double if input[0] == b'"' => {
+                self.state.pop();
+                Ok(Some((Token::QuoteClose, self.span(1))))
+            }
+            QuoteStyle::Triple if input.starts_with(b"\"\"\"") => {
+                self.state.pop();
+                Ok(Some((Token::QuoteClose, self.span(3))))
+            }
+            _ => Ok(None),
+        }
     }
 
     fn report_unclosed_delimiters(&mut self) -> Result<()> {
-        let top = match self.delimiters.pop() {
+        let top = match self.state.pop() {
             None => return Ok(()),
             Some(t) => t,
         };
 
-        match top.0 {
-            Delimiter::Paren => {
-                self.error_with_note("Expected ')'.", top.1, "Unmatched '(' opened here.")
-            }
-            Delimiter::Brace => {
-                self.error_with_note("Expected '}'.", top.1, "Unmatched '{' opened here.")
-            }
-            Delimiter::Bracket => {
-                self.error_with_note("Expected ']'.", top.1, "Unmatched '[' opened here.")
-            }
-            Delimiter::Hole(..) => {
-                self.error_with_note("Expected '}'.", top.1, "Unmatched '{' opened here.")
-            }
-        }
+        let span = self.span(0);
+
+        let err = match top.1 {
+            State::Paren => span
+                .error("Expected ')'.")
+                .with_note(top.0, "Unmatched '(' opened here."),
+            State::Brace => span
+                .error("Expected '}'.")
+                .with_note(top.0, "Unmatched '{' opened here."),
+            State::Bracket => span
+                .error("Expected ']'.")
+                .with_note(top.0, "Unmatched '[' opened here."),
+            State::Hole => span
+                .error("Expected '}' here to close format string hole.")
+                .with_note(top.0, "Unmatched '{' opened here."),
+            State::String(..) => span
+                .error("Unexpected end of input, string literal is not closed.")
+                .with_note(top.0, "String literal opened here."),
+            State::Format(..) => span
+                .error("Unexpected end of input, format string is not closed.")
+                .with_note(top.0, "Format string opened here."),
+        };
+        Err(err)
     }
 }

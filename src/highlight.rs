@@ -17,19 +17,25 @@ fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
     let blue = "\x1b[34m";
     let cyan = "\x1b[36m";
     let white = "\x1b[37m";
+    let magenta = "\x1b[35m";
     let reset = "\x1b[0m";
 
     match token {
         Token::Space | Token::Blank => reset,
         Token::LineComment => white,
-        Token::Quoted(..) => red,
-        Token::FormatOpen(..) | Token::FormatInner(..) | Token::FormatClose(..) => red,
         Token::NumBinary | Token::NumHexadecimal | Token::NumDecimal => cyan,
         Token::Ident => match token_bytes {
             // Give the builtins a different color.
             b"contains" | b"get" | b"len" => red,
-            _ => reset,
+            _ => blue,
         },
+
+        Token::QuoteOpen(..) | Token::QuoteClose | Token::StringInner => cyan,
+
+        Token::HoleOpen | Token::HoleClose => red,
+
+        Token::Escape(..) => magenta,
+
         Token::KwAnd
         | Token::KwAssert
         | Token::KwElse
@@ -44,7 +50,8 @@ fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
         | Token::KwThen
         | Token::KwTrace
         | Token::KwTrue => green,
-        _ => blue,
+
+        _ => reset,
     }
 }
 

@@ -13,14 +13,11 @@
 //! * Converting literals in the source code into values in the runtime.
 //! * Removing syntactical differences (e.g. converting `k = v;` into `"k": v`).
 
-use std::rc::Rc;
-
-use crate::ast::{Expr as AExpr, FormatFragment, Seq as ASeq, Stmt as AStmt, Yield};
+use crate::ast::{Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Yield};
 use crate::cst::Prefixed;
-use crate::cst::{Expr as CExpr, FormatHole, Seq as CSeq, Stmt as CStmt};
+use crate::cst::{Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart};
 use crate::error::{IntoParseError, Result};
 use crate::lexer::QuoteStyle;
-use crate::source::Span;
 use crate::string;
 
 /// Abstract an expression.
@@ -38,76 +35,65 @@ impl<'a> Abstractor<'a> {
         Self { input }
     }
 
-    /// Unescape the inner part of a string literal.
-    fn unescape(&self, str_inner: Span) -> Result<Rc<str>> {
-        Ok(string::unescape(self.input, str_inner)?.into())
-    }
+    /// Abstract a string or format string.
+    ///
+    /// For uniformity, we convert all string types into `Expr::Format`. Even if
+    /// the format has no holes, it may still consist of multiple lines that had
+    /// their leading spaces stripped, and we only glue those back together
+    /// during evaluation.
+    fn string(&self, style: QuoteStyle, parts: &[StringPart]) -> Result<AExpr> {
+        let n_strip = match style {
+            QuoteStyle::Double => 0,
+            QuoteStyle::Triple => string::count_common_leading_spaces(self.input, parts),
+        };
+        let mut fragments = Vec::new();
+        let mut current = String::new();
+        let mut current_span = None;
 
-    /// Unescape a `"""`-quoted string literal.
-    fn unescape_triple(&self, str_inner: Span) -> Result<Rc<str>> {
-        let result: Result<String> = string::fold_triple_string_lines(
-            self.input,
-            str_inner,
-            String::with_capacity(str_inner.len()),
-            |mut result, span| {
-                string::unescape_into(self.input, span, &mut result)?;
-                Ok(result)
-            },
-        );
-        Ok(result?.into())
-    }
+        for (i, part) in parts.iter().enumerate() {
+            match part {
+                StringPart::String(span) => {
+                    let line = span.resolve(self.input);
+                    if style == QuoteStyle::Triple && line.starts_with('\n') {
+                        if i > 0 {
+                            current.push('\n');
+                        }
+                        let n = line.len().min(1 + n_strip);
+                        current.push_str(&line[n..]);
+                    } else {
+                        current.push_str(line);
+                    }
+                    current_span = Some(current_span.unwrap_or(*span).union(*span));
+                }
+                StringPart::Escape(span, esc) => {
+                    string::unescape_into(self.input, *span, *esc, &mut current)?;
+                    current_span = Some(current_span.unwrap_or(*span).union(*span));
+                }
+                StringPart::Hole(span, expr) => {
+                    if !current.is_empty() {
+                        fragments.push(FormatFragment {
+                            span: current_span.expect("Must have string part before a hole."),
+                            body: Expr::StringLit(current.into()),
+                        });
+                        current = String::new();
+                        current_span = None;
+                    }
+                    fragments.push(FormatFragment {
+                        span: *span,
+                        body: self.expr(expr)?,
+                    });
+                }
+            }
+        }
 
-    /// Abstract a `f"`-quoted format string.
-    fn format_string_double(&self, begin: Span, holes: &[FormatHole]) -> Result<AExpr> {
-        let fragments: Result<Vec<_>> = string::fold_double_format_string(
-            begin,
-            holes,
-            Vec::new(),
-            |mut fragments, span| {
-                let frag = FormatFragment {
-                    span,
-                    body: AExpr::StringLit(self.unescape(span)?),
-                };
-                fragments.push(frag);
-                Ok(fragments)
-            },
-            |mut fragments, span, expr| {
-                let frag = FormatFragment {
-                    span,
-                    body: self.expr(expr)?,
-                };
-                fragments.push(frag);
-                Ok(fragments)
-            },
-        );
-        Ok(AExpr::Format(fragments?))
-    }
+        if !current.is_empty() {
+            fragments.push(FormatFragment {
+                span: current_span.expect("If we have a fragment, we should have a span."),
+                body: Expr::StringLit(current.into()),
+            });
+        }
 
-    /// Abstract a `f"""`-quoted format string.
-    fn format_string_triple(&self, begin: Span, holes: &[FormatHole]) -> Result<AExpr> {
-        let fragments: Result<Vec<_>> = string::fold_triple_format_string_lines(
-            self.input,
-            begin,
-            holes,
-            Vec::new(),
-            |mut fragments, span| {
-                let frag = FormatFragment {
-                    span,
-                    body: AExpr::StringLit(self.unescape(span)?),
-                };
-                fragments.push(frag);
-                Ok(fragments)
-            },
-            |mut fragments, span, expr| {
-                let frag = FormatFragment {
-                    span,
-                    body: self.expr(expr)?,
-                };
-                fragments.push(frag);
-                Ok(fragments)
-            },
-        );
-        Ok(AExpr::Format(fragments?))
+        Ok(AExpr::Format(fragments))
     }
 
     /// Abstract a statement.
@@ -167,28 +153,7 @@ impl<'a> Abstractor<'a> {
 
             CExpr::BoolLit(_span, b) => AExpr::BoolLit(*b),
 
-            CExpr::StringLit(style, span) => {
-                // Cut off the string literal quotes.
-                let len = style.len();
-                let span_inner = span.trim_start(len).trim_end(len);
-
-                match style {
-                    QuoteStyle::Double => AExpr::StringLit(self.unescape(span_inner)?),
-                    QuoteStyle::Triple => AExpr::StringLit(self.unescape_triple(span_inner)?),
-                }
-            }
-
-            CExpr::FormatString {
-                style: QuoteStyle::Double,
-                begin,
-                holes,
-            } => self.format_string_double(*begin, holes)?,
-
-            CExpr::FormatString {
-                style: QuoteStyle::Triple,
-                begin,
-                holes,
-            } => self.format_string_triple(*begin, holes)?,
+            CExpr::StringLit { style, parts, .. } => self.string(*style, parts)?,
 
             CExpr::NumHexadecimal(span) => {
                 // Cut off the 0x, then parse the rest.

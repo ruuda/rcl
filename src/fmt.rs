@@ -10,8 +10,8 @@
 //! The formatter converts the CST into a [`Doc`], which can subsequently be
 //! pretty-printed for formatting.
 
-use crate::cst::{Expr, FormatHole, NonCode, Prefixed, Seq, Stmt};
-use crate::lexer::QuoteStyle;
+use crate::cst::{Expr, NonCode, Prefixed, Seq, Stmt, StringPart};
+use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
 use crate::source::Span;
 use crate::string;
@@ -84,88 +84,92 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
-    /// Push a line that is part of a `"""` or `f"""` string literal.
-    fn push_string_line(&self, span: Span, out: &mut Vec<Doc<'a>>) {
-        let mut has_newline = false;
-        let mut line = span.resolve(self.input);
-        let mut n_trailing_spaces = 0_u32;
-        if !line.is_empty() && line.as_bytes()[line.len() - 1] == b'\n' {
-            line = &line[..line.len() - 1];
-            has_newline = true;
-            // If there are trailing spaces, the pretty-printer would eat them.
-            // We can (and maybe should) fix this in the pretty printer, but
-            // trailing spaces are a hazard to humans too, so instead of
-            // preserving them verbatim, we escape them to make them visible.
-            // This has the nice side effects of removing trailing whitespace,
-            // so it doesn't get eaten.
-            while !line.is_empty() && line.as_bytes()[line.len() - 1] == b' ' {
-                line = &line[..line.len() - 1];
-                n_trailing_spaces += 1;
+    /// Format a `"` or `f"` quoted string or format string.
+    fn string_double(&self, open: &'static str, parts: &[StringPart]) -> Doc<'a> {
+        let mut result = vec![open.into()];
+
+        for part in parts {
+            match part {
+                StringPart::String(span) => {
+                    result.push(self.raw_span(*span));
+                }
+                StringPart::Escape(span, _esc) => {
+                    result.push(self.span(*span));
+                }
+                StringPart::Hole(_span, expr) => {
+                    // TODO: Add soft breaks around the hole contents?
+                    result.push("{".into());
+                    result.push(self.expr(expr));
+                    result.push("}".into());
+                }
             }
         }
+
+        result.push("\"".into());
+
+        Doc::Concat(result)
+    }
+
+    /// Push a line that is part of a `"""` or `f"""` string literal.
+    ///
+    /// The line contents should not contain `\n`.
+    fn push_string_line(&self, line: &'a str, out: &mut Vec<Doc<'a>>) {
+        let mut line = line;
+        let mut n_trailing_spaces = 0_u32;
+
+        // If there are trailing spaces, the pretty-printer would eat them.
+        // We can (and maybe should) fix this in the pretty printer, but
+        // trailing spaces are a hazard to humans too, so instead of
+        // preserving them verbatim, we escape them to make them visible.
+        // This has the nice side effects of removing trailing whitespace,
+        // so it doesn't get eaten.
+        while !line.is_empty() && line.as_bytes()[line.len() - 1] == b' ' {
+            line = &line[..line.len() - 1];
+            n_trailing_spaces += 1;
+        }
+
         out.push(line.into());
         for _ in 0..n_trailing_spaces {
             out.push(r"\u0020".into());
         }
-        if has_newline {
-            out.push(Doc::HardBreak);
+    }
+
+    /// Format a `"""` or `f"""` quoted string or format string.
+    fn string_triple(&self, open: &'static str, parts: &[StringPart]) -> Doc<'a> {
+        let n_strip = string::count_common_leading_spaces(self.input, parts);
+        let mut result = vec![open.into()];
+
+        for (i, part) in parts.iter().enumerate() {
+            match part {
+                StringPart::String(span) => {
+                    let mut line = span.resolve(self.input);
+
+                    // If we are at the start of a new line, strip the leading
+                    // whitespace and emit the line break to the document.
+                    if line.starts_with('\n') {
+                        result.push(Doc::HardBreak);
+                        line = span.trim_start(1 + n_strip).resolve(self.input);
+                    }
+
+                    // If we are at the end of a line, and there is a next line,
+                    // then we need to be careful about how to emit the line
+                    // without creating trailing whitespace.
+                    match parts.get(i + 1) {
+                        Some(StringPart::String(..)) => self.push_string_line(line, &mut result),
+                        _ => result.push(line.into()),
+                    }
+                }
+                StringPart::Escape(span, _esc) => {
+                    result.push(self.span(*span));
+                }
+                StringPart::Hole(_span, expr) => {
+                    // TODO: Add soft breaks around the hole contents?
+                    result.push("{".into());
+                    result.push(self.expr(expr));
+                    result.push("}".into());
+                }
+            }
         }
-    }
-
-    /// Format a `"""`-quoted string literal.
-    fn string_triple(&self, span: Span) -> Doc<'a> {
-        let mut result = vec!["\"\"\"".into(), Doc::HardBreak];
-
-        result = string::fold_triple_string_lines(
-            self.input,
-            span.trim_start(3).trim_end(3),
-            result,
-            |mut result, line| {
-                self.push_string_line(line, &mut result);
-                Ok::<_, ()>(result)
-            },
-        )
-        .expect("We don't return Err from the closure.");
-
-        result.push("\"\"\"".into());
-
-        flush_indent! { Doc::Concat(result) }
-    }
-
-    /// Format a `f"`-quoted format string.
-    fn format_string_double(&self, begin: Span, holes: &[FormatHole]) -> Doc<'a> {
-        let mut result = Vec::new();
-        result.push(self.raw_span(begin));
-        for hole in holes {
-            // TODO: Add soft breaks around the hole contents?
-            result.push(self.expr(&hole.body));
-            result.push(self.raw_span(hole.suffix));
-        }
-        Doc::Concat(result)
-    }
-
-    /// Format a `f"""`-quoted format string.
-    fn format_string_triple(&self, begin: Span, holes: &[FormatHole]) -> Doc<'a> {
-        let mut result = vec!["f\"\"\"".into(), Doc::HardBreak];
-
-        result = string::fold_triple_format_string_lines(
-            self.input,
-            begin,
-            holes,
-            result,
-            |mut result, line| {
-                self.push_string_line(line, &mut result);
-                Ok::<_, ()>(result)
-            },
-            |mut result, _span, expr| {
-                // TODO: Add soft breaks around the hole contents?
-                result.push("{".into());
-                result.push(self.expr(expr));
-                result.push("}".into());
-                Ok::<_, ()>(result)
-            },
-        )
-        .expect("We don't return Err from the closure.");
 
         result.push("\"\"\"".into());
 
@@ -266,19 +270,24 @@ impl<'a> Formatter<'a> {
 
             Expr::BoolLit(span, ..) => self.span(*span),
 
-            Expr::StringLit(QuoteStyle::Double, span) => self.raw_span(*span),
-            Expr::StringLit(QuoteStyle::Triple, span) => self.string_triple(*span),
-
-            Expr::FormatString {
-                begin,
-                holes,
-                style: QuoteStyle::Double,
-            } => self.format_string_double(*begin, holes),
-            Expr::FormatString {
-                begin,
-                holes,
-                style: QuoteStyle::Triple,
-            } => self.format_string_triple(*begin, holes),
+            Expr::StringLit {
+                prefix: StringPrefix::None,
+                style,
+                parts,
+                ..
+            } => match style {
+                QuoteStyle::Double => self.string_double("\"", parts),
+                QuoteStyle::Triple => self.string_triple("\"\"\"", parts),
+            },
+            Expr::StringLit {
+                prefix: StringPrefix::Format,
+                style,
+                parts,
+                ..
+            } => match style {
+                QuoteStyle::Double => self.string_double("f\"", parts),
+                QuoteStyle::Triple => self.string_triple("f\"\"\"", parts),
+            },
 
             Expr::NumHexadecimal(span) => {
                 // Normalize A-F to a-f.

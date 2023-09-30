@@ -95,7 +95,7 @@ impl Env {
             .map(|(_k, v)| v)
     }
 
-    /// Return a checkpoint of the environment to later [`pop`] to.
+    /// Return a checkpoint of the environment to later [`Env::pop`] to.
     ///
     /// Note, the environment is a stack and the pushes and pops have to be
     /// balanced; popping can only remove bindings from the environment again,

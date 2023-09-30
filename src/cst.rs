@@ -18,7 +18,7 @@
 //! implied by the structure of the tree. For example, for a let-binding, it
 //! does not store the span of the `let` keyword nor of the `=` after the name.
 
-use crate::lexer::QuoteStyle;
+use crate::lexer::{Escape, QuoteStyle, StringPrefix};
 use crate::source::Span;
 
 /// A unary operator.
@@ -88,17 +88,15 @@ pub struct Prefixed<T> {
     pub inner: T,
 }
 
-/// A hole in a format string.
+/// A part of a string literal or format string.
 #[derive(Debug)]
-pub struct FormatHole {
-    /// The span of the expression that fills the hole, excluding `}` and `{`.
-    pub span: Span,
-
-    /// The expression that fills the hole.
-    pub body: Expr,
-
-    /// The string literal following the hole, including `}`.
-    pub suffix: Span,
+pub enum StringPart {
+    /// A fragment of a line. The `\n` is leading, not trailing.
+    String(Span),
+    /// An escape sequence.
+    Escape(Span, Escape),
+    /// An interpolation hole (only inside format strings).
+    Hole(Span, Expr),
 }
 
 /// A `let`-binding, `assert`, or `trace`.
@@ -148,7 +146,7 @@ pub enum Expr {
         elements: Box<[Prefixed<Seq>]>,
     },
 
-    /// A `[]`-encosed collection literal.
+    /// A `[]`-enclosed collection literal.
     BracketLit {
         open: Span,
         close: Span,
@@ -169,17 +167,18 @@ pub enum Expr {
     /// A boolean literal.
     BoolLit(Span, bool),
 
-    /// A string literal quoted in double or triple quotes (`"`).
-    StringLit(QuoteStyle, Span),
-
-    /// A format string, also called f-string.
-    FormatString {
-        /// Whether the string is double (`f"`) or triple (`f"""`) quoted.
+    /// A string literal (both regular and format string).
+    StringLit {
+        /// Whether the string is a format string or not.
+        prefix: StringPrefix,
+        /// Whether the string is double (`"`) or triple (`"""`) quoted.
         style: QuoteStyle,
-        /// The string literal up to and including the `{` of the first hole.
-        begin: Span,
-        /// Contents of a hole followed by the string literal after it.
-        holes: Vec<FormatHole>,
+        /// The opening quote.
+        open: Span,
+        /// The closing quote.
+        close: Span,
+        /// Inner parts of the string literal, split by line, and holes.
+        parts: Vec<StringPart>,
     },
 
     /// An integer in hexadecimal notation.

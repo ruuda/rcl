@@ -1,10 +1,10 @@
 "Invalid: \unothex"
 
 # output:
-stdin:1:13
+stdin:1:11
   ╷
 1 │ "Invalid: \unothex"
-  ╵             ^
-Error: Invalid '\u' escape sequence.
+  ╵           ^~
+Error: Expected four hex digits after '\u' Unicode escape sequence.
 
-Help: The code point must be exactly four hex digits, or enclosed in '[]'. For example '\u000a' or '\u[0a]'.
+Help: You can also use up to six hex digits enclosed in '{}'. For example '\u{1F574}' or '\u{0a}'.

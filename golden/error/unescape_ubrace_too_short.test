@@ -1,0 +1,8 @@
+"Invalid: \u{} empty."
+
+# output:
+stdin:1:11
+  ╷
+1 │ "Invalid: \u{} empty."
+  ╵           ^~~~
+Error: Unicode escape sequence is empty, expected at least one hex digit.
