@@ -13,6 +13,7 @@
 pub mod abstraction;
 pub mod ast;
 pub mod cst;
+pub mod error;
 pub mod error_old;
 pub mod eval;
 pub mod fmt;
