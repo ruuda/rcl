@@ -24,16 +24,6 @@ pub enum QuoteStyle {
     Triple,
 }
 
-impl QuoteStyle {
-    /// The byte length of the quotes.
-    pub fn len(&self) -> usize {
-        match self {
-            QuoteStyle::Double => 1,
-            QuoteStyle::Triple => 3,
-        }
-    }
-}
-
 /// An escape sequence inside a string literal.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Escape {
