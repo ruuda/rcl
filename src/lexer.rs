@@ -266,6 +266,21 @@ impl<'a> Lexer<'a> {
         Span::new(self.doc, start, start + len)
     }
 
+    /// Take at least `min_len` bytes from the input, rounding up to a character boundary.
+    ///
+    /// If we already know it is safe to slice a given length, then `span` is
+    /// better to use, but if we haven't inspected all bytes in the span, then
+    /// we may be slicing a code point in half, which would be bad because when
+    /// we try to use it, slicing the span out will panic.
+    fn span_char(&mut self, min_len: usize) -> Span {
+        debug_assert!(self.start + min_len <= self.input.len());
+        let mut n = min_len;
+        while !self.input.is_char_boundary(self.start + n) {
+            n += 1;
+        }
+        self.span(n)
+    }
+
     /// Take `skip` bytes, and then more until `include` returns false.
     fn skip_take_while<F: FnMut(u8) -> bool>(&mut self, skip: usize, mut include: F) -> Span {
         let input = &self.input.as_bytes()[self.start + skip..];
@@ -547,7 +562,7 @@ impl<'a> Lexer<'a> {
             if input.first().map(|ch| ch.is_ascii_digit()) != Some(true) {
                 self.start += n;
                 return self
-                    .span(1)
+                    .span(0)
                     .error("Expected a digit of the number's exponent here.")
                     .err();
             }
@@ -751,13 +766,10 @@ impl<'a> Lexer<'a> {
 
             // We cannot just take the next character, because it may not lie
             // inside a code point boundary.
-            let mut n = 2;
-            while !self.input.is_char_boundary(self.start + n) {
-                n += 1;
-            }
-            return match n {
-                2 => Ok(Some((Token::Escape(Escape::Single), self.span(2)))),
-                _ => self.span(n).error("Invalid escape sequence.").err(),
+            let span = self.span_char(2);
+            return match span.len() {
+                2 => Ok(Some((Token::Escape(Escape::Single), span))),
+                _ => span.error("Invalid escape sequence.").err(),
             };
         }
 

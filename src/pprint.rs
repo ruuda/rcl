@@ -121,7 +121,7 @@ impl Config {
 /// first and last outputs are valid, so this gives us more control: the
 /// middle example can still be produced, by wrapping the `Doc::Indent` in
 /// a `Doc::Group`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Doc<'a> {
     /// A string slice to be spliced into the output.
     Str { content: &'a str, width: u32 },

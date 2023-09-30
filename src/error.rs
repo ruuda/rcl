@@ -34,6 +34,7 @@ pub type Result<T> = std::result::Result<T, Box<Error>>;
 /// for the end user. So we merge all of them into a single error type, but
 /// preserve enough of the structure to allow for alternative reporting formats
 /// (e.g. json output) to enable tooling.
+#[derive(Debug)]
 pub struct Error {
     pub message: Doc<'static>,
     pub origin: Option<Span>,
