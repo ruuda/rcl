@@ -1,0 +1,12 @@
+(
+  // This is a regression test, should not escape spaces before the "" even
+  // though the lexer breaks the token up at that point.
+  """
+  "" <- That breaks up this line for the lexer."""
+)
+
+# output:
+(
+  """
+  "" <- That breaks up this line for the lexer."""
+)

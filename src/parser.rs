@@ -712,6 +712,8 @@ impl<'a> Parser<'a> {
                         (QuoteStyle::Triple, 0) => self.consume_initial_multiline_string()?,
                         _ => self.consume(),
                     };
+                    // TODO: Merge this with the prior, if the current span does
+                    // not start with a newline.
                     parts.push(StringPart::String(span));
                 }
                 Some(Token::Escape(esc)) => {
