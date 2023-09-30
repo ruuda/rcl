@@ -58,13 +58,14 @@ fn dict<'a>(vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>) -> Doc<'a>
             elements.push(",".into());
             elements.push(Doc::Sep);
         }
-        match k.as_ref() {
+        let k_doc = match k.as_ref() {
             Value::String(k_str) => {
                 // TODO: Format as identifier, without quotes, if possible.
                 string(k_str.as_ref()).with_markup(Markup::Identifier)
             }
             _not_string => value(k),
         };
+        elements.push(k_doc);
         elements.push(": ".into());
         elements.push(value(v));
     }
