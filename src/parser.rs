@@ -5,6 +5,8 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+//! The parser converts a sequence of tokens into a Concrete Syntax Tree.
+
 use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, UnOp};
 use crate::error::{IntoParseError, ParseError};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};

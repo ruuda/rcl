@@ -5,6 +5,8 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+//! The lexer splits a string into a sequence of tokens.
+
 use crate::error::{IntoParseError, ParseError};
 use crate::source::{DocId, Span};
 
