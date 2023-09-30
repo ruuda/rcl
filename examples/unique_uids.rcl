@@ -1,0 +1,36 @@
+// Suppose you manage a fleet of servers that have various services running
+// on them, and you want to statically allocate a user id for a system user
+// for each of these services. We could define a mapping of service name to
+// uid like so:
+let uids = {
+  goat-teleporter = 10_000;
+  logs-archiver = 10_001;
+  device-monitor = 10_002;
+  prometheus-node-exporter = 10_003;
+
+  // Uncomment the following line to trigger the problem explained below.
+  // prometheus-smartctl-exporter = 10_003;
+};
+
+// However, in this configuration it is easy to accidentally use the same uid
+// twice, which would be disastrous. We can prevent this statically using an
+// assertion:
+let unique_uids = {for _name, uid in uids: uid};
+let names_per_uid = {
+  for target_uid in unique_uids:
+  target_uid: [
+    for service_name, service_uid in uids:
+    if target_uid == service_uid:
+    service_name
+  ]
+};
+let reused_uids = {
+  for uid, services in names_per_uid:
+  // TODO: Add List.len.
+  if {for s in services: s}.len() > 1:
+  uid: services
+};
+// TODO: Add Dict.len.
+assert {for _, _ in reused_uids: 1}.len() == 0, ["Some UIDs are used twice:", reused_uids];
+
+uids
