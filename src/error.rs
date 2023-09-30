@@ -7,12 +7,21 @@
 
 //! Types and functions for error reporting.
 
-use crate::error_old;
+use std::rc::Rc;
+
 use crate::markup::Markup;
-use crate::pprint::Doc;
+use crate::pprint::{concat, Doc};
 use crate::source::{Inputs, Span};
 
 pub type Result<T> = std::result::Result<T, Box<Error>>;
+
+/// Element of a path through a value.
+// TODO: Record the value itself as well, so we can *show* the thing that's wrong.
+#[derive(Debug)]
+pub enum PathElement {
+    Key(Rc<str>),
+    Index(usize),
+}
 
 /// Any type of error that occurred in the program.
 ///
@@ -36,9 +45,28 @@ pub type Result<T> = std::result::Result<T, Box<Error>>;
 /// (e.g. json output) to enable tooling.
 #[derive(Debug)]
 pub struct Error {
+    /// The main message of the error.
+    ///
+    ///  * Shorter is better.
+    ///  * Simpler is better (no jargon).
+    ///  * The expected thing goes first, the actual thing goes second.
     pub message: Doc<'static>,
+
+    /// The source location of the error.
     pub origin: Option<Span>,
+
+    /// For errors that originated from a value, the path in the value.
+    pub path: Vec<PathElement>,
+
+    /// Any other relevant spans.
+    ///
+    /// For example, an unmatched parenthesis can point to the opening paren.
     pub notes: Vec<(Span, Doc<'static>)>,
+
+    /// Additional information, or a hint on how to fix the problem.
+    ///
+    /// For example, when the user writes a `#`, we can explain that comments
+    /// are written with `//` instead.
     pub help: Option<Doc<'static>>,
 }
 
@@ -51,6 +79,7 @@ impl Error {
         Error {
             message: message.into(),
             origin: None,
+            path: Vec::new(),
             notes: Vec::new(),
             help: None,
         }
@@ -73,9 +102,43 @@ impl Error {
         self
     }
 
+    /// Replace the value path with the given path.
+    pub fn with_path(mut self, path: Vec<PathElement>) -> Error {
+        self.path = path;
+        self
+    }
+
     /// Wrap the error in a `Result::Err`.
     pub fn err<T>(self) -> Result<T> {
         Err(Box::new(self))
+    }
+
+    fn report_path(&self) -> Doc<'static> {
+        // TODO: Find a prettier way to report the value path of an error.
+        // For now this will do.
+        if self.path.is_empty() {
+            return Doc::empty();
+        }
+        let mut path_doc = vec![Doc::from("in value"), Doc::HardBreak];
+        for elem in self.path.iter().rev() {
+            match elem {
+                PathElement::Key(k) => {
+                    // TODO: Use the json pretty printer to report this.
+                    let mut v = "\"".to_string();
+                    crate::string::escape_json(k, &mut v);
+                    v.push('"');
+                    path_doc.push("at key ".into());
+                    path_doc.push(Doc::from(v).with_markup(Markup::String));
+                }
+                PathElement::Index(i) => {
+                    let v = i.to_string();
+                    path_doc.push("at index ".into());
+                    path_doc.push(Doc::from(v).with_markup(Markup::Number));
+                }
+            }
+            path_doc.push(Doc::HardBreak);
+        }
+        Doc::Concat(path_doc)
     }
 
     /// Format the error into a [`Doc`] that can be printed to stderr.
@@ -85,6 +148,8 @@ impl Error {
         if let Some(span) = self.origin {
             result.push(highlight_span(inputs, span, Markup::Error))
         }
+
+        result.push(self.report_path());
 
         result.push(Doc::from("Error:").with_markup(Markup::Error));
         result.push(" ".into());
@@ -133,8 +198,6 @@ impl IntoError for Span {
 pub fn highlight_span<'a>(inputs: &'a Inputs, span: Span, markup: Markup) -> Doc<'a> {
     use std::cmp;
     use unicode_width::UnicodeWidthStr;
-
-    use crate::pprint::concat;
 
     let doc = &inputs[span.doc().0 as usize];
     let input = doc.data;
@@ -223,32 +286,5 @@ pub fn highlight_span<'a>(inputs: &'a Inputs, span: Span, markup: Markup) -> Doc
         Doc::HardBreak
         line_num_pad " " Doc::from("╵").with_markup(markup) " " mark_indent doc_under.with_markup(markup)
         Doc::HardBreak
-    }
-}
-
-// For backwards compatibility while we migrate all errors.
-impl From<Box<dyn error_old::Error>> for Box<Error> {
-    fn from(err: Box<dyn error_old::Error>) -> Box<Error> {
-        fn mk_doc(msg: &str) -> Doc<'static> {
-            let mut result = Vec::new();
-            for line in msg.lines() {
-                if !result.is_empty() {
-                    result.push(Doc::HardBreak);
-                }
-                result.push(line.to_string().into());
-            }
-            Doc::Concat(result)
-        }
-        let err = Error {
-            message: mk_doc(err.message()),
-            origin: err.span(),
-            notes: err
-                .notes()
-                .iter()
-                .map(|(span, msg)| (*span, mk_doc(msg)))
-                .collect(),
-            help: err.help().map(mk_doc),
-        };
-        Box::new(err)
     }
 }
