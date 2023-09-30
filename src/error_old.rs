@@ -33,51 +33,6 @@ pub trait Error: std::fmt::Debug {
     fn help(&self) -> Option<&str>;
 }
 
-/// We encountered some IO failure.
-#[derive(Debug)]
-pub struct IoError {
-    pub message: String,
-}
-
-impl IoError {
-    pub fn new(message: String) -> IoError {
-        IoError { message }
-    }
-}
-
-impl From<String> for IoError {
-    fn from(err: String) -> Self {
-        IoError::new(err)
-    }
-}
-
-impl From<&str> for IoError {
-    fn from(err: &str) -> Self {
-        IoError::new(err.to_string())
-    }
-}
-
-impl From<IoError> for Box<dyn Error> {
-    fn from(err: IoError) -> Self {
-        Box::new(err)
-    }
-}
-
-impl Error for IoError {
-    fn message(&self) -> &str {
-        &self.message
-    }
-    fn span(&self) -> Option<Span> {
-        None
-    }
-    fn notes(&self) -> &[(Span, &str)] {
-        &[]
-    }
-    fn help(&self) -> Option<&str> {
-        None
-    }
-}
-
 /// A syntax error that causes lexing or parsing to fail.
 #[derive(Debug)]
 pub struct ParseError {
