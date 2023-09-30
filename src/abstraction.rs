@@ -54,8 +54,8 @@ impl<'a> Abstractor<'a> {
             match part {
                 StringPart::String(span) => {
                     let line = span.resolve(self.input);
-                    if line.starts_with('\n') {
-                        if i != 0 {
+                    if style == QuoteStyle::Triple && line.starts_with('\n') {
+                        if i > 0 {
                             current.push('\n');
                         }
                         let n = line.len().min(1 + n_strip);
