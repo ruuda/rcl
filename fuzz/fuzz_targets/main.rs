@@ -97,7 +97,7 @@ fn fuzz_eval(loader: &mut Loader, input: &str) -> Result<()> {
 fn run_fmt(loader: &mut Loader, input: &str, cfg: &pprint::Config) -> Result<String> {
     let id = loader.load_string(input.to_string());
     let cst = loader.get_cst(id)?;
-    let doc = rcl::fmt::format_expr(&input, &cst);
+    let doc = rcl::fmt_cst::format_expr(&input, &cst);
     let result = doc.println(cfg);
     Ok(result)
 }
@@ -124,14 +124,14 @@ fn fuzz_eval_json(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Resu
     let val_1 = loader.evaluate(doc_1, &mut env)?;
 
     let full_span = loader.get_span(doc_1);
-    let json = rcl::json::format_json(full_span, val_1.as_ref())?;
+    let json = rcl::fmt_json::format_json(full_span, val_1.as_ref())?;
 
     let out_1 = json.println(&cfg);
     let doc_2 = loader.load_string(out_1);
     let val_2 = loader.evaluate(doc_2, &mut env)?;
 
     let full_span = loader.get_span(doc_2);
-    let json = rcl::json::format_json(full_span, val_2.as_ref())?;
+    let json = rcl::fmt_json::format_json(full_span, val_2.as_ref())?;
     let out_2 = json.println(&cfg);
 
     assert_eq!(

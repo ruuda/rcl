@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-//! Conversion from and to json.
+//! Formatter that prints values as json.
 
 use std::rc::Rc;
 
@@ -60,16 +60,14 @@ impl Formatter {
 
     fn list<'a>(&mut self, vs: impl Iterator<Item = &'a Rc<Value>>) -> Result<Doc<'a>> {
         let mut elements = Vec::new();
-        let mut is_first = true;
         for (i, v) in vs.enumerate() {
-            if !is_first {
+            if !elements.is_empty() {
                 elements.push(",".into());
                 elements.push(Doc::Sep);
             }
             self.path.push(PathElement::Index(i));
             elements.push(self.value(v)?);
             self.path.pop().expect("Push and pop are balanced.");
-            is_first = false;
         }
         let result = group! {
             "["
@@ -86,9 +84,8 @@ impl Formatter {
         vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>,
     ) -> Result<Doc<'a>> {
         let mut elements = Vec::new();
-        let mut is_first = true;
         for (k, v) in vs {
-            if !is_first {
+            if !elements.is_empty() {
                 elements.push(",".into());
                 elements.push(Doc::Sep);
             }
@@ -103,7 +100,6 @@ impl Formatter {
             elements.push(": ".into());
             elements.push(self.value(v)?);
             self.path.pop().expect("Push and pop are balanced.");
-            is_first = false;
         }
         let result = group! {
             "{"

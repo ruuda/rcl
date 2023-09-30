@@ -393,7 +393,7 @@ fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
                         Value::String(msg) => msg.to_string().into(),
                         // TODO: Add an infallible RCL formatter, so we can
                         // always include the message.
-                        _ => match crate::json::format_json(*condition_span, &message) {
+                        _ => match crate::fmt_json::format_json(*condition_span, &message) {
                             Ok(msg_doc) => msg_doc.into_owned(),
                             Err(..) => Doc::from(
                                 "The assertion includes a message, \

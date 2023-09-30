@@ -52,7 +52,7 @@ fn main_eval(loader: &Loader, doc: DocId) -> Result<()> {
     let val = loader.evaluate(doc, &mut env)?;
 
     let full_span = loader.get_span(doc);
-    let json = rcl::json::format_json(full_span, val.as_ref())?;
+    let json = rcl::fmt_json::format_json(full_span, val.as_ref())?;
     let stdout = std::io::stdout();
     let cfg = pprint::Config::default_for_fd(&stdout);
     pprint_stdout(stdout, &cfg, &json);
@@ -71,7 +71,7 @@ fn main_query(loader: &Loader, input: DocId, query: DocId) -> Result<()> {
     let val_result = loader.evaluate(query, &mut env)?;
 
     let full_span = loader.get_span(query);
-    let json = rcl::json::format_json(full_span, val_result.as_ref())?;
+    let json = rcl::fmt_json::format_json(full_span, val_result.as_ref())?;
     let stdout = std::io::stdout();
     let cfg = pprint::Config::default_for_fd(&stdout);
     pprint_stdout(stdout, &cfg, &json);
@@ -81,7 +81,7 @@ fn main_query(loader: &Loader, input: DocId, query: DocId) -> Result<()> {
 fn main_fmt(loader: &Loader, doc: DocId) -> Result<()> {
     let data = loader.get_doc(doc).data;
     let cst = loader.get_cst(doc)?;
-    let res = rcl::fmt::format_expr(data, &cst);
+    let res = rcl::fmt_cst::format_expr(data, &cst);
     let stdout = std::io::stdout();
     let cfg = pprint::Config::default_for_fd(&stdout);
     pprint_stdout(stdout, &cfg, &res);
