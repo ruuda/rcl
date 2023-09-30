@@ -88,7 +88,7 @@ impl<'a> Abstractor<'a> {
 
         if !current.is_empty() {
             fragments.push(FormatFragment {
-                span: current_span.expect("Must have string part before a hole."),
+                span: current_span.expect("If we have a fragment, we should have a span."),
                 body: Expr::StringLit(current.into()),
             });
         }
