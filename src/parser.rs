@@ -668,7 +668,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Consume the span, ensuring that a multiline string starts with a newline.
+    /// Consume a string inner span, ensuring that multiline strings starts with a newline.
     ///
     /// If we allowed content between the opening quote and the first line break,
     /// the following string would be ambiguous:
@@ -689,15 +689,30 @@ impl<'a> Parser<'a> {
     /// would be unambiguous, and it may be nice to not have to escape the `"`.
     /// We might support this at a later time, but it makes handling of the
     /// string literals messy, so for now we enforce the line break.
-    fn consume_initial_multiline_string(&mut self) -> Result<Span> {
+    ///
+    /// In addition, this method ensures that if two [`StringPart::String`] are
+    /// consecutive, the second one starts with a line break. The lexer may break
+    /// up the string into multiple tokens, but here we merge them again. It
+    /// simplifies the formatter when it can assume that consecutive string
+    /// parts are really separate lines.
+    fn parse_string_inner(&mut self, style: QuoteStyle, into: &mut Vec<StringPart>) -> Result<()> {
         let inner = self.consume();
         let inner_str = inner.resolve(self.input);
-        if inner_str.is_empty() || inner_str.as_bytes()[0] != b'\n' {
+
+        let is_new_line = !inner_str.is_empty() && inner_str.as_bytes()[0] == b'\n';
+
+        if style == QuoteStyle::Triple && into.is_empty() && !is_new_line {
             return inner
                 .error("Expected a line break after the \"\"\". Move this to the next line.")
                 .err();
         }
-        Ok(inner)
+
+        match into.last_mut() {
+            Some(StringPart::String(span)) if !is_new_line => *span = span.union(inner),
+            _ => into.push(StringPart::String(inner)),
+        }
+
+        Ok(())
     }
 
     fn parse_string(&mut self, prefix: StringPrefix, style: QuoteStyle) -> Result<Expr> {
@@ -708,13 +723,7 @@ impl<'a> Parser<'a> {
         loop {
             match self.peek() {
                 Some(Token::StringInner) => {
-                    let span = match (style, parts.len()) {
-                        (QuoteStyle::Triple, 0) => self.consume_initial_multiline_string()?,
-                        _ => self.consume(),
-                    };
-                    // TODO: Merge this with the prior, if the current span does
-                    // not start with a newline.
-                    parts.push(StringPart::String(span));
+                    self.parse_string_inner(style, &mut parts)?;
                 }
                 Some(Token::Escape(esc)) => {
                     parts.push(StringPart::Escape(self.consume(), esc));
