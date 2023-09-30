@@ -7,10 +7,8 @@
 
 //! The lexer splits a string into a sequence of tokens.
 
-use crate::error::{IntoParseError, ParseError};
+use crate::error::{IntoError, Result};
 use crate::source::{DocId, Span};
-
-pub type Result<T> = std::result::Result<T, ParseError>;
 
 /// What quote style a string literal is quoted in (`"` or `"""`).
 ///
@@ -232,7 +230,17 @@ pub fn lex(doc: DocId, input: &str) -> Result<Vec<Lexeme>> {
             // parser. Blank lines we do keep, because we want to preserve them
             // when autoformatting.
             (Token::Space, _) => continue,
-            lexeme => tokens.push(lexeme),
+            (token, span) => {
+                debug_assert!(
+                    input.is_char_boundary(span.start()),
+                    "Start of {token:?} is not a char boundary.",
+                );
+                debug_assert!(
+                    input.is_char_boundary(span.end()),
+                    "Start of {token:?} is not a char boundary.",
+                );
+                tokens.push((token, span));
+            }
         };
     }
     lexer.report_unclosed_delimiters()?;
@@ -266,6 +274,21 @@ impl<'a> Lexer<'a> {
         let len = len.min(self.input.len() - start);
         self.start += len;
         Span::new(self.doc, start, start + len)
+    }
+
+    /// Take at least `min_len` bytes from the input, rounding up to a character boundary.
+    ///
+    /// If we already know it is safe to slice a given length, then `span` is
+    /// better to use, but if we haven't inspected all bytes in the span, then
+    /// we may be slicing a code point in half, which would be bad because when
+    /// we try to use it, slicing the span out will panic.
+    fn span_char(&mut self, min_len: usize) -> Span {
+        debug_assert!(self.start + min_len <= self.input.len());
+        let mut n = min_len;
+        while !self.input.is_char_boundary(self.start + n) {
+            n += 1;
+        }
+        self.span(n)
     }
 
     /// Take `skip` bytes, and then more until `include` returns false.
@@ -321,7 +344,7 @@ impl<'a> Lexer<'a> {
                 .with_note(top.0, "Unmatched '[' opened here."),
             _ => unreachable!("End byte is one of the above three."),
         };
-        Err(err)
+        err.err()
     }
 
     /// Lex one token. The input must not be empty.
@@ -549,7 +572,7 @@ impl<'a> Lexer<'a> {
             if input.first().map(|ch| ch.is_ascii_digit()) != Some(true) {
                 self.start += n;
                 return self
-                    .span(1)
+                    .span(0)
                     .error("Expected a digit of the number's exponent here.")
                     .err();
             }
@@ -753,13 +776,10 @@ impl<'a> Lexer<'a> {
 
             // We cannot just take the next character, because it may not lie
             // inside a code point boundary.
-            let mut n = 2;
-            while !self.input.is_char_boundary(self.start + n) {
-                n += 1;
-            }
-            return match n {
-                2 => Ok(Some((Token::Escape(Escape::Single), self.span(2)))),
-                _ => self.span(n).error("Invalid escape sequence.").err(),
+            let span = self.span_char(2);
+            return match span.len() {
+                2 => Ok(Some((Token::Escape(Escape::Single), span))),
+                _ => span.error("Invalid escape sequence.").err(),
             };
         }
 
@@ -804,6 +824,6 @@ impl<'a> Lexer<'a> {
                 .error("Unexpected end of input, format string is not closed.")
                 .with_note(top.0, "Format string opened here."),
         };
-        Err(err)
+        err.err()
     }
 }

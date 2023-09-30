@@ -11,7 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
-use crate::error::{IntoRuntimeError, Result};
+use crate::error::{IntoError, Result};
+use crate::pprint::Doc;
 use crate::runtime::{Builtin, Env, Value};
 use crate::source::Span;
 
@@ -386,19 +387,30 @@ fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
                 }
                 Value::Bool(false) => {
                     let message = eval(env, message_expr)?;
-                    // TODO: Include the message in the error. We need a way to
-                    // attach values in addition to source locations ...
-                    #[cfg(not(fuzzing))]
-                    eprintln!("Assertion failed: {message:?}");
-                    #[cfg(fuzzing)]
-                    let _ = message;
-                    return Err(condition_span.error("Assertion failed.").into());
+                    let body: Doc = match message.as_ref() {
+                        // If the message is a string, then we include it directly,
+                        // not pretty-printed as a value.
+                        Value::String(msg) => msg.to_string().into(),
+                        // TODO: Add an infallible RCL formatter, so we can
+                        // always include the message.
+                        _ => match crate::json::format_json(*condition_span, &message) {
+                            Ok(msg_doc) => msg_doc.into_owned(),
+                            Err(..) => Doc::from(
+                                "The assertion includes a message, \
+                                but it is not json-formattable.",
+                            ),
+                        },
+                    };
+                    return condition_span
+                        .error("Assertion failed.")
+                        .with_body(body)
+                        .err();
                 }
                 _ => {
                     // TODO: Report a proper type error.
-                    let err =
-                        condition_span.error("Assertion condition must evaluate to a boolean.");
-                    return Err(err.into());
+                    return condition_span
+                        .error("Assertion condition must evaluate to a boolean.")
+                        .err();
                 }
             }
         }
@@ -545,7 +557,7 @@ fn builtin_dict_len(s: &BTreeMap<Rc<Value>, Rc<Value>>) -> Builtin {
     let n = Rc::new(Value::Int(s.len() as _));
     let f = move |span: Span, args: &[Rc<Value>]| {
         if !args.is_empty() {
-            return Err(span.error("Dict.len takes no arguments.").into());
+            return span.error("Dict.len takes no arguments.").err();
         };
         Ok(n.clone())
     };
@@ -559,7 +571,7 @@ fn builtin_list_len(s: &[Rc<Value>]) -> Builtin {
     let n = Rc::new(Value::Int(s.len() as _));
     let f = move |span: Span, args: &[Rc<Value>]| {
         if !args.is_empty() {
-            return Err(span.error("List.len takes no arguments.").into());
+            return span.error("List.len takes no arguments.").err();
         };
         Ok(n.clone())
     };
@@ -587,7 +599,7 @@ fn builtin_string_len(s: &str) -> Builtin {
     let n = Rc::new(Value::Int(s.len() as _));
     let f = move |span: Span, args: &[Rc<Value>]| {
         if !args.is_empty() {
-            return Err(span.error("String.len takes no arguments.").into());
+            return span.error("String.len takes no arguments.").err();
         };
         Ok(n.clone())
     };
@@ -601,7 +613,7 @@ fn builtin_dict_contains(v: Rc<Value>) -> Builtin {
     let f = move |span: Span, args: &[Rc<Value>]| {
         let arg = match args {
             [a] => a,
-            _ => return Err(span.error("Dict.contains takes a single argument.").into()),
+            _ => return span.error("Dict.contains takes a single argument.").err(),
         };
         match v.as_ref() {
             Value::Dict(m) => {
@@ -621,7 +633,7 @@ fn builtin_list_contains(v: Rc<Value>) -> Builtin {
     let f = move |span: Span, args: &[Rc<Value>]| {
         let arg = match args {
             [a] => a,
-            _ => return Err(span.error("List.contains takes a single argument.").into()),
+            _ => return span.error("List.contains takes a single argument.").err(),
         };
         match v.as_ref() {
             Value::List(m) => {
@@ -641,7 +653,7 @@ fn builtin_set_contains(v: Rc<Value>) -> Builtin {
     let f = move |span: Span, args: &[Rc<Value>]| {
         let arg = match args {
             [a] => a,
-            _ => return Err(span.error("Set.contains takes a single argument.").into()),
+            _ => return span.error("Set.contains takes a single argument.").err(),
         };
         match v.as_ref() {
             Value::Set(m) => {
@@ -661,7 +673,7 @@ fn builtin_dict_get(v: Rc<Value>) -> Builtin {
     let f = move |span: Span, args: &[Rc<Value>]| {
         let (k, default) = match args {
             [k, default] => (k, default),
-            _ => return Err(span.error("Dict.get takes two arguments.").into()),
+            _ => return span.error("Dict.get takes two arguments.").err(),
         };
         match v.as_ref() {
             Value::Dict(m) => match m.get(k) {

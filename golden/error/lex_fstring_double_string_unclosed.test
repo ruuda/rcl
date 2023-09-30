@@ -3,7 +3,7 @@ f"There is no {"closing"} quote there -->
 # output:
 stdin:2:1
   ╷
-2 │ 
+2 │
   ╵ ^
 Error: Unexpected end of input, format string is not closed.
 

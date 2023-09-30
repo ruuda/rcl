@@ -16,7 +16,7 @@
 use crate::ast::{Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Yield};
 use crate::cst::Prefixed;
 use crate::cst::{Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart};
-use crate::error::{IntoParseError, Result};
+use crate::error::{IntoError, Result};
 use crate::lexer::QuoteStyle;
 use crate::string;
 

@@ -27,9 +27,10 @@ stdin:1:1
   ╷
 1 │ {
   ╵ ^
+in value
+at key "len_getter"
+at key "properties"
+at index 2
+at key "widgets"
+at key "top_level"
 Error: Functions cannot be exported as json.
-  at key "len_getter"
-  at key "properties"
-  at index 2
-  at key "widgets"
-  at key "top_level"

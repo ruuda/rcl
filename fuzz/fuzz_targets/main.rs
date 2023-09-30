@@ -3,9 +3,10 @@
 use libfuzzer_sys::fuzz_target;
 use arbitrary::{Arbitrary, Unstructured};
 
+use rcl::error::Result;
+use rcl::loader::Loader;
 use rcl::markup::MarkupMode;
 use rcl::pprint;
-use rcl::source::DocId;
 
 #[derive(Debug)]
 enum Mode {
@@ -84,30 +85,27 @@ impl<'a> Arbitrary<'a> for Input<'a> {
 }
 
 /// Evaluate the input expression, then ignore the result.
-fn fuzz_eval(input: &str) -> rcl::error::Result<()> {
-    let id = DocId(0);
-    let tokens = rcl::lexer::lex(id, &input)?;
-    let (_span, cst) = rcl::parser::parse(id, &input, &tokens)?;
-    let ast = rcl::abstraction::abstract_expr(&input, &cst)?;
+fn fuzz_eval(loader: &mut Loader, input: &str) -> Result<()> {
+    let id = loader.load_string(input.to_string());
+    let ast = loader.get_ast(id)?;
     let mut env = rcl::runtime::Env::new();
     let _ = rcl::eval::eval(&mut env, &ast)?;
     Ok(())
 }
 
 /// Run the formatter once.
-fn run_fmt(input: &str, cfg: &pprint::Config) -> rcl::error::Result<String> {
-    let id = DocId(0);
-    let tokens = rcl::lexer::lex(id, &input)?;
-    let (_span, cst) = rcl::parser::parse(id, &input, &tokens)?;
+fn run_fmt(loader: &mut Loader, input: &str, cfg: &pprint::Config) -> Result<String> {
+    let id = loader.load_string(input.to_string());
+    let cst = loader.get_cst(id)?;
     let doc = rcl::fmt::format_expr(&input, &cst);
     let result = doc.println(cfg);
     Ok(result)
 }
 
 /// Run the formatter twice and check for idempotency.
-fn fuzz_fmt(input: &str, cfg: pprint::Config) -> rcl::error::Result<()> {
-    let out1 = run_fmt(&input, &cfg)?;
-    let out2 = run_fmt(&out1, &cfg)?;
+fn fuzz_fmt(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
+    let out1 = run_fmt(loader, &input, &cfg)?;
+    let out2 = run_fmt(loader, &out1, &cfg)?;
     assert_eq!(out1, out2, "Formatting should be idempotent.");
     Ok(())
 }
@@ -120,8 +118,7 @@ fn fuzz_fmt(input: &str, cfg: pprint::Config) -> rcl::error::Result<()> {
 /// * Ensure that evaluation is idempotent. That is, if a given input evaluates
 ///   to json value `x`, that json value should itself be a valid RCL
 ///   expression, which should evaluate to `x`.
-fn fuzz_eval_json(input: &str, cfg: pprint::Config) -> rcl::error::Result<()> {
-    let mut loader = rcl::loader::Loader::new();
+fn fuzz_eval_json(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
     let mut env = rcl::runtime::Env::new();
     let doc_1 = loader.load_string(input.to_string());
     let val_1 = loader.evaluate(doc_1, &mut env)?;
@@ -146,27 +143,45 @@ fn fuzz_eval_json(input: &str, cfg: pprint::Config) -> rcl::error::Result<()> {
     Ok(())
 }
 
-fuzz_target!(|input: Input| {
-    let id = DocId(0);
-
+fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
     match input.mode {
         Mode::Lex => {
-            let _ = rcl::lexer::lex(id, input.data);
+            let doc = loader.load_string(input.data.to_string());
+            let _ = loader.get_tokens(doc)?;
         }
         Mode::Parse => {
-            use rcl::{lexer::lex, parser::parse};
-            let _ = lex(id, &input.data).and_then(|tokens| parse(id, input.data, &tokens));
+            let doc = loader.load_string(input.data.to_string());
+            let _ = loader.get_cst(doc)?;
         }
         Mode::Eval => {
-            let _ = fuzz_eval(input.data);
+            let _ = fuzz_eval(loader, input.data);
         }
         Mode::Format { width } => {
             let cfg = pprint::Config { width, markup: MarkupMode::None };
-            let _ = fuzz_fmt(input.data, cfg);
+            let _ = fuzz_fmt(loader, input.data, cfg);
         }
         Mode::EvalJson { width } => {
             let cfg = pprint::Config { width, markup: MarkupMode::None };
-            let _ = fuzz_eval_json(input.data, cfg);
+            let _ = fuzz_eval_json(loader, input.data, cfg);
         }
     };
+
+    Ok(())
+}
+
+fuzz_target!(|input: Input| {
+    let mut loader = Loader::new();
+    let result = fuzz_main(&mut loader, input);
+
+    // In the error case, we do also pretty-print the error. This is mostly to
+    // confirm that all the spans in the error are aligned to code point
+    // boundaries, so we don't slice strings incorrectly and crash -- it would
+    // be a shame if the fuzzer says the evaluator is clean, but then in
+    // practice we can crash when reporting an error.
+    if let Err(err) = result {
+        let inputs = loader.as_inputs();
+        let err_doc = err.report(&inputs);
+        let cfg = pprint::Config { width: 80, markup: MarkupMode::Ansi };
+        let _ = err_doc.println(&cfg);
+    }
 });

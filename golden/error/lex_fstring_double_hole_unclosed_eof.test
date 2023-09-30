@@ -3,7 +3,7 @@ f"This f-string is not closed.{
 # output:
 stdin:2:1
   ╷
-2 │ 
+2 │
   ╵ ^
 Error: Expected '}' here to close format string hole.
 

@@ -121,7 +121,7 @@ impl Config {
 /// first and last outputs are valid, so this gives us more control: the
 /// middle example can still be produced, by wrapping the `Doc::Indent` in
 /// a `Doc::Group`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Doc<'a> {
     /// A string slice to be spliced into the output.
     Str { content: &'a str, width: u32 },
@@ -134,7 +134,7 @@ pub enum Doc<'a> {
     /// This can be used to add trailing commas in a collection when the
     /// collection is formatted in tall mode, without having those trailing
     /// commas in the wide mode.
-    WhenTall { content: &'a str, width: u32 },
+    WhenTall { content: &'static str, width: u32 },
 
     /// A space in wide mode; a newline in tall mode.
     Sep,
@@ -212,7 +212,7 @@ impl<'a> Doc<'a> {
     }
 
     /// Construct a new document fragment that only gets emitted in tall mode.
-    pub fn tall(value: &'a str) -> Doc<'a> {
+    pub fn tall(value: &'static str) -> Doc<'static> {
         use unicode_width::UnicodeWidthStr;
         debug_assert!(
             !value.contains('\n'),
@@ -243,6 +243,29 @@ impl<'a> Doc<'a> {
         Doc::Markup(markup, Box::new(self))
     }
 
+    /// Clone all strings and make them owned.
+    pub fn into_owned(self) -> Doc<'static> {
+        match self {
+            Doc::Str { content, width } => Doc::String {
+                content: content.to_string(),
+                width,
+            },
+            Doc::String { content, width } => Doc::String { content, width },
+            Doc::WhenTall { content, width } => Doc::WhenTall { content, width },
+            Doc::Sep => Doc::Sep,
+            Doc::SoftBreak => Doc::SoftBreak,
+            Doc::HardBreak => Doc::HardBreak,
+            Doc::RawBreak => Doc::RawBreak,
+            Doc::Concat(children) => {
+                Doc::Concat(children.into_iter().map(|c| c.into_owned()).collect())
+            }
+            Doc::Group(inner) => Doc::Group(Box::new(inner.into_owned())),
+            Doc::Indent(inner) => Doc::Indent(Box::new(inner.into_owned())),
+            Doc::FlushIndent(inner) => Doc::FlushIndent(Box::new(inner.into_owned())),
+            Doc::Markup(m, inner) => Doc::Markup(m, Box::new(inner.into_owned())),
+        }
+    }
+
     /// Whether any of the nodes in this tree force tall mode.
     ///
     /// A hard break forces tall mode.
@@ -254,6 +277,7 @@ impl<'a> Doc<'a> {
             Doc::Group(inner) => inner.is_forced_tall(),
             Doc::Indent(inner) => inner.is_forced_tall(),
             Doc::FlushIndent(inner) => inner.is_forced_tall(),
+            Doc::Markup(_, inner) => inner.is_forced_tall(),
             _ => false,
         }
     }
@@ -380,7 +404,7 @@ macro_rules! doc_concat {
     { $($fragment:expr)* } => {
         {
             #[allow(unused_mut)]
-            let mut result = Doc::empty();
+            let mut result = crate::pprint::Doc::empty();
             $( result = result + $fragment.into(); )*
             result
         }

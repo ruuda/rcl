@@ -10,9 +10,16 @@
 /// A markup hint, used to apply color and other markup to output.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Markup {
-    // These two are usually stylized in bold.
+    /// Used for error message reporting, styled in bold.
     Error,
+    /// Used for error message reporting, styled in bold.
     Warning,
+
+    /// Make something stand out in error messages.
+    ///
+    /// We use this to play a similar role as backticks in Markdown,
+    /// to clarify visually where the boundaries of a quotation are.
+    Highlight,
 
     // These are meant for syntax highlighting.
     String,
@@ -60,6 +67,7 @@ pub fn switch_ansi(_from: Option<Markup>, to: Option<Markup>) -> &'static str {
     match to {
         Markup::Error => bold_red,
         Markup::Warning => bold_yellow,
+        Markup::Highlight => white,
         Markup::String => red,
         Markup::Number => cyan,
         Markup::Keyword => green,

@@ -8,11 +8,11 @@
 //! The parser converts a sequence of tokens into a Concrete Syntax Tree.
 
 use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, UnOp};
-use crate::error::{IntoParseError, ParseError};
+use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
+use crate::markup::Markup;
+use crate::pprint::{concat, Doc};
 use crate::source::{DocId, Span};
-
-pub type Result<T> = std::result::Result<T, ParseError>;
 
 /// Parse an input document into a concrete syntax tree.
 pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<(Span, Prefixed<Expr>)> {
@@ -93,22 +93,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Build a parse error at the current cursor location.
-    fn error<T>(&self, message: &'static str) -> Result<T> {
-        Err(self.peek_span().error(message))
-    }
-
-    /// Build a parse error at the current cursor location, and a note elsewhere.
-    fn error_with_note<T>(
-        &self,
-        message: &'static str,
-        note_span: Span,
-        note: &'static str,
-    ) -> Result<T> {
-        self.error(message)
-            .map_err(|err| err.with_note(note_span, note))
-    }
-
     /// Return the token under the cursor, if there is one.
     fn peek(&self) -> Option<Token> {
         // TODO: Peek should ignore whitespace and comments for most cases,
@@ -127,6 +111,11 @@ impl<'a> Parser<'a> {
             .get(self.cursor)
             .map(|t| t.1)
             .unwrap_or(Span::new(self.doc, self.input.len(), self.input.len()))
+    }
+
+    /// Build a parse error at the current cursor location.
+    fn error(&self, message: &'static str) -> Error {
+        self.peek_span().error(message)
     }
 
     /// Advance the cursor by one token, consuming the token under the cursor.
@@ -148,7 +137,9 @@ impl<'a> Parser<'a> {
         self.depth += 1;
 
         if self.depth >= 100 {
-            return self.error("Parser recursion limit reached, please reduce nesting.");
+            return self
+                .error("Parser recursion limit reached, please reduce nesting.")
+                .err();
         }
 
         Ok(())
@@ -216,18 +207,19 @@ impl<'a> Parser<'a> {
         // The lexer ensures matching brackets, but even in a document where
         // that is the case, we may still encounter a different token where the
         // parser expects a closing bracket. E.g. in `{1 1}`.
-        match expected_end_token {
-            Token::RParen => {
-                self.error_with_note("Expected ')'.", top.1, "Unmatched '(' opened here.")
-            }
-            Token::RBrace => {
-                self.error_with_note("Expected '}'.", top.1, "Unmatched '{' opened here.")
-            }
-            Token::RBracket => {
-                self.error_with_note("Expected ']'.", top.1, "Unmatched '[' opened here.")
-            }
+        let err = match expected_end_token {
+            Token::RParen => self
+                .error("Expected ')'.")
+                .with_note(top.1, "Unmatched '(' opened here."),
+            Token::RBrace => self
+                .error("Expected '}'.")
+                .with_note(top.1, "Unmatched '{' opened here."),
+            Token::RBracket => self
+                .error("Expected ']'.")
+                .with_note(top.1, "Unmatched '[' opened here."),
             _ => unreachable!("End token is one of the above three."),
-        }
+        };
+        err.err()
     }
 
     /// Eat comments and whitespace.
@@ -270,11 +262,13 @@ impl<'a> Parser<'a> {
                     self.consume();
                 }
                 Some(Token::LineComment) => {
-                    return self.error_with_note(
-                        "A comment is not allowed here.",
-                        self.comment_anchor,
-                        "Try inserting the comment above this instead.",
-                    );
+                    return self
+                        .error("A comment is not allowed here.")
+                        .with_note(
+                            self.comment_anchor,
+                            "Try inserting the comment above this instead.",
+                        )
+                        .err();
                 }
                 _ => return Ok(()),
             }
@@ -285,7 +279,7 @@ impl<'a> Parser<'a> {
     fn parse_ident(&mut self) -> Result<Span> {
         match self.peek() {
             Some(Token::Ident) => Ok(self.consume()),
-            _ => self.error("Expected an identifier here."),
+            _ => self.error("Expected an identifier here.").err(),
         }
     }
 
@@ -293,7 +287,7 @@ impl<'a> Parser<'a> {
     fn parse_token(&mut self, expected: Token, error: &'static str) -> Result<Span> {
         match self.peek() {
             Some(token) if token == expected => Ok(self.consume()),
-            _ => self.error(error),
+            _ => self.error(error).err(),
         }
     }
 
@@ -307,7 +301,7 @@ impl<'a> Parser<'a> {
     ) -> Result<Span> {
         match self.peek() {
             Some(token) if token == expected => Ok(self.consume()),
-            _ => self.error_with_note(error, note_span, note),
+            _ => self.error(error).with_note(note_span, note).err(),
         }
     }
 
@@ -405,15 +399,16 @@ impl<'a> Parser<'a> {
             Some(Token::Semicolon) => {
                 return self
                     .error("Expected ',' here between the assertion condition and message.")
-                    .map_err(|e| {
-                        e.with_help(
-                            "An assertion has the form 'assert <condition>, <message>;'. \
+                    .with_help(
+                        "An assertion has the form 'assert <condition>, <message>;'. \
                         The message is not optional.",
-                        )
-                    })
+                    )
+                    .err();
             }
             _ => {
-                return self.error("Expected ',' here between the assertion condition and message.")
+                return self
+                    .error("Expected ',' here between the assertion condition and message.")
+                    .err()
             }
         };
 
@@ -496,7 +491,8 @@ impl<'a> Parser<'a> {
     fn check_bad_unop(&self) -> Result<()> {
         if let Some(Token::Bang) = self.peek() {
             return self
-                .error("Invalid operator. Negation is written with keyword 'not' instead of '!'.");
+                .error("Invalid operator. Negation is written with keyword 'not' instead of '!'.")
+                .err();
         }
         Ok(())
     }
@@ -535,11 +531,12 @@ impl<'a> Parser<'a> {
                     };
                 }
                 Some(_op) => {
-                    return self.error_with_note(
+                    return self.error(
                         "Parentheses are needed to clarify the precedence of this operator.",
+                    ).with_note(
                         allowed_span.expect("If we are here, allowed_span must be set."),
                         "Without parentheses, it is not clear whether this operator should take precedence.",
-                    );
+                    ).err();
                 }
                 _ => return Ok(result),
             }
@@ -575,12 +572,14 @@ impl<'a> Parser<'a> {
         // of the expression/document.
         self.skip_non_code()?;
         if self.peek().and_then(to_binop).is_some() {
-            return self.error_with_note(
-                "Parentheses are needed to clarify the precedence of this operator.",
-                span,
-                "Without parentheses, it is not clear whether this operator \
-                applies only to the left-hand side, or the full expression.",
-            );
+            return self
+                .error("Parentheses are needed to clarify the precedence of this operator.")
+                .with_note(
+                    span,
+                    "Without parentheses, it is not clear whether this operator \
+                    applies only to the left-hand side, or the full expression.",
+                )
+                .err();
         }
 
         Ok(result)
@@ -666,7 +665,7 @@ impl<'a> Parser<'a> {
             Some(Token::NumBinary) => Ok(Expr::NumBinary(self.consume())),
             Some(Token::NumDecimal) => Ok(Expr::NumDecimal(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),
-            _ => self.error("Expected a term here."),
+            _ => self.error("Expected a term here.").err(),
         }
     }
 
@@ -850,10 +849,10 @@ impl<'a> Parser<'a> {
                     continue;
                 }
                 Some(Token::Semicolon) if expected_terminator == Token::Comma => {
-                    return self.error("Expected ',' instead of ';' here.");
+                    return self.error("Expected ',' instead of ';' here.").err();
                 }
                 Some(Token::Comma) if expected_terminator == Token::Semicolon => {
-                    return self.error("Expected ';' instead of ',' here.");
+                    return self.error("Expected ';' instead of ',' here.").err();
                 }
                 // If we don't find a separator, nor the end of the collection
                 // literal, that's an error. We can report an unmatched bracket
@@ -861,14 +860,19 @@ impl<'a> Parser<'a> {
                 // an '=' maybe the user tried to make a key-value mapping and
                 // we can report a better error.
                 Some(Token::Eq1) => {
-                    let mut err = self.pop_bracket().expect_err("We are in a seq.");
-                    err.help = Some(
-                        "To use 'key = value;' record notation, \
-                        the left-hand side must be an identifier.\n\
-                        When that is not possible, \
-                        use json-style '\"key\": value' instead.",
-                    );
-                    return Err(err);
+                    return self
+                        .pop_bracket()
+                        .expect_err("We are in a seq.")
+                        .with_help(concat! {
+                            "To use '"
+                            Doc::from("key = value;").with_markup(Markup::Highlight)
+                            "' record notation, the left-hand side must be an identifier."
+                            Doc::Sep
+                            "When that is not possible, use json-style '"
+                            Doc::from("\"key\": value").with_markup(Markup::Highlight)
+                            "' instead."
+                        })
+                        .err();
                 }
                 _ => {
                     self.pop_bracket()?;
@@ -1017,14 +1021,16 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some(Token::Colon) => self.consume(),
             Some(Token::KwThen) => {
-                return self.error_with_note(
-                    "Expected ':' here.",
-                    if_,
-                    "This 'if' is part of a comprehension. \
-                    For an if-then-else expression, enclose the expression in parentheses.",
-                );
+                return self
+                    .error("Expected ':' here.")
+                    .with_note(
+                        if_,
+                        "This 'if' is part of a comprehension. \
+                        For an if-then-else expression, enclose the expression in parentheses.",
+                    )
+                    .err();
             }
-            _ => return self.error("Expected ':' after the condition."),
+            _ => return self.error("Expected ':' after the condition.").err(),
         };
 
         let (_body_span, body) = self.parse_prefixed_seq()?;
@@ -1042,7 +1048,9 @@ impl<'a> Parser<'a> {
     fn parse_eof(&mut self) -> Result<()> {
         self.skip_non_code()?;
         if self.peek().is_some() {
-            return self.error("Unexpected content after the main expression.");
+            return self
+                .error("Unexpected content after the main expression.")
+                .err();
         }
         Ok(())
     }

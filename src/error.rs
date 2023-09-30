@@ -5,63 +5,222 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-//! Error types.
+//! Types and functions for error reporting.
 
 use std::rc::Rc;
 
+use crate::markup::Markup;
+use crate::pprint::{concat, Doc};
 use crate::source::{Inputs, Span};
 
-pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
+pub type Result<T> = std::result::Result<T, Box<Error>>;
 
-pub trait Error: std::fmt::Debug {
-    /// The error message.
+/// Element of a path through a value.
+// TODO: Record the value itself as well, so we can *show* the thing that's wrong.
+#[derive(Debug)]
+pub enum PathElement {
+    Key(Rc<str>),
+    Index(usize),
+}
+
+/// Any type of error that occurred in the program.
+///
+/// Errors use [`Doc`] for pretty-printing them. This enables a few things:
+///
+/// * Coloring and whether to enable or disable it can be handled by the
+///   existing pretty-printer.
+/// * Values that can be pretty-printed can be embedded in error messages, and
+///   they will be line-wrapped and colored appropriately.
+///
+/// Most `Error`s are constructed from a `Span` using [`IntoError::error`], and
+/// optionally augmented using one of the `with_*` methods.
+///
+/// ## Historical Note
+///
+/// In the past we represented different types of errors as different structs,
+/// with a common `Error` trait, but in practice they were all very similar, and
+/// we don't need to pattern match on them or handle them, these are intended
+/// for the end user. So we merge all of them into a single error type, but
+/// preserve enough of the structure to allow for alternative reporting formats
+/// (e.g. json output) to enable tooling.
+#[derive(Debug)]
+pub struct Error {
+    /// The main message of the error.
     ///
     ///  * Shorter is better.
     ///  * Simpler is better (no jargon).
     ///  * The expected thing goes first, the actual thing goes second.
-    fn message(&self) -> &str;
+    pub message: Doc<'static>,
+
+    /// Optionally an extended message body.
+    ///
+    /// For example, in the case of a type error, the body could show the
+    /// expected type and actual type. We separate the body from the main
+    /// message to have a title in case we need to report structured errors
+    /// in limited form (e.g. GitHub Actions source annotations).
+    pub body: Option<Doc<'static>>,
 
     /// The source location of the error.
-    fn span(&self) -> Option<Span>;
+    pub origin: Option<Span>,
 
-    /// Optionally, a note about error.
+    /// For errors that originated from a value, the path in the value.
+    pub path: Vec<PathElement>,
+
+    /// Any other relevant spans.
     ///
     /// For example, an unmatched parenthesis can point to the opening paren.
-    fn notes(&self) -> &[(Span, &str)];
+    pub notes: Vec<(Span, Doc<'static>)>,
 
-    /// Optionally, additional information, or a hint on how to fix the problem.
-    fn help(&self) -> Option<&str>;
+    /// Additional information, or a hint on how to fix the problem.
+    ///
+    /// For example, when the user writes a `#`, we can explain that comments
+    /// are written with `//` instead.
+    pub help: Option<Doc<'static>>,
 }
 
-impl dyn Error {
-    pub fn print(&self, inputs: &Inputs) {
-        let bold_red = "\x1b[31;1m";
-        let bold_yellow = "\x1b[33;1m";
-        let reset = "\x1b[0m";
+impl Error {
+    /// Create a new error, with nothing but the message set.
+    pub fn new<M>(message: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        Error {
+            message: message.into(),
+            body: None,
+            origin: None,
+            path: Vec::new(),
+            notes: Vec::new(),
+            help: None,
+        }
+    }
 
-        if let Some(span) = self.span() {
-            let highlight = highlight_span_in_line(inputs, span, bold_red);
-            eprint!("{}", highlight);
-            eprintln!("{}Error:{} {}", bold_red, reset, self.message());
-        } else {
-            eprintln!("{}Error:{} {}", bold_red, reset, self.message());
+    /// Replace the body of the error with the given content.
+    pub fn with_body<M>(mut self, body: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        self.body = Some(body.into());
+        self
+    }
+
+    /// Extend the error with a note at a given source location.
+    pub fn with_note<M>(mut self, at: Span, note: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        self.notes.push((at, note.into()));
+        self
+    }
+
+    /// Replace the help message of the error with a given message.
+    pub fn with_help<M>(mut self, help: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        self.help = Some(help.into());
+        self
+    }
+
+    /// Replace the value path with the given path.
+    pub fn with_path(mut self, path: Vec<PathElement>) -> Error {
+        self.path = path;
+        self
+    }
+
+    /// Wrap the error in a `Result::Err`.
+    pub fn err<T>(self) -> Result<T> {
+        Err(Box::new(self))
+    }
+
+    fn report_path(&self) -> Doc<'static> {
+        // TODO: Find a prettier way to report the value path of an error.
+        // For now this will do.
+        if self.path.is_empty() {
+            return Doc::empty();
+        }
+        let mut path_doc = vec![Doc::from("in value"), Doc::HardBreak];
+        for elem in self.path.iter().rev() {
+            match elem {
+                PathElement::Key(k) => {
+                    // TODO: Use the json pretty printer to report this.
+                    let mut v = "\"".to_string();
+                    crate::string::escape_json(k, &mut v);
+                    v.push('"');
+                    path_doc.push("at key ".into());
+                    path_doc.push(Doc::from(v).with_markup(Markup::String));
+                }
+                PathElement::Index(i) => {
+                    let v = i.to_string();
+                    path_doc.push("at index ".into());
+                    path_doc.push(Doc::from(v).with_markup(Markup::Number));
+                }
+            }
+            path_doc.push(Doc::HardBreak);
+        }
+        Doc::Concat(path_doc)
+    }
+
+    /// Format the error into a [`Doc`] that can be printed to stderr.
+    pub fn report<'a>(self, inputs: &'a Inputs) -> Doc<'a> {
+        let mut result = Vec::new();
+
+        if let Some(span) = self.origin {
+            result.push(highlight_span(inputs, span, Markup::Error))
         }
 
-        for (note_span, note) in self.notes() {
-            let highlight = highlight_span_in_line(inputs, *note_span, bold_yellow);
-            eprint!("\n{}", highlight);
-            eprintln!("{}Note:{} {}", bold_yellow, reset, note);
+        result.push(self.report_path());
+
+        result.push(Doc::from("Error:").with_markup(Markup::Error));
+        result.push(" ".into());
+        result.push(self.message);
+
+        if let Some(body) = self.body {
+            result.push(" ".into());
+            result.push(body);
         }
 
-        if let Some(help) = self.help() {
-            eprintln!("\n{}Help:{} {}", bold_yellow, reset, help);
+        for (note_span, note_message) in self.notes {
+            result.push(Doc::HardBreak);
+            result.push(Doc::HardBreak);
+            result.push(highlight_span(inputs, note_span, Markup::Warning));
+            result.push(Doc::from("Note:").with_markup(Markup::Warning));
+            result.push(" ".into());
+            result.push(note_message);
+        }
+
+        if let Some(help_message) = self.help {
+            result.push(Doc::HardBreak);
+            result.push(Doc::HardBreak);
+            result.push(Doc::from("Help:").with_markup(Markup::Warning));
+            result.push(" ".into());
+            result.push(help_message);
+        }
+
+        Doc::Concat(result)
+    }
+}
+
+pub trait IntoError {
+    fn error<M>(self, message: M) -> Error
+    where
+        Doc<'static>: From<M>;
+}
+
+impl IntoError for Span {
+    fn error<M>(self, message: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        Error {
+            origin: Some(self),
+            ..Error::new(message)
         }
     }
 }
 
-fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> String {
+/// Highlight a span in a line.
+pub fn highlight_span<'a>(inputs: &'a Inputs, span: Span, markup: Markup) -> Doc<'a> {
     use std::cmp;
-    use std::fmt::Write;
     use unicode_width::UnicodeWidthStr;
 
     let doc = &inputs[span.doc().0 as usize];
@@ -92,6 +251,7 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
 
     // Save this for reporting the error location, in case we adjust the line
     // start below. Add 1 because the first column is column 1, not 0.
+    // TODO: This should measure width, not count bytes.
     let column = 1 + span.start() - line_start;
 
     // If there is a really long line (for example, because you are evaluating
@@ -138,275 +298,17 @@ fn highlight_span_in_line(inputs: &Inputs, span: Span, highlight_ansi: &str) -> 
     let line_num_str = line.to_string();
     let line_num_pad: String = line_num_str.chars().map(|_| ' ').collect();
     let mark_indent: String = " ".repeat(indent_width);
-    let mark_under: String = "~".repeat(mark_width);
+    let mark_under: String = "~".repeat(mark_width - 1);
+    let doc_under = concat! { "^" mark_under };
 
-    let reset = "\x1b[0m";
-
-    let mut result = String::new();
-    // Note, the unwraps here are safe because writing to a string does not fail.
-    writeln!(&mut result, "{}:{}:{}", doc.name, line, column,).unwrap();
-    writeln!(&mut result, "{} {}╷{}", line_num_pad, highlight_ansi, reset).unwrap();
-    writeln!(
-        &mut result,
-        "{} {}│{} {}{}{}",
-        line_num_str, highlight_ansi, reset, trunc_prefix, line_content, trunc_suffix
-    )
-    .unwrap();
-    writeln!(
-        &mut result,
-        "{} {}╵ {}^{}{}",
-        line_num_pad,
-        highlight_ansi,
-        mark_indent,
-        &mark_under[1..],
-        reset
-    )
-    .unwrap();
-
-    result
-}
-
-/// We encountered some IO failure.
-#[derive(Debug)]
-pub struct IoError {
-    pub message: String,
-}
-
-impl IoError {
-    pub fn new(message: String) -> IoError {
-        IoError { message }
-    }
-}
-
-impl From<String> for IoError {
-    fn from(err: String) -> Self {
-        IoError::new(err)
-    }
-}
-
-impl From<&str> for IoError {
-    fn from(err: &str) -> Self {
-        IoError::new(err.to_string())
-    }
-}
-
-impl From<IoError> for Box<dyn Error> {
-    fn from(err: IoError) -> Self {
-        Box::new(err)
-    }
-}
-
-impl Error for IoError {
-    fn message(&self) -> &str {
-        &self.message
-    }
-    fn span(&self) -> Option<Span> {
-        None
-    }
-    fn notes(&self) -> &[(Span, &str)] {
-        &[]
-    }
-    fn help(&self) -> Option<&str> {
-        None
-    }
-}
-
-/// A syntax error that causes lexing or parsing to fail.
-#[derive(Debug)]
-pub struct ParseError {
-    pub span: Span,
-    pub message: &'static str,
-    pub note: Option<(Span, &'static str)>,
-    pub help: Option<&'static str>,
-}
-
-impl ParseError {
-    pub fn with_help(mut self, help: &'static str) -> Self {
-        self.help = Some(help);
-        self
-    }
-
-    pub fn with_note(mut self, at: Span, note: &'static str) -> Self {
-        self.note = Some((at, note));
-        self
-    }
-
-    /// Wrap the error in a `Result::Err`.
-    pub fn err<T>(self) -> std::result::Result<T, Self> {
-        Err(self)
-    }
-}
-
-impl From<ParseError> for Box<dyn Error> {
-    fn from(err: ParseError) -> Self {
-        Box::new(err)
-    }
-}
-
-impl Error for ParseError {
-    fn message(&self) -> &str {
-        self.message
-    }
-    fn span(&self) -> Option<Span> {
-        Some(self.span)
-    }
-    fn notes(&self) -> &[(Span, &str)] {
-        match self.note {
-            Some(ref n) => std::slice::from_ref(n),
-            None => &[],
-        }
-    }
-    fn help(&self) -> Option<&str> {
-        self.help
-    }
-}
-
-pub trait IntoParseError {
-    fn error(&self, message: &'static str) -> ParseError;
-}
-
-impl IntoParseError for Span {
-    fn error(&self, message: &'static str) -> ParseError {
-        ParseError {
-            span: *self,
-            message,
-            note: None,
-            help: None,
-        }
-    }
-}
-
-/// An error during evaluation.
-#[derive(Debug)]
-pub struct RuntimeError {
-    pub span: Span,
-    pub message: &'static str,
-    pub notes: Vec<(Span, &'static str)>,
-    pub help: Option<&'static str>,
-}
-
-impl RuntimeError {
-    pub fn with_help(mut self, help: &'static str) -> Self {
-        self.help = Some(help);
-        self
-    }
-
-    pub fn with_note(mut self, at: Span, note: &'static str) -> Self {
-        self.notes.push((at, note));
-        self
-    }
-}
-
-impl From<RuntimeError> for Box<dyn Error> {
-    fn from(err: RuntimeError) -> Self {
-        Box::new(err)
-    }
-}
-
-impl Error for RuntimeError {
-    fn message(&self) -> &str {
-        self.message
-    }
-    fn span(&self) -> Option<Span> {
-        Some(self.span)
-    }
-    fn notes(&self) -> &[(Span, &str)] {
-        &self.notes[..]
-    }
-    fn help(&self) -> Option<&str> {
-        self.help
-    }
-}
-
-pub trait IntoRuntimeError {
-    fn error(&self, message: &'static str) -> RuntimeError;
-}
-
-impl IntoRuntimeError for Span {
-    fn error(&self, message: &'static str) -> RuntimeError {
-        RuntimeError {
-            span: *self,
-            message,
-            notes: Vec::new(),
-            help: None,
-        }
-    }
-}
-
-/// Element of a path through a value.
-#[derive(Debug)]
-pub enum PathElement {
-    Key(Rc<str>),
-    Index(usize),
-}
-
-/// A value cannot be represented in the desired way.
-///
-/// For example, when trying to serialize a function as json.
-#[derive(Debug)]
-pub struct ValueError {
-    /// The span where the failure was triggered.
-    ///
-    /// This is not the span where the offending value was produced, as that can
-    /// be difficult to track in general.
-    pub span: Span,
-
-    /// Path in the value where the error originated.
-    pub path: Vec<PathElement>,
-
-    /// Description of what went wrong, but not where.
-    pub description: &'static str,
-
-    /// Combined description and path.
-    pub message: String,
-}
-
-impl ValueError {
-    pub fn new(span: Span, path: Vec<PathElement>, description: &'static str) -> ValueError {
-        let mut message = description.to_string();
-
-        // TODO: Find a prettier way to report the value path of an error.
-        // For now this will do.
-        for elem in path.iter().rev() {
-            match elem {
-                PathElement::Key(k) => {
-                    message.push_str("\n  at key \"");
-                    crate::string::escape_json(k, &mut message);
-                    message.push('"');
-                }
-                PathElement::Index(i) => {
-                    message.push_str("\n  at index ");
-                    message.push_str(&i.to_string());
-                }
-            }
-        }
-
-        ValueError {
-            span,
-            path,
-            description,
-            message,
-        }
-    }
-}
-
-impl From<ValueError> for Box<dyn Error> {
-    fn from(err: ValueError) -> Self {
-        Box::new(err)
-    }
-}
-
-impl Error for ValueError {
-    fn message(&self) -> &str {
-        &self.message[..]
-    }
-    fn span(&self) -> Option<Span> {
-        Some(self.span)
-    }
-    fn notes(&self) -> &[(Span, &str)] {
-        &[]
-    }
-    fn help(&self) -> Option<&str> {
-        None
+    concat! {
+        doc.name format!(":{line}:{column}")
+        Doc::HardBreak
+        line_num_pad.clone() " " Doc::from("╷").with_markup(markup)
+        Doc::HardBreak
+        line_num_str " " Doc::from("│").with_markup(markup) " " trunc_prefix line_content trunc_suffix
+        Doc::HardBreak
+        line_num_pad " " Doc::from("╵").with_markup(markup) " " mark_indent doc_under.with_markup(markup)
+        Doc::HardBreak
     }
 }

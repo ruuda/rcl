@@ -8,11 +8,9 @@
 //! Utilities for working with strings.
 
 use crate::cst::StringPart;
-use crate::error::{IntoParseError, ParseError};
+use crate::error::{IntoError, Result};
 use crate::lexer::Escape;
 use crate::source::Span;
-
-pub type Result<T> = std::result::Result<T, ParseError>;
 
 /// Convert an escape sequence into the string it represents.
 pub fn unescape_into(input: &str, span: Span, escape: Escape, output: &mut String) -> Result<()> {
@@ -156,6 +154,7 @@ pub fn count_common_leading_spaces(input: &str, parts: &[StringPart]) -> usize {
 #[cfg(test)]
 mod test {
     use crate::cst::StringPart;
+    use crate::error::Result;
     use crate::source::DocId;
 
     fn parse_string_raw(input: &str) -> Vec<StringPart> {
@@ -188,7 +187,7 @@ mod test {
         super::count_common_leading_spaces(&quoted_input, &parts)
     }
 
-    fn unescape(input: &str) -> crate::error::Result<String> {
+    fn unescape(input: &str) -> Result<String> {
         use crate::ast::Expr::{Format, StringLit};
         let doc = DocId(0);
         let tokens = crate::lexer::lex(doc, input)?;

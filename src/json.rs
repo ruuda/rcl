@@ -9,7 +9,7 @@
 
 use std::rc::Rc;
 
-use crate::error::{PathElement, Result, ValueError};
+use crate::error::{IntoError, PathElement, Result};
 use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};
 use crate::runtime::Value;
@@ -49,9 +49,7 @@ impl Formatter {
         // the error prevents further formatting.
         let mut path = Vec::new();
         std::mem::swap(&mut self.path, &mut path);
-
-        let err = ValueError::new(self.caller, path, message);
-        Err(err.into())
+        self.caller.error(message).with_path(path).err()
     }
 
     fn string<'a>(&self, s: &str) -> Doc<'a> {

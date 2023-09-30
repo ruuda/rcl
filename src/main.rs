@@ -138,10 +138,19 @@ fn main_with_loader(loader: &mut Loader) -> Result<()> {
 }
 
 fn main() {
+    use std::io::Write;
     let mut loader = Loader::new();
 
     if let Err(err) = main_with_loader(&mut loader) {
-        err.print(&loader.as_inputs());
+        let inputs = loader.as_inputs();
+        let err_doc = err.report(&inputs);
+        let stderr = std::io::stderr();
+        let cfg = pprint::Config::default_for_fd(&stderr);
+        let err_string = err_doc.println(&cfg);
+        let res = stderr.lock().write_all(err_string.as_bytes());
+        // Regardless of whether printing to stderr failed or not, we were going
+        // to exist with exit code 1 anyway, so ignore any stderr IO errors.
+        let _ = res;
         std::process::exit(1);
     }
 }
