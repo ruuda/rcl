@@ -26,11 +26,9 @@ let names_per_uid = {
 };
 let reused_uids = {
   for uid, services in names_per_uid:
-  // TODO: Add List.len.
-  if {for s in services: s}.len() > 1:
+  if services.len() > 1:
   uid: services
 };
-// TODO: Add Dict.len.
-assert {for _, _ in reused_uids: 1}.len() == 0, ["Some UIDs are used twice:", reused_uids];
+assert reused_uids.len() == 0, ["Some UIDs are used twice:", reused_uids];
 
 uids

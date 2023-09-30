@@ -115,6 +115,7 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                     let builtin = match field_name.as_ref() {
                         "contains" => Some(builtin_dict_contains(inner.clone())),
                         "get" => Some(builtin_dict_get(inner.clone())),
+                        "len" => Some(builtin_dict_len(fields)),
                         _ => None,
                     };
                     if let Some(b) = builtin {
@@ -126,9 +127,10 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                         None => Err(err_unknown_field.into()),
                     }
                 }
-                Value::List(..) => {
+                Value::List(xs) => {
                     let builtin = match field_name.as_ref() {
                         "contains" => Some(builtin_list_contains(inner.clone())),
+                        "len" => Some(builtin_list_len(xs)),
                         _ => None,
                     };
                     match builtin {
@@ -136,10 +138,10 @@ pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
                         None => Err(err_unknown_field.into()),
                     }
                 }
-                Value::Set(s) => {
+                Value::Set(xs) => {
                     let builtin = match field_name.as_ref() {
                         "contains" => Some(builtin_set_contains(inner.clone())),
-                        "len" => Some(builtin_set_len(s)),
+                        "len" => Some(builtin_set_len(xs)),
                         _ => None,
                     };
                     match builtin {
@@ -536,6 +538,34 @@ fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
             env.pop(ck);
             Ok(())
         }
+    }
+}
+
+fn builtin_dict_len(s: &BTreeMap<Rc<Value>, Rc<Value>>) -> Builtin {
+    let n = Rc::new(Value::Int(s.len() as _));
+    let f = move |span: Span, args: &[Rc<Value>]| {
+        if !args.is_empty() {
+            return Err(span.error("Dict.len takes no arguments.").into());
+        };
+        Ok(n.clone())
+    };
+    Builtin {
+        name: "Dict.len",
+        f: Box::new(f),
+    }
+}
+
+fn builtin_list_len(s: &[Rc<Value>]) -> Builtin {
+    let n = Rc::new(Value::Int(s.len() as _));
+    let f = move |span: Span, args: &[Rc<Value>]| {
+        if !args.is_empty() {
+            return Err(span.error("List.len takes no arguments.").into());
+        };
+        Ok(n.clone())
+    };
+    Builtin {
+        name: "List.len",
+        f: Box::new(f),
     }
 }
 
