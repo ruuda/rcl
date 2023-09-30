@@ -668,7 +668,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Consume a string inner span, ensuring that multiline strings starts with a newline.
+    /// Consume a string inner span, ensuring that multiline strings start with a newline.
     ///
     /// If we allowed content between the opening quote and the first line break,
     /// the following string would be ambiguous:
