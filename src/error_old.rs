@@ -33,63 +33,6 @@ pub trait Error: std::fmt::Debug {
     fn help(&self) -> Option<&str>;
 }
 
-/// An error during evaluation.
-#[derive(Debug)]
-pub struct RuntimeError {
-    pub span: Span,
-    pub message: &'static str,
-    pub notes: Vec<(Span, &'static str)>,
-    pub help: Option<&'static str>,
-}
-
-impl RuntimeError {
-    pub fn with_help(mut self, help: &'static str) -> Self {
-        self.help = Some(help);
-        self
-    }
-
-    pub fn with_note(mut self, at: Span, note: &'static str) -> Self {
-        self.notes.push((at, note));
-        self
-    }
-}
-
-impl From<RuntimeError> for Box<dyn Error> {
-    fn from(err: RuntimeError) -> Self {
-        Box::new(err)
-    }
-}
-
-impl Error for RuntimeError {
-    fn message(&self) -> &str {
-        self.message
-    }
-    fn span(&self) -> Option<Span> {
-        Some(self.span)
-    }
-    fn notes(&self) -> &[(Span, &str)] {
-        &self.notes[..]
-    }
-    fn help(&self) -> Option<&str> {
-        self.help
-    }
-}
-
-pub trait IntoRuntimeError {
-    fn error(&self, message: &'static str) -> RuntimeError;
-}
-
-impl IntoRuntimeError for Span {
-    fn error(&self, message: &'static str) -> RuntimeError {
-        RuntimeError {
-            span: *self,
-            message,
-            notes: Vec::new(),
-            help: None,
-        }
-    }
-}
-
 /// Element of a path through a value.
 #[derive(Debug)]
 pub enum PathElement {

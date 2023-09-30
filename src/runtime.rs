@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::Ident;
-use crate::error_old::Result;
+use crate::error::Result;
 use crate::source::Span;
 
 pub type BuiltinFnBox = Box<dyn Fn(Span, &[Rc<Value>]) -> Result<Rc<Value>>>;

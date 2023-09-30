@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
-use crate::error_old::{IntoRuntimeError, Result};
+use crate::error::{IntoError, Result};
 use crate::runtime::{Builtin, Env, Value};
 use crate::source::Span;
 
@@ -545,7 +545,7 @@ fn builtin_dict_len(s: &BTreeMap<Rc<Value>, Rc<Value>>) -> Builtin {
     let n = Rc::new(Value::Int(s.len() as _));
     let f = move |span: Span, args: &[Rc<Value>]| {
         if !args.is_empty() {
-            return Err(span.error("Dict.len takes no arguments.").into());
+            return span.error("Dict.len takes no arguments.").err();
         };
         Ok(n.clone())
     };
@@ -559,7 +559,7 @@ fn builtin_list_len(s: &[Rc<Value>]) -> Builtin {
     let n = Rc::new(Value::Int(s.len() as _));
     let f = move |span: Span, args: &[Rc<Value>]| {
         if !args.is_empty() {
-            return Err(span.error("List.len takes no arguments.").into());
+            return span.error("List.len takes no arguments.").err();
         };
         Ok(n.clone())
     };
@@ -587,7 +587,7 @@ fn builtin_string_len(s: &str) -> Builtin {
     let n = Rc::new(Value::Int(s.len() as _));
     let f = move |span: Span, args: &[Rc<Value>]| {
         if !args.is_empty() {
-            return Err(span.error("String.len takes no arguments.").into());
+            return span.error("String.len takes no arguments.").err();
         };
         Ok(n.clone())
     };
@@ -601,7 +601,7 @@ fn builtin_dict_contains(v: Rc<Value>) -> Builtin {
     let f = move |span: Span, args: &[Rc<Value>]| {
         let arg = match args {
             [a] => a,
-            _ => return Err(span.error("Dict.contains takes a single argument.").into()),
+            _ => return span.error("Dict.contains takes a single argument.").err(),
         };
         match v.as_ref() {
             Value::Dict(m) => {
@@ -621,7 +621,7 @@ fn builtin_list_contains(v: Rc<Value>) -> Builtin {
     let f = move |span: Span, args: &[Rc<Value>]| {
         let arg = match args {
             [a] => a,
-            _ => return Err(span.error("List.contains takes a single argument.").into()),
+            _ => return span.error("List.contains takes a single argument.").err(),
         };
         match v.as_ref() {
             Value::List(m) => {
@@ -641,7 +641,7 @@ fn builtin_set_contains(v: Rc<Value>) -> Builtin {
     let f = move |span: Span, args: &[Rc<Value>]| {
         let arg = match args {
             [a] => a,
-            _ => return Err(span.error("Set.contains takes a single argument.").into()),
+            _ => return span.error("Set.contains takes a single argument.").err(),
         };
         match v.as_ref() {
             Value::Set(m) => {
@@ -661,7 +661,7 @@ fn builtin_dict_get(v: Rc<Value>) -> Builtin {
     let f = move |span: Span, args: &[Rc<Value>]| {
         let (k, default) = match args {
             [k, default] => (k, default),
-            _ => return Err(span.error("Dict.get takes two arguments.").into()),
+            _ => return span.error("Dict.get takes two arguments.").err(),
         };
         match v.as_ref() {
             Value::Dict(m) => match m.get(k) {
