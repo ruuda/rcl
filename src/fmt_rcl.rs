@@ -14,7 +14,7 @@ use std::rc::Rc;
 use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};
 use crate::runtime::Value;
-use crate::string::escape_json;
+use crate::string::{escape_json, is_identifier};
 
 /// Render a value as RCL.
 pub fn format_rcl(v: &Value) -> Doc {
@@ -53,31 +53,57 @@ fn list<'a>(open: &'a str, close: &'a str, vs: impl Iterator<Item = &'a Rc<Value
 
 fn dict<'a>(vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>) -> Doc<'a> {
     let mut elements = Vec::new();
+    let mut sep = ",";
     for (k, v) in vs {
         if !elements.is_empty() {
-            elements.push(",".into());
+            elements.push(sep.into());
             elements.push(Doc::Sep);
         }
-        let k_doc = match k.as_ref() {
-            Value::String(k_str) => {
-                // TODO: Format as identifier, without quotes, if possible.
-                string(k_str.as_ref()).with_markup(Markup::Identifier)
+        match k.as_ref() {
+            // Format as identifier if we can, or as string if we have to.
+            Value::String(k_str) if is_identifier(k_str) => {
+                if elements.is_empty() {
+                    // If a dict is formatted single-line in record syntax, we
+                    // want a space between the opening { and the field.
+                    elements.push(Doc::Sep);
+                }
+                elements.push(Doc::from(k_str.as_ref()).with_markup(Markup::Identifier));
+                elements.push(" = ".into());
+                sep = ";";
             }
-            _not_string => value(k),
+            Value::String(k_str) => {
+                if elements.is_empty() {
+                    elements.push(Doc::SoftBreak);
+                }
+                elements.push(string(k_str).with_markup(Markup::Identifier));
+                elements.push(": ".into());
+                sep = ",";
+            }
+            _not_string => {
+                if elements.is_empty() {
+                    elements.push(Doc::SoftBreak);
+                }
+                elements.push(value(k));
+                elements.push(": ".into());
+                sep = ",";
+            }
         };
-        elements.push(k_doc);
-        elements.push(": ".into());
         elements.push(value(v));
     }
 
-    // Add a trailing comma in tall mode.
-    elements.push(Doc::tall(","));
+    // Add a trailing separator in tall mode.
+    elements.push(Doc::tall(sep));
+
+    // If the last element used record syntax, then in wide mode, we want a
+    // space before the closing }.
+    match sep {
+        ";" => elements.push(Doc::Sep),
+        _cm => elements.push(Doc::SoftBreak),
+    }
 
     let result = group! {
         "{"
-        Doc::SoftBreak
         indent! { Doc::Concat(elements) }
-        Doc::SoftBreak
         "}"
     };
     result

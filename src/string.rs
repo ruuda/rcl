@@ -88,6 +88,29 @@ fn unescape_unicode(span: Span, hex: &str, output: &mut String) -> Result<()> {
     }
 }
 
+/// Return whether the string is a valid RCL identifier.
+///
+/// TODO: Fuzz against the lexer and check they agree.
+pub fn is_identifier(s: &str) -> bool {
+    let s = s.as_bytes();
+
+    if s.is_empty() {
+        return false;
+    }
+
+    if !s[0].is_ascii_alphabetic() && s[0] != b'_' {
+        return false;
+    }
+
+    for &b in s.iter().skip(1) {
+        if !b.is_ascii_alphanumeric() && b != b'_' && b != b'-' {
+            return false;
+        }
+    }
+
+    true
+}
+
 /// Escape a string for use inside a json string literal.
 pub fn escape_json(str: &str, into: &mut String) {
     use std::fmt::Write;
