@@ -230,7 +230,17 @@ pub fn lex(doc: DocId, input: &str) -> Result<Vec<Lexeme>> {
             // parser. Blank lines we do keep, because we want to preserve them
             // when autoformatting.
             (Token::Space, _) => continue,
-            lexeme => tokens.push(lexeme),
+            (token, span) => {
+                debug_assert!(
+                    input.is_char_boundary(span.start()),
+                    "Start of {token:?} is not a char boundary.",
+                );
+                debug_assert!(
+                    input.is_char_boundary(span.end()),
+                    "Start of {token:?} is not a char boundary.",
+                );
+                tokens.push((token, span));
+            }
         };
     }
     lexer.report_unclosed_delimiters()?;

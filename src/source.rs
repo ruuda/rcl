@@ -32,6 +32,10 @@ impl fmt::Debug for DocId {
 }
 
 /// Marks a location in a source file by byte offset.
+///
+/// Invariant: the start and end offset of the span should be a char boundary in
+/// the source document. That is, a span should never slice a code point in half.
+/// The lexer contains debug assertions to verify this.
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Span {
     /// Packed fields, use constructor and getter methods to pack/unpack.
