@@ -58,7 +58,8 @@ impl<'a> Abstractor<'a> {
                         if i != 0 {
                             current.push('\n');
                         }
-                        current.push_str(&line[1 + n_strip..]);
+                        let n = line.len().min(1 + n_strip);
+                        current.push_str(&line[n..]);
                     } else {
                         current.push_str(line);
                     }

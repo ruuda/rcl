@@ -1,8 +1,16 @@
 [
   """
   🕴︎︎
+  """,
   """
+  This string has a shared indent to be stripped,
+  even though the next line has no spaces on it:
+
+  """,
 ]
 
 # output:
-["🕴︎︎\n"]
+[
+  "🕴︎︎\n",
+  "This string has a shared indent to be stripped,\neven though the next line has no spaces on it:\n\n"
+]
