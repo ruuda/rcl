@@ -7,4 +7,4 @@ stdin:1:11
   ╵           ^~~~~~~~
 Error: Invalid escape sequence: not a Unicode scalar value.
 
-Help: For code points beyond U+FFFF, use '\u{xxxxxx}' instead of a surrogate pair.
+Help: For code points beyond U+FFFF, use '\u{...}' instead of a surrogate pair.

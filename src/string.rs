@@ -86,7 +86,7 @@ fn unescape_unicode(span: Span, hex: &str, output: &mut String) -> Result<()> {
         None => span
             .error("Invalid escape sequence: not a Unicode scalar value.")
             .with_help(
-                "For code points beyond U+FFFF, use '\\u{xxxxxx}' instead of a surrogate pair.",
+                "For code points beyond U+FFFF, use '\\u{...}' instead of a surrogate pair.",
             )
             .err(),
     }

@@ -717,7 +717,7 @@ impl<'a> Lexer<'a> {
             } else {
                 return self
                     .span(2 + n)
-                    .error("Expected 4 hex digits after '\\u' Unicode escape sequence.")
+                    .error("Expected four hex digits after '\\u' Unicode escape sequence.")
                     .with_help(
                         "You can also use up to six hex digits enclosed in '{}'. \
                         For example '\\u{1F574}' or '\\u{0a}'.",

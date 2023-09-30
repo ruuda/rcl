@@ -5,6 +5,6 @@ stdin:1:11
   ╷
 1 │ "Invalid: \u00"
   ╵           ^~~~
-Error: Expected 4 hex digits after '\u' Unicode escape sequence.
+Error: Expected four hex digits after '\u' Unicode escape sequence.
 
 Help: You can also use up to six hex digits enclosed in '{}'. For example '\u{1F574}' or '\u{0a}'.
