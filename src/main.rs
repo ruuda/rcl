@@ -7,7 +7,7 @@
 
 use std::io::Stdout;
 
-use rcl::error::Result;
+use rcl::error_old::Result;
 use rcl::loader::Loader;
 use rcl::pprint;
 use rcl::runtime::Env;

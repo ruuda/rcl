@@ -9,7 +9,7 @@
 
 use std::rc::Rc;
 
-use crate::error::{PathElement, Result, ValueError};
+use crate::error_old::{PathElement, Result, ValueError};
 use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};
 use crate::runtime::Value;

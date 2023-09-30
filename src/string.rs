@@ -8,7 +8,7 @@
 //! Utilities for working with strings.
 
 use crate::cst::StringPart;
-use crate::error::{IntoParseError, ParseError};
+use crate::error_old::{IntoParseError, ParseError};
 use crate::lexer::Escape;
 use crate::source::Span;
 
@@ -188,7 +188,7 @@ mod test {
         super::count_common_leading_spaces(&quoted_input, &parts)
     }
 
-    fn unescape(input: &str) -> crate::error::Result<String> {
+    fn unescape(input: &str) -> crate::error_old::Result<String> {
         use crate::ast::Expr::{Format, StringLit};
         let doc = DocId(0);
         let tokens = crate::lexer::lex(doc, input)?;

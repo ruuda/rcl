@@ -15,7 +15,7 @@ use std::rc::Rc;
 use crate::abstraction;
 use crate::ast;
 use crate::cst;
-use crate::error::{IoError, Result};
+use crate::error_old::{IoError, Result};
 use crate::eval;
 use crate::lexer;
 use crate::parser;

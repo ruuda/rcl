@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
-use crate::error::{IntoRuntimeError, Result};
+use crate::error_old::{IntoRuntimeError, Result};
 use crate::runtime::{Builtin, Env, Value};
 use crate::source::Span;
 

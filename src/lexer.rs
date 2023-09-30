@@ -7,7 +7,7 @@
 
 //! The lexer splits a string into a sequence of tokens.
 
-use crate::error::{IntoParseError, ParseError};
+use crate::error_old::{IntoParseError, ParseError};
 use crate::source::{DocId, Span};
 
 pub type Result<T> = std::result::Result<T, ParseError>;
