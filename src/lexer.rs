@@ -7,10 +7,8 @@
 
 //! The lexer splits a string into a sequence of tokens.
 
-use crate::error_old::{IntoParseError, ParseError};
+use crate::error::{IntoError, Result};
 use crate::source::{DocId, Span};
-
-pub type Result<T> = std::result::Result<T, ParseError>;
 
 /// What quote style a string literal is quoted in (`"` or `"""`).
 ///
@@ -321,7 +319,7 @@ impl<'a> Lexer<'a> {
                 .with_note(top.0, "Unmatched '[' opened here."),
             _ => unreachable!("End byte is one of the above three."),
         };
-        Err(err)
+        err.err()
     }
 
     /// Lex one token. The input must not be empty.
@@ -804,6 +802,6 @@ impl<'a> Lexer<'a> {
                 .error("Unexpected end of input, format string is not closed.")
                 .with_note(top.0, "Format string opened here."),
         };
-        Err(err)
+        err.err()
     }
 }

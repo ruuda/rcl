@@ -15,10 +15,12 @@ use std::rc::Rc;
 use crate::abstraction;
 use crate::ast;
 use crate::cst;
-use crate::error_old::{IoError, Result};
+use crate::error::{Error, Result};
 use crate::eval;
 use crate::lexer;
+use crate::markup::Markup;
 use crate::parser;
+use crate::pprint::{self, concat};
 use crate::runtime::{Env, Value};
 use crate::source::{Doc, DocId, Span};
 
@@ -107,7 +109,7 @@ impl Loader {
         let mut buf = String::new();
         io::stdin()
             .read_to_string(&mut buf)
-            .map_err(|err| IoError::from(format!("Failed to read from stdin: {}.", err.kind())))?;
+            .map_err(|err| Error::new(format!("Failed to read from stdin: {}.", err)))?;
         let doc = Document {
             name: "stdin".to_string(),
             data: buf,
@@ -119,11 +121,13 @@ impl Loader {
     pub fn load_file<P: AsRef<Path>>(&mut self, path: P) -> Result<DocId> {
         // TODO: Deduplicate, don't load the same document twice.
         let buf = fs::read_to_string(&path).map_err(|err| {
-            IoError::from(format!(
-                "Failed to read from file '{}': {}.",
-                path.as_ref().to_string_lossy(),
-                err.kind(),
-            ))
+            let fname = path.as_ref().to_string_lossy().into_owned();
+            Error::new(concat! {
+                "Failed to read from file '"
+                pprint::Doc::from(fname).with_markup(Markup::Highlight)
+                "': "
+                err.to_string()
+            })
         })?;
         let doc = Document {
             // TODO: Canonicalize all paths to be relative to the working directory.

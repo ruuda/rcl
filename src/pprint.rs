@@ -380,7 +380,7 @@ macro_rules! doc_concat {
     { $($fragment:expr)* } => {
         {
             #[allow(unused_mut)]
-            let mut result = Doc::empty();
+            let mut result = crate::pprint::Doc::empty();
             $( result = result + $fragment.into(); )*
             result
         }

@@ -35,13 +35,25 @@ pub type Result<T> = std::result::Result<T, Box<Error>>;
 /// preserve enough of the structure to allow for alternative reporting formats
 /// (e.g. json output) to enable tooling.
 pub struct Error {
-    message: Doc<'static>,
-    origin: Option<Span>,
-    notes: Vec<(Span, Doc<'static>)>,
-    help: Option<Doc<'static>>,
+    pub message: Doc<'static>,
+    pub origin: Option<Span>,
+    pub notes: Vec<(Span, Doc<'static>)>,
+    pub help: Option<Doc<'static>>,
 }
 
 impl Error {
+    /// Create a new error, with nothing but the message set.
+    pub fn new<M>(message: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        Error {
+            message: message.into(),
+            origin: None,
+            notes: Vec::new(),
+            help: None,
+        }
+    }
     /// Extend the error with a note at a given source location.
     pub fn with_note<M>(mut self, at: Span, note: M) -> Error
     where
@@ -95,6 +107,24 @@ impl Error {
         }
 
         Doc::Concat(result)
+    }
+}
+
+pub trait IntoError {
+    fn error<M>(self, message: M) -> Error
+    where
+        Doc<'static>: From<M>;
+}
+
+impl IntoError for Span {
+    fn error<M>(self, message: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        Error {
+            origin: Some(self),
+            ..Error::new(message)
+        }
     }
 }
 
