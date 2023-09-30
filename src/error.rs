@@ -52,6 +52,14 @@ pub struct Error {
     ///  * The expected thing goes first, the actual thing goes second.
     pub message: Doc<'static>,
 
+    /// Optionally an extended message body.
+    ///
+    /// For example, in the case of a type error, the body could show the
+    /// expected type and actual type. We separate the body from the main
+    /// message to have a title in case we need to report structured errors
+    /// in limited form (e.g. GitHub Actions source annotations).
+    pub body: Option<Doc<'static>>,
+
     /// The source location of the error.
     pub origin: Option<Span>,
 
@@ -78,12 +86,23 @@ impl Error {
     {
         Error {
             message: message.into(),
+            body: None,
             origin: None,
             path: Vec::new(),
             notes: Vec::new(),
             help: None,
         }
     }
+
+    /// Replace the body of the error with the given content.
+    pub fn with_body<M>(mut self, body: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        self.body = Some(body.into());
+        self
+    }
+
     /// Extend the error with a note at a given source location.
     pub fn with_note<M>(mut self, at: Span, note: M) -> Error
     where
@@ -154,6 +173,11 @@ impl Error {
         result.push(Doc::from("Error:").with_markup(Markup::Error));
         result.push(" ".into());
         result.push(self.message);
+
+        if let Some(body) = self.body {
+            result.push(" ".into());
+            result.push(body);
+        }
 
         for (note_span, note_message) in self.notes {
             result.push(Doc::HardBreak);

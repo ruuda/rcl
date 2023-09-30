@@ -12,6 +12,7 @@ use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
 use crate::error::{IntoError, Result};
+use crate::pprint::Doc;
 use crate::runtime::{Builtin, Env, Value};
 use crate::source::Span;
 
@@ -386,19 +387,30 @@ fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
                 }
                 Value::Bool(false) => {
                     let message = eval(env, message_expr)?;
-                    // TODO: Include the message in the error. We need a way to
-                    // attach values in addition to source locations ...
-                    #[cfg(not(fuzzing))]
-                    eprintln!("Assertion failed: {message:?}");
-                    #[cfg(fuzzing)]
-                    let _ = message;
-                    return Err(condition_span.error("Assertion failed.").into());
+                    let body: Doc = match message.as_ref() {
+                        // If the message is a string, then we include it directly,
+                        // not pretty-printed as a value.
+                        Value::String(msg) => msg.to_string().into(),
+                        // TODO: Add an infallible RCL formatter, so we can
+                        // always include the message.
+                        _ => match crate::json::format_json(*condition_span, &message) {
+                            Ok(msg_doc) => msg_doc.into_owned(),
+                            Err(..) => Doc::from(
+                                "The assertion includes a message, \
+                                but it is not json-formattable.",
+                            ),
+                        },
+                    };
+                    return condition_span
+                        .error("Assertion failed.")
+                        .with_body(body)
+                        .err();
                 }
                 _ => {
                     // TODO: Report a proper type error.
-                    let err =
-                        condition_span.error("Assertion condition must evaluate to a boolean.");
-                    return Err(err.into());
+                    return condition_span
+                        .error("Assertion condition must evaluate to a boolean.")
+                        .err();
                 }
             }
         }

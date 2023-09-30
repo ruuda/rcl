@@ -3,9 +3,8 @@ assert false, "This assertion should fail.";
 0
 
 # output:
-Assertion failed: String("This assertion should fail.")
 stdin:2:8
   ╷
 2 │ assert false, "This assertion should fail.";
   ╵        ^~~~~
-Error: Assertion failed.
+Error: Assertion failed. This assertion should fail.
