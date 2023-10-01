@@ -391,13 +391,13 @@ fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
                     let body: Doc = match message.as_ref() {
                         // If the message is a string, then we include it directly,
                         // not pretty-printed as a value.
-                        Value::String(msg) => msg.to_string().into(),
+                        Value::String(msg) => Doc::lines(msg),
                         // Otherwise, we pretty-print it as an RCL value.
-                        _ => format_rcl(&message).into_owned(),
+                        _ => format_rcl(&message),
                     };
                     return condition_span
                         .error("Assertion failed.")
-                        .with_body(body)
+                        .with_body(body.into_owned())
                         .err();
                 }
                 _ => {
