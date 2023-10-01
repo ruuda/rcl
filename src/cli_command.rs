@@ -157,7 +157,7 @@ pub fn parse(argv: Vec<String>) -> Result<Cmd> {
                 _ => return Error::new("Expected color mode after --color.").err(),
             },
             Arg::Short("o") | Arg::Long("output") => match args.next() {
-                Some(Arg::Plain(v)) if v == "rcl" => output = Some(Output::Json),
+                Some(Arg::Plain(v)) if v == "rcl" => output = Some(Output::Rcl),
                 Some(Arg::Plain(v)) if v == "json" => output = Some(Output::Json),
                 Some(Arg::Plain(invalid)) => {
                     let err = concat! {

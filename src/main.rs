@@ -7,7 +7,7 @@
 
 use std::io::Stdout;
 
-use rcl::cli_command::{self, Cmd};
+use rcl::cli_command::{self, Cmd, Output};
 use rcl::error::Result;
 use rcl::loader::Loader;
 use rcl::pprint;
@@ -27,15 +27,18 @@ fn pprint_stdout(stdout: Stdout, cfg: &pprint::Config, doc: &pprint::Doc) {
     }
 }
 
-fn main_eval(loader: &Loader, doc: DocId) -> Result<()> {
+fn main_eval(loader: &Loader, doc: DocId, output: Output) -> Result<()> {
     let mut env = Env::new();
     let val = loader.evaluate(doc, &mut env)?;
 
     let full_span = loader.get_span(doc);
-    let json = rcl::fmt_json::format_json(full_span, val.as_ref())?;
+    let out_doc = match output {
+        Output::Rcl => rcl::fmt_rcl::format_rcl(val.as_ref()),
+        Output::Json => rcl::fmt_json::format_json(full_span, val.as_ref())?,
+    };
     let stdout = std::io::stdout();
     let cfg = pprint::Config::default_for_fd(&stdout);
-    pprint_stdout(stdout, &cfg, &json);
+    pprint_stdout(stdout, &cfg, &out_doc);
     Ok(())
 }
 
@@ -89,9 +92,9 @@ fn main_with_loader(loader: &mut Loader) -> Result<()> {
             println!("{}", usage);
             std::process::exit(0)
         }
-        Cmd::Evaluate { fname, .. } => {
+        Cmd::Evaluate { fname, output, .. } => {
             let doc = loader.load_from_cli_fname(&fname)?;
-            main_eval(loader, doc)
+            main_eval(loader, doc, output)
         }
         Cmd::Query {
             fname, query: expr, ..
