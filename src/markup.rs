@@ -31,7 +31,7 @@ pub enum Markup {
 }
 
 /// How to treat color and other markup hints.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MarkupMode {
     /// Ignore all markup hints, do not output them.
     None,
