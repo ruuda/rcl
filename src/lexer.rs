@@ -247,6 +247,11 @@ pub fn lex(doc: DocId, input: &str) -> Result<Vec<Lexeme>> {
     Ok(tokens)
 }
 
+/// Return whether a given string is a keyword.
+pub fn is_keyword(ident: &str) -> bool {
+    Lexer::get_keyword_or_ident(ident) != Token::Ident
+}
+
 struct Lexer<'a> {
     input: &'a str,
     doc: DocId,
@@ -467,10 +472,9 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn lex_in_ident(&mut self) -> Lexeme {
-        let span = self.take_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'-');
-        let ident = span.resolve(self.input);
-        let token = match ident {
+    /// Return which keyword the string is, or identifier otherwise.
+    fn get_keyword_or_ident(ident: &str) -> Token {
+        match ident {
             "assert" => Token::KwAssert,
             "and" => Token::KwAnd,
             "else" => Token::KwElse,
@@ -486,7 +490,13 @@ impl<'a> Lexer<'a> {
             "trace" => Token::KwTrace,
             "true" => Token::KwTrue,
             _ => Token::Ident,
-        };
+        }
+    }
+
+    fn lex_in_ident(&mut self) -> Lexeme {
+        let span = self.take_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'-');
+        let ident = span.resolve(self.input);
+        let token = Lexer::get_keyword_or_ident(ident);
         (token, span)
     }
 

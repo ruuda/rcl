@@ -88,6 +88,32 @@ fn unescape_unicode(span: Span, hex: &str, output: &mut String) -> Result<()> {
     }
 }
 
+/// Return whether the string is a valid RCL identifier.
+pub fn is_identifier(s: &str) -> bool {
+    let bytes = s.as_bytes();
+
+    if bytes.is_empty() {
+        return false;
+    }
+
+    if !bytes[0].is_ascii_alphabetic() && bytes[0] != b'_' {
+        return false;
+    }
+
+    for &b in bytes.iter().skip(1) {
+        if !b.is_ascii_alphanumeric() && b != b'_' && b != b'-' {
+            return false;
+        }
+    }
+
+    // If it satisfied all the above, then the only reason not to be an
+    // identifier is if there is a keyword with that name.
+    // TODO: Add golden test to ensure that keywords are escaped in RCL output.
+    // The absence of control flow may not make it obvious from the coverage
+    // report to test this case.
+    !crate::lexer::is_keyword(s)
+}
+
 /// Escape a string for use inside a json string literal.
 pub fn escape_json(str: &str, into: &mut String) {
     use std::fmt::Write;

@@ -198,6 +198,31 @@ impl<'a> Doc<'a> {
         }
     }
 
+    /// Construct a new document fragment from a string slice that may contain newlines.
+    ///
+    /// The line breaks are converted into hard breaks in the document.
+    pub fn lines(value: &'a str) -> Doc<'a> {
+        let mut result = Vec::new();
+        let mut remainder = value;
+
+        while let Some(i) = remainder.find('\n') {
+            if i > 0 {
+                result.push(Doc::str(&remainder[..i]));
+            }
+            result.push(Doc::HardBreak);
+            remainder = &remainder[i + 1..];
+        }
+
+        if !remainder.is_empty() {
+            result.push(Doc::str(remainder));
+        }
+
+        match result.len() {
+            1 => result.pop().expect("We have one element to pop."),
+            _ => Doc::Concat(result),
+        }
+    }
+
     /// Construct a new document fragment from an owned string.
     pub fn string(value: String) -> Doc<'a> {
         use unicode_width::UnicodeWidthStr;

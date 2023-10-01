@@ -12,6 +12,7 @@ use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
 use crate::error::{IntoError, Result};
+use crate::fmt_rcl::format_rcl;
 use crate::pprint::Doc;
 use crate::runtime::{Builtin, Env, Value};
 use crate::source::Span;
@@ -390,20 +391,13 @@ fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
                     let body: Doc = match message.as_ref() {
                         // If the message is a string, then we include it directly,
                         // not pretty-printed as a value.
-                        Value::String(msg) => msg.to_string().into(),
-                        // TODO: Add an infallible RCL formatter, so we can
-                        // always include the message.
-                        _ => match crate::json::format_json(*condition_span, &message) {
-                            Ok(msg_doc) => msg_doc.into_owned(),
-                            Err(..) => Doc::from(
-                                "The assertion includes a message, \
-                                but it is not json-formattable.",
-                            ),
-                        },
+                        Value::String(msg) => Doc::lines(msg),
+                        // Otherwise, we pretty-print it as an RCL value.
+                        _ => format_rcl(&message),
                     };
                     return condition_span
                         .error("Assertion failed.")
-                        .with_body(body)
+                        .with_body(body.into_owned())
                         .err();
                 }
                 _ => {

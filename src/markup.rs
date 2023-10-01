@@ -22,11 +22,12 @@ pub enum Markup {
     Highlight,
 
     // These are meant for syntax highlighting.
-    String,
-    Number,
-    Keyword,
+    Builtin,
     Comment,
     Identifier,
+    Keyword,
+    Number,
+    String,
 }
 
 /// How to treat color and other markup hints.
@@ -68,10 +69,11 @@ pub fn switch_ansi(_from: Option<Markup>, to: Option<Markup>) -> &'static str {
         Markup::Error => bold_red,
         Markup::Warning => bold_yellow,
         Markup::Highlight => white,
-        Markup::String => red,
-        Markup::Number => cyan,
-        Markup::Keyword => green,
+        Markup::Builtin => red,
         Markup::Comment => white,
         Markup::Identifier => blue,
+        Markup::Keyword => green,
+        Markup::Number => cyan,
+        Markup::String => red,
     }
 }
