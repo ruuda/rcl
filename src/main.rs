@@ -7,32 +7,12 @@
 
 use std::io::Stdout;
 
+use rcl::cli_command::{self, Cmd};
 use rcl::error::Result;
 use rcl::loader::Loader;
 use rcl::pprint;
 use rcl::runtime::Env;
 use rcl::source::DocId;
-
-const USAGE: &str = r#"
-RCL -- Ruud's Configuration Language.
-
-Usage:
-  rcl evaluate <file>
-  rcl format <file>
-  rcl highlight <file>
-  rcl query <file> <expr>
-  rcl repl
-  rcl -h | --help
-
-Arguments:
-  <file>      The input file to process, or '-' for stdin.
-  <expr>      An RCL expression to evaluate against the input document.
-
-Options:
-  -h --help   Show this screen.
-
-See the manual for a more elaborate usage guide.
-"#;
 
 /// Pretty-print a document to stdout.
 fn pprint_stdout(stdout: Stdout, cfg: &pprint::Config, doc: &pprint::Doc) {
@@ -102,37 +82,35 @@ fn main_highlight(loader: &Loader, doc: DocId) -> Result<()> {
 }
 
 fn main_with_loader(loader: &mut Loader) -> Result<()> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let args_refs: Vec<&str> = args.iter().map(|a| &a[..]).collect();
+    let cmd = cli_command::parse(std::env::args().collect())?;
 
-    match &args_refs[..] {
-        ["-h"] | ["--help"] => {
-            println!("{}", USAGE.trim());
+    match cmd {
+        Cmd::Help { usage } => {
+            println!("{}", usage);
             std::process::exit(0)
         }
-        ["e", fname] | ["eval", fname] | ["evaluate", fname] => {
-            let doc = loader.load_from_cli_fname(fname)?;
+        Cmd::Evaluate { fname, .. } => {
+            let doc = loader.load_from_cli_fname(&fname)?;
             main_eval(loader, doc)
         }
-        ["f", fname] | ["fmt", fname] | ["format", fname] => {
-            let doc = loader.load_from_cli_fname(fname)?;
-            main_fmt(loader, doc)
-        }
-        ["highlight", fname] => {
-            let doc = loader.load_from_cli_fname(fname)?;
-            main_highlight(loader, doc)
-        }
-        ["repl"] => {
-            unimplemented!("TODO: Implement repl.");
-        }
-        ["q", fname, expr] | ["query", fname, expr] => {
-            let input = loader.load_from_cli_fname(fname)?;
-            let query = loader.load_string(expr.to_string());
+        Cmd::Query {
+            fname, query: expr, ..
+        } => {
+            let input = loader.load_from_cli_fname(&fname)?;
+            let query = loader.load_string(expr);
             main_query(loader, input, query)
         }
-        _ => {
-            eprintln!("Failed to parse command line. Run with --help for usage.");
-            std::process::exit(1);
+        Cmd::Format { fnames, .. } => {
+            // TODO: Handle --in-place and multiple fnames.
+            let doc = loader.load_from_cli_fname(&fnames[0])?;
+            main_fmt(loader, doc)
+        }
+        Cmd::Highlight { fname, .. } => {
+            let doc = loader.load_from_cli_fname(&fname)?;
+            main_highlight(loader, doc)
+        }
+        Cmd::Version => {
+            todo!("Add version metadata.");
         }
     }
 }

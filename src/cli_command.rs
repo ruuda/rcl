@@ -116,6 +116,10 @@ pub enum Cmd {
         in_place: bool,
         fnames: Vec<String>,
     },
+    Highlight {
+        color: Option<MarkupMode>,
+        fname: String,
+    },
     Help {
         usage: &'static str,
     },
@@ -293,6 +297,21 @@ pub fn parse(argv: Vec<String>) -> Result<Cmd> {
                 in_place,
                 fnames,
             };
+            Ok(cmd)
+        }
+        Some(cmd) if cmd == "highlight" => {
+            if is_help {
+                todo!("Write usage for highlight command.");
+            }
+            let fname = match arg_iter.next() {
+                Some(fname) => fname,
+                None => panic!("TODO: Write error."),
+            };
+            if arg_iter.next().is_some() {
+                return Error::new("Did not expect additional argument for 'highlight' command.")
+                    .err();
+            }
+            let cmd = Cmd::Highlight { color, fname };
             Ok(cmd)
         }
         Some(invalid) => {
