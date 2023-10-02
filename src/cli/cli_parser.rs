@@ -9,8 +9,8 @@
 
 use std::str::FromStr;
 
-use crate::cli::arg_iter::Arg;
-use crate::cli::command::{FormatOptions, GlobalOptions, OutputFormat, OutputOptions};
+use crate::cli::arg_iter::{Arg, ArgIter};
+use crate::cli::command::{Cmd, FormatOptions, GlobalOptions, OutputFormat, OutputOptions, Target};
 use crate::error::{Error, Result};
 use crate::markup::{Markup, MarkupMode};
 use crate::pprint::Doc;
@@ -21,8 +21,8 @@ use crate::pprint::Doc;
 macro_rules! parse_matches {
     {
         name = $opt_name:expr,
-        args_iter = $args_iter:expr,
-        $out:ident.$field:ident = arg { $( $pat:literal => $val:expr , )+ }
+        $args_iter:expr,
+        { $($field:ident).+ = arg { $( $pat:literal => $val:expr , )+ }; }
     } => {{
         let mut err = vec![
             "Expected ".into(),
@@ -37,10 +37,12 @@ macro_rules! parse_matches {
         err.push(".".into());
         let err = Doc::Concat(err);
 
+        let out = &mut $($field).+;
+
         match $args_iter.next() {
             Some(arg) => match arg.as_ref() {
                 $(
-                    Arg::Plain($pat) => $out.$field = $val,
+                    Arg::Plain($pat) => *out = $val,
                 )+
                 _ => return Error::new(err).err(),
             }
@@ -49,12 +51,12 @@ macro_rules! parse_matches {
     }};
     {
         name = $opt_name:expr,
-        args_iter = $args_iter:expr,
-        $out:ident.$field:ident = try $parser:expr
+        $args_iter:expr,
+        { $($field:ident).+ = try $parser:expr; }
     } => {
         match $args_iter.next() {
             Some(Arg::Plain(value)) => match $parser(&value[..]) {
-                Ok(r) => $out.$field = r,
+                Ok(r) => $($field).+ = r,
                 Err(..) => {
                     let err = vec![
                         "Invalid a value for ".into(),
@@ -76,80 +78,103 @@ macro_rules! parse_matches {
             }
         }
     };
+    {
+        name = $opt_name:expr,
+        $args_iter:expr,
+        $body:block
+    } => {
+        $body
+    };
 }
 
-/// Generate boilerplate for parsing CLI options into a struct.
-macro_rules! parse_struct {
-    { $( $struct_:ty { $( $pat:pat => $field:ident = $op:ident $matches:tt , )+ } )+ } => { $(
-        impl $struct_ {
-            #[allow(clippy::redundant_closure_call)]
-            pub fn parse(args: &mut Vec<Arg<String>>) -> Result<Self> {
-                let mut to_consume = Vec::with_capacity(args.len());
-                std::mem::swap(args, &mut to_consume);
-                let mut args_iter = to_consume.into_iter();
-                let mut result = <$struct_ as Default>::default();
-
-                while let Some(arg) = args_iter.next() {
-                    match arg.as_ref() {
-                        $(
-                            $pat => parse_matches! {
-                                name = arg.to_string(),
-                                args_iter = args_iter,
-                                result.$field = $op $matches
-                            },
-                        ),+
-                        _ => args.push(arg),
-                    }
+/// Generate boilerplate for parsing CLI options.
+macro_rules! match_args {
+    { $args_iter:expr, $( $pat:pat $( if $cond:expr )* => $handler:tt , )+ } => {
+        while let Some(arg) = $args_iter.next() {
+            match arg.as_ref() {
+                $(
+                    $pat $( if $cond )* => parse_matches! {
+                        name = arg.to_string(), $args_iter, $handler
+                    },
+                )+
+                _ => {
+                    let err = vec![
+                        "Unknown option ".into(),
+                        Doc::from(arg.to_string()).with_markup(Markup::Highlight),
+                        ".".into(),
+                    ];
+                    return Error::new(Doc::Concat(err)).err();
                 }
-
-                Ok(result)
             }
         }
-    )+}
+    }
 }
 
-pub fn parse_global_options(args: &mut Vec<Arg<String>>) -> Result<GlobalOptions> {
-    let mut to_consume = Vec::with_capacity(args.len());
-    std::mem::swap(args, &mut to_consume);
-    let mut args_iter = to_consume.into_iter();
-
-    let mut result = GlobalOptions { markup: None };
-
-    while let Some(arg) = args_iter.next() {
-        match arg.as_ref() {
-            Arg::Long("color") => match args_iter.next() {
-                Some(arg) => match arg.as_ref() {
-                    Arg::Plain("auto") => result.markup = None,
-                    Arg::Plain("ansi") => result.markup = Some(MarkupMode::Ansi),
-                    Arg::Plain("none") => result.markup = Some(MarkupMode::None),
-                    _ => panic!("TODO: Error."),
-                },
-                None => panic!("TODO: Error."),
-            },
-            _ => args.push(arg),
-        }
-    }
-
-    Ok(result)
-}
-
-parse_struct! {
-    GlobalOptions {
-        Arg::Long("color") => markup = arg {
-            "auto" => None,
-            "ansi" => Some(MarkupMode::Ansi),
-            "none" => Some(MarkupMode::None),
+fn parse(mut args: ArgIter) -> Result<Cmd> {
+    let mut targets: Vec<Target> = Vec::new();
+    let mut global_options = GlobalOptions::default();
+    let mut output_options = OutputOptions::default();
+    let mut format_options = FormatOptions::default();
+    let mut in_place = false;
+    let mut is_version = false;
+    let mut cmd_help: Option<&'static str> = None;
+    let mut cmd: Option<&'static str> = None;
+    match_args! {
+        args,
+        Arg::Long("color") => {
+            global_options.markup = arg {
+                "auto" => None,
+                "ansi" => Some(MarkupMode::Ansi),
+                "none" => Some(MarkupMode::None),
+            };
+        },
+        Arg::Long("output") | Arg::Short("o") => {
+            output_options.format = arg {
+                "json" => Some(OutputFormat::Json),
+                "rcl" => Some(OutputFormat::Rcl),
+            };
+        },
+        Arg::Long("width") | Arg::Short("w") => {
+            format_options.width = try {
+                |x| u32::from_str(x).map(Some)
+            };
+        },
+        Arg::Long("in-place") | Arg::Short("i") => {
+            in_place = true;
+        },
+        Arg::Long("help") | Arg::Short("h") => {
+            is_version = false;
+            cmd_help = match cmd {
+                Some(c) => Some(c),
+                None => Some("main"),
+            };
+        },
+        Arg::Long("version") => {
+            is_version = true;
+            cmd_help = None;
+        },
+        Arg::Plain("evaluate") | Arg::Plain("eval") | Arg::Plain("e") if cmd.is_none() => {
+            cmd = Some("evaluate");
+        },
+        Arg::Plain("query") | Arg::Plain("q") if cmd.is_none() => {
+            cmd = Some("query");
+        },
+        Arg::Plain("qj") if cmd.is_none() => {
+            cmd = Some("query");
+            output_options.format = Some(OutputFormat::Json);
+        },
+        Arg::Plain("format") | Arg::Plain("fmt") | Arg::Plain("f") if cmd.is_none() => {
+            cmd = Some("format");
+        },
+        Arg::Plain("highlight") | Arg::Plain("h") if cmd.is_none() => {
+            cmd = Some("highlight");
+        },
+        Arg::Plain(fname) => {
+            targets.push(Target::File(fname.to_string()));
+        },
+        Arg::StdInOut => {
+            targets.push(Target::Stdin);
         },
     }
-    OutputOptions {
-        Arg::Long("output") | Arg::Short("o") => format = arg {
-            "json" => Some(OutputFormat::Json),
-            "rcl" => Some(OutputFormat::Rcl),
-        },
-    }
-    FormatOptions {
-        Arg::Long("width") | Arg::Short("w") => width = try {
-            |x| u32::from_str(x).map(Some)
-        },
-    }
+    Ok(Cmd::Version)
 }

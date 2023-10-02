@@ -28,7 +28,8 @@ Command shorthands:
   eval    Alias for 'evaluate'.
   f       Alias for 'format'.
   fmt     Alias for 'format'.
-  jq      Alias for 'query --output=json'.
+  h       Alias for 'highlight'.
+  qj      Alias for 'query --output=json'.
   q       Alias for 'query'.
 
 Global options:
