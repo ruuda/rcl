@@ -136,7 +136,7 @@ macro_rules! parse_option {
                 Err(..) => {
                     let err = concat! {
                         "'"
-                        Doc::from(value).with_markup(Markup::Highlight)
+                        Doc::lines(&value).into_owned().with_markup(Markup::Highlight)
                         "' is not valid for "
                         Doc::from($option.to_string()).with_markup(Markup::Highlight)
                         ". See --help for usage."
@@ -230,7 +230,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             Arg::Plain(..) => {
                 let err = concat! {
                     "Unknown command '"
-                    Doc::from(arg.to_string()).with_markup(Markup::Highlight)
+                    Doc::lines(&arg.to_string()).into_owned().with_markup(Markup::Highlight)
                     "'. See --help for usage."
                 };
                 return Error::new(err).err();
@@ -238,7 +238,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             _ => {
                 let err = concat! {
                     "Unknown option '"
-                    Doc::from(arg.to_string()).with_markup(Markup::Highlight)
+                    Doc::lines(&arg.to_string()).into_owned().with_markup(Markup::Highlight)
                     "'. See --help for usage."
                 };
                 return Error::new(err).err();
