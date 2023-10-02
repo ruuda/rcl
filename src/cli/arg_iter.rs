@@ -113,9 +113,12 @@ impl Iterator for ArgIter {
 
         if let Some(flag_slice) = arg.strip_prefix('-') {
             let mut flag = String::from(flag_slice);
-            if flag.len() > 1 {
-                self.leftover = Some(flag.split_off(1));
-                flag.truncate(1);
+            match flag.char_indices().nth(1) {
+                Some((n, _)) if n < flag.len() => {
+                    self.leftover = Some(flag.split_off(n));
+                    flag.truncate(n);
+                }
+                _ => {}
             }
             return Some(Arg::Short(flag));
         }
