@@ -11,6 +11,8 @@
 // [1] https://github.com/ruuda/squiller
 // [2] https://github.com/ruuda/tako
 
+//! Utilities to aid parsing the command line.
+
 use std::fmt;
 use std::vec;
 
@@ -18,6 +20,8 @@ pub enum Arg<T> {
     Plain(T),
     Short(T),
     Long(T),
+    /// An argument `-` that occurred before a bare `--`.
+    StdInOut,
 }
 
 impl Arg<String> {
@@ -26,6 +30,7 @@ impl Arg<String> {
             Arg::Plain(ref x) => Arg::Plain(&x[..]),
             Arg::Short(ref x) => Arg::Short(&x[..]),
             Arg::Long(ref x) => Arg::Long(&x[..]),
+            Arg::StdInOut => Arg::StdInOut,
         }
     }
 
@@ -34,6 +39,7 @@ impl Arg<String> {
             Arg::Plain(x) => x,
             Arg::Short(x) => x,
             Arg::Long(x) => x,
+            Arg::StdInOut => "-".to_string(),
         }
     }
 }
@@ -44,6 +50,7 @@ impl fmt::Display for Arg<String> {
             Arg::Plain(ref x) => write!(f, "{}", x),
             Arg::Short(ref x) => write!(f, "-{}", x),
             Arg::Long(ref x) => write!(f, "--{}", x),
+            Arg::StdInOut => write!(f, "-"),
         }
     }
 }
@@ -101,7 +108,7 @@ impl Iterator for ArgIter {
         }
 
         if arg == "-" {
-            return Some(Arg::Plain(arg));
+            return Some(Arg::StdInOut);
         }
 
         if let Some(flag_slice) = arg.strip_prefix('-') {

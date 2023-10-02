@@ -13,7 +13,11 @@
 pub mod abstraction;
 pub mod ast;
 pub mod cli_command;
-pub mod cli_parser;
+pub mod cli {
+    pub mod arg_iter;
+    pub mod cli_parser;
+    pub mod command;
+}
 pub mod cst;
 pub mod error;
 pub mod eval;

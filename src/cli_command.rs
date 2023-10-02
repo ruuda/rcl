@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use crate::cli_parser::{Arg, ArgIter};
+use crate::cli::arg_iter::{Arg, ArgIter};
 use crate::error::{Error, Result};
 use crate::markup::Markup;
 use crate::markup::MarkupMode;
