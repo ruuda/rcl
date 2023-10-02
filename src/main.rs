@@ -7,7 +7,8 @@
 
 use std::io::Stdout;
 
-use rcl::cli_command::{self, Cmd, Output};
+use rcl::cli::cli_parser;
+use rcl::cli::command::{Cmd, FormatTarget, GlobalOptions, OutputFormat, OutputOptions};
 use rcl::error::Result;
 use rcl::loader::Loader;
 use rcl::pprint;
@@ -27,17 +28,23 @@ fn pprint_stdout(stdout: Stdout, cfg: &pprint::Config, doc: &pprint::Doc) {
     }
 }
 
-fn main_eval(loader: &Loader, doc: DocId, output: Output) -> Result<()> {
+fn main_eval(
+    loader: &Loader,
+    global_opts: &GlobalOptions,
+    doc: DocId,
+    opts: OutputOptions,
+) -> Result<()> {
     let mut env = Env::new();
     let val = loader.evaluate(doc, &mut env)?;
 
     let full_span = loader.get_span(doc);
-    let out_doc = match output {
-        Output::Rcl => rcl::fmt_rcl::format_rcl(val.as_ref()),
-        Output::Json => rcl::fmt_json::format_json(full_span, val.as_ref())?,
+    let out_doc = match opts.format {
+        OutputFormat::Rcl => rcl::fmt_rcl::format_rcl(val.as_ref()),
+        OutputFormat::Json => rcl::fmt_json::format_json(full_span, val.as_ref())?,
     };
     let stdout = std::io::stdout();
-    let cfg = pprint::Config::default_for_fd(&stdout);
+    let mut cfg = pprint::Config::default_for_fd(&stdout);
+    global_opts.apply(&mut cfg);
     pprint_stdout(stdout, &cfg, &out_doc);
     Ok(())
 }
@@ -84,32 +91,39 @@ fn main_highlight(loader: &Loader, doc: DocId) -> Result<()> {
     Ok(())
 }
 
-fn main_with_loader(loader: &mut Loader) -> Result<()> {
-    let cmd = cli_command::parse(std::env::args().collect())?;
+fn main_with_loader(loader: &mut Loader, global_opts: &mut GlobalOptions) -> Result<()> {
+    let (opts, cmd) = cli_parser::parse(std::env::args().collect())?;
+    *global_opts = opts;
 
     match cmd {
         Cmd::Help { usage } => {
-            println!("{}", usage);
+            println!("{}", usage.trim());
             std::process::exit(0)
         }
-        Cmd::Evaluate { fname, output, .. } => {
-            let doc = loader.load_from_cli_fname(&fname)?;
-            main_eval(loader, doc, output)
+        Cmd::Evaluate {
+            fname, output_opts, ..
+        } => {
+            let doc = fname.load(loader)?;
+            main_eval(loader, global_opts, doc, output_opts)
         }
         Cmd::Query {
             fname, query: expr, ..
         } => {
-            let input = loader.load_from_cli_fname(&fname)?;
+            let input = fname.load(loader)?;
             let query = loader.load_string(expr);
             main_query(loader, input, query)
         }
-        Cmd::Format { fnames, .. } => {
-            // TODO: Handle --in-place and multiple fnames.
-            let doc = loader.load_from_cli_fname(&fnames[0])?;
-            main_fmt(loader, doc)
-        }
-        Cmd::Highlight { fname, .. } => {
-            let doc = loader.load_from_cli_fname(&fname)?;
+        Cmd::Format { target, .. } => match target {
+            FormatTarget::InPlace { fnames: _ } => {
+                todo!("TODO: Handle --in-place.");
+            }
+            FormatTarget::Stdout { fname } => {
+                let doc = fname.load(loader)?;
+                main_fmt(loader, doc)
+            }
+        },
+        Cmd::Highlight { fname } => {
+            let doc = fname.load(loader)?;
             main_highlight(loader, doc)
         }
         Cmd::Version => {
@@ -120,13 +134,15 @@ fn main_with_loader(loader: &mut Loader) -> Result<()> {
 
 fn main() {
     use std::io::Write;
+    let mut opts = GlobalOptions::default();
     let mut loader = Loader::new();
 
-    if let Err(err) = main_with_loader(&mut loader) {
+    if let Err(err) = main_with_loader(&mut loader, &mut opts) {
         let inputs = loader.as_inputs();
         let err_doc = err.report(&inputs);
         let stderr = std::io::stderr();
-        let cfg = pprint::Config::default_for_fd(&stderr);
+        let mut cfg = pprint::Config::default_for_fd(&stderr);
+        opts.apply(&mut cfg);
         let err_string = err_doc.println(&cfg);
         let res = stderr.lock().write_all(err_string.as_bytes());
         // Regardless of whether printing to stderr failed or not, we were going

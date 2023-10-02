@@ -12,7 +12,6 @@
 
 pub mod abstraction;
 pub mod ast;
-pub mod cli_command;
 pub mod cli {
     pub mod arg_iter;
     pub mod cli_parser;

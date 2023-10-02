@@ -32,9 +32,10 @@ impl GlobalOptions {
 }
 
 /// The available output formats (JSON, RCL).
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub enum OutputFormat {
     Json,
+    #[default]
     Rcl,
 }
 
@@ -42,7 +43,7 @@ pub enum OutputFormat {
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct OutputOptions {
     /// The format to output in.
-    pub format: Option<OutputFormat>,
+    pub format: OutputFormat,
 }
 
 /// Options for commands that pretty-print their output.
