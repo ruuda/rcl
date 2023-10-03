@@ -88,6 +88,23 @@
             name = "rcl-coverage";
             buildType = "debug";
             RUSTFLAGS = "-C instrument-coverage -C link-dead-code -C debug-assertions";
+
+            # The tests already get executed by default when we build a Rust
+            # package, and because of the RUSTFLAGS we set, the tests already
+            # produce coverage too. We just need to copy those files into the
+            # output such that the coverage report can include them. We also
+            # need the test binaries for this, and the Rust installPhase sets
+            # $releaseDir to the target directory.
+            postInstall =
+              ''
+              mkdir -p $out/prof
+              cp *.profraw $out/prof
+              find $releaseDir/deps \
+                -maxdepth 1 \
+                -type f \
+                -executable \
+                -print0 | xargs -0 cp --target-directory=$out/bin
+              '';
           });
         in
           rec {
@@ -165,7 +182,11 @@
                 ''
                 export bintools=${pkgs.rustc.llvmPackages.bintools-unwrapped}/bin
 
+                # Run the golden tests to generate the .profraw files.
                 RCL_BIN=${coverageBuild}/bin/rcl python3 ${goldenSources}/run.py
+
+                # Copy in the .profraw files from the tests.
+                cp ${coverageBuild}/prof/*.profraw .
 
                 # During the build, source file names get included as
                 # "source/src/lib.rs" etc. But when grcov runs, even if we
