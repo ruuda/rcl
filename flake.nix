@@ -209,7 +209,8 @@
                 $bintools/llvm-profdata merge -sparse *.profraw -o rcl.profdata
                 $bintools/llvm-cov report \
                   --instr-profile=rcl.profdata \
-                  --object ${coverageBuild}/bin/rcl \
+                  --ignore-filename-regex=/cargo-vendor-dir \
+                  ${coverageBuild}/bin/rcl* \
                   > $out/summary.txt
                 '';
             };
