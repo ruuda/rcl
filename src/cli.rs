@@ -12,7 +12,7 @@ use std::str::FromStr;
 use crate::cli_utils::{match_option, parse_option, Arg, ArgIter};
 use crate::error::{Error, Result};
 use crate::markup::{Markup, MarkupMode};
-use crate::pprint::{self, concat, Doc};
+use crate::pprint::{concat, Doc};
 
 const USAGE_MAIN: &str = r#"
 RCL -- A sane configuration language.
@@ -102,13 +102,6 @@ pub struct GlobalOptions {
     pub markup: Option<MarkupMode>,
 }
 
-impl GlobalOptions {
-    /// Overwrite the relevant settings on the pprint config.
-    pub fn apply(&self, cfg: &mut pprint::Config) {
-        cfg.markup = self.markup.unwrap_or(cfg.markup);
-    }
-}
-
 /// The available output formats (JSON, RCL).
 #[derive(Debug, Default, Eq, PartialEq)]
 pub enum OutputFormat {
@@ -125,16 +118,15 @@ pub struct OutputOptions {
 }
 
 /// Options for commands that pretty-print their output.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct FormatOptions {
     /// Target width (number of columns) to try to not exceed.
-    pub width: Option<u32>,
+    pub width: u32,
 }
 
-impl FormatOptions {
-    /// Overwrite the relevant settings on the pprint config.
-    pub fn apply(&self, cfg: &mut pprint::Config) {
-        cfg.width = self.width.unwrap_or(cfg.width);
+impl Default for FormatOptions {
+    fn default() -> Self {
+        Self { width: 80 }
     }
 }
 
@@ -210,7 +202,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 }
             }
             Arg::Long("width") | Arg::Short("w") => {
-                format_opts.width = Some(parse_option! { args: arg, u32::from_str });
+                format_opts.width = parse_option! { args: arg, u32::from_str };
             }
             Arg::Long("in-place") | Arg::Short("i") => {
                 in_place = true;

@@ -32,6 +32,7 @@ pub trait CouldBeTerminal: AsRawFd {
     /// `NO_COLOR` environment variable is set to a nonempty string. See also
     /// <https://no-color.org/>.
     fn should_color(&self) -> bool {
+        // TODO: Since Rust 1.70, there is `is_terminal` in the stdlib!
         if !self.is_tty() {
             return false;
         }

@@ -7,6 +7,8 @@
 
 //! Utilities for dealing with color and other markup.
 
+use crate::platform_utils::CouldBeTerminal;
+
 /// A markup hint, used to apply color and other markup to output.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Markup {
@@ -40,6 +42,15 @@ pub enum MarkupMode {
 }
 
 impl MarkupMode {
+    /// Get the default markup configuration for a file descriptor.
+    pub fn default_for_fd<T: CouldBeTerminal>(fd: &T) -> Self {
+        if fd.should_color() {
+            MarkupMode::Ansi
+        } else {
+            MarkupMode::None
+        }
+    }
+
     /// Output the markup required to switch from the `from` style to the `to` style.
     pub fn get_switch(&self, from: Option<Markup>, to: Option<Markup>) -> &'static str {
         debug_assert_ne!(from, to, "Should not switch if from and to are the same.");
