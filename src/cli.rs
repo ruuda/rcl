@@ -64,7 +64,7 @@ Arguments:
 Options:
   -o --output <format>  Output format, can be one of 'json', 'rcl'.
                         Defaults to 'rcl'.
-  --width <width>       Target width for pretty-printing, must be an integer.
+  -w --width <width>    Target width for pretty-printing, must be an integer.
                         Defaults to 80.
 
 See also --help for global options.
@@ -83,10 +83,10 @@ Arguments:
                    is used, there can be multiple input files.
 
 Options:
-  -i --in-place    Rewrite files in-place instead of writing to stdout.
-                   By default the formatted result is written to stdout.
-  --width <width>  Target width in number of columns, must be an integer.
-                   Defaults to 80.
+  -i --in-place       Rewrite files in-place instead of writing to stdout.
+                      By default the formatted result is written to stdout.
+  -w --width <width>  Target width in number of columns, must be an integer.
+                      Defaults to 80.
 
 See also --help for global options.
 "#;
@@ -131,18 +131,21 @@ impl Default for FormatOptions {
 }
 
 /// Input to act on.
+#[derive(Debug, Eq, PartialEq)]
 pub enum Target {
     File(String),
     Stdin,
 }
 
 /// For the `fmt` command, which documents to format, and in what mode.
+#[derive(Debug, Eq, PartialEq)]
 pub enum FormatTarget {
     Stdout { fname: Target },
     InPlace { fnames: Vec<Target> },
 }
 
 /// The different subcommands supported by the main program.
+#[derive(Debug, Eq, PartialEq)]
 pub enum Cmd {
     Evaluate {
         output_opts: OutputOptions,
@@ -340,5 +343,120 @@ fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
             Error::new("Too many input files. See --help for usage.").err()
         }
         Some(t) => Ok(t),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::cli::{Cmd, FormatOptions, GlobalOptions, OutputFormat, OutputOptions, Target};
+    use crate::markup::MarkupMode;
+    use crate::pprint::Config;
+
+    fn fail_parse(args: &[&'static str]) -> String {
+        let args_vec: Vec<_> = args.iter().map(|a| a.to_string()).collect();
+        let err = super::parse(args_vec).err().unwrap();
+        let cfg = Config {
+            width: 80,
+            markup: MarkupMode::None,
+        };
+        err.report(&[]).println(&cfg)
+    }
+
+    fn parse(args: &[&'static str]) -> (GlobalOptions, Cmd) {
+        let args_vec: Vec<_> = args.iter().map(|a| a.to_string()).collect();
+        super::parse(args_vec).unwrap()
+    }
+
+    #[test]
+    fn parse_cmd_eval() {
+        let expected_opt = GlobalOptions { markup: None };
+        let expected_cmd = Cmd::Evaluate {
+            output_opts: OutputOptions::default(),
+            format_opts: FormatOptions::default(),
+            fname: Target::File("infile".into()),
+        };
+        let mut expected = (expected_opt, expected_cmd);
+
+        // All of the aliases should behave the same.
+        assert_eq!(parse(&["rcl", "evaluate", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "eval", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile"]), expected);
+
+        // Test that --color works.
+        expected.0.markup = Some(MarkupMode::None);
+        assert_eq!(parse(&["rcl", "--color=none", "e", "infile"]), expected);
+        expected.0.markup = Some(MarkupMode::Ansi);
+        assert_eq!(parse(&["rcl", "--color=ansi", "e", "infile"]), expected);
+
+        // We should be able to pass --color in any place.
+        assert_eq!(parse(&["rcl", "--color=ansi", "e", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "--color", "ansi", "e", "infile"]), expected);
+        assert_eq!(
+            parse(&["rcl", "eval", "--color", "ansi", "infile"]),
+            expected
+        );
+        assert_eq!(
+            parse(&["rcl", "eval", "infile", "--color", "ansi"]),
+            expected
+        );
+
+        // If we specify an option twice, the last one takes precedence.
+        assert_eq!(
+            parse(&["rcl", "e", "infile", "--color=none", "--color=ansi"]),
+            expected
+        );
+
+        // Test that --width works, in any location, last option wins.
+        expected.0.markup = None;
+        if let Cmd::Evaluate { format_opts, .. } = &mut expected.1 {
+            format_opts.width = 42;
+        }
+        assert_eq!(parse(&["rcl", "e", "--width=42", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "e", "--width", "42", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "e", "-w42", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "e", "-w", "42", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "-w42"]), expected);
+        assert_eq!(parse(&["rcl", "-w42", "e", "infile"]), expected);
+        assert_eq!(
+            parse(&["rcl", "-w100", "e", "--width=42", "infile"]),
+            expected
+        );
+
+        // Test that --output works. We don't have to be as thorough, it's using
+        // the same parser, if it works for the other options it should work here.
+        if let Cmd::Evaluate {
+            format_opts,
+            output_opts,
+            ..
+        } = &mut expected.1
+        {
+            format_opts.width = 80;
+            output_opts.format = OutputFormat::Json;
+        }
+        assert_eq!(parse(&["rcl", "e", "infile", "-ojson"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "--output", "json"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "--output=json"]), expected);
+        assert_eq!(parse(&["rcl", "-ojson", "e", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "-orcl", "-ojson", "e", "infile"]), expected);
+    }
+
+    #[test]
+    fn parse_cmd_eval_fails_on_invalid_values() {
+        assert_eq!(
+            fail_parse(&["rcl", "eval"]),
+            "Error: Expected an input file. See --help for usage.\n"
+        );
+        assert_eq!(
+            fail_parse(&["rcl", "eval", "infile", "--width=bobcat"]),
+            "Error: 'bobcat' is not valid for --width. See --help for usage.\n"
+        );
+        assert_eq!(
+            fail_parse(&["rcl", "eval", "infile", "-wbobcat"]),
+            "Error: 'bobcat' is not valid for -w. See --help for usage.\n"
+        );
+        assert_eq!(
+            fail_parse(&["rcl", "eval", "infile", "--output=yamr"]),
+            "Error: Expected --output to be followed by one of json, rcl. See --help for usage.\n"
+        );
     }
 }
