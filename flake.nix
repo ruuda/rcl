@@ -1,7 +1,8 @@
 {
   description = "RCL";
 
-  inputs.nixpkgs.url = "nixpkgs/nixos-23.05";
+  # Pin to a Nixpkgs version that has the same rustc as in rust-toolchain.toml.
+  inputs.nixpkgs.url = "nixpkgs/dfcffbd74fd6f0419370d8240e445252a39f4d10";
 
   outputs = { self, nixpkgs }: 
     let
