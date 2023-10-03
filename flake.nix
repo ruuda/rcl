@@ -198,6 +198,7 @@
                 grcov . \
                   --source-dir source \
                   --binary-path ${coverageBuild}/bin \
+                  --excl-line '(#\[derive|unreachable!|panic!)\(' \
                   --llvm-path $bintools \
                   --prefix-dir source \
                   --llvm \
