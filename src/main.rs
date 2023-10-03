@@ -86,59 +86,11 @@ impl App {
         std::process::exit(1);
     }
 
-    fn main_eval(
-        &self,
-        output_opts: &OutputOptions,
-        format_opts: &FormatOptions,
-        doc: DocId,
-    ) -> Result<()> {
-        let mut env = Env::new();
-        let val = self.loader.evaluate(doc, &mut env)?;
-        // TODO: Need to get last inner span.
-        let full_span = self.loader.get_span(doc);
-        self.print_value(output_opts, format_opts, full_span, val)
-    }
-
-    fn main_query(
-        &self,
-        output_opts: &OutputOptions,
-        format_opts: &FormatOptions,
-        input: DocId,
-        query: DocId,
-    ) -> Result<()> {
-        // First we evaluate the input document.
-        let mut env = Env::new();
-        let val_input = self.loader.evaluate(input, &mut env)?;
-
-        // Then we bind that to the variable `input`, and in that context, we
-        // evaluate the query expression.
-        let mut env = Env::new();
-        env.push("input".into(), val_input);
-        let val_result = self.loader.evaluate(query, &mut env)?;
-
-        let full_span = self.loader.get_span(query);
-        self.print_value(output_opts, format_opts, full_span, val_result)
-    }
-
     fn main_fmt(&self, format_opts: &FormatOptions, doc: DocId) -> Result<()> {
         let data = self.loader.get_doc(doc).data;
         let cst = self.loader.get_cst(doc)?;
         let res = rcl::fmt_cst::format_expr(data, &cst);
         self.print_doc_stdout(format_opts, res);
-        Ok(())
-    }
-
-    fn main_highlight(&self, doc: DocId) -> Result<()> {
-        let tokens = self.loader.get_tokens(doc)?;
-        let data = self.loader.get_doc(doc).data;
-        let mut stdout = std::io::stdout().lock();
-        // TODO: Make this based on the pretty-printer.
-        let res = rcl::highlight::highlight(&mut stdout, &tokens, data);
-        if res.is_err() {
-            // If we fail to print to stdout, there is no point in printing
-            // an error, just exit then.
-            std::process::exit(1);
-        }
         Ok(())
     }
 
@@ -151,14 +103,20 @@ impl App {
                 println!("{}", usage.trim());
                 std::process::exit(0)
             }
+
             Cmd::Evaluate {
                 output_opts,
                 format_opts,
                 fname,
             } => {
+                let mut env = Env::new();
                 let doc = self.loader.load_cli_target(fname)?;
-                self.main_eval(&output_opts, &format_opts, doc)
+                let val = self.loader.evaluate(doc, &mut env)?;
+                // TODO: Need to get last inner span.
+                let full_span = self.loader.get_span(doc);
+                self.print_value(&output_opts, &format_opts, full_span, val)
             }
+
             Cmd::Query {
                 output_opts,
                 format_opts,
@@ -167,8 +125,21 @@ impl App {
             } => {
                 let input = self.loader.load_cli_target(fname)?;
                 let query = self.loader.load_string(expr);
-                self.main_query(&output_opts, &format_opts, input, query)
+
+                // First we evaluate the input document.
+                let mut env = Env::new();
+                let val_input = self.loader.evaluate(input, &mut env)?;
+
+                // Then we bind that to the variable `input`, and in that context, we
+                // evaluate the query expression.
+                let mut env = Env::new();
+                env.push("input".into(), val_input);
+                let val_result = self.loader.evaluate(query, &mut env)?;
+
+                let full_span = self.loader.get_span(query);
+                self.print_value(&output_opts, &format_opts, full_span, val_result)
             }
+
             Cmd::Format {
                 format_opts,
                 target,
@@ -181,10 +152,22 @@ impl App {
                     self.main_fmt(&format_opts, doc)
                 }
             },
+
             Cmd::Highlight { fname } => {
                 let doc = self.loader.load_cli_target(fname)?;
-                self.main_highlight(doc)
+                let tokens = self.loader.get_tokens(doc)?;
+                let data = self.loader.get_doc(doc).data;
+                let mut stdout = std::io::stdout().lock();
+                // TODO: Make this based on the pretty-printer.
+                let res = rcl::highlight::highlight(&mut stdout, &tokens, data);
+                if res.is_err() {
+                    // If we fail to print to stdout, there is no point in printing
+                    // an error, just exit then.
+                    std::process::exit(1);
+                }
+                Ok(())
             }
+
             Cmd::Version => {
                 todo!("Add version metadata.");
             }
