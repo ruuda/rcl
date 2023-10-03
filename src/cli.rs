@@ -29,23 +29,22 @@ Commands:
   query        Evaluate an expression against an input document.
 
 Command shorthands:
-  e       Alias for 'evaluate'.
-  eval    Alias for 'evaluate'.
-  f       Alias for 'format'.
-  fmt     Alias for 'format'.
-  h       Alias for 'highlight'.
-  qj      Alias for 'query --output=json'.
-  q       Alias for 'query'.
+  e, eval      Alias for 'evaluate'.
+  f, fmt       Alias for 'format'.
+  h            Alias for 'highlight'.
+  jq           Alias for 'query --output=json'.
+  q            Alias for 'query'.
 
 Global options:
-  --color <mode>  How and whether to add markup and color. Can be one of:
-                    - 'ansi': Always color output using ANSI escape codes.
-                    - 'auto': Use ANSI if the output file is a TTY and the
-                      NO_COLOR environment variable is not set to a non-empty
-                      string. This is the default.
-                    - 'none': Do not color output at all.
-  -h --help       Show this screen.
+  -h --help       Show this screen, or command-specific help.
   --version       Show version.
+  --color <mode>  Set how output is colored, see modes below.
+
+Color modes:
+  ansi    Always color output using ANSI escape codes.
+  auto    Use ANSI if the output file is a TTY and the NO_COLOR environment
+          variable is not set to a non-empty string. This is the default.
+  none    Do not color output at all.
 "#;
 
 const USAGE_EVAL_QUERY: &str = r#"
@@ -60,9 +59,9 @@ to stdout. The 'query' command additionally evaluates an expression against the
 result.
 
 Arguments:
-  <file>                The input file to process, or '-' for stdin.
-  <query>               An RCL expression to evaluate. The result of evaluating
-                        the input file is bound to the variable 'input'.
+  <file>     The input file to process, or '-' for stdin.
+  <query>    An RCL expression to evaluate. The result of evaluating the input
+             file is bound to the variable 'input'.
 
 Options:
   -o --output <format>  Output format, can be one of 'json', 'rcl'.
@@ -245,7 +244,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             Arg::Plain("query") | Arg::Plain("q") if cmd.is_none() => {
                 cmd = Some("query");
             }
-            Arg::Plain("qj") if cmd.is_none() => {
+            Arg::Plain("jq") if cmd.is_none() => {
                 cmd = Some("query");
                 output_opts.format = OutputFormat::Json;
             }
