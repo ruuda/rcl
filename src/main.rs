@@ -169,7 +169,8 @@ impl App {
             }
 
             Cmd::Version => {
-                todo!("Add version metadata.");
+                println!("RCL version {}", env!("CARGO_PKG_VERSION"));
+                Ok(())
             }
         }
     }
