@@ -11,10 +11,8 @@ use std::str::FromStr;
 
 use crate::cli_utils::{match_option, parse_option, Arg, ArgIter};
 use crate::error::{Error, Result};
-use crate::loader::Loader;
 use crate::markup::{Markup, MarkupMode};
 use crate::pprint::{self, concat, Doc};
-use crate::source::DocId;
 
 const USAGE_MAIN: &str = r#"
 RCL -- A sane configuration language.
@@ -144,16 +142,6 @@ impl FormatOptions {
 pub enum Target {
     File(String),
     Stdin,
-}
-
-impl Target {
-    /// Load the input into the loader.
-    pub fn load(&self, loader: &mut Loader) -> Result<DocId> {
-        match self {
-            Target::File(path) => loader.load_file(path),
-            Target::Stdin => loader.load_stdin(),
-        }
-    }
 }
 
 /// For the `fmt` command, which documents to format, and in what mode.

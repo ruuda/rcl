@@ -102,27 +102,27 @@ fn main_with_loader(loader: &mut Loader, global_opts: &mut GlobalOptions) -> Res
         Cmd::Evaluate {
             fname, output_opts, ..
         } => {
-            let doc = fname.load(loader)?;
+            let doc = loader.load_cli_target(fname)?;
             main_eval(loader, global_opts, doc, output_opts)
         }
         Cmd::Query {
             fname, query: expr, ..
         } => {
-            let input = fname.load(loader)?;
+            let input = loader.load_cli_target(fname)?;
             let query = loader.load_string(expr);
             main_query(loader, input, query)
         }
         Cmd::Format { target, .. } => match target {
             FormatTarget::InPlace { fnames: _ } => {
-                todo!("TODO: Handle --in-place.");
+                todo!("TODO: --in-place formatting is not yet implemented.");
             }
             FormatTarget::Stdout { fname } => {
-                let doc = fname.load(loader)?;
+                let doc = loader.load_cli_target(fname)?;
                 main_fmt(loader, doc)
             }
         },
         Cmd::Highlight { fname } => {
-            let doc = fname.load(loader)?;
+            let doc = loader.load_cli_target(fname)?;
             main_highlight(loader, doc)
         }
         Cmd::Version => {
