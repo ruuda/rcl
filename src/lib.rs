@@ -11,7 +11,6 @@
 #![allow(clippy::manual_range_contains)]
 
 mod cli_utils;
-mod platform_utils;
 
 pub mod abstraction;
 pub mod ast;

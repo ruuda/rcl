@@ -7,7 +7,7 @@
 
 //! Utilities for dealing with color and other markup.
 
-use crate::platform_utils::CouldBeTerminal;
+use std::io::IsTerminal;
 
 /// A markup hint, used to apply color and other markup to output.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -41,10 +41,25 @@ pub enum MarkupMode {
     Ansi,
 }
 
+/// Whether we should use ANSI colors when writing to this file descriptor.
+///
+/// Returns true when the file descriptor refers to a terminal, unless the
+/// `NO_COLOR` environment variable is set to a nonempty string. See also
+/// <https://no-color.org/>.
+fn should_color<T: IsTerminal>(fd: &T) -> bool {
+    if !fd.is_terminal() {
+        return false;
+    }
+    match std::env::var("NO_COLOR") {
+        Ok(no_color) => no_color == "",
+        Err(..) => true,
+    }
+}
+
 impl MarkupMode {
     /// Get the default markup configuration for a file descriptor.
-    pub fn default_for_fd<T: CouldBeTerminal>(fd: &T) -> Self {
-        if fd.should_color() {
+    pub fn default_for_fd<T: IsTerminal>(fd: &T) -> Self {
+        if should_color(fd) {
             MarkupMode::Ansi
         } else {
             MarkupMode::None
