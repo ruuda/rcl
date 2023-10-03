@@ -4,8 +4,8 @@
 
 use libfuzzer_sys::fuzz_target;
 
-use rcl::cli::cli_parser;
+use rcl::cli;
 
 fuzz_target!(|input: Vec<String>| {
-    let _ = cli_parser::parse(input);
+    let _ = cli::parse(input);
 });

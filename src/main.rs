@@ -7,8 +7,7 @@
 
 use std::io::Stdout;
 
-use rcl::cli::cli_parser;
-use rcl::cli::command::{Cmd, FormatTarget, GlobalOptions, OutputFormat, OutputOptions};
+use rcl::cli::{self, Cmd, FormatTarget, GlobalOptions, OutputFormat, OutputOptions};
 use rcl::error::Result;
 use rcl::loader::Loader;
 use rcl::pprint;
@@ -92,7 +91,7 @@ fn main_highlight(loader: &Loader, doc: DocId) -> Result<()> {
 }
 
 fn main_with_loader(loader: &mut Loader, global_opts: &mut GlobalOptions) -> Result<()> {
-    let (opts, cmd) = cli_parser::parse(std::env::args().collect())?;
+    let (opts, cmd) = cli::parse(std::env::args().collect())?;
     *global_opts = opts;
 
     match cmd {

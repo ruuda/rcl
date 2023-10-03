@@ -33,15 +33,6 @@ impl Arg<String> {
             Arg::StdInOut => Arg::StdInOut,
         }
     }
-
-    pub fn into_string(self) -> String {
-        match self {
-            Arg::Plain(x) => x,
-            Arg::Short(x) => x,
-            Arg::Long(x) => x,
-            Arg::StdInOut => "-".to_string(),
-        }
-    }
 }
 
 impl fmt::Display for Arg<String> {
@@ -126,3 +117,64 @@ impl Iterator for ArgIter {
         Some(Arg::Plain(arg))
     }
 }
+
+/// Helper macro to match option values and print help when there is no match.
+macro_rules! match_option {
+    {
+        $args_iter:ident: $option:expr,
+        $( $pat:literal => $val:expr , )+
+    } => {{
+        let mut err = vec![
+            "Expected ".into(),
+            Doc::from($option.to_string()).with_markup(Markup::Highlight),
+            " to be followed by one of ".into(),
+        ];
+        $(
+            err.push(Doc::from($pat).with_markup(Markup::Highlight));
+            err.push(", ".into());
+        )+
+        err.pop();
+        err.push(". See --help for usage.".into());
+        let err = Doc::Concat(err);
+
+        match $args_iter.next() {
+            Some(arg) => match arg.as_ref() {
+                $( Arg::Plain($pat) => $val, )+
+                _ => return Error::new(err).err(),
+            }
+            None => return Error::new(err).err(),
+        }
+    }};
+}
+pub(crate) use match_option;
+
+macro_rules! parse_option {
+    {
+        $args_iter:ident: $option:expr, $parser:expr
+    } => {
+        match $args_iter.next() {
+            Some(Arg::Plain(value)) => match $parser(&value[..]) {
+                Ok(r) => r,
+                Err(..) => {
+                    let err = concat! {
+                        "'"
+                        Doc::lines(&value).into_owned().with_markup(Markup::Highlight)
+                        "' is not valid for "
+                        Doc::from($option.to_string()).with_markup(Markup::Highlight)
+                        ". See --help for usage."
+                    };
+                    return Error::new(err).err();
+                }
+            }
+            _ => {
+                let err = concat! {
+                    "Expected a value after "
+                    Doc::from($option.to_string()).with_markup(Markup::Highlight)
+                    ". See --help for usage."
+                };
+                return Error::new(err).err();
+            }
+        }
+    };
+}
+pub(crate) use parse_option;
