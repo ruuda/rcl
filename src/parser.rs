@@ -342,6 +342,7 @@ impl<'a> Parser<'a> {
                 }
             }
             Some(Token::KwIf) => self.parse_expr_if()?,
+            Some(Token::KwImport) => self.parse_expr_import()?,
             _ => self.parse_expr_op()?,
         };
         self.decrease_depth();
@@ -369,6 +370,18 @@ impl<'a> Parser<'a> {
             then_body: Box::new(then_body),
             else_span,
             else_body: Box::new(else_body),
+        };
+        Ok(result)
+    }
+
+    fn parse_expr_import(&mut self) -> Result<Expr> {
+        // Consume the `import` keyword.
+        let import_span = self.consume();
+        let (path_span, path) = self.parse_prefixed_expr()?;
+        let result = Expr::Import {
+            import_span,
+            path_span,
+            path: Box::new(path),
         };
         Ok(result)
     }

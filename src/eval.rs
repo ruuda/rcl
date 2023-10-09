@@ -36,9 +36,32 @@ impl<'a> Evaluator<'a> {
 
     fn eval_expr(&mut self, env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
         match expr {
-            Expr::Import { path: path_expr } => {
-                let path = self.eval_expr(env, path_expr)?;
-                unimplemented!("TODO: Implement import: {path:?}");
+            Expr::Import {
+                import_span,
+                path_span,
+                path: path_expr,
+            } => {
+                // We could allow an arbitrary expression that evaluates to a
+                // string, but for now we limit ourselves to string literals. It
+                // ensures that the import graph can be statically known by
+                // traversing the AST without evaluating it, and it ensures
+                // filenames can be grepped, there are no "magic" imports. This
+                // requirement is artificial, we can relax it later if that turns
+                // out to be useful.
+                let path = match path_expr.as_ref() {
+                    Expr::StringLit(path) => path,
+                    Expr::Format(..) => {
+                        return path_span
+                            .error("Import path must be a string literal without holes.")
+                            .err()
+                    }
+                    _ => {
+                        return path_span
+                            .error("Import path must be a string literal.")
+                            .err()
+                    }
+                };
+                unimplemented!("TODO: Implement import: {path:?} at span {import_span:?}");
             }
 
             Expr::BraceLit(seqs) => {

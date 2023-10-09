@@ -140,7 +140,16 @@ pub enum Expr {
     },
 
     /// Import an expression from a given file path.
-    Import { path: Box<Prefixed<Expr>> },
+    Import {
+        /// The span for the `import` keyword.
+        import_span: Span,
+
+        /// The span for the path expression.
+        path_span: Span,
+
+        /// An expression that evaluates to the path to import.
+        path: Box<Prefixed<Expr>>,
+    },
 
     /// A `{}`-enclosed collection literal.
     BraceLit {

@@ -228,7 +228,7 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::Import { path } => {
+            Expr::Import { path, .. } => {
                 group! {
                     concat! {
                         "import"

@@ -93,6 +93,8 @@ impl<'a> Abstractor<'a> {
             });
         }
 
+        // TODO: Simplify to just StringLit if there are no holes.
+
         Ok(AExpr::Format(fragments))
     }
 
@@ -133,7 +135,13 @@ impl<'a> Abstractor<'a> {
                 body: Box::new(self.expr(&body.inner)?),
             },
 
-            CExpr::Import { path } => AExpr::Import {
+            CExpr::Import {
+                import_span,
+                path_span,
+                path,
+            } => AExpr::Import {
+                import_span: *import_span,
+                path_span: *path_span,
                 path: Box::new(self.expr(&path.inner)?),
             },
 
