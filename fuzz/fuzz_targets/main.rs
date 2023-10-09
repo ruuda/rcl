@@ -4,6 +4,7 @@ use libfuzzer_sys::fuzz_target;
 use arbitrary::{Arbitrary, Unstructured};
 
 use rcl::error::Result;
+use rcl::eval::Evaluator;
 use rcl::loader::Loader;
 use rcl::markup::MarkupMode;
 use rcl::pprint;
@@ -87,9 +88,9 @@ impl<'a> Arbitrary<'a> for Input<'a> {
 /// Evaluate the input expression, then ignore the result.
 fn fuzz_eval(loader: &mut Loader, input: &str) -> Result<()> {
     let id = loader.load_string(input.to_string());
-    let ast = loader.get_ast(id)?;
+    let mut evaluator = Evaluator::new(loader);
     let mut env = rcl::runtime::Env::new();
-    let _ = rcl::eval::eval(&mut env, &ast)?;
+    let _ = evaluator.eval_doc(&mut env, id)?;
     Ok(())
 }
 

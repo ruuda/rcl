@@ -18,7 +18,7 @@ use crate::ast;
 use crate::cli::Target;
 use crate::cst;
 use crate::error::{Error, Result};
-use crate::eval;
+use crate::eval::Evaluator;
 use crate::lexer;
 use crate::markup::Markup;
 use crate::parser;
@@ -99,10 +99,9 @@ impl Loader {
     }
 
     /// Evaluate the given document and return the resulting value.
-    pub fn evaluate(&self, id: DocId, env: &mut Env) -> Result<Rc<Value>> {
-        let expr = self.get_ast(id)?;
-        let result = eval::eval(env, &expr)?;
-        Ok(result)
+    pub fn evaluate(&mut self, id: DocId, env: &mut Env) -> Result<Rc<Value>> {
+        let mut evaluator = Evaluator::new(self);
+        evaluator.eval_doc(env, id)
     }
 
     fn push(&mut self, document: Document) -> DocId {
