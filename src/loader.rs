@@ -7,9 +7,10 @@
 
 //! The loader is responsible for loading documents.
 
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use crate::abstraction;
@@ -47,6 +48,11 @@ impl Document {
 #[derive(Default)]
 pub struct Loader {
     documents: Vec<Document>,
+
+    /// For documents loaded from files, their document id.
+    ///
+    /// This enables us to avoid loading the same file twice.
+    loaded_files: HashMap<PathBuf, DocId>,
 }
 
 impl Loader {
@@ -120,8 +126,15 @@ impl Loader {
 
     /// Load a file into a new document.
     pub fn load_file<P: AsRef<Path>>(&mut self, path: P) -> Result<DocId> {
+        // Avoid loading the same file twice if we already loaded it.
+        if let Some(id) = self.loaded_files.get(path.as_ref()) {
+            return Ok(*id);
+        }
+
+        let path_buf = path.as_ref().to_owned();
+
         // TODO: Deduplicate, don't load the same document twice.
-        let buf = fs::read_to_string(&path).map_err(|err| {
+        let buf = fs::read_to_string(&path_buf).map_err(|err| {
             let fname = path.as_ref().to_string_lossy().into_owned();
             Error::new(concat! {
                 "Failed to read from file '"
@@ -132,10 +145,14 @@ impl Loader {
         })?;
         let doc = Document {
             // TODO: Canonicalize all paths to be relative to the working directory.
-            name: path.as_ref().to_string_lossy().into_owned(),
+            name: path_buf.to_string_lossy().into_owned(),
             data: buf,
         };
-        Ok(self.push(doc))
+        let id = self.push(doc);
+
+        self.loaded_files.insert(path_buf, id);
+
+        Ok(id)
     }
 
     /// Load a string into a new document.
