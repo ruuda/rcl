@@ -13,300 +13,507 @@ use std::rc::Rc;
 use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
 use crate::error::{IntoError, Result};
 use crate::fmt_rcl::format_rcl;
+use crate::loader::Loader;
 use crate::pprint::Doc;
 use crate::runtime::{Builtin, Env, Value};
-use crate::source::Span;
+use crate::source::{DocId, Span};
 
-pub fn eval(env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
-    match expr {
-        Expr::BraceLit(seqs) => {
-            let mut out = SeqOut::SetOrDict;
-            for seq in seqs {
-                eval_seq(env, seq, &mut out)?;
-            }
-            match out {
-                // If we have no keys, it’s a dict, because json has no sets,
-                // and `{}` is a json value that should evaluate to itself.
-                SeqOut::SetOrDict => Ok(Rc::new(Value::Dict(BTreeMap::new()))),
-                SeqOut::Set(_, values) => {
-                    let result = values.into_iter().collect();
-                    Ok(Rc::new(Value::Set(result)))
-                }
-                SeqOut::Dict(_, keys, values) => {
-                    assert_eq!(
-                        keys.len(),
-                        values.len(),
-                        "Should have already reported error about mixing \
-                        `k: v` and values in one comprehension."
-                    );
-                    let mut result = BTreeMap::new();
-                    for (k, v) in keys.into_iter().zip(values) {
-                        result.insert(k, v);
-                    }
-                    Ok(Rc::new(Value::Dict(result)))
-                }
-                SeqOut::List(_) => unreachable!("Did not start out as list."),
-            }
-        }
-        Expr::BracketLit(seqs) => {
-            let mut out = SeqOut::List(Vec::new());
-            for seq in seqs {
-                eval_seq(env, seq, &mut out)?;
-            }
-            match out {
-                SeqOut::List(values) => Ok(Rc::new(Value::List(values))),
-                _ => unreachable!("SeqOut::List type is preserved."),
-            }
-        }
-
-        Expr::NullLit => Ok(Rc::new(Value::Null)),
-
-        Expr::BoolLit(b) => Ok(Rc::new(Value::Bool(*b))),
-
-        Expr::IntegerLit(i) => Ok(Rc::new(Value::Int(*i))),
-
-        Expr::StringLit(s) => Ok(Rc::new(Value::String(s.clone()))),
-
-        Expr::Format(fragments) => eval_format(env, fragments),
-
-        Expr::IfThenElse {
-            condition_span,
-            condition,
-            body_then,
-            body_else,
-        } => {
-            let cond = eval(env, condition)?;
-            match cond.as_ref() {
-                Value::Bool(true) => eval(env, body_then),
-                Value::Bool(false) => eval(env, body_else),
-                _ => {
-                    // TODO: Make this a type error.
-                    let err = condition_span.error("Condition should be a boolean.");
-                    Err(err.into())
-                }
-            }
-        }
-
-        Expr::Var { span, ident } => match env.lookup(ident) {
-            Some(value) => Ok(value.clone()),
-            None => Err(span.error("Unknown variable.").into()),
-        },
-
-        Expr::Field {
-            field_span,
-            field: field_name,
-            inner: inner_expr,
-        } => {
-            let inner = eval(env, inner_expr)?;
-            let field_name_value = Value::String(field_name.0.clone());
-            let err_unknown_field = field_span.error("Unknown field.");
-            match inner.as_ref() {
-                Value::String(s) => {
-                    let builtin = match field_name.as_ref() {
-                        "len" => Some(builtin_string_len(s)),
-                        _ => None,
-                    };
-                    match builtin {
-                        Some(b) => Ok(Rc::new(Value::Builtin(b))),
-                        None => Err(err_unknown_field.into()),
-                    }
-                }
-                Value::Dict(fields) => {
-                    // First test for the builtin names, they shadow the values,
-                    // if there are any values.
-                    let builtin = match field_name.as_ref() {
-                        "contains" => Some(builtin_dict_contains(inner.clone())),
-                        "get" => Some(builtin_dict_get(inner.clone())),
-                        "len" => Some(builtin_dict_len(fields)),
-                        _ => None,
-                    };
-                    if let Some(b) = builtin {
-                        return Ok(Rc::new(Value::Builtin(b)));
-                    }
-                    // If it wasn't a builtin, look for a key in the dict.
-                    match fields.get(&field_name_value) {
-                        Some(v) => Ok(v.clone()),
-                        None => Err(err_unknown_field.into()),
-                    }
-                }
-                Value::List(xs) => {
-                    let builtin = match field_name.as_ref() {
-                        "contains" => Some(builtin_list_contains(inner.clone())),
-                        "len" => Some(builtin_list_len(xs)),
-                        _ => None,
-                    };
-                    match builtin {
-                        Some(b) => Ok(Rc::new(Value::Builtin(b))),
-                        None => Err(err_unknown_field.into()),
-                    }
-                }
-                Value::Set(xs) => {
-                    let builtin = match field_name.as_ref() {
-                        "contains" => Some(builtin_set_contains(inner.clone())),
-                        "len" => Some(builtin_set_len(xs)),
-                        _ => None,
-                    };
-                    match builtin {
-                        Some(b) => Ok(Rc::new(Value::Builtin(b))),
-                        None => Err(err_unknown_field.into()),
-                    }
-                }
-                _other => Err(err_unknown_field.into()),
-            }
-        }
-
-        Expr::Stmt { stmt, body } => {
-            let ck = env.checkpoint();
-            eval_stmt(env, stmt)?;
-            let result = eval(env, body)?;
-            env.pop(ck);
-            Ok(result)
-        }
-
-        Expr::Call {
-            open,
-            function_span,
-            function: fun_expr,
-            args: args_exprs,
-        } => {
-            // We do strict evaluation, all arguments get evaluated before we go
-            // into the call.
-            let fun = eval(env, fun_expr)?;
-            let args = args_exprs
-                .iter()
-                .map(|a| eval(env, a))
-                .collect::<Result<Vec<_>>>()?;
-
-            match fun.as_ref() {
-                Value::Builtin(f) => (f.f)(*open, &args[..]),
-                // TODO: Define a value for lambdas, implement the call.
-                // TODO: Add a proper type error.
-                _ => Err(function_span
-                    .error("This is not a function, it cannot be called.")
-                    .into()),
-            }
-        }
-
-        Expr::Lam(_args, _body) => unimplemented!("TODO: Define lambdas."),
-
-        Expr::UnOp {
-            op,
-            op_span,
-            body: value_expr,
-        } => {
-            let value = eval(env, value_expr)?;
-            eval_unop(*op, *op_span, value)
-        }
-
-        Expr::BinOp {
-            op,
-            op_span,
-            lhs: lhs_expr,
-            rhs: rhs_expr,
-        } => {
-            let lhs = eval(env, lhs_expr)?;
-            let rhs = eval(env, rhs_expr)?;
-            eval_binop(*op, *op_span, lhs, rhs)
-        }
-    }
+pub struct Evaluator<'a> {
+    loader: &'a mut Loader,
 }
 
-/// Evaluate a format string.
-pub fn eval_format(env: &mut Env, fragments: &[FormatFragment]) -> Result<Rc<Value>> {
-    let mut results: Vec<Rc<str>> = Vec::new();
+impl<'a> Evaluator<'a> {
+    pub fn new(loader: &'a mut Loader) -> Evaluator {
+        Evaluator { loader }
+    }
 
-    for fragment in fragments {
-        let result = eval(env, &fragment.body)?;
-        match result.as_ref() {
-            Value::String(s) => results.push(s.clone()),
-            Value::Int(i) => results.push(i.to_string().into()),
-            Value::Bool(b) => results.push((if *b { "true" } else { "false" }).into()),
-            _ => {
-                return Err(fragment
-                    .span
-                    .error("This value cannot be interpolated into a string.")
+    pub fn eval_doc(&mut self, env: &mut Env, doc: DocId) -> Result<Rc<Value>> {
+        let expr = self.loader.get_ast(doc)?;
+        self.eval_expr(env, &expr)
+    }
+
+    fn eval_expr(&mut self, env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
+        match expr {
+            Expr::BraceLit(seqs) => {
+                let mut out = SeqOut::SetOrDict;
+                for seq in seqs {
+                    self.eval_seq(env, seq, &mut out)?;
+                }
+                match out {
+                    // If we have no keys, it’s a dict, because json has no sets,
+                    // and `{}` is a json value that should evaluate to itself.
+                    SeqOut::SetOrDict => Ok(Rc::new(Value::Dict(BTreeMap::new()))),
+                    SeqOut::Set(_, values) => {
+                        let result = values.into_iter().collect();
+                        Ok(Rc::new(Value::Set(result)))
+                    }
+                    SeqOut::Dict(_, keys, values) => {
+                        assert_eq!(
+                            keys.len(),
+                            values.len(),
+                            "Should have already reported error about mixing \
+                            `k: v` and values in one comprehension."
+                        );
+                        let mut result = BTreeMap::new();
+                        for (k, v) in keys.into_iter().zip(values) {
+                            result.insert(k, v);
+                        }
+                        Ok(Rc::new(Value::Dict(result)))
+                    }
+                    SeqOut::List(_) => unreachable!("Did not start out as list."),
+                }
+            }
+            Expr::BracketLit(seqs) => {
+                let mut out = SeqOut::List(Vec::new());
+                for seq in seqs {
+                    self.eval_seq(env, seq, &mut out)?;
+                }
+                match out {
+                    SeqOut::List(values) => Ok(Rc::new(Value::List(values))),
+                    _ => unreachable!("SeqOut::List type is preserved."),
+                }
+            }
+
+            Expr::NullLit => Ok(Rc::new(Value::Null)),
+
+            Expr::BoolLit(b) => Ok(Rc::new(Value::Bool(*b))),
+
+            Expr::IntegerLit(i) => Ok(Rc::new(Value::Int(*i))),
+
+            Expr::StringLit(s) => Ok(Rc::new(Value::String(s.clone()))),
+
+            Expr::Format(fragments) => self.eval_format(env, fragments),
+
+            Expr::IfThenElse {
+                condition_span,
+                condition,
+                body_then,
+                body_else,
+            } => {
+                let cond = self.eval_expr(env, condition)?;
+                match cond.as_ref() {
+                    Value::Bool(true) => self.eval_expr(env, body_then),
+                    Value::Bool(false) => self.eval_expr(env, body_else),
+                    _ => {
+                        // TODO: Make this a type error.
+                        let err = condition_span.error("Condition should be a boolean.");
+                        Err(err.into())
+                    }
+                }
+            }
+
+            Expr::Var { span, ident } => match env.lookup(ident) {
+                Some(value) => Ok(value.clone()),
+                None => Err(span.error("Unknown variable.").into()),
+            },
+
+            Expr::Field {
+                field_span,
+                field: field_name,
+                inner: inner_expr,
+            } => {
+                let inner = self.eval_expr(env, inner_expr)?;
+                let field_name_value = Value::String(field_name.0.clone());
+                let err_unknown_field = field_span.error("Unknown field.");
+                match inner.as_ref() {
+                    Value::String(s) => {
+                        let builtin = match field_name.as_ref() {
+                            "len" => Some(builtin_string_len(s)),
+                            _ => None,
+                        };
+                        match builtin {
+                            Some(b) => Ok(Rc::new(Value::Builtin(b))),
+                            None => Err(err_unknown_field.into()),
+                        }
+                    }
+                    Value::Dict(fields) => {
+                        // First test for the builtin names, they shadow the values,
+                        // if there are any values.
+                        let builtin = match field_name.as_ref() {
+                            "contains" => Some(builtin_dict_contains(inner.clone())),
+                            "get" => Some(builtin_dict_get(inner.clone())),
+                            "len" => Some(builtin_dict_len(fields)),
+                            _ => None,
+                        };
+                        if let Some(b) = builtin {
+                            return Ok(Rc::new(Value::Builtin(b)));
+                        }
+                        // If it wasn't a builtin, look for a key in the dict.
+                        match fields.get(&field_name_value) {
+                            Some(v) => Ok(v.clone()),
+                            None => Err(err_unknown_field.into()),
+                        }
+                    }
+                    Value::List(xs) => {
+                        let builtin = match field_name.as_ref() {
+                            "contains" => Some(builtin_list_contains(inner.clone())),
+                            "len" => Some(builtin_list_len(xs)),
+                            _ => None,
+                        };
+                        match builtin {
+                            Some(b) => Ok(Rc::new(Value::Builtin(b))),
+                            None => Err(err_unknown_field.into()),
+                        }
+                    }
+                    Value::Set(xs) => {
+                        let builtin = match field_name.as_ref() {
+                            "contains" => Some(builtin_set_contains(inner.clone())),
+                            "len" => Some(builtin_set_len(xs)),
+                            _ => None,
+                        };
+                        match builtin {
+                            Some(b) => Ok(Rc::new(Value::Builtin(b))),
+                            None => Err(err_unknown_field.into()),
+                        }
+                    }
+                    _other => Err(err_unknown_field.into()),
+                }
+            }
+
+            Expr::Stmt { stmt, body } => {
+                let ck = env.checkpoint();
+                self.eval_stmt(env, stmt)?;
+                let result = self.eval_expr(env, body)?;
+                env.pop(ck);
+                Ok(result)
+            }
+
+            Expr::Call {
+                open,
+                function_span,
+                function: fun_expr,
+                args: args_exprs,
+            } => {
+                // We do strict evaluation, all arguments get evaluated before we go
+                // into the call.
+                let fun = self.eval_expr(env, fun_expr)?;
+                let args = args_exprs
+                    .iter()
+                    .map(|a| self.eval_expr(env, a))
+                    .collect::<Result<Vec<_>>>()?;
+
+                match fun.as_ref() {
+                    Value::Builtin(f) => (f.f)(*open, &args[..]),
+                    // TODO: Define a value for lambdas, implement the call.
+                    // TODO: Add a proper type error.
+                    _ => Err(function_span
+                        .error("This is not a function, it cannot be called.")
+                        .into()),
+                }
+            }
+
+            Expr::Lam(_args, _body) => unimplemented!("TODO: Define lambdas."),
+
+            Expr::UnOp {
+                op,
+                op_span,
+                body: value_expr,
+            } => {
+                let value = self.eval_expr(env, value_expr)?;
+                self.eval_unop(*op, *op_span, value)
+            }
+
+            Expr::BinOp {
+                op,
+                op_span,
+                lhs: lhs_expr,
+                rhs: rhs_expr,
+            } => {
+                let lhs = self.eval_expr(env, lhs_expr)?;
+                let rhs = self.eval_expr(env, rhs_expr)?;
+                self.eval_binop(*op, *op_span, lhs, rhs)
+            }
+        }
+    }
+
+    /// Evaluate a format string.
+    pub fn eval_format(
+        &mut self,
+        env: &mut Env,
+        fragments: &[FormatFragment],
+    ) -> Result<Rc<Value>> {
+        let mut results: Vec<Rc<str>> = Vec::new();
+
+        for fragment in fragments {
+            let result = self.eval_expr(env, &fragment.body)?;
+            match result.as_ref() {
+                Value::String(s) => results.push(s.clone()),
+                Value::Int(i) => results.push(i.to_string().into()),
+                Value::Bool(b) => results.push((if *b { "true" } else { "false" }).into()),
+                _ => {
+                    return Err(fragment
+                        .span
+                        .error("This value cannot be interpolated into a string.")
+                        .into())
+                }
+            }
+        }
+
+        let mut result = String::with_capacity(results.iter().map(|s| s.len()).sum());
+        for s in results {
+            result.push_str(s.as_ref());
+        }
+
+        Ok(Rc::new(Value::String(result.into())))
+    }
+
+    fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {
+        match (op, v.as_ref()) {
+            (UnOp::Neg, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
+            (_op, _val) => {
+                // TODO: Add a proper type error, report the type of the value.
+                Err(op_span
+                    .error("This operator is not supported for this value.")
                     .into())
             }
         }
     }
 
-    let mut result = String::with_capacity(results.iter().map(|s| s.len()).sum());
-    for s in results {
-        result.push_str(s.as_ref());
+    fn eval_binop(
+        &mut self,
+        op: BinOp,
+        op_span: Span,
+        lhs: Rc<Value>,
+        rhs: Rc<Value>,
+    ) -> Result<Rc<Value>> {
+        match (op, lhs.as_ref(), rhs.as_ref()) {
+            (BinOp::Union, Value::Dict(xs), Value::Dict(ys)) => {
+                let mut result = xs.clone();
+                for (k, v) in ys.iter() {
+                    result.insert(k.clone(), v.clone());
+                }
+                Ok(Rc::new(Value::Dict(result)))
+            }
+            (BinOp::Union, Value::Set(xs), Value::Set(ys)) => {
+                let result = xs.union(ys).cloned().collect();
+                Ok(Rc::new(Value::Set(result)))
+            }
+            (BinOp::Union, Value::Set(xs), Value::List(ys)) => {
+                let mut result = xs.clone();
+                result.extend(ys.iter().cloned());
+                Ok(Rc::new(Value::Set(result)))
+            }
+            // TODO: Could evaluate these boolean expressions lazily, if the
+            // language is really pure. But if I enable external side effects like
+            // running a program to read its input, that would be questionable to do.
+            (BinOp::And, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x && *y))),
+            (BinOp::Or, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x || *y))),
+            (BinOp::Add, Value::Int(x), Value::Int(y)) => {
+                match x.checked_add(*y) {
+                    Some(z) => Ok(Rc::new(Value::Int(z))),
+                    // TODO: Also include the values themselves through pretty-printer.
+                    None => Err(op_span.error("Addition would overflow.").into()),
+                }
+            }
+            (BinOp::Mul, Value::Int(x), Value::Int(y)) => {
+                match x.checked_mul(*y) {
+                    Some(z) => Ok(Rc::new(Value::Int(z))),
+                    // TODO: Also include the values themselves through pretty-printer.
+                    None => Err(op_span.error("Multiplication would overflow.").into()),
+                }
+            }
+            (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x < *y))),
+            (BinOp::Gt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x > *y))),
+            (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x <= *y))),
+            (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x >= *y))),
+            // TODO: Throw a type error when the types are not the same, instead of
+            // enabling comparing values of different types.
+            (BinOp::Eq, x, y) => Ok(Rc::new(Value::Bool(*x == *y))),
+            (BinOp::Neq, x, y) => Ok(Rc::new(Value::Bool(*x != *y))),
+            _ => {
+                // TODO: Add a proper type error.
+                Err(op_span
+                    .error("This operator is not supported for these values.")
+                    .into())
+            }
+        }
     }
 
-    Ok(Rc::new(Value::String(result.into())))
-}
-
-fn eval_unop(op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {
-    match (op, v.as_ref()) {
-        (UnOp::Neg, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
-        (_op, _val) => {
-            // TODO: Add a proper type error, report the type of the value.
-            Err(op_span
-                .error("This operator is not supported for this value.")
-                .into())
+    fn eval_stmt(&mut self, env: &mut Env, stmt: &Stmt) -> Result<()> {
+        match stmt {
+            Stmt::Let { ident, value } => {
+                // Note, this is not a recursive let, the variable is not bound when
+                // we evaluate the expression.
+                let v = self.eval_expr(env, value)?;
+                env.push(ident.clone(), v);
+            }
+            Stmt::Assert {
+                condition_span,
+                condition,
+                message: message_expr,
+            } => {
+                let v = self.eval_expr(env, condition)?;
+                match *v {
+                    Value::Bool(true) => {
+                        // Ok, the assertion passed, nothing else to do.
+                    }
+                    Value::Bool(false) => {
+                        let message = self.eval_expr(env, message_expr)?;
+                        let body: Doc = match message.as_ref() {
+                            // If the message is a string, then we include it directly,
+                            // not pretty-printed as a value.
+                            Value::String(msg) => Doc::lines(msg),
+                            // Otherwise, we pretty-print it as an RCL value.
+                            _ => format_rcl(&message),
+                        };
+                        return condition_span
+                            .error("Assertion failed.")
+                            .with_body(body.into_owned())
+                            .err();
+                    }
+                    _ => {
+                        // TODO: Report a proper type error.
+                        return condition_span
+                            .error("Assertion condition must evaluate to a boolean.")
+                            .err();
+                    }
+                }
+            }
+            Stmt::Trace {
+                trace_span,
+                message: message_expr,
+            } => {
+                // TODO: Implement proper reporting, format in the same way as
+                // errors, pretty-print the value, ...
+                let message = self.eval_expr(env, message_expr)?;
+                #[cfg(not(fuzzing))]
+                eprintln!("Trace from {trace_span:?}: {message:?}");
+                #[cfg(fuzzing)]
+                let _ = (message, trace_span);
+            }
         }
+        Ok(())
     }
-}
 
-fn eval_binop(op: BinOp, op_span: Span, lhs: Rc<Value>, rhs: Rc<Value>) -> Result<Rc<Value>> {
-    match (op, lhs.as_ref(), rhs.as_ref()) {
-        (BinOp::Union, Value::Dict(xs), Value::Dict(ys)) => {
-            let mut result = xs.clone();
-            for (k, v) in ys.iter() {
-                result.insert(k.clone(), v.clone());
-            }
-            Ok(Rc::new(Value::Dict(result)))
-        }
-        (BinOp::Union, Value::Set(xs), Value::Set(ys)) => {
-            let result = xs.union(ys).cloned().collect();
-            Ok(Rc::new(Value::Set(result)))
-        }
-        (BinOp::Union, Value::Set(xs), Value::List(ys)) => {
-            let mut result = xs.clone();
-            result.extend(ys.iter().cloned());
-            Ok(Rc::new(Value::Set(result)))
-        }
-        // TODO: Could evaluate these boolean expressions lazily, if the
-        // language is really pure. But if I enable external side effects like
-        // running a program to read its input, that would be questionable to do.
-        (BinOp::And, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x && *y))),
-        (BinOp::Or, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x || *y))),
-        (BinOp::Add, Value::Int(x), Value::Int(y)) => {
-            match x.checked_add(*y) {
-                Some(z) => Ok(Rc::new(Value::Int(z))),
-                // TODO: Also include the values themselves through pretty-printer.
-                None => Err(op_span.error("Addition would overflow.").into()),
+    fn eval_seq(&mut self, env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
+        // For a collection enclosed in {}, now that we have a concrete seq, that
+        // determines whether this is a set comprehension or a dict comprehension.
+        // We really have to look at the syntax of the seq, we cannot resolve the
+        // ambiguity later when we get to evaluating the inner seq, because that
+        // part may be skipped due to a conditional.
+        if let SeqOut::SetOrDict = out {
+            match seq.innermost() {
+                Yield::Elem { span, .. } => *out = SeqOut::Set(*span, Vec::new()),
+                Yield::Assoc { op_span, .. } => {
+                    *out = SeqOut::Dict(*op_span, Vec::new(), Vec::new())
+                }
             }
         }
-        (BinOp::Mul, Value::Int(x), Value::Int(y)) => {
-            match x.checked_mul(*y) {
-                Some(z) => Ok(Rc::new(Value::Int(z))),
-                // TODO: Also include the values themselves through pretty-printer.
-                None => Err(op_span.error("Multiplication would overflow.").into()),
+
+        match seq {
+            Seq::Yield(Yield::Elem {
+                span,
+                value: value_expr,
+            }) => {
+                let out_values = out.values(*span)?;
+                let value = self.eval_expr(env, value_expr)?;
+                out_values.push(value);
+                Ok(())
             }
-        }
-        (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x < *y))),
-        (BinOp::Gt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x > *y))),
-        (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x <= *y))),
-        (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x >= *y))),
-        // TODO: Throw a type error when the types are not the same, instead of
-        // enabling comparing values of different types.
-        (BinOp::Eq, x, y) => Ok(Rc::new(Value::Bool(*x == *y))),
-        (BinOp::Neq, x, y) => Ok(Rc::new(Value::Bool(*x != *y))),
-        _ => {
-            // TODO: Add a proper type error.
-            Err(op_span
-                .error("This operator is not supported for these values.")
-                .into())
+            Seq::Yield(Yield::Assoc {
+                op_span,
+                key: key_expr,
+                value: value_expr,
+            }) => {
+                let (out_keys, out_values) = out.keys_values(*op_span)?;
+                let key = self.eval_expr(env, key_expr)?;
+                let value = self.eval_expr(env, value_expr)?;
+                out_keys.push(key);
+                out_values.push(value);
+                Ok(())
+            }
+            Seq::For {
+                idents_span,
+                idents,
+                collection_span,
+                collection,
+                body,
+            } => {
+                let collection_value = self.eval_expr(env, collection)?;
+                match (&idents[..], collection_value.as_ref()) {
+                    ([name], Value::List(xs)) => {
+                        for x in xs {
+                            let ck = env.push(name.clone(), x.clone());
+                            self.eval_seq(env, body, out)?;
+                            env.pop(ck);
+                        }
+                        Ok(())
+                    }
+                    (_names, Value::List(..)) => {
+                        let err = idents_span.error("Expected a single variable.").with_note(
+                            *collection_span,
+                            "This is a list, it yields one element per iteration.",
+                        );
+                        Err(err.into())
+                    }
+                    ([name], Value::Set(xs)) => {
+                        for x in xs {
+                            let ck = env.push(name.clone(), x.clone());
+                            self.eval_seq(env, body, out)?;
+                            env.pop(ck);
+                        }
+                        Ok(())
+                    }
+                    (_names, Value::Set(..)) => {
+                        let err = idents_span.error("Expected a single variable.").with_note(
+                            *collection_span,
+                            "This is a set, it yields one element per iteration.",
+                        );
+                        Err(err.into())
+                    }
+                    ([k_name, v_name], Value::Dict(xs)) => {
+                        for (k, v) in xs {
+                            let ck = env.checkpoint();
+                            env.push(k_name.clone(), k.clone());
+                            env.push(v_name.clone(), v.clone());
+                            self.eval_seq(env, body, out)?;
+                            env.pop(ck);
+                        }
+                        Ok(())
+                    }
+                    (_names, Value::Dict(..)) => {
+                        let err = idents_span
+                            .error("Expected two variables in dict iteration.")
+                            .with_note(
+                                *collection_span,
+                                "This is a dict, it yields a key and value per iteration.",
+                            );
+                        Err(err.into())
+                    }
+                    // TODO: Add a proper type error.
+                    _ => Err(collection_span.error("This is not iterable.").into()),
+                }
+            }
+            Seq::If {
+                condition_span,
+                condition,
+                body,
+            } => {
+                let cond = self.eval_expr(env, condition)?;
+                match cond.as_ref() {
+                    Value::Bool(true) => self.eval_seq(env, body, out),
+                    Value::Bool(false) => Ok(()),
+                    _ => {
+                        // TODO: Make this a type error.
+                        let err = condition_span.error("Condition should be a boolean.");
+                        Err(err.into())
+                    }
+                }
+            }
+            Seq::Stmt { stmt, body } => {
+                let ck = env.checkpoint();
+                self.eval_stmt(env, stmt)?;
+                self.eval_seq(env, body, out)?;
+                env.pop(ck);
+                Ok(())
+            }
         }
     }
 }
 
 type Values = Vec<Rc<Value>>;
 
-/// Evaluation output for sequences.
+/// Helper to hold evaluation output for sequences.
 enum SeqOut {
     /// Only allow scalar values because we are in a list literal.
     List(Values),
@@ -364,185 +571,6 @@ impl SeqOut {
             }
             SeqOut::Dict(_first, keys, values) => Ok((keys, values)),
             SeqOut::SetOrDict => unreachable!("Should have been replaced by now."),
-        }
-    }
-}
-
-fn eval_stmt(env: &mut Env, stmt: &Stmt) -> Result<()> {
-    match stmt {
-        Stmt::Let { ident, value } => {
-            // Note, this is not a recursive let, the variable is not bound when
-            // we evaluate the expression.
-            let v = eval(env, value)?;
-            env.push(ident.clone(), v);
-        }
-        Stmt::Assert {
-            condition_span,
-            condition,
-            message: message_expr,
-        } => {
-            let v = eval(env, condition)?;
-            match *v {
-                Value::Bool(true) => {
-                    // Ok, the assertion passed, nothing else to do.
-                }
-                Value::Bool(false) => {
-                    let message = eval(env, message_expr)?;
-                    let body: Doc = match message.as_ref() {
-                        // If the message is a string, then we include it directly,
-                        // not pretty-printed as a value.
-                        Value::String(msg) => Doc::lines(msg),
-                        // Otherwise, we pretty-print it as an RCL value.
-                        _ => format_rcl(&message),
-                    };
-                    return condition_span
-                        .error("Assertion failed.")
-                        .with_body(body.into_owned())
-                        .err();
-                }
-                _ => {
-                    // TODO: Report a proper type error.
-                    return condition_span
-                        .error("Assertion condition must evaluate to a boolean.")
-                        .err();
-                }
-            }
-        }
-        Stmt::Trace {
-            trace_span,
-            message: message_expr,
-        } => {
-            // TODO: Implement proper reporting, format in the same way as
-            // errors, pretty-print the value, ...
-            let message = eval(env, message_expr)?;
-            #[cfg(not(fuzzing))]
-            eprintln!("Trace from {trace_span:?}: {message:?}");
-            #[cfg(fuzzing)]
-            let _ = (message, trace_span);
-        }
-    }
-    Ok(())
-}
-
-fn eval_seq(env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
-    // For a collection enclosed in {}, now that we have a concrete seq, that
-    // determines whether this is a set comprehension or a dict comprehension.
-    // We really have to look at the syntax of the seq, we cannot resolve the
-    // ambiguity later when we get to evaluating the inner seq, because that
-    // part may be skipped due to a conditional.
-    if let SeqOut::SetOrDict = out {
-        match seq.innermost() {
-            Yield::Elem { span, .. } => *out = SeqOut::Set(*span, Vec::new()),
-            Yield::Assoc { op_span, .. } => *out = SeqOut::Dict(*op_span, Vec::new(), Vec::new()),
-        }
-    }
-
-    match seq {
-        Seq::Yield(Yield::Elem {
-            span,
-            value: value_expr,
-        }) => {
-            let out_values = out.values(*span)?;
-            let value = eval(env, value_expr)?;
-            out_values.push(value);
-            Ok(())
-        }
-        Seq::Yield(Yield::Assoc {
-            op_span,
-            key: key_expr,
-            value: value_expr,
-        }) => {
-            let (out_keys, out_values) = out.keys_values(*op_span)?;
-            let key = eval(env, key_expr)?;
-            let value = eval(env, value_expr)?;
-            out_keys.push(key);
-            out_values.push(value);
-            Ok(())
-        }
-        Seq::For {
-            idents_span,
-            idents,
-            collection_span,
-            collection,
-            body,
-        } => {
-            let collection_value = eval(env, collection)?;
-            match (&idents[..], collection_value.as_ref()) {
-                ([name], Value::List(xs)) => {
-                    for x in xs {
-                        let ck = env.push(name.clone(), x.clone());
-                        eval_seq(env, body, out)?;
-                        env.pop(ck);
-                    }
-                    Ok(())
-                }
-                (_names, Value::List(..)) => {
-                    let err = idents_span.error("Expected a single variable.").with_note(
-                        *collection_span,
-                        "This is a list, it yields one element per iteration.",
-                    );
-                    Err(err.into())
-                }
-                ([name], Value::Set(xs)) => {
-                    for x in xs {
-                        let ck = env.push(name.clone(), x.clone());
-                        eval_seq(env, body, out)?;
-                        env.pop(ck);
-                    }
-                    Ok(())
-                }
-                (_names, Value::Set(..)) => {
-                    let err = idents_span.error("Expected a single variable.").with_note(
-                        *collection_span,
-                        "This is a set, it yields one element per iteration.",
-                    );
-                    Err(err.into())
-                }
-                ([k_name, v_name], Value::Dict(xs)) => {
-                    for (k, v) in xs {
-                        let ck = env.checkpoint();
-                        env.push(k_name.clone(), k.clone());
-                        env.push(v_name.clone(), v.clone());
-                        eval_seq(env, body, out)?;
-                        env.pop(ck);
-                    }
-                    Ok(())
-                }
-                (_names, Value::Dict(..)) => {
-                    let err = idents_span
-                        .error("Expected two variables in dict iteration.")
-                        .with_note(
-                            *collection_span,
-                            "This is a dict, it yields a key and value per iteration.",
-                        );
-                    Err(err.into())
-                }
-                // TODO: Add a proper type error.
-                _ => Err(collection_span.error("This is not iterable.").into()),
-            }
-        }
-        Seq::If {
-            condition_span,
-            condition,
-            body,
-        } => {
-            let cond = eval(env, condition)?;
-            match cond.as_ref() {
-                Value::Bool(true) => eval_seq(env, body, out),
-                Value::Bool(false) => Ok(()),
-                _ => {
-                    // TODO: Make this a type error.
-                    let err = condition_span.error("Condition should be a boolean.");
-                    Err(err.into())
-                }
-            }
-        }
-        Seq::Stmt { stmt, body } => {
-            let ck = env.checkpoint();
-            eval_stmt(env, stmt)?;
-            eval_seq(env, body, out)?;
-            env.pop(ck);
-            Ok(())
         }
     }
 }
