@@ -104,11 +104,19 @@ impl Error {
     }
 
     /// Extend the error with a note at a given source location.
-    pub fn with_note<M>(mut self, at: Span, note: M) -> Error
+    pub fn add_note<M>(&mut self, at: Span, note: M)
     where
         Doc<'static>: From<M>,
     {
         self.notes.push((at, note.into()));
+    }
+
+    /// Extend the error with a note at a given source location.
+    pub fn with_note<M>(mut self, at: Span, note: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        self.add_note(at, note);
         self
     }
 
