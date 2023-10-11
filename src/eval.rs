@@ -35,7 +35,11 @@ pub struct Evaluator<'a> {
 
 impl<'a> Evaluator<'a> {
     pub fn new(loader: &'a mut Loader, tracer: &'a mut dyn Tracer) -> Evaluator<'a> {
-        Evaluator { loader, tracer, import_stack: Vec::new() }
+        Evaluator {
+            loader,
+            tracer,
+            import_stack: Vec::new(),
+        }
     }
 
     /// Evaluate a document as the entry point of evaluation.

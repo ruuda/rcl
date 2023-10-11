@@ -143,7 +143,7 @@ impl Loader {
             let fname = path.as_ref().to_string_lossy().into_owned();
             Error::new(concat! {
                 "Failed to read from file '"
-                pprint::Doc::from(fname).with_markup(Markup::Highlight)
+                pprint::Doc::lines(&fname).into_owned().with_markup(Markup::Highlight)
                 "': "
                 err.to_string()
             })
