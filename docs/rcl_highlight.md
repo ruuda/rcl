@@ -1,11 +1,11 @@
 # rcl highlight
 
-    rcl highlight <input>
+    rcl highlight [--] <file>
 
 ## Description
 
-Read an RCL expression from the file `<input>`, and print a syntax-highlighted
-result to stout. When `<input>` is `-`, read from stdin instead.
+Read an RCL expression from `<file>`, and print a syntax-highlighted result to
+stout. When `<file>` is `-`, read from stdin instead.
 
 ## Options
 
