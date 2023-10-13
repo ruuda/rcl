@@ -1,0 +1,35 @@
+// I want types to be separate from values.
+// But import acts on values; every document is a value.
+// How to reconcile? Maybe a "module" value that can hold types?
+
+let my_types = module {
+  type Server = {
+    hostname: String,
+    dc: String,
+    ip_public: String,
+    ...
+  };
+
+  impl Server {
+    full_name: Server -> String = self => f"{self.dc}.{self.hostname}",
+  }
+};
+
+// Bring all types in scope ... but this is bad if I ever want to do laziness,
+// because you can't defer evaluation of an imported module. The next form that
+// specifies what to import does enable deferring full evaluation.
+use my_types;
+use my_types (Server);
+
+// Or should types be values after all? Take the inspiration from Cue?
+let Uint16 = Int & (x => x > 0) & (x => x <= 0xffff);
+let Server = {
+  hostname = String,
+  dc = String,
+  ip_public = String,
+  _: Any,
+};
+let ServerEuWest1 = Server & {
+  dc = "eu-west-1",
+};
+let servers: List[Server] = {};
