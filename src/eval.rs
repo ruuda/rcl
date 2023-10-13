@@ -23,7 +23,7 @@ pub struct Evaluator<'a> {
 }
 
 impl<'a> Evaluator<'a> {
-    pub fn new(loader: &'a mut Loader) -> Evaluator {
+    pub fn new(loader: &'a mut Loader) -> Evaluator<'a> {
         Evaluator { loader }
     }
 

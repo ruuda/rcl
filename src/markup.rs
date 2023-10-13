@@ -16,6 +16,8 @@ pub enum Markup {
     Error,
     /// Used for error message reporting, styled in bold.
     Warning,
+    /// Used for trace message reporting, styled in bold.
+    Trace,
 
     /// Make something stand out in error messages.
     ///
@@ -81,6 +83,7 @@ pub fn switch_ansi(_from: Option<Markup>, to: Option<Markup>) -> &'static str {
     let reset = "\x1b[0m";
     let bold_red = "\x1b[31;1m";
     let bold_yellow = "\x1b[33;1m";
+    let bold_blue = "\x1b[34;1m";
     let red = "\x1b[31m";
     let green = "\x1b[32m";
     let blue = "\x1b[34m";
@@ -94,6 +97,7 @@ pub fn switch_ansi(_from: Option<Markup>, to: Option<Markup>) -> &'static str {
     match to {
         Markup::Error => bold_red,
         Markup::Warning => bold_yellow,
+        Markup::Trace => bold_blue,
         Markup::Highlight => white,
         Markup::Builtin => red,
         Markup::Comment => white,

@@ -25,6 +25,7 @@ use crate::parser;
 use crate::pprint::{self, concat};
 use crate::runtime::{Env, Value};
 use crate::source::{Doc, DocId, Span};
+use crate::tracer::Tracer;
 
 /// An owned document.
 ///
@@ -53,11 +54,21 @@ pub struct Loader {
     ///
     /// This enables us to avoid loading the same file twice.
     loaded_files: HashMap<PathBuf, DocId>,
+
+    /// Tracer used for printing trace messages during evaluation.
+    tracer: Option<Box<dyn Tracer>>,
 }
 
 impl Loader {
     pub fn new() -> Loader {
         Loader::default()
+    }
+
+    /// Return the tracer that handles trace messages.
+    pub fn get_tracer(&mut self) -> &mut dyn Tracer {
+        self.tracer
+            .as_deref_mut()
+            .expect("Tracer must be set if we want to get it.")
     }
 
     /// Borrow all documents.

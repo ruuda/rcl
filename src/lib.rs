@@ -30,3 +30,4 @@ pub mod pprint;
 pub mod runtime;
 pub mod source;
 pub mod string;
+pub mod tracer;
