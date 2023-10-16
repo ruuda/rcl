@@ -17,14 +17,16 @@ use crate::loader::Loader;
 use crate::pprint::Doc;
 use crate::runtime::{Builtin, Env, Value};
 use crate::source::{DocId, Span};
+use crate::tracer::Tracer;
 
 pub struct Evaluator<'a> {
     loader: &'a mut Loader,
+    tracer: &'a mut dyn Tracer,
 }
 
 impl<'a> Evaluator<'a> {
-    pub fn new(loader: &'a mut Loader) -> Evaluator<'a> {
-        Evaluator { loader }
+    pub fn new(loader: &'a mut Loader, tracer: &'a mut dyn Tracer) -> Evaluator<'a> {
+        Evaluator { loader, tracer }
     }
 
     pub fn eval_doc(&mut self, env: &mut Env, doc: DocId) -> Result<Rc<Value>> {
@@ -373,13 +375,9 @@ impl<'a> Evaluator<'a> {
                 trace_span,
                 message: message_expr,
             } => {
-                // TODO: Implement proper reporting, format in the same way as
-                // errors, pretty-print the value, ...
                 let message = self.eval_expr(env, message_expr)?;
-                #[cfg(not(fuzzing))]
-                eprintln!("Trace from {trace_span:?}: {message:?}");
-                #[cfg(fuzzing)]
-                let _ = (message, trace_span);
+                self.tracer
+                    .trace(&self.loader.as_inputs(), *trace_span, message);
             }
         }
         Ok(())

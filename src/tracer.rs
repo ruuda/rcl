@@ -10,7 +10,7 @@
 use std::rc::Rc;
 
 use crate::cli::GlobalOptions;
-use crate::error;
+use crate::error::highlight_span;
 use crate::fmt_rcl::format_rcl;
 use crate::markup::{Markup, MarkupMode};
 use crate::pprint::{self, concat, Doc};
@@ -21,30 +21,15 @@ use crate::source::{Inputs, Span};
 ///
 /// In pure contexts (such as the fuzzer, tests, or possibly when using RCL as a
 /// library), we don't want to directly emit trace messages to stdout; we want
-/// to collect them in a log/buffer. But for evaluation on the command line, we
-/// do want to emit trace messages as they happen, especially to that it's
-/// possible to see where a long-running loop hangs, or why evaluation takes a
-/// long time. So we make the the trace behavior configurable.
+/// to ignore them, or collect them in a log/buffer. But for evaluation on the
+/// command line, we do want to emit trace messages as they happen, especially
+/// to that it's possible to see where a long-running loop hangs, or why
+/// evaluation takes a long time. So we make the the trace behavior configurable.
+///
+/// The main implementation is [`StderrTracer`]. The fuzzer uses its own void
+/// tracer that ignores trace messages.
 pub trait Tracer {
     fn trace(&mut self, inputs: &Inputs, span: Span, message: Rc<Value>);
-}
-
-/// Tracer that saves messages in a buffer.
-#[derive(Default)]
-pub struct VecTracer {
-    pub messages: Vec<(Span, Rc<Value>)>,
-}
-
-impl VecTracer {
-    pub fn new() -> VecTracer {
-        Self::default()
-    }
-}
-
-impl Tracer for VecTracer {
-    fn trace(&mut self, _inputs: &Inputs, span: Span, message: Rc<Value>) {
-        self.messages.push((span, message));
-    }
 }
 
 /// Tracer that writes messages to stderr.
@@ -70,10 +55,12 @@ impl Tracer for StderrTracer {
         use std::io::Write;
 
         let doc = concat! {
-            error::highlight_span(inputs, span, Markup::Trace)
+            highlight_span(inputs, span, Markup::Trace)
             Doc::from("Trace:").with_markup(Markup::Trace)
             " "
             format_rcl(&message)
+            Doc::HardBreak
+            Doc::HardBreak
         };
         let doc_str = doc.println(&self.config);
         let mut out = std::io::stderr().lock();
