@@ -2,17 +2,17 @@
 
 use std::rc::Rc;
 
-use libfuzzer_sys::fuzz_target;
 use arbitrary::{Arbitrary, Unstructured};
+use libfuzzer_sys::fuzz_target;
 
 use rcl::error::Result;
 use rcl::eval::Evaluator;
 use rcl::loader::Loader;
 use rcl::markup::MarkupMode;
 use rcl::pprint;
-use rcl::tracer::Tracer;
-use rcl::source::{Inputs, Span};
 use rcl::runtime::Value;
+use rcl::source::{Inputs, Span};
+use rcl::tracer::Tracer;
 
 /// Tracer that ignores its messages.
 pub struct VoidTracer;
@@ -26,12 +26,8 @@ enum Mode {
     Lex,
     Parse,
     Eval,
-    Format {
-        width: u32,
-    },
-    EvalJson {
-        width: u32,
-    }
+    Format { width: u32 },
+    EvalJson { width: u32 },
 }
 
 /// Helper for `Arbitrary` to get a value in 0..=245, such that the byte is not a newline.
@@ -172,11 +168,17 @@ fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
             let _ = fuzz_eval(loader, input.data);
         }
         Mode::Format { width } => {
-            let cfg = pprint::Config { width, markup: MarkupMode::None };
+            let cfg = pprint::Config {
+                width,
+                markup: MarkupMode::None,
+            };
             let _ = fuzz_fmt(loader, input.data, cfg);
         }
         Mode::EvalJson { width } => {
-            let cfg = pprint::Config { width, markup: MarkupMode::None };
+            let cfg = pprint::Config {
+                width,
+                markup: MarkupMode::None,
+            };
             let _ = fuzz_eval_json(loader, input.data, cfg);
         }
     };
@@ -196,7 +198,10 @@ fuzz_target!(|input: Input| {
     if let Err(err) = result {
         let inputs = loader.as_inputs();
         let err_doc = err.report(&inputs);
-        let cfg = pprint::Config { width: 80, markup: MarkupMode::Ansi };
+        let cfg = pprint::Config {
+            width: 80,
+            markup: MarkupMode::Ansi,
+        };
         let _ = err_doc.println(&cfg);
     }
 });
