@@ -348,7 +348,9 @@ fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
 
 #[cfg(test)]
 mod test {
-    use crate::cli::{Cmd, FormatOptions, GlobalOptions, OutputFormat, OutputOptions, Target};
+    use crate::cli::{
+        Cmd, FormatOptions, FormatTarget, GlobalOptions, OutputFormat, OutputOptions, Target,
+    };
     use crate::markup::MarkupMode;
     use crate::pprint::Config;
 
@@ -383,6 +385,7 @@ mod test {
         assert_eq!(parse(&["rcl", "e", "infile"]), expected);
 
         // Test that --color works.
+        assert_eq!(parse(&["rcl", "--color=auto", "e", "infile"]), expected);
         expected.0.markup = Some(MarkupMode::None);
         assert_eq!(parse(&["rcl", "--color=none", "e", "infile"]), expected);
         expected.0.markup = Some(MarkupMode::Ansi);
@@ -441,7 +444,7 @@ mod test {
     }
 
     #[test]
-    fn parse_cmd_eval_fails_on_invalid_values() {
+    fn parse_cmd_eval_fails_on_invalid_usage() {
         assert_eq!(
             fail_parse(&["rcl", "eval"]),
             "Error: Expected an input file. See --help for usage.\n"
@@ -457,6 +460,125 @@ mod test {
         assert_eq!(
             fail_parse(&["rcl", "eval", "infile", "--output=yamr"]),
             "Error: Expected --output to be followed by one of json, rcl. See --help for usage.\n"
+        );
+        assert_eq!(
+            fail_parse(&["rcl", "frobnicate", "infile"]),
+            "Error: Unknown command 'frobnicate'. See --help for usage.\n"
+        );
+        assert_eq!(
+            fail_parse(&["rcl", "eval", "--frobnicate", "infile"]),
+            "Error: Unknown option '--frobnicate'. See --help for usage.\n"
+        );
+    }
+
+    #[test]
+    fn parse_cmd_fmt() {
+        let expected_opt = GlobalOptions { markup: None };
+        let expected_cmd = Cmd::Format {
+            format_opts: FormatOptions::default(),
+            target: FormatTarget::Stdout {
+                fname: Target::File("infile".into()),
+            },
+        };
+        let mut expected = (expected_opt, expected_cmd);
+
+        // All of the aliases should behave the same.
+        assert_eq!(parse(&["rcl", "format", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "fmt", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "f", "infile"]), expected);
+
+        // Without --in-place, we can do only one arg.
+        assert_eq!(
+            fail_parse(&["rcl", "f", "f1", "f2"]),
+            "Error: Too many input files. See --help for usage.\n",
+        );
+
+        if let Cmd::Format { ref mut target, .. } = &mut expected.1 {
+            *target = FormatTarget::InPlace {
+                fnames: vec![Target::File("f1".into()), Target::File("f2".into())],
+            };
+        }
+        assert_eq!(parse(&["rcl", "f", "--in-place", "f1", "f2"]), expected);
+        assert_eq!(parse(&["rcl", "-i", "f", "f1", "f2"]), expected);
+    }
+
+    #[test]
+    fn parse_cmd_help_version() {
+        assert!(matches!(parse(&["rcl", "--help"]).1, Cmd::Help { .. }));
+        assert!(matches!(parse(&["rcl", "--version"]).1, Cmd::Version));
+        assert!(matches!(parse(&["rcl", "eval", "-h"]).1, Cmd::Help { .. }));
+        assert!(matches!(
+            parse(&["rcl", "format", "-h"]).1,
+            Cmd::Help { .. }
+        ));
+        assert!(matches!(
+            parse(&["rcl", "highlight", "-h"]).1,
+            Cmd::Help { .. }
+        ));
+        assert!(matches!(parse(&["rcl", "query", "-h"]).1, Cmd::Help { .. }));
+        // Missing subcommand also triggers help.
+        assert!(matches!(parse(&["rcl"]).1, Cmd::Help { .. }));
+    }
+
+    #[test]
+    fn parse_cmd_highlight() {
+        let expected_opt = GlobalOptions { markup: None };
+        let expected_cmd = Cmd::Highlight {
+            fname: Target::File("infile".into()),
+        };
+        let expected = (expected_opt, expected_cmd);
+        assert_eq!(parse(&["rcl", "highlight", "infile"]), expected);
+    }
+
+    #[test]
+    fn parse_cmd_query() {
+        let expected_opt = GlobalOptions { markup: None };
+        let expected_cmd = Cmd::Query {
+            output_opts: OutputOptions::default(),
+            format_opts: FormatOptions::default(),
+            fname: Target::File("infile".into()),
+            query: "input.name".to_string(),
+        };
+        let mut expected = (expected_opt, expected_cmd);
+        assert_eq!(parse(&["rcl", "query", "infile", "input.name"]), expected);
+        assert_eq!(parse(&["rcl", "q", "infile", "input.name"]), expected);
+
+        if let Cmd::Query { output_opts, .. } = &mut expected.1 {
+            output_opts.format = OutputFormat::Json
+        };
+        assert_eq!(parse(&["rcl", "jq", "infile", "input.name"]), expected);
+
+        assert_eq!(
+            fail_parse(&["rcl", "q", "infile"]),
+            "Error: Expected an input file and a query. See --help for usage.\n",
+        );
+    }
+
+    #[test]
+    fn parse_cmd_handles_stdin_and_double_dash() {
+        assert_eq!(
+            parse(&["rcl", "highlight", "infile"]).1,
+            Cmd::Highlight {
+                fname: Target::File("infile".into()),
+            }
+        );
+        assert_eq!(
+            parse(&["rcl", "highlight", "--", "infile"]).1,
+            Cmd::Highlight {
+                fname: Target::File("infile".into()),
+            }
+        );
+        assert_eq!(
+            parse(&["rcl", "highlight", "-"]).1,
+            Cmd::Highlight {
+                fname: Target::Stdin,
+            }
+        );
+        assert_eq!(
+            parse(&["rcl", "highlight", "--", "-"]).1,
+            Cmd::Highlight {
+                fname: Target::File("-".into()),
+            }
         );
     }
 }
