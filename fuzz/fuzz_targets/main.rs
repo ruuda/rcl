@@ -1,24 +1,33 @@
 #![no_main]
 
-use libfuzzer_sys::fuzz_target;
+use std::rc::Rc;
+
 use arbitrary::{Arbitrary, Unstructured};
+use libfuzzer_sys::fuzz_target;
 
 use rcl::error::Result;
+use rcl::eval::Evaluator;
 use rcl::loader::Loader;
 use rcl::markup::MarkupMode;
 use rcl::pprint;
+use rcl::runtime::Value;
+use rcl::source::{Inputs, Span};
+use rcl::tracer::Tracer;
+
+/// Tracer that ignores its messages.
+pub struct VoidTracer;
+
+impl Tracer for VoidTracer {
+    fn trace(&mut self, _inputs: &Inputs, _span: Span, _message: Rc<Value>) {}
+}
 
 #[derive(Debug)]
 enum Mode {
     Lex,
     Parse,
     Eval,
-    Format {
-        width: u32,
-    },
-    EvalJson {
-        width: u32,
-    }
+    Format { width: u32 },
+    EvalJson { width: u32 },
 }
 
 /// Helper for `Arbitrary` to get a value in 0..=245, such that the byte is not a newline.
@@ -87,9 +96,10 @@ impl<'a> Arbitrary<'a> for Input<'a> {
 /// Evaluate the input expression, then ignore the result.
 fn fuzz_eval(loader: &mut Loader, input: &str) -> Result<()> {
     let id = loader.load_string(input.to_string());
-    let ast = loader.get_ast(id)?;
+    let mut tracer = VoidTracer;
+    let mut evaluator = Evaluator::new(loader, &mut tracer);
     let mut env = rcl::runtime::Env::new();
-    let _ = rcl::eval::eval(&mut env, &ast)?;
+    let _ = evaluator.eval_doc(&mut env, id)?;
     Ok(())
 }
 
@@ -119,16 +129,17 @@ fn fuzz_fmt(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()>
 ///   to json value `x`, that json value should itself be a valid RCL
 ///   expression, which should evaluate to `x`.
 fn fuzz_eval_json(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
+    let mut tracer = VoidTracer;
     let mut env = rcl::runtime::Env::new();
     let doc_1 = loader.load_string(input.to_string());
-    let val_1 = loader.evaluate(doc_1, &mut env)?;
+    let val_1 = loader.evaluate(doc_1, &mut env, &mut tracer)?;
 
     let full_span = loader.get_span(doc_1);
     let json = rcl::fmt_json::format_json(full_span, val_1.as_ref())?;
 
     let out_1 = json.println(&cfg);
     let doc_2 = loader.load_string(out_1);
-    let val_2 = loader.evaluate(doc_2, &mut env)?;
+    let val_2 = loader.evaluate(doc_2, &mut env, &mut tracer)?;
 
     let full_span = loader.get_span(doc_2);
     let json = rcl::fmt_json::format_json(full_span, val_2.as_ref())?;
@@ -157,11 +168,17 @@ fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
             let _ = fuzz_eval(loader, input.data);
         }
         Mode::Format { width } => {
-            let cfg = pprint::Config { width, markup: MarkupMode::None };
+            let cfg = pprint::Config {
+                width,
+                markup: MarkupMode::None,
+            };
             let _ = fuzz_fmt(loader, input.data, cfg);
         }
         Mode::EvalJson { width } => {
-            let cfg = pprint::Config { width, markup: MarkupMode::None };
+            let cfg = pprint::Config {
+                width,
+                markup: MarkupMode::None,
+            };
             let _ = fuzz_eval_json(loader, input.data, cfg);
         }
     };
@@ -181,7 +198,10 @@ fuzz_target!(|input: Input| {
     if let Err(err) = result {
         let inputs = loader.as_inputs();
         let err_doc = err.report(&inputs);
-        let cfg = pprint::Config { width: 80, markup: MarkupMode::Ansi };
+        let cfg = pprint::Config {
+            width: 80,
+            markup: MarkupMode::Ansi,
+        };
         let _ = err_doc.println(&cfg);
     }
 });

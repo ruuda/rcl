@@ -18,6 +18,7 @@ use rcl::pprint;
 use rcl::runtime::Env;
 use rcl::runtime::Value;
 use rcl::source::{DocId, Span};
+use rcl::tracer::StderrTracer;
 
 struct App {
     loader: Loader,
@@ -86,6 +87,10 @@ impl App {
         std::process::exit(1);
     }
 
+    fn get_tracer(&self) -> StderrTracer {
+        StderrTracer::new(&self.opts)
+    }
+
     fn main_fmt(&self, format_opts: &FormatOptions, doc: DocId) -> Result<()> {
         let data = self.loader.get_doc(doc).data;
         let cst = self.loader.get_cst(doc)?;
@@ -109,9 +114,10 @@ impl App {
                 format_opts,
                 fname,
             } => {
+                let mut tracer = self.get_tracer();
                 let mut env = Env::new();
                 let doc = self.loader.load_cli_target(fname)?;
-                let val = self.loader.evaluate(doc, &mut env)?;
+                let val = self.loader.evaluate(doc, &mut env, &mut tracer)?;
                 // TODO: Need to get last inner span.
                 let full_span = self.loader.get_span(doc);
                 self.print_value(&output_opts, &format_opts, full_span, val)
@@ -127,14 +133,15 @@ impl App {
                 let query = self.loader.load_string(expr);
 
                 // First we evaluate the input document.
+                let mut tracer = self.get_tracer();
                 let mut env = Env::new();
-                let val_input = self.loader.evaluate(input, &mut env)?;
+                let val_input = self.loader.evaluate(input, &mut env, &mut tracer)?;
 
                 // Then we bind that to the variable `input`, and in that context, we
                 // evaluate the query expression.
                 let mut env = Env::new();
                 env.push("input".into(), val_input);
-                let val_result = self.loader.evaluate(query, &mut env)?;
+                let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
 
                 let full_span = self.loader.get_span(query);
                 self.print_value(&output_opts, &format_opts, full_span, val_result)
