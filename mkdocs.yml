@@ -25,6 +25,7 @@ nav:
       - "Null": "null.md"
       - "Glossary": "glossary.md"
   - "Reference":
+      - "rcl": "rcl.md"
       - "rcl evaluate": "rcl_evaluate.md"
       - "rcl format": "rcl_format.md"
       - "rcl highlight": "rcl_highlight.md"

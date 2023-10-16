@@ -1,0 +1,24 @@
+[
+  0,
+  null,
+  true,
+  false,
+  "this is a long list",
+  "to trigger output that has",
+  "a trailing comma",
+  "unlike json",
+  {1, 2, 3},
+]
+
+# output:
+[
+  0,
+  null,
+  true,
+  false,
+  "this is a long list",
+  "to trigger output that has",
+  "a trailing comma",
+  "unlike json",
+  {1, 2, 3},
+]

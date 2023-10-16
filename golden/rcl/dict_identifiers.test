@@ -1,0 +1,11 @@
+// Where possible this will use record syntax.
+// Where necessary, this will use json-style dicts.
+{
+  "safe_ident": 0,
+  "safe-ident": 1,
+  "unsafe ident": 2,
+  "null": 3,
+}
+
+# output:
+{"null": 3, safe-ident = 1; safe_ident = 0; "unsafe ident": 2}

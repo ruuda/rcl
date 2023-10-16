@@ -82,13 +82,22 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
     rcl_bin = os.getenv("RCL_BIN", default="target/debug/rcl")
 
     # Decide which subcommand to test based on the test directory.
-    cmd = "eval"
-    test_dir = os.path.basename(os.path.dirname(fname))
-    if test_dir == "fmt":
-        cmd = "fmt"
+    match os.path.basename(os.path.dirname(fname)):
+        case "error":
+            cmd = ["eval"]
+        case "error_json":
+            cmd = ["eval", "--output=json"]
+        case "fmt":
+            cmd = ["fmt"]
+        case "json":
+            cmd = ["eval", "--output=json"]
+        case "rcl":
+            cmd = ["eval", "--output=rcl"]
+        case unknown:
+            raise ValueError(f"No command-line known for {unknown}.")
 
     result = subprocess.run(
-        [rcl_bin, cmd, "-"],
+        [rcl_bin, *cmd, "-"],
         input="".join(input_lines),
         capture_output=True,
         encoding="utf-8",

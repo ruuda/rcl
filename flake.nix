@@ -1,7 +1,8 @@
 {
   description = "RCL";
 
-  inputs.nixpkgs.url = "nixpkgs/nixos-23.05";
+  # Pin to a Nixpkgs version that has the same rustc as in rust-toolchain.toml.
+  inputs.nixpkgs.url = "nixpkgs/dfcffbd74fd6f0419370d8240e445252a39f4d10";
 
   outputs = { self, nixpkgs }: 
     let
@@ -87,6 +88,23 @@
             name = "rcl-coverage";
             buildType = "debug";
             RUSTFLAGS = "-C instrument-coverage -C link-dead-code -C debug-assertions";
+
+            # The tests already get executed by default when we build a Rust
+            # package, and because of the RUSTFLAGS we set, the tests already
+            # produce coverage too. We just need to copy those files into the
+            # output such that the coverage report can include them. We also
+            # need the test binaries for this, and the Rust installPhase sets
+            # $releaseDir to the target directory.
+            postInstall =
+              ''
+              mkdir -p $out/prof
+              cp *.profraw $out/prof
+              find $releaseDir/deps \
+                -maxdepth 1 \
+                -type f \
+                -executable \
+                -print0 | xargs -0 cp --target-directory=$out/bin
+              '';
           });
         in
           rec {
@@ -164,7 +182,11 @@
                 ''
                 export bintools=${pkgs.rustc.llvmPackages.bintools-unwrapped}/bin
 
+                # Run the golden tests to generate the .profraw files.
                 RCL_BIN=${coverageBuild}/bin/rcl python3 ${goldenSources}/run.py
+
+                # Copy in the .profraw files from the tests.
+                cp ${coverageBuild}/prof/*.profraw .
 
                 # During the build, source file names get included as
                 # "source/src/lib.rs" etc. But when grcov runs, even if we
@@ -176,6 +198,7 @@
                 grcov . \
                   --source-dir source \
                   --binary-path ${coverageBuild}/bin \
+                  --excl-line '(#\[derive|unreachable!|panic!)\(' \
                   --llvm-path $bintools \
                   --prefix-dir source \
                   --llvm \
@@ -187,7 +210,8 @@
                 $bintools/llvm-profdata merge -sparse *.profraw -o rcl.profdata
                 $bintools/llvm-cov report \
                   --instr-profile=rcl.profdata \
-                  --object ${coverageBuild}/bin/rcl \
+                  --ignore-filename-regex=/cargo-vendor-dir \
+                  ${coverageBuild}/bin/rcl* \
                   > $out/summary.txt
                 '';
             };

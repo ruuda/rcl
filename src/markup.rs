@@ -7,6 +7,8 @@
 
 //! Utilities for dealing with color and other markup.
 
+use std::io::IsTerminal;
+
 /// A markup hint, used to apply color and other markup to output.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Markup {
@@ -31,7 +33,7 @@ pub enum Markup {
 }
 
 /// How to treat color and other markup hints.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MarkupMode {
     /// Ignore all markup hints, do not output them.
     None,
@@ -39,7 +41,31 @@ pub enum MarkupMode {
     Ansi,
 }
 
+/// Whether we should use ANSI colors when writing to this file descriptor.
+///
+/// Returns true when the file descriptor refers to a terminal, unless the
+/// `NO_COLOR` environment variable is set to a nonempty string. See also
+/// <https://no-color.org/>.
+fn should_color<T: IsTerminal>(fd: &T) -> bool {
+    if !fd.is_terminal() {
+        return false;
+    }
+    match std::env::var("NO_COLOR") {
+        Ok(no_color) => no_color == "",
+        Err(..) => true,
+    }
+}
+
 impl MarkupMode {
+    /// Get the default markup configuration for a file descriptor.
+    pub fn default_for_fd<T: IsTerminal>(fd: &T) -> Self {
+        if should_color(fd) {
+            MarkupMode::Ansi
+        } else {
+            MarkupMode::None
+        }
+    }
+
     /// Output the markup required to switch from the `from` style to the `to` style.
     pub fn get_switch(&self, from: Option<Markup>, to: Option<Markup>) -> &'static str {
         debug_assert_ne!(from, to, "Should not switch if from and to are the same.");

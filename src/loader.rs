@@ -14,6 +14,7 @@ use std::rc::Rc;
 
 use crate::abstraction;
 use crate::ast;
+use crate::cli::Target;
 use crate::cst;
 use crate::error::{Error, Result};
 use crate::eval;
@@ -146,11 +147,11 @@ impl Loader {
         self.push(doc)
     }
 
-    /// Load the file with the given name, or stdin if the name is `-`.
-    pub fn load_from_cli_fname(&mut self, fname: &str) -> Result<DocId> {
-        match fname {
-            "-" => self.load_stdin(),
-            _ => self.load_file(fname),
+    /// Load the file with the given name, or stdin.
+    pub fn load_cli_target(&mut self, target: Target) -> Result<DocId> {
+        match target {
+            Target::File(fname) => self.load_file(fname),
+            Target::Stdin => self.load_stdin(),
         }
     }
 }

@@ -22,6 +22,12 @@ members = ["."]
 debug = 1
 
 [[bin]]
+name = "cli"
+path = "fuzz_targets/cli.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "escapes"
 path = "fuzz_targets/escapes.rs"
 test = false

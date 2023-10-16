@@ -5,152 +5,184 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use std::io::Stdout;
+use std::io::Write;
+use std::rc::Rc;
 
-use rcl::error::Result;
+use rcl::cli::{
+    self, Cmd, FormatOptions, FormatTarget, GlobalOptions, OutputFormat, OutputOptions,
+};
+use rcl::error::{Error, Result};
 use rcl::loader::Loader;
+use rcl::markup::MarkupMode;
 use rcl::pprint;
 use rcl::runtime::Env;
-use rcl::source::DocId;
+use rcl::runtime::Value;
+use rcl::source::{DocId, Span};
 
-const USAGE: &str = r#"
-RCL -- Ruud's Configuration Language.
-
-Usage:
-  rcl evaluate <file>
-  rcl format <file>
-  rcl highlight <file>
-  rcl query <file> <expr>
-  rcl repl
-  rcl -h | --help
-
-Arguments:
-  <file>      The input file to process, or '-' for stdin.
-  <expr>      An RCL expression to evaluate against the input document.
-
-Options:
-  -h --help   Show this screen.
-
-See the manual for a more elaborate usage guide.
-"#;
-
-/// Pretty-print a document to stdout.
-fn pprint_stdout(stdout: Stdout, cfg: &pprint::Config, doc: &pprint::Doc) {
-    use std::io::Write;
-    let result = doc.println(cfg);
-    let mut out = stdout.lock();
-    let res = out.write_all(result.as_bytes());
-    if res.is_err() {
-        // If we fail to print to stdout, there is no point in printing
-        // an error, just exit then.
-        std::process::exit(1);
-    }
+struct App {
+    loader: Loader,
+    opts: GlobalOptions,
 }
 
-fn main_eval(loader: &Loader, doc: DocId) -> Result<()> {
-    let mut env = Env::new();
-    let val = loader.evaluate(doc, &mut env)?;
-
-    let full_span = loader.get_span(doc);
-    let json = rcl::fmt_json::format_json(full_span, val.as_ref())?;
-    let stdout = std::io::stdout();
-    let cfg = pprint::Config::default_for_fd(&stdout);
-    pprint_stdout(stdout, &cfg, &json);
-    Ok(())
-}
-
-fn main_query(loader: &Loader, input: DocId, query: DocId) -> Result<()> {
-    // First we evaluate the input document.
-    let mut env = Env::new();
-    let val_input = loader.evaluate(input, &mut env)?;
-
-    // Then we bind that to the variable `input`, and in that context, we
-    // evaluate the query expression.
-    let mut env = Env::new();
-    env.push("input".into(), val_input);
-    let val_result = loader.evaluate(query, &mut env)?;
-
-    let full_span = loader.get_span(query);
-    let json = rcl::fmt_json::format_json(full_span, val_result.as_ref())?;
-    let stdout = std::io::stdout();
-    let cfg = pprint::Config::default_for_fd(&stdout);
-    pprint_stdout(stdout, &cfg, &json);
-    Ok(())
-}
-
-fn main_fmt(loader: &Loader, doc: DocId) -> Result<()> {
-    let data = loader.get_doc(doc).data;
-    let cst = loader.get_cst(doc)?;
-    let res = rcl::fmt_cst::format_expr(data, &cst);
-    let stdout = std::io::stdout();
-    let cfg = pprint::Config::default_for_fd(&stdout);
-    pprint_stdout(stdout, &cfg, &res);
-    Ok(())
-}
-
-fn main_highlight(loader: &Loader, doc: DocId) -> Result<()> {
-    let tokens = loader.get_tokens(doc)?;
-    let data = loader.get_doc(doc).data;
-    let mut stdout = std::io::stdout().lock();
-    let res = rcl::highlight::highlight(&mut stdout, &tokens, data);
-    if res.is_err() {
-        // If we fail to print to stdout, there is no point in printing
-        // an error, just exit then.
-        std::process::exit(1);
-    }
-    Ok(())
-}
-
-fn main_with_loader(loader: &mut Loader) -> Result<()> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let args_refs: Vec<&str> = args.iter().map(|a| &a[..]).collect();
-
-    match &args_refs[..] {
-        ["-h"] | ["--help"] => {
-            println!("{}", USAGE.trim());
-            std::process::exit(0)
-        }
-        ["e", fname] | ["eval", fname] | ["evaluate", fname] => {
-            let doc = loader.load_from_cli_fname(fname)?;
-            main_eval(loader, doc)
-        }
-        ["f", fname] | ["fmt", fname] | ["format", fname] => {
-            let doc = loader.load_from_cli_fname(fname)?;
-            main_fmt(loader, doc)
-        }
-        ["highlight", fname] => {
-            let doc = loader.load_from_cli_fname(fname)?;
-            main_highlight(loader, doc)
-        }
-        ["repl"] => {
-            unimplemented!("TODO: Implement repl.");
-        }
-        ["q", fname, expr] | ["query", fname, expr] => {
-            let input = loader.load_from_cli_fname(fname)?;
-            let query = loader.load_string(expr.to_string());
-            main_query(loader, input, query)
-        }
-        _ => {
-            eprintln!("Failed to parse command line. Run with --help for usage.");
+impl App {
+    fn print_string(&self, out: &mut dyn Write, data: String) {
+        let res = out.write_all(data.as_bytes());
+        if res.is_err() {
+            // If we fail to print to stdout/stderr, there is no point in
+            // printing an error, just exit then.
             std::process::exit(1);
+        }
+    }
+
+    fn print_doc_stdout(&self, format_opts: &FormatOptions, doc: pprint::Doc) {
+        let stdout = std::io::stdout();
+        let cfg = pprint::Config {
+            markup: self
+                .opts
+                .markup
+                .unwrap_or_else(|| MarkupMode::default_for_fd(&stdout)),
+            width: format_opts.width,
+        };
+        let result = doc.println(&cfg);
+        let mut out = stdout.lock();
+        self.print_string(&mut out, result);
+    }
+
+    fn print_doc_stderr(&self, doc: pprint::Doc) {
+        let stderr = std::io::stderr();
+        let cfg = pprint::Config {
+            markup: self
+                .opts
+                .markup
+                .unwrap_or_else(|| MarkupMode::default_for_fd(&stderr)),
+            width: 80,
+        };
+        let result = doc.println(&cfg);
+        let mut out = stderr.lock();
+        self.print_string(&mut out, result);
+    }
+
+    pub fn print_value(
+        &self,
+        output_opts: &OutputOptions,
+        format_opts: &FormatOptions,
+        value_span: Span,
+        value: Rc<Value>,
+    ) -> Result<()> {
+        let out_doc = match output_opts.format {
+            OutputFormat::Rcl => rcl::fmt_rcl::format_rcl(value.as_ref()),
+            OutputFormat::Json => rcl::fmt_json::format_json(value_span, value.as_ref())?,
+        };
+        self.print_doc_stdout(format_opts, out_doc);
+        Ok(())
+    }
+
+    fn print_fatal_error(&self, err: Error) -> ! {
+        let inputs = self.loader.as_inputs();
+        let err_doc = err.report(&inputs);
+        self.print_doc_stderr(err_doc);
+        // Regardless of whether printing to stderr failed or not, the error was
+        // fatal, so we exit with code 1.
+        std::process::exit(1);
+    }
+
+    fn main_fmt(&self, format_opts: &FormatOptions, doc: DocId) -> Result<()> {
+        let data = self.loader.get_doc(doc).data;
+        let cst = self.loader.get_cst(doc)?;
+        let res = rcl::fmt_cst::format_expr(data, &cst);
+        self.print_doc_stdout(format_opts, res);
+        Ok(())
+    }
+
+    fn main(&mut self) -> Result<()> {
+        let (opts, cmd) = cli::parse(std::env::args().collect())?;
+        self.opts = opts;
+
+        match cmd {
+            Cmd::Help { usage } => {
+                println!("{}", usage.trim());
+                std::process::exit(0)
+            }
+
+            Cmd::Evaluate {
+                output_opts,
+                format_opts,
+                fname,
+            } => {
+                let mut env = Env::new();
+                let doc = self.loader.load_cli_target(fname)?;
+                let val = self.loader.evaluate(doc, &mut env)?;
+                // TODO: Need to get last inner span.
+                let full_span = self.loader.get_span(doc);
+                self.print_value(&output_opts, &format_opts, full_span, val)
+            }
+
+            Cmd::Query {
+                output_opts,
+                format_opts,
+                fname,
+                query: expr,
+            } => {
+                let input = self.loader.load_cli_target(fname)?;
+                let query = self.loader.load_string(expr);
+
+                // First we evaluate the input document.
+                let mut env = Env::new();
+                let val_input = self.loader.evaluate(input, &mut env)?;
+
+                // Then we bind that to the variable `input`, and in that context, we
+                // evaluate the query expression.
+                let mut env = Env::new();
+                env.push("input".into(), val_input);
+                let val_result = self.loader.evaluate(query, &mut env)?;
+
+                let full_span = self.loader.get_span(query);
+                self.print_value(&output_opts, &format_opts, full_span, val_result)
+            }
+
+            Cmd::Format {
+                format_opts,
+                target,
+            } => match target {
+                FormatTarget::InPlace { fnames: _ } => {
+                    todo!("TODO: --in-place formatting is not yet implemented.");
+                }
+                FormatTarget::Stdout { fname } => {
+                    let doc = self.loader.load_cli_target(fname)?;
+                    self.main_fmt(&format_opts, doc)
+                }
+            },
+
+            Cmd::Highlight { fname } => {
+                let doc = self.loader.load_cli_target(fname)?;
+                let tokens = self.loader.get_tokens(doc)?;
+                let data = self.loader.get_doc(doc).data;
+                let mut stdout = std::io::stdout().lock();
+                // TODO: Make this based on the pretty-printer.
+                let res = rcl::highlight::highlight(&mut stdout, &tokens, data);
+                if res.is_err() {
+                    // If we fail to print to stdout, there is no point in printing
+                    // an error, just exit then.
+                    std::process::exit(1);
+                }
+                Ok(())
+            }
+
+            Cmd::Version => {
+                println!("RCL version {}", env!("CARGO_PKG_VERSION"));
+                Ok(())
+            }
         }
     }
 }
 
 fn main() {
-    use std::io::Write;
-    let mut loader = Loader::new();
+    let mut app = App {
+        opts: GlobalOptions::default(),
+        loader: Loader::new(),
+    };
 
-    if let Err(err) = main_with_loader(&mut loader) {
-        let inputs = loader.as_inputs();
-        let err_doc = err.report(&inputs);
-        let stderr = std::io::stderr();
-        let cfg = pprint::Config::default_for_fd(&stderr);
-        let err_string = err_doc.println(&cfg);
-        let res = stderr.lock().write_all(err_string.as_bytes());
-        // Regardless of whether printing to stderr failed or not, we were going
-        // to exist with exit code 1 anyway, so ignore any stderr IO errors.
-        let _ = res;
-        std::process::exit(1);
+    if let Err(err) = app.main() {
+        app.print_fatal_error(*err);
     }
 }

@@ -10,8 +10,11 @@
 #![allow(clippy::len_without_is_empty)]
 #![allow(clippy::manual_range_contains)]
 
+mod cli_utils;
+
 pub mod abstraction;
 pub mod ast;
+pub mod cli;
 pub mod cst;
 pub mod error;
 pub mod eval;
@@ -23,7 +26,6 @@ pub mod lexer;
 pub mod loader;
 pub mod markup;
 pub mod parser;
-pub mod platform_utils;
 pub mod pprint;
 pub mod runtime;
 pub mod source;
