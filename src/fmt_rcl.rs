@@ -117,6 +117,8 @@ fn value(v: &Value) -> Doc {
         Value::Int(i) => Doc::from(i.to_string()).with_markup(Markup::Number),
         Value::String(s) => string(s).with_markup(Markup::String),
         Value::List(vs) => list("[", "]", vs.iter()),
+        // TODO: An empty set should print as {}, that would be a non-idempotency,
+        // because {} is the empty dict.
         Value::Set(vs) => list("{", "}", vs.iter()),
         Value::Dict(vs) => dict(vs.iter()),
         // TODO: Add a more proper printer for functions/builtins. For now this will do.

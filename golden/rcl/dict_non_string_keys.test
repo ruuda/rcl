@@ -1,0 +1,8 @@
+{
+  0: "zero",
+  1: "one",
+  1 + 1: "two",
+}
+
+# output:
+{0: "zero", 1: "one", 2: "two"}
