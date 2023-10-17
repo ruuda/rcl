@@ -25,10 +25,5 @@ alternative to [`jq`](https://jqlang.github.io/jq/). For example:
 
 ## Options
 
-### `-o` `--output <format>`
-
-Output in the given format. Can be one of `json` or `rcl`. Defaults to `rcl`.
-
-### `-w` `--width <width>`
-
-Target width for pretty-printing, in columns. Must be an integer. Defaults to 80.
+`rcl query` accepts the same options
+as [`rcl evaluate`](rcl_evaluate.md#options).

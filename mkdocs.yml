@@ -23,6 +23,7 @@ nav:
       - "Syntax": "syntax.md"
       - "Strings": "strings.md"
       - "Null": "null.md"
+      - "Imports": "imports.md"
       - "Glossary": "glossary.md"
   - "Reference":
       - "rcl": "rcl.md"
