@@ -7,6 +7,7 @@
 
 //! Types that represent a parsed command line, and functions to parse it.
 
+use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::cli_utils::{match_option, parse_option, Arg, ArgIter};
@@ -66,6 +67,19 @@ Options:
                         Defaults to 'rcl'.
   -w --width <width>    Target width for pretty-printing, must be an integer.
                         Defaults to 80.
+  --sandbox <mode>      Sandboxing mode, can be one of 'pure', 'workdir', and
+                        'unrestricted'. Defaults to 'workdir'.
+  -I --include <a>:<f>  Enable importing the file <f> when --sandbox=pure.
+                        To import the file, the import expression must be of the
+                        form 'import "<a>"'. In the argument, the alias <a> and
+                        file <f> are separated by a colon.
+
+Sandboxing modes:
+  pure          Only allow importing files specified with --include. Do not
+                allow filesystem access aside from these includes.
+  workdir       Only allow importing files inside the working directory and
+                subdirectories.
+  unrestricted  Grant unrestricted filesystem access, allow importing any file.
 
 See also --help for global options.
 "#;
@@ -110,11 +124,26 @@ pub enum OutputFormat {
     Rcl,
 }
 
+/// The available sandboxing modes.
+#[derive(Debug, Default, Eq, PartialEq)]
+pub enum SandboxMode {
+    Pure,
+    #[default]
+    Workdir,
+    Unrestricted,
+}
+
 /// Options for commands that output values.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct OutputOptions {
     /// The format to output in.
     pub format: OutputFormat,
+
+    /// Sandboxing mode for imports.
+    pub sandbox: SandboxMode,
+
+    /// Files to include, when the sandboxing mode is pure.
+    pub includes: HashMap<String, String>,
 }
 
 /// Options for commands that pretty-print their output.
@@ -203,6 +232,26 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     "json" => OutputFormat::Json,
                     "rcl" => OutputFormat::Rcl,
                 }
+            }
+            Arg::Long("sandbox") => {
+                output_opts.sandbox = match_option! {
+                    args: arg,
+                    "pure" => SandboxMode::Pure,
+                    "workdir" => SandboxMode::Workdir,
+                    "unrestricted" => SandboxMode::Unrestricted,
+                }
+            }
+            Arg::Long("include") | Arg::Short("I") => {
+                let (alias, fname) = parse_option! {
+                    args: arg,
+                    |v: &str| -> std::result::Result<(String, String), &'static str> {
+                        let mut parts = v.splitn(2, ":");
+                        let alias = parts.next().ok_or("unused")?;
+                        let fname = parts.next().ok_or("unused")?;
+                        Ok((alias.to_owned(), fname.to_owned()))
+                    }
+                };
+                output_opts.includes.insert(alias, fname);
             }
             Arg::Long("width") | Arg::Short("w") => {
                 format_opts.width = parse_option! { args: arg, u32::from_str };

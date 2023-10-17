@@ -47,7 +47,7 @@ The default sandboxing mode is _workdir_.
 ### `-I` `--include <alias>:<file>`
 
 Enables importing the given `<file>` even with `--sandbox=pure`. To import the
-file, the import statement must be of the form `import "<alias>"`. For example,
+file, the import expression must be of the form `import "<alias>"`. For example,
 the following call prints the evaluation of `a.rcl`:
 
     echo 'import "a"' | rcl eval - --sandbox=pure --include=a:a.rcl
