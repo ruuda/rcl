@@ -311,6 +311,17 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
         }
     }
 
+    if !eval_opts.includes.is_empty() && eval_opts.sandbox != SandboxMode::Pure {
+        let err = concat! {
+            "The "
+            Doc::str("--include").with_markup(Markup::Highlight)
+            " option is only useful in combination with "
+            Doc::str("--sandbox=pure").with_markup(Markup::Highlight)
+            "."
+        };
+        return Error::new(err).err();
+    }
+
     if is_version {
         return Ok((global_opts, Cmd::Version));
     }
@@ -398,7 +409,8 @@ fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
 #[cfg(test)]
 mod test {
     use crate::cli::{
-        Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat, Target,
+        Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat, SandboxMode,
+        Target,
     };
     use crate::markup::MarkupMode;
     use crate::pprint::Config;
@@ -490,6 +502,50 @@ mod test {
         assert_eq!(parse(&["rcl", "e", "infile", "--output=json"]), expected);
         assert_eq!(parse(&["rcl", "-ojson", "e", "infile"]), expected);
         assert_eq!(parse(&["rcl", "-orcl", "-ojson", "e", "infile"]), expected);
+
+        // Test --sandbox.
+        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
+            eval_opts.format = OutputFormat::Rcl;
+            eval_opts.sandbox = SandboxMode::Pure;
+        }
+        assert_eq!(parse(&["rcl", "e", "infile", "--sandbox=pure"]), expected);
+        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
+            eval_opts.sandbox = SandboxMode::Unrestricted;
+        }
+        assert_eq!(
+            parse(&["rcl", "e", "infile", "--sandbox=unrestricted"]),
+            expected
+        );
+        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
+            eval_opts.sandbox = SandboxMode::Workdir;
+        }
+        assert_eq!(
+            parse(&["rcl", "e", "infile", "--sandbox=workdir"]),
+            expected
+        );
+        assert_eq!(parse(&["rcl", "e", "infile"]), expected);
+
+        // Test --include.
+        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
+            eval_opts.sandbox = SandboxMode::Pure;
+            eval_opts.includes.insert("a".to_string(), "b".to_string());
+        }
+        assert_eq!(
+            parse(&["rcl", "e", "--sandbox=pure", "infile", "--include=a:b"]),
+            expected
+        );
+        // The later option overrides the first one.
+        assert_eq!(
+            parse(&[
+                "rcl",
+                "e",
+                "--sandbox=pure",
+                "infile",
+                "-Ia:z",
+                "--include=a:b"
+            ]),
+            expected
+        );
     }
 
     #[test]
@@ -517,6 +573,14 @@ mod test {
         assert_eq!(
             fail_parse(&["rcl", "eval", "--frobnicate", "infile"]),
             "Error: Unknown option '--frobnicate'. See --help for usage.\n"
+        );
+        assert_eq!(
+            fail_parse(&["rcl", "eval", "--include", "nocolon"]),
+            "Error: 'nocolon' is not valid for --include. See --help for usage.\n"
+        );
+        assert_eq!(
+            fail_parse(&["rcl", "eval", "--include", "a:b"]),
+            "Error: The --include option is only useful in combination with --sandbox=pure.\n"
         );
     }
 
