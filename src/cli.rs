@@ -124,7 +124,7 @@ pub enum OutputFormat {
     Rcl,
 }
 
-/// The available sandboxing modes.
+/// The available sandbox modes.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub enum SandboxMode {
     Pure,
@@ -133,16 +133,16 @@ pub enum SandboxMode {
     Unrestricted,
 }
 
-/// Options for commands that output values.
+/// Options for commands that evaluate expressions.
 #[derive(Debug, Default, Eq, PartialEq)]
-pub struct OutputOptions {
+pub struct EvalOptions {
     /// The format to output in.
     pub format: OutputFormat,
 
-    /// Sandboxing mode for imports.
+    /// Sandbox mode for imports.
     pub sandbox: SandboxMode,
 
-    /// Files to include, when the sandboxing mode is pure.
+    /// Files to include, when the sandbox mode is pure.
     pub includes: HashMap<String, String>,
 }
 
@@ -177,12 +177,12 @@ pub enum FormatTarget {
 #[derive(Debug, Eq, PartialEq)]
 pub enum Cmd {
     Evaluate {
-        output_opts: OutputOptions,
+        eval_opts: EvalOptions,
         format_opts: FormatOptions,
         fname: Target,
     },
     Query {
-        output_opts: OutputOptions,
+        eval_opts: EvalOptions,
         format_opts: FormatOptions,
         fname: Target,
         query: String,
@@ -211,7 +211,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     let mut cmd_help: Option<&'static str> = None;
     let mut format_opts = FormatOptions::default();
     let mut global_opts = GlobalOptions::default();
-    let mut output_opts = OutputOptions::default();
+    let mut eval_opts = EvalOptions::default();
     let mut in_place = false;
     let mut is_version = false;
     let mut targets: Vec<Target> = Vec::new();
@@ -227,14 +227,14 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 }
             }
             Arg::Long("output") | Arg::Short("o") => {
-                output_opts.format = match_option! {
+                eval_opts.format = match_option! {
                     args: arg,
                     "json" => OutputFormat::Json,
                     "rcl" => OutputFormat::Rcl,
                 }
             }
             Arg::Long("sandbox") => {
-                output_opts.sandbox = match_option! {
+                eval_opts.sandbox = match_option! {
                     args: arg,
                     "pure" => SandboxMode::Pure,
                     "workdir" => SandboxMode::Workdir,
@@ -251,7 +251,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                         Ok((alias.to_owned(), fname.to_owned()))
                     }
                 };
-                output_opts.includes.insert(alias, fname);
+                eval_opts.includes.insert(alias, fname);
             }
             Arg::Long("width") | Arg::Short("w") => {
                 format_opts.width = parse_option! { args: arg, u32::from_str };
@@ -278,7 +278,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             }
             Arg::Plain("jq") if cmd.is_none() => {
                 cmd = Some("query");
-                output_opts.format = OutputFormat::Json;
+                eval_opts.format = OutputFormat::Json;
             }
             Arg::Plain("format") | Arg::Plain("fmt") | Arg::Plain("f") if cmd.is_none() => {
                 cmd = Some("format");
@@ -336,7 +336,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
 
     let result = match cmd {
         Some("evaluate") => Cmd::Evaluate {
-            output_opts,
+            eval_opts,
             format_opts,
             fname: get_unique_target(targets)?,
         },
@@ -360,7 +360,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 }
             };
             Cmd::Query {
-                output_opts,
+                eval_opts,
                 format_opts,
                 query,
                 fname,
@@ -398,7 +398,7 @@ fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
 #[cfg(test)]
 mod test {
     use crate::cli::{
-        Cmd, FormatOptions, FormatTarget, GlobalOptions, OutputFormat, OutputOptions, Target,
+        Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat, Target,
     };
     use crate::markup::MarkupMode;
     use crate::pprint::Config;
@@ -422,7 +422,7 @@ mod test {
     fn parse_cmd_eval() {
         let expected_opt = GlobalOptions { markup: None };
         let expected_cmd = Cmd::Evaluate {
-            output_opts: OutputOptions::default(),
+            eval_opts: EvalOptions::default(),
             format_opts: FormatOptions::default(),
             fname: Target::File("infile".into()),
         };
@@ -478,12 +478,12 @@ mod test {
         // the same parser, if it works for the other options it should work here.
         if let Cmd::Evaluate {
             format_opts,
-            output_opts,
+            eval_opts,
             ..
         } = &mut expected.1
         {
             format_opts.width = 80;
-            output_opts.format = OutputFormat::Json;
+            eval_opts.format = OutputFormat::Json;
         }
         assert_eq!(parse(&["rcl", "e", "infile", "-ojson"]), expected);
         assert_eq!(parse(&["rcl", "e", "infile", "--output", "json"]), expected);
@@ -583,7 +583,7 @@ mod test {
     fn parse_cmd_query() {
         let expected_opt = GlobalOptions { markup: None };
         let expected_cmd = Cmd::Query {
-            output_opts: OutputOptions::default(),
+            eval_opts: EvalOptions::default(),
             format_opts: FormatOptions::default(),
             fname: Target::File("infile".into()),
             query: "input.name".to_string(),
@@ -592,8 +592,8 @@ mod test {
         assert_eq!(parse(&["rcl", "query", "infile", "input.name"]), expected);
         assert_eq!(parse(&["rcl", "q", "infile", "input.name"]), expected);
 
-        if let Cmd::Query { output_opts, .. } = &mut expected.1 {
-            output_opts.format = OutputFormat::Json
+        if let Cmd::Query { eval_opts, .. } = &mut expected.1 {
+            eval_opts.format = OutputFormat::Json
         };
         assert_eq!(parse(&["rcl", "jq", "infile", "input.name"]), expected);
 
