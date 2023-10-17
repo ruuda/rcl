@@ -76,7 +76,10 @@ impl<'a> Evaluator<'a> {
                 error = Some(err);
             }
         }
-        if let Some(err) = error {
+        if let Some(mut err) = error {
+            // Reverse the notes: we print the error itself first, and then we
+            // want to print what the offending file was imported from, etc.
+            err.notes.reverse();
             return Err(err.into());
         }
 
