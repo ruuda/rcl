@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 use rcl::cli::{self, Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat};
 use rcl::error::{Error, Result};
-use rcl::loader::Loader;
+use rcl::loader::{Loader, SandboxMode};
 use rcl::markup::MarkupMode;
 use rcl::pprint;
 use rcl::runtime::Env;
@@ -112,6 +112,8 @@ impl App {
                 format_opts,
                 fname,
             } => {
+                self.loader.initialize_filesystem(eval_opts.sandbox)?;
+
                 let mut tracer = self.get_tracer();
                 let mut env = Env::new();
                 let doc = self.loader.load_cli_target(fname)?;
@@ -127,6 +129,8 @@ impl App {
                 fname,
                 query: expr,
             } => {
+                self.loader.initialize_filesystem(eval_opts.sandbox)?;
+
                 let input = self.loader.load_cli_target(fname)?;
                 let query = self.loader.load_string(expr);
 
@@ -153,12 +157,16 @@ impl App {
                     todo!("TODO: --in-place formatting is not yet implemented.");
                 }
                 FormatTarget::Stdout { fname } => {
+                    self.loader
+                        .initialize_filesystem(SandboxMode::Unrestricted)?;
                     let doc = self.loader.load_cli_target(fname)?;
                     self.main_fmt(&format_opts, doc)
                 }
             },
 
             Cmd::Highlight { fname } => {
+                self.loader
+                    .initialize_filesystem(SandboxMode::Unrestricted)?;
                 let doc = self.loader.load_cli_target(fname)?;
                 let tokens = self.loader.get_tokens(doc)?;
                 let data = self.loader.get_doc(doc).data;

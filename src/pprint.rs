@@ -207,6 +207,11 @@ impl<'a> Doc<'a> {
         }
     }
 
+    /// Same as [`Doc::lines`], but apply highlight.
+    pub fn highlight(value: &'a str) -> Doc<'a> {
+        Doc::lines(value).with_markup(Markup::Highlight)
+    }
+
     /// Construct a new document fragment from an owned string.
     pub fn string(value: String) -> Doc<'a> {
         use unicode_width::UnicodeWidthStr;

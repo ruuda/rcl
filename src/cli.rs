@@ -7,11 +7,11 @@
 
 //! Types that represent a parsed command line, and functions to parse it.
 
-use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::cli_utils::{match_option, parse_option, Arg, ArgIter};
 use crate::error::{Error, Result};
+use crate::loader::SandboxMode;
 use crate::markup::{Markup, MarkupMode};
 use crate::pprint::{concat, Doc};
 
@@ -67,16 +67,10 @@ Options:
                         Defaults to 'rcl'.
   -w --width <width>    Target width for pretty-printing, must be an integer.
                         Defaults to 80.
-  --sandbox <mode>      Sandboxing mode, can be one of 'pure', 'workdir', and
-                        'unrestricted'. Defaults to 'workdir'.
-  -I --include <a>:<f>  Enable importing the file <f> when --sandbox=pure.
-                        To import the file, the import expression must be of the
-                        form 'import "<a>"'. In the argument, the alias <a> and
-                        file <f> are separated by a colon.
+  --sandbox <mode>      Sandboxing mode, can be one of 'workdir' (the default)
+                        and 'unrestricted'.
 
 Sandboxing modes:
-  pure          Only allow importing files specified with --include. Do not
-                allow filesystem access aside from these includes.
   workdir       Only allow importing files inside the working directory and
                 subdirectories.
   unrestricted  Grant unrestricted filesystem access, allow importing any file.
@@ -124,26 +118,14 @@ pub enum OutputFormat {
     Rcl,
 }
 
-/// The available sandbox modes.
-#[derive(Debug, Default, Eq, PartialEq)]
-pub enum SandboxMode {
-    Pure,
-    #[default]
-    Workdir,
-    Unrestricted,
-}
-
 /// Options for commands that evaluate expressions.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct EvalOptions {
     /// The format to output in.
     pub format: OutputFormat,
 
-    /// Sandbox mode for imports.
+    /// Policy for what files can be imported.
     pub sandbox: SandboxMode,
-
-    /// Files to include, when the sandbox mode is pure.
-    pub includes: HashMap<String, String>,
 }
 
 /// Options for commands that pretty-print their output.
@@ -236,22 +218,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             Arg::Long("sandbox") => {
                 eval_opts.sandbox = match_option! {
                     args: arg,
-                    "pure" => SandboxMode::Pure,
                     "workdir" => SandboxMode::Workdir,
                     "unrestricted" => SandboxMode::Unrestricted,
                 }
-            }
-            Arg::Long("include") | Arg::Short("I") => {
-                let (alias, fname) = parse_option! {
-                    args: arg,
-                    |v: &str| -> std::result::Result<(String, String), &'static str> {
-                        let mut parts = v.splitn(2, ":");
-                        let alias = parts.next().ok_or("unused")?;
-                        let fname = parts.next().ok_or("unused")?;
-                        Ok((alias.to_owned(), fname.to_owned()))
-                    }
-                };
-                eval_opts.includes.insert(alias, fname);
             }
             Arg::Long("width") | Arg::Short("w") => {
                 format_opts.width = parse_option! { args: arg, u32::from_str };
@@ -309,17 +278,6 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 return Error::new(err).err();
             }
         }
-    }
-
-    if !eval_opts.includes.is_empty() && eval_opts.sandbox != SandboxMode::Pure {
-        let err = concat! {
-            "The "
-            Doc::str("--include").with_markup(Markup::Highlight)
-            " option is only useful in combination with "
-            Doc::str("--sandbox=pure").with_markup(Markup::Highlight)
-            "."
-        };
-        return Error::new(err).err();
     }
 
     if is_version {
@@ -506,10 +464,6 @@ mod test {
         // Test --sandbox.
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
             eval_opts.format = OutputFormat::Rcl;
-            eval_opts.sandbox = SandboxMode::Pure;
-        }
-        assert_eq!(parse(&["rcl", "e", "infile", "--sandbox=pure"]), expected);
-        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
             eval_opts.sandbox = SandboxMode::Unrestricted;
         }
         assert_eq!(
@@ -524,28 +478,6 @@ mod test {
             expected
         );
         assert_eq!(parse(&["rcl", "e", "infile"]), expected);
-
-        // Test --include.
-        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
-            eval_opts.sandbox = SandboxMode::Pure;
-            eval_opts.includes.insert("a".to_string(), "b".to_string());
-        }
-        assert_eq!(
-            parse(&["rcl", "e", "--sandbox=pure", "infile", "--include=a:b"]),
-            expected
-        );
-        // The later option overrides the first one.
-        assert_eq!(
-            parse(&[
-                "rcl",
-                "e",
-                "--sandbox=pure",
-                "infile",
-                "-Ia:z",
-                "--include=a:b"
-            ]),
-            expected
-        );
     }
 
     #[test]
@@ -573,14 +505,6 @@ mod test {
         assert_eq!(
             fail_parse(&["rcl", "eval", "--frobnicate", "infile"]),
             "Error: Unknown option '--frobnicate'. See --help for usage.\n"
-        );
-        assert_eq!(
-            fail_parse(&["rcl", "eval", "--include", "nocolon"]),
-            "Error: 'nocolon' is not valid for --include. See --help for usage.\n"
-        );
-        assert_eq!(
-            fail_parse(&["rcl", "eval", "--include", "a:b"]),
-            "Error: The --include option is only useful in combination with --sandbox=pure.\n"
         );
     }
 

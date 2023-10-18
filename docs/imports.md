@@ -67,5 +67,5 @@ safe: evaluation does not modify your system.
 However, due to imports, <abbr>RCL</abbr> documents _do_ have the ability to
 read arbitrary files from your filesystem, and include those in the evaluation
 result. In some contexts this is undesirable, which is why <abbr>RCL</abbr> has
-three [sandboxing modes](rcl_evaluate.md#-sandbox-mode) to place additonal
-restrictions on what files can be imported.
+[sandbox modes](rcl_evaluate.md#-sandbox-mode) to place additional restrictions
+on what files can be imported.

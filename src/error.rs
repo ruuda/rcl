@@ -121,11 +121,19 @@ impl Error {
     }
 
     /// Replace the help message of the error with a given message.
-    pub fn with_help<M>(mut self, help: M) -> Error
+    pub fn set_help<M>(&mut self, help: M)
     where
         Doc<'static>: From<M>,
     {
         self.help = Some(help.into());
+    }
+
+    /// Replace the help message of the error with a given message.
+    pub fn with_help<M>(mut self, help: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        self.set_help(help);
         self
     }
 

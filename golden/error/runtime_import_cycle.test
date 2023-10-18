@@ -1,5 +1,4 @@
-// TODO: Make relative imports work.
-import "golden/error/_import_cycle_a.rcl"
+import "_import_cycle_a.rcl"
 
 # output:
 golden/error/_import_cycle_c.rcl:2:1
