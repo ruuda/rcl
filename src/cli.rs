@@ -274,7 +274,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             Arg::Plain(..) => {
                 let err = concat! {
                     "Unknown command '"
-                    Doc::lines(&arg.to_string()).into_owned().with_markup(Markup::Highlight)
+                    Doc::highlight(&arg.to_string()).into_owned()
                     "'. See --help for usage."
                 };
                 return Error::new(err).err();
@@ -282,7 +282,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             _ => {
                 let err = concat! {
                     "Unknown option '"
-                    Doc::lines(&arg.to_string()).into_owned().with_markup(Markup::Highlight)
+                    Doc::highlight(&arg.to_string()).into_owned()
                     "'. See --help for usage."
                 };
                 return Error::new(err).err();

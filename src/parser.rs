@@ -10,7 +10,6 @@
 use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, UnOp};
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
-use crate::markup::Markup;
 use crate::pprint::{concat, Doc};
 use crate::source::{DocId, Span};
 
@@ -878,11 +877,11 @@ impl<'a> Parser<'a> {
                         .expect_err("We are in a seq.")
                         .with_help(concat! {
                             "To use '"
-                            Doc::from("key = value;").with_markup(Markup::Highlight)
+                            Doc::highlight("key = value;")
                             "' record notation, the left-hand side must be an identifier."
                             Doc::Sep
                             "When that is not possible, use json-style '"
-                            Doc::from("\"key\": value").with_markup(Markup::Highlight)
+                            Doc::highlight("\"key\": value")
                             "' instead."
                         })
                         .err();
