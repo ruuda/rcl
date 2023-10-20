@@ -167,7 +167,7 @@ impl SandboxFilesystem {
                     err.set_help(concat! {
                         "Try executing from '"
                         pprint::Doc::highlight(&base_dir_name).into_owned()
-                        "' or use "
+                        "' or use '"
                         pprint::Doc::highlight("--sandbox=unrestricted")
                         "'."
                     });
