@@ -112,7 +112,8 @@ impl App {
                 format_opts,
                 fname,
             } => {
-                self.loader.initialize_filesystem(eval_opts.sandbox)?;
+                self.loader
+                    .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
 
                 let mut tracer = self.get_tracer();
                 let mut env = Env::new();
@@ -129,7 +130,8 @@ impl App {
                 fname,
                 query: expr,
             } => {
-                self.loader.initialize_filesystem(eval_opts.sandbox)?;
+                self.loader
+                    .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
 
                 let input = self.loader.load_cli_target(fname)?;
                 let query = self.loader.load_string(expr);
@@ -157,16 +159,20 @@ impl App {
                     todo!("TODO: --in-place formatting is not yet implemented.");
                 }
                 FormatTarget::Stdout { fname } => {
-                    self.loader
-                        .initialize_filesystem(SandboxMode::Unrestricted)?;
+                    self.loader.initialize_filesystem(
+                        SandboxMode::Unrestricted,
+                        self.opts.workdir.as_deref(),
+                    )?;
                     let doc = self.loader.load_cli_target(fname)?;
                     self.main_fmt(&format_opts, doc)
                 }
             },
 
             Cmd::Highlight { fname } => {
-                self.loader
-                    .initialize_filesystem(SandboxMode::Unrestricted)?;
+                self.loader.initialize_filesystem(
+                    SandboxMode::Unrestricted,
+                    self.opts.workdir.as_deref(),
+                )?;
                 let doc = self.loader.load_cli_target(fname)?;
                 let tokens = self.loader.get_tokens(doc)?;
                 let data = self.loader.get_doc(doc).data;

@@ -35,9 +35,10 @@ Command shorthands:
   q            Alias for 'query'.
 
 Global options:
-  -h --help       Show this screen, or command-specific help.
-  --version       Show version.
-  --color <mode>  Set how output is colored, see modes below.
+  -h --help             Show this screen, or command-specific help.
+  --version             Show version.
+  --color <mode>        Set how output is colored, see modes below.
+  -C --directory <dir>  Change the working directory.
 
 Color modes:
   ansi    Always color output using ANSI escape codes.
@@ -108,6 +109,9 @@ pub struct GlobalOptions {
     /// we call it `--color` on the command line because that is what most tools
     /// call it.
     pub markup: Option<MarkupMode>,
+
+    /// Alter the working directory for filesystem access.
+    pub workdir: Option<String>,
 }
 
 /// The available output formats (JSON, RCL).
@@ -221,6 +225,12 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     "workdir" => SandboxMode::Workdir,
                     "unrestricted" => SandboxMode::Unrestricted,
                 }
+            }
+            Arg::Long("directory") | Arg::Short("C") => {
+                global_opts.workdir = parse_option! {
+                    args: arg,
+                    |x: &str| Ok::<_, std::convert::Infallible>(Some(x.to_string()))
+                };
             }
             Arg::Long("width") | Arg::Short("w") => {
                 format_opts.width = parse_option! { args: arg, u32::from_str };
@@ -390,7 +400,10 @@ mod test {
 
     #[test]
     fn parse_cmd_eval() {
-        let expected_opt = GlobalOptions { markup: None };
+        let expected_opt = GlobalOptions {
+            markup: None,
+            workdir: None,
+        };
         let expected_cmd = Cmd::Evaluate {
             eval_opts: EvalOptions::default(),
             format_opts: FormatOptions::default(),
@@ -510,7 +523,10 @@ mod test {
 
     #[test]
     fn parse_cmd_fmt() {
-        let expected_opt = GlobalOptions { markup: None };
+        let expected_opt = GlobalOptions {
+            markup: None,
+            workdir: None,
+        };
         let expected_cmd = Cmd::Format {
             format_opts: FormatOptions::default(),
             target: FormatTarget::Stdout {
@@ -559,7 +575,10 @@ mod test {
 
     #[test]
     fn parse_cmd_highlight() {
-        let expected_opt = GlobalOptions { markup: None };
+        let expected_opt = GlobalOptions {
+            markup: None,
+            workdir: None,
+        };
         let expected_cmd = Cmd::Highlight {
             fname: Target::File("infile".into()),
         };
@@ -569,7 +588,10 @@ mod test {
 
     #[test]
     fn parse_cmd_query() {
-        let expected_opt = GlobalOptions { markup: None };
+        let expected_opt = GlobalOptions {
+            markup: None,
+            workdir: None,
+        };
         let expected_cmd = Cmd::Query {
             eval_opts: EvalOptions::default(),
             format_opts: FormatOptions::default(),

@@ -1,5 +1,4 @@
-// TODO: Make relative imports work.
-(import "golden/rcl/_import.rcl").answer
+(import "_import.rcl").answer
 
 # output:
 42

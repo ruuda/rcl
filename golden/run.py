@@ -97,7 +97,7 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
             raise ValueError(f"No command-line known for {unknown}.")
 
     result = subprocess.run(
-        [rcl_bin, *cmd, "-"],
+        [rcl_bin, "-C", os.path.dirname(fname), *cmd, "-"],
         input="".join(input_lines),
         capture_output=True,
         encoding="utf-8",

@@ -1,20 +1,20 @@
 import "_import_cycle_a.rcl"
 
 # output:
-golden/error/_import_cycle_c.rcl:2:1
+_import_cycle_c.rcl:1:1
   ╷
-2 │ import "golden/error/_import_cycle_a.rcl"
+1 │ import "_import_cycle_a.rcl"
   ╵ ^~~~~~
 Error: This import creates a cycle.
 
-golden/error/_import_cycle_b.rcl:2:1
+_import_cycle_b.rcl:1:1
   ╷
-2 │ import "golden/error/_import_cycle_c.rcl"
+1 │ import "_import_cycle_c.rcl"
   ╵ ^~~~~~
 Note: Imported here.
 
-golden/error/_import_cycle_a.rcl:2:1
+_import_cycle_a.rcl:1:1
   ╷
-2 │ import "golden/error/_import_cycle_b.rcl"
+1 │ import "_import_cycle_b.rcl"
   ╵ ^~~~~~
 Note: Imported here.

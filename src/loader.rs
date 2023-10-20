@@ -118,8 +118,11 @@ pub struct SandboxFilesystem {
 }
 
 impl SandboxFilesystem {
-    pub fn new(mode: SandboxMode) -> io::Result<SandboxFilesystem> {
-        let workdir = env::current_dir()?;
+    pub fn new(mode: SandboxMode, workdir: Option<&str>) -> io::Result<SandboxFilesystem> {
+        let workdir = match workdir {
+            Some(d) => PathBuf::from(d),
+            None => env::current_dir()?,
+        };
         let workdir = fs::canonicalize(workdir)?;
         let result = SandboxFilesystem { mode, workdir };
         Ok(result)
@@ -176,8 +179,11 @@ impl SandboxFilesystem {
         let friendly_name = if path_buf.starts_with(&self.workdir) {
             let mut result = String::new();
             let mut self_components = path_buf.components();
-            // Skip the shared prefix.
-            for _ in (&mut self_components).zip(self.workdir.components()) {}
+            // Skip the shared prefix. Note, the zip order is important. If we
+            // put self_components firsts, the zip will consume one past the
+            // length of `components`. If we put components first, the zip gets
+            // a None there, and then we can still call `self_components.next`.
+            for _ in self.workdir.components().zip(&mut self_components) {}
             // Then add the path relative to the working directory.
             for component in self_components {
                 if !result.is_empty() {
@@ -276,8 +282,12 @@ impl Loader {
     }
 
     /// Enable filesystem access with the given sandbox mode.
-    pub fn initialize_filesystem(&mut self, mode: SandboxMode) -> Result<()> {
-        let sandbox_fs = SandboxFilesystem::new(mode).map_err(|err| {
+    pub fn initialize_filesystem(
+        &mut self,
+        mode: SandboxMode,
+        workdir: Option<&str>,
+    ) -> Result<()> {
+        let sandbox_fs = SandboxFilesystem::new(mode, workdir).map_err(|err| {
             Error::new(concat! {
                 "Failed to initialize filesystem access layer: "
                 err.to_string()
@@ -362,6 +372,7 @@ impl Loader {
             None => "",
         };
         let resolved = self.filesystem.resolve(path, from_path)?;
+        assert!(!resolved.name.is_empty());
         self.load_file(resolved)
     }
 
