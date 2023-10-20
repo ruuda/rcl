@@ -46,6 +46,7 @@ impl Document {
     }
 }
 
+#[derive(Debug)]
 pub struct PathLookup {
     /// A friendly name, which will be the name of the document.
     name: String,
@@ -72,6 +73,9 @@ pub trait Filesystem {
     /// Return where to load `path` when imported from file `from`.
     fn resolve(&self, path: &str, from: &str) -> Result<PathLookup>;
 
+    /// Return where to load `path` when that was a CLI argument.
+    fn resolve_entrypoint(&self, path: &str) -> Result<PathLookup>;
+
     /// Load a resolved path from the filesystem.
     fn load(&self, path: PathLookup) -> Result<Document>;
 }
@@ -88,6 +92,9 @@ struct PanicFilesystem;
 
 impl Filesystem for PanicFilesystem {
     fn resolve(&self, _: &str, _: &str) -> Result<PathLookup> {
+        panic!("Should have initialized the filesystem to a real one before resolving.")
+    }
+    fn resolve_entrypoint(&self, _: &str) -> Result<PathLookup> {
         panic!("Should have initialized the filesystem to a real one before resolving.")
     }
     fn load(&self, _: PathLookup) -> Result<Document> {
@@ -117,24 +124,9 @@ impl SandboxFilesystem {
         let result = SandboxFilesystem { mode, workdir };
         Ok(result)
     }
-}
 
-impl Filesystem for SandboxFilesystem {
-    fn resolve(&self, path: &str, from: &str) -> Result<PathLookup> {
-        let mut path_buf = self.workdir.clone();
-
-        if path.starts_with("//") {
-            // The path is relative to the working directory.
-            path_buf.push(Path::new(&path[2..]));
-        } else if path.starts_with("/") {
-            return Error::new("Importing absolute paths is not allowed.").err();
-        } else {
-            // The path is relative to the `from` file.
-            path_buf.push(from);
-            path_buf.pop();
-            path_buf.push(path);
-        }
-
+    /// Apply path resolution for an absolute but not yet canonicalized path.
+    pub fn resolve_absolute(&self, path_buf: PathBuf) -> Result<PathLookup> {
         // Before we do any sandboxing checks, resolve the file to an absolute
         // path, following symlinks.
         let path_buf = fs::canonicalize(&path_buf).map_err(|err| {
@@ -208,6 +200,39 @@ impl Filesystem for SandboxFilesystem {
             path: path_buf,
         };
         Ok(result)
+    }
+}
+
+impl Filesystem for SandboxFilesystem {
+    fn resolve(&self, path: &str, from: &str) -> Result<PathLookup> {
+        let mut path_buf = self.workdir.clone();
+
+        if path.starts_with("//") {
+            // The path is relative to the working directory.
+            path_buf.push(Path::new(&path[2..]));
+        } else if path.starts_with("/") {
+            return Error::new("Importing absolute paths is not allowed.").err();
+        } else {
+            // The path is relative to the `from` file.
+            path_buf.push(from);
+            path_buf.pop();
+            path_buf.push(path);
+        }
+
+        self.resolve_absolute(path_buf)
+    }
+
+    fn resolve_entrypoint(&self, path: &str) -> Result<PathLookup> {
+        let path_buf: PathBuf = if path.starts_with("/") {
+            path.into()
+        } else {
+            // The path is relative to the working directory.
+            let mut path_buf = self.workdir.clone();
+            path_buf.push(path);
+            path_buf
+        };
+
+        self.resolve_absolute(path_buf)
     }
 
     fn load(&self, path: PathLookup) -> Result<Document> {
@@ -370,10 +395,7 @@ impl Loader {
     pub fn load_cli_target(&mut self, target: Target) -> Result<DocId> {
         match target {
             Target::File(fname) => {
-                let path = PathLookup {
-                    name: fname.clone(),
-                    path: PathBuf::from(fname),
-                };
+                let path = self.filesystem.resolve_entrypoint(&fname)?;
                 self.load_file(path)
             }
             Target::Stdin => self.load_stdin(),
