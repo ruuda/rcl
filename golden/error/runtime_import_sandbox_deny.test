@@ -1,0 +1,8 @@
+// Importing files outside the working directory is not allowed by default due
+// to the workdir sandbox policy.
+import "../../examples/tags.rcl"
+
+# output:
+Error: Sandbox policy 'workdir' does not allow loading '/WORKDIR/examples/tags.rcl' because it lies outside of '/WORKDIR/golden/error'.
+
+Help: Try executing from '/WORKDIR' or use --sandbox=unrestricted'.
