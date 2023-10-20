@@ -102,10 +102,11 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
         capture_output=True,
         encoding="utf-8",
     )
+    common_root = os.path.dirname(__file__)
     output_lines = [
         # Strip ANSI escape codes from the output. Also replace references to
         # absolute paths with a known path to make the test results portable.
-        STRIP_ESCAPES.sub("", line).replace(os.getcwd(), "/WORKDIR")
+        STRIP_ESCAPES.sub("", line).replace(common_root, "/WORKDIR")
         for line in result.stdout.splitlines() + result.stderr.splitlines()
     ]
 

@@ -1,12 +1,12 @@
 // Importing files outside the working directory is not allowed by default due
 // to the workdir sandbox policy.
-import "../../examples/tags.rcl"
+import "../rcl/_import.rcl"
 
 # output:
 stdin:3:8
   ╷
-3 │ import "../../examples/tags.rcl"
-  ╵        ^~~~~~~~~~~~~~~~~~~~~~~~~
-Error: Sandbox policy 'workdir' does not allow loading '/WORKDIR/examples/tags.rcl' because it lies outside of '/WORKDIR/golden/error'.
+3 │ import "../rcl/_import.rcl"
+  ╵        ^~~~~~~~~~~~~~~~~~~~
+Error: Sandbox policy 'workdir' does not allow loading '/WORKDIR/rcl/_import.rcl' because it lies outside of '/WORKDIR/error'.
 
 Help: Try executing from '/WORKDIR' or use --sandbox=unrestricted'.
