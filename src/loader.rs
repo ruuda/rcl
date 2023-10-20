@@ -48,9 +48,12 @@ impl Document {
 
 #[derive(Debug)]
 pub struct PathLookup {
-    /// A friendly name, which will be the name of the document.
+    /// A friendly name displayed to the user.
+    ///
+    /// This is the path relative to the working directory if possible.
     name: String,
-    /// The path on the file system to load the data from.
+
+    /// The absolute path on the file system to load the data from.
     path: PathBuf,
 }
 
