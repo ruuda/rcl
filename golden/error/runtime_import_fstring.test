@@ -1,0 +1,8 @@
+import f"f-strings are {"not"} allowed as import paths."
+
+# output:
+stdin:1:8
+  ╷
+1 │ import f"f-strings are {"not"} allowed as import paths."
+  ╵        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Error: Import path must be a string literal without holes.

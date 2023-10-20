@@ -1,0 +1,9 @@
+let import_path = "this is a string literal";
+import import_path
+
+# output:
+stdin:2:8
+  ╷
+2 │ import import_path
+  ╵        ^~~~~~~~~~~
+Error: Import path must be a string literal.
