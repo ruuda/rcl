@@ -122,7 +122,15 @@ impl<'a> Evaluator<'a> {
                     }
                 };
                 let from = Some(path_span.doc());
-                let doc = self.loader.load_path(path.as_ref(), from)?;
+                let doc = self
+                    .loader
+                    .load_path(path.as_ref(), from)
+                    .map_err(|mut err| {
+                        if err.origin.is_none() {
+                            err.origin = Some(*path_span);
+                        }
+                        err
+                    })?;
                 self.eval_import(env, doc, *import_span)
             }
 

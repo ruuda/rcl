@@ -3,6 +3,10 @@
 import "../../examples/tags.rcl"
 
 # output:
+stdin:3:8
+  ╷
+3 │ import "../../examples/tags.rcl"
+  ╵        ^~~~~~~~~~~~~~~~~~~~~~~~~
 Error: Sandbox policy 'workdir' does not allow loading '/WORKDIR/examples/tags.rcl' because it lies outside of '/WORKDIR/golden/error'.
 
 Help: Try executing from '/WORKDIR' or use --sandbox=unrestricted'.
