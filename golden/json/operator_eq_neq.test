@@ -14,7 +14,7 @@
     // TODO: This should be rejected as a type error.
     // But for now we can test it.
     false == null,
-  ];
+  ],
   neqs = [
     "a" != "a",
     "a" != "b",
@@ -30,7 +30,7 @@
     // TODO: This should be rejected as a type error.
     // But for now we can test it.
     false != null,
-  ];
+  ],
 }
 
 # output:

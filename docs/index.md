@@ -27,22 +27,22 @@ hypothetical._
 ```rcl
  // TODO: Add a better example.
  let sevices_at = {
-   server01 = ["ssh", "http"];
-   server02 = ["ssh", "imap"];
-   server03 = ["ssh", "pop3"];
+   server01 = ["ssh", "http"],
+   server02 = ["ssh", "imap"],
+   server03 = ["ssh", "pop3"],
  };
  let ports_for = {
-   ssh = [22];
-   http = [80, 443];
-   imap = [993];
-   pop3 = [995];
+   ssh = [22],
+   http = [80, 443],
+   imap = [993],
+   pop3 = [995],
  };
  let firewall_rules = {
    for server, services in services_at:
    server: [
      for service in services:
      for port in ports_for[service]:
-     { rule = "allow"; port = port; }
+     { rule = "allow", port = port }
    ]
  };
  firewall_rules

@@ -822,9 +822,7 @@ impl<'a> Parser<'a> {
     /// Parse sequence elements.
     ///
     /// This corresponds to `seqs` in the grammar, but it is slightly different
-    /// from the rule there to be able to incorporate noncode, and also to be
-    /// slightly more precise about which separator we allow after a particular
-    /// seq, which is easy to do here but difficult to express in the grammar.
+    /// from the rule there to be able to incorporate noncode.
     fn parse_seqs(&mut self) -> Result<Box<[Prefixed<Seq>]>> {
         let mut result = Vec::new();
 
@@ -840,14 +838,6 @@ impl<'a> Parser<'a> {
             }
 
             let (_span, seq) = self.parse_seq()?;
-            let expected_terminator = match seq {
-                Seq::Elem { .. } => Token::Comma,
-                Seq::AssocExpr { .. } => Token::Comma,
-                Seq::AssocIdent { .. } => Token::Semicolon,
-                Seq::Stmt { .. } => Token::Comma,
-                Seq::For { .. } => Token::Comma,
-                Seq::If { .. } => Token::Comma,
-            };
 
             let prefixed = Prefixed { prefix, inner: seq };
             result.push(prefixed);
@@ -855,15 +845,12 @@ impl<'a> Parser<'a> {
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::RBrace | Token::RBracket) => continue,
-                tok if tok == Some(expected_terminator) => {
+                tok if tok == Some(Token::Comma) => {
                     self.consume();
                     continue;
                 }
-                Some(Token::Semicolon) if expected_terminator == Token::Comma => {
+                Some(Token::Semicolon) => {
                     return self.error("Expected ',' instead of ';' here.").err();
-                }
-                Some(Token::Comma) if expected_terminator == Token::Semicolon => {
-                    return self.error("Expected ';' instead of ',' here.").err();
                 }
                 // If we don't find a separator, nor the end of the collection
                 // literal, that's an error. We can report an unmatched bracket
@@ -876,7 +863,7 @@ impl<'a> Parser<'a> {
                         .expect_err("We are in a seq.")
                         .with_help(concat! {
                             "To use '"
-                            Doc::highlight("key = value;")
+                            Doc::highlight("key = value")
                             "' record notation, the left-hand side must be an identifier."
                             Doc::Sep
                             "When that is not possible, use json-style '"

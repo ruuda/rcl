@@ -95,14 +95,13 @@ strings precludes serialization to json.
 ```
 
 Alternatively, dicts can be written in record form, where the left-hand side
-is an identifier. Then the key and value are separated by `=` and the element
-separator is `;`. A trailing semicolon is optional. The following value is
-identical to the first one above.
+is an identifier. Then the key and value are separated by `=`. A trailing comma
+is optional. The following value is identical to the first one above.
 
 ```rcl
 {
-  name = "apple";
-  flavor = "sweet";
+  name = "apple",
+  flavor = "sweet",
 }
 ```
 

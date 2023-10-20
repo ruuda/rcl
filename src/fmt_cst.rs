@@ -429,7 +429,7 @@ impl<'a> Formatter<'a> {
             }
 
             Seq::AssocIdent { field, value, .. } => {
-                (concat! { self.span(*field) " = " self.expr(value) }, ";")
+                (concat! { self.span(*field) " = " self.expr(value) }, ",")
             }
 
             Seq::Stmt { stmt, body, .. } => {

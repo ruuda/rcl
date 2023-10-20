@@ -1,6 +1,6 @@
 let widget = {
-  name = "Turbo encabulator";
-  marzlevanes = ["hydrocoptic"];
+  name = "Turbo encabulator",
+  marzlevanes = ["hydrocoptic"],
 };
 widget.is_prefabulated
 

@@ -1,36 +1,36 @@
 {
-  name = "Build";
+  name = "Build",
 
   on = {
-    push = { branches = ["master"]; };
-    workflow_dispatch = {};
-  };
+    push = { branches = ["master"] },
+    workflow_dispatch = {},
+  },
 
   jobs = {
     "Build": {
-      runs-on = "ubuntu-22.04";
+      runs-on = "ubuntu-22.04",
       steps = [
         {
-          name = "Checkout";
-          uses = "actions/checkout@v3.5.3";
+          name = "Checkout",
+          uses = "actions/checkout@v3.5.3",
         },
         {
-          name = "Install Nix";
-          uses = "cachix/install-nix-action@v18";
+          name = "Install Nix",
+          uses = "cachix/install-nix-action@v18",
           with = {
-            install_url = "https://releases.nixos.org/nix/nix-2.11.0/install";
-          };
+            install_url = "https://releases.nixos.org/nix/nix-2.11.0/install",
+          },
         },
         for attribute in ["rcl", "coverage"]:
         {
-          name = f"Build {attribute}";
+          name = f"Build {attribute}",
           run =
             f"""
             nix build --print-build-logs .#{attribute}
             echo "Build ok"
-            """;
+            """,
         },
-      ];
+      ],
     },
-  };
+  },
 }

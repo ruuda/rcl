@@ -1,25 +1,25 @@
 {
   top_level = {
-    priority = 7;
+    priority = 7,
     widgets = [
       {
-        name = "W1";
-        enabled = true;
+        name = "W1",
+        enabled = true,
       },
       {
-        name = "W2";
-        enabled = false;
+        name = "W2",
+        enabled = false,
       },
       {
-        name = "W3";
+        name = "W3",
         properties = {
-          color = "blue";
+          color = "blue",
           // Note, we assign the function, we don't call it!
-          len_getter = "blue".len;
-        };
+          len_getter = "blue".len,
+        },
       }
-    ];
-  };
+    ],
+  },
 }
 
 # output:

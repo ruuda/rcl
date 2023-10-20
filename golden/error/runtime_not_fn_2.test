@@ -1,4 +1,4 @@
-let person = { name = "Deckard"; };
+let person = { name = "Deckard" };
 person.name()
 
 # output:
