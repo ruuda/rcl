@@ -129,7 +129,11 @@ impl SandboxFilesystem {
     }
 
     /// Apply path resolution for an absolute but not yet canonicalized path.
-    pub fn resolve_absolute(&self, path_buf: PathBuf) -> Result<PathLookup> {
+    pub fn resolve_absolute(
+        &self,
+        path_buf: PathBuf,
+        sandbox_mode: SandboxMode,
+    ) -> Result<PathLookup> {
         // Before we do any sandboxing checks, resolve the file to an absolute
         // path, following symlinks.
         let path_buf = fs::canonicalize(&path_buf).map_err(|err| {
@@ -142,7 +146,7 @@ impl SandboxFilesystem {
             })
         })?;
 
-        match self.mode {
+        match sandbox_mode {
             SandboxMode::Unrestricted => {
                 // Any path is allowed, nothing to verify.
             }
@@ -225,7 +229,7 @@ impl Filesystem for SandboxFilesystem {
             path_buf.push(path);
         }
 
-        self.resolve_absolute(path_buf)
+        self.resolve_absolute(path_buf, self.mode)
     }
 
     fn resolve_entrypoint(&self, path: &str) -> Result<PathLookup> {
@@ -238,7 +242,10 @@ impl Filesystem for SandboxFilesystem {
             path_buf
         };
 
-        self.resolve_absolute(path_buf)
+        // The entrypoint is specified on the command line and therefore
+        // implicitly trusted, it's okay for it to lie outside of the working
+        // directory.
+        self.resolve_absolute(path_buf, SandboxMode::Unrestricted)
     }
 
     fn load(&self, path: PathLookup) -> Result<Document> {
