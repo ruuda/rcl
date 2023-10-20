@@ -30,3 +30,9 @@ Set how output is colored. The following modes are available:
   <dt>none</dt>
   <dd>Do not color output at all.</dd>
 </dl>
+
+### `-C` `--directory <dir>`
+
+When loading files, consider `<dir>` to be the working directory for relative
+paths. This also affects the [`--sandbox=workdir`](rcl_evaluate.md#-sandbox-mode)
+sandbox mode.

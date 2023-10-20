@@ -58,10 +58,10 @@
           };
 
           pythonEnv = python.withPackages (ps: [
+            ps.mkdocs
             ps.mypy
             ps.pygments
             ps.types-pygments
-            ps.mkdocs
             # These two need to be in here for PyCharm to be able to find
             # dependencies from our fake virtualenv.
             ps.pip

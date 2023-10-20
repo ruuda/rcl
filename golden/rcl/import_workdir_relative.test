@@ -1,0 +1,4 @@
+(import "//_import.rcl").answer
+
+# output:
+42

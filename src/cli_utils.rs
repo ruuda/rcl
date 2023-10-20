@@ -158,7 +158,7 @@ macro_rules! parse_option {
                 Err(..) => {
                     let err = concat! {
                         "'"
-                        Doc::lines(&value).into_owned().with_markup(Markup::Highlight)
+                        Doc::highlight(&value).into_owned()
                         "' is not valid for "
                         Doc::from($option.to_string()).with_markup(Markup::Highlight)
                         ". See --help for usage."

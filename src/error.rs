@@ -104,12 +104,28 @@ impl Error {
     }
 
     /// Extend the error with a note at a given source location.
-    pub fn with_note<M>(mut self, at: Span, note: M) -> Error
+    pub fn add_note<M>(&mut self, at: Span, note: M)
     where
         Doc<'static>: From<M>,
     {
         self.notes.push((at, note.into()));
+    }
+
+    /// Extend the error with a note at a given source location.
+    pub fn with_note<M>(mut self, at: Span, note: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        self.add_note(at, note);
         self
+    }
+
+    /// Replace the help message of the error with a given message.
+    pub fn set_help<M>(&mut self, help: M)
+    where
+        Doc<'static>: From<M>,
+    {
+        self.help = Some(help.into());
     }
 
     /// Replace the help message of the error with a given message.
@@ -117,7 +133,7 @@ impl Error {
     where
         Doc<'static>: From<M>,
     {
-        self.help = Some(help.into());
+        self.set_help(help);
         self
     }
 

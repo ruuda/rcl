@@ -86,6 +86,15 @@ pub enum Expr {
     /// A statement-like expression.
     Stmt { stmt: Stmt, body: Box<Expr> },
 
+    /// Import an expression from a given file path.
+    Import {
+        /// The span for the path expression.
+        path_span: Span,
+
+        /// An expression that evaluates to the path to import.
+        path: Box<Expr>,
+    },
+
     /// A dict or set literal (depending on the element types) enclosed in `{}`.
     BraceLit(Vec<Seq>),
 

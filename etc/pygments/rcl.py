@@ -41,6 +41,7 @@ _root_base = [
                 "false",
                 "for",
                 "if",
+                "import",
                 "in",
                 "let",
                 "not",

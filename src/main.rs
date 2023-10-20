@@ -8,11 +8,9 @@
 use std::io::Write;
 use std::rc::Rc;
 
-use rcl::cli::{
-    self, Cmd, FormatOptions, FormatTarget, GlobalOptions, OutputFormat, OutputOptions,
-};
+use rcl::cli::{self, Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat};
 use rcl::error::{Error, Result};
-use rcl::loader::Loader;
+use rcl::loader::{Loader, SandboxMode};
 use rcl::markup::MarkupMode;
 use rcl::pprint;
 use rcl::runtime::Env;
@@ -65,12 +63,12 @@ impl App {
 
     pub fn print_value(
         &self,
-        output_opts: &OutputOptions,
+        eval_opts: &EvalOptions,
         format_opts: &FormatOptions,
         value_span: Span,
         value: Rc<Value>,
     ) -> Result<()> {
-        let out_doc = match output_opts.format {
+        let out_doc = match eval_opts.format {
             OutputFormat::Rcl => rcl::fmt_rcl::format_rcl(value.as_ref()),
             OutputFormat::Json => rcl::fmt_json::format_json(value_span, value.as_ref())?,
         };
@@ -110,25 +108,31 @@ impl App {
             }
 
             Cmd::Evaluate {
-                output_opts,
+                eval_opts,
                 format_opts,
                 fname,
             } => {
+                self.loader
+                    .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
+
                 let mut tracer = self.get_tracer();
                 let mut env = Env::new();
                 let doc = self.loader.load_cli_target(fname)?;
                 let val = self.loader.evaluate(doc, &mut env, &mut tracer)?;
                 // TODO: Need to get last inner span.
                 let full_span = self.loader.get_span(doc);
-                self.print_value(&output_opts, &format_opts, full_span, val)
+                self.print_value(&eval_opts, &format_opts, full_span, val)
             }
 
             Cmd::Query {
-                output_opts,
+                eval_opts,
                 format_opts,
                 fname,
                 query: expr,
             } => {
+                self.loader
+                    .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
+
                 let input = self.loader.load_cli_target(fname)?;
                 let query = self.loader.load_string(expr);
 
@@ -144,7 +148,7 @@ impl App {
                 let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
 
                 let full_span = self.loader.get_span(query);
-                self.print_value(&output_opts, &format_opts, full_span, val_result)
+                self.print_value(&eval_opts, &format_opts, full_span, val_result)
             }
 
             Cmd::Format {
@@ -155,12 +159,20 @@ impl App {
                     todo!("TODO: --in-place formatting is not yet implemented.");
                 }
                 FormatTarget::Stdout { fname } => {
+                    self.loader.initialize_filesystem(
+                        SandboxMode::Unrestricted,
+                        self.opts.workdir.as_deref(),
+                    )?;
                     let doc = self.loader.load_cli_target(fname)?;
                     self.main_fmt(&format_opts, doc)
                 }
             },
 
             Cmd::Highlight { fname } => {
+                self.loader.initialize_filesystem(
+                    SandboxMode::Unrestricted,
+                    self.opts.workdir.as_deref(),
+                )?;
                 let doc = self.loader.load_cli_target(fname)?;
                 let tokens = self.loader.get_tokens(doc)?;
                 let data = self.loader.get_doc(doc).data;

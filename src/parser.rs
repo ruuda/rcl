@@ -10,7 +10,6 @@
 use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, UnOp};
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
-use crate::markup::Markup;
 use crate::pprint::{concat, Doc};
 use crate::source::{DocId, Span};
 
@@ -342,6 +341,7 @@ impl<'a> Parser<'a> {
                 }
             }
             Some(Token::KwIf) => self.parse_expr_if()?,
+            Some(Token::KwImport) => self.parse_expr_import()?,
             _ => self.parse_expr_op()?,
         };
         self.decrease_depth();
@@ -369,6 +369,17 @@ impl<'a> Parser<'a> {
             then_body: Box::new(then_body),
             else_span,
             else_body: Box::new(else_body),
+        };
+        Ok(result)
+    }
+
+    fn parse_expr_import(&mut self) -> Result<Expr> {
+        // Consume the `import` keyword.
+        let _import_span = self.consume();
+        let (path_span, path) = self.parse_prefixed_expr()?;
+        let result = Expr::Import {
+            path_span,
+            path: Box::new(path),
         };
         Ok(result)
     }
@@ -865,11 +876,11 @@ impl<'a> Parser<'a> {
                         .expect_err("We are in a seq.")
                         .with_help(concat! {
                             "To use '"
-                            Doc::from("key = value;").with_markup(Markup::Highlight)
+                            Doc::highlight("key = value;")
                             "' record notation, the left-hand side must be an identifier."
                             Doc::Sep
                             "When that is not possible, use json-style '"
-                            Doc::from("\"key\": value").with_markup(Markup::Highlight)
+                            Doc::highlight("\"key\": value")
                             "' instead."
                         })
                         .err();

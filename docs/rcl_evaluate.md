@@ -21,3 +21,21 @@ Output in the given format. Can be one of `json` or `rcl`. Defaults to `rcl`.
 ### `-w` `--width <width>`
 
 Target width for pretty-printing, in columns. Must be an integer. Defaults to 80.
+
+### `--sandbox <mode>`
+
+Limit which files can be imported in [import expressions](imports.md#security).
+Two modes are available:
+
+<dl>
+  <dt>workdir</dt>
+  <dd>Only allow importing files inside the working directory, including
+  subdirectories. For example, when <code>rcl</code> is executed in
+  <code>/home/user/exprs</code>, importing <code>/home/user/exprs/a/b.rcl</code>
+  is allowed, but importing <code>/home/user/.config/private.rcl</code> is not.
+  </dd>
+  <dt>unrestricted</dt>
+  <dd>Grant unrestricted filesystem access, allow importing any file.</dd>
+</dl>
+
+The default sandboxing mode is _workdir_.

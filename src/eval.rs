@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
-use crate::error::{IntoError, Result};
+use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::loader::Loader;
 use crate::pprint::Doc;
@@ -19,23 +19,119 @@ use crate::runtime::{Builtin, Env, Value};
 use crate::source::{DocId, Span};
 use crate::tracer::Tracer;
 
+/// An entry on the evaluation stack.
+pub struct EvalContext {
+    /// The document that we are evaluating.
+    doc: DocId,
+    /// The source that caused evaluation of this document.
+    imported_from: Option<Span>,
+}
+
 pub struct Evaluator<'a> {
     loader: &'a mut Loader,
     tracer: &'a mut dyn Tracer,
+    import_stack: Vec<EvalContext>,
 }
 
 impl<'a> Evaluator<'a> {
     pub fn new(loader: &'a mut Loader, tracer: &'a mut dyn Tracer) -> Evaluator<'a> {
-        Evaluator { loader, tracer }
+        Evaluator {
+            loader,
+            tracer,
+            import_stack: Vec::new(),
+        }
     }
 
+    /// Evaluate a document as the entry point of evaluation.
     pub fn eval_doc(&mut self, env: &mut Env, doc: DocId) -> Result<Rc<Value>> {
+        debug_assert!(self.import_stack.is_empty());
         let expr = self.loader.get_ast(doc)?;
-        self.eval_expr(env, &expr)
+        let ctx = EvalContext {
+            doc,
+            imported_from: None,
+        };
+        self.import_stack.push(ctx);
+        let result = self.eval_expr(env, &expr)?;
+        self.import_stack.pop().expect("Push/pop are balanced.");
+        Ok(result)
+    }
+
+    /// Evaluate a document for an import.
+    fn eval_import(&mut self, env: &mut Env, doc: DocId, imported_from: Span) -> Result<Rc<Value>> {
+        // Before we allow the import, check that this would not create a cycle.
+        let mut error: Option<Error> = None;
+        for ctx in &self.import_stack {
+            if ctx.doc == doc {
+                debug_assert!(
+                    error.is_none(),
+                    "There should not be a cycle in the stack already.",
+                );
+                let err = imported_from.error("This import creates a cycle.");
+                error = Some(err);
+            }
+            if let Some(error) = error.as_mut() {
+                if let Some(src) = ctx.imported_from {
+                    error.add_note(src, "Imported here.");
+                }
+            }
+        }
+        if let Some(mut err) = error {
+            // Reverse the notes: we print the error itself first, and then we
+            // want to print what the offending file was imported from, etc.
+            err.notes.reverse();
+            return Err(err.into());
+        }
+
+        let expr = self.loader.get_ast(doc)?;
+        let ctx = EvalContext {
+            doc,
+            imported_from: Some(imported_from),
+        };
+        self.import_stack.push(ctx);
+        let result = self.eval_expr(env, &expr)?;
+        self.import_stack.pop().expect("Push/pop are balanced.");
+        Ok(result)
     }
 
     fn eval_expr(&mut self, env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
         match expr {
+            Expr::Import {
+                path_span,
+                path: path_expr,
+            } => {
+                // We could allow an arbitrary expression that evaluates to a
+                // string, but for now we limit ourselves to string literals. It
+                // ensures that the import graph can be statically known by
+                // traversing the AST without evaluating it, and it ensures
+                // filenames can be grepped, there are no "magic" imports. This
+                // requirement is artificial, we can relax it later if that turns
+                // out to be useful.
+                let path = match path_expr.as_ref() {
+                    Expr::StringLit(path) => path,
+                    Expr::Format(..) => {
+                        return path_span
+                            .error("Import path must be a string literal without holes.")
+                            .err()
+                    }
+                    _ => {
+                        return path_span
+                            .error("Import path must be a string literal.")
+                            .err()
+                    }
+                };
+                let from = Some(path_span.doc());
+                let doc = self
+                    .loader
+                    .load_path(path.as_ref(), from)
+                    .map_err(|mut err| {
+                        if err.origin.is_none() {
+                            err.origin = Some(*path_span);
+                        }
+                        err
+                    })?;
+                self.eval_import(env, doc, *path_span)
+            }
+
             Expr::BraceLit(seqs) => {
                 let mut out = SeqOut::SetOrDict;
                 for seq in seqs {

@@ -214,24 +214,15 @@ mod test {
     }
 
     fn unescape(input: &str) -> Result<String> {
-        use crate::ast::Expr::{Format, StringLit};
+        use crate::ast::Expr::StringLit;
         let doc = DocId(0);
         let tokens = crate::lexer::lex(doc, input)?;
         let (_span, expr) = crate::parser::parse(doc, input, &tokens)?;
         let ast = crate::abstraction::abstract_expr(input, &expr)?;
-        let mut out = String::new();
         match ast {
-            Format(fragments) => {
-                for fragment in fragments {
-                    match fragment.body {
-                        StringLit(s) => out.push_str(s.as_ref()),
-                        bad => panic!("Expected only string fragments, got {bad:?}."),
-                    }
-                }
-            }
+            StringLit(s) => Ok(s.to_string()),
             bad => panic!("Expected only strings, got {bad:?}."),
         }
-        Ok(out)
     }
 
     fn escape_json(str: &str) -> String {

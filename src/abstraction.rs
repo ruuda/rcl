@@ -37,10 +37,8 @@ impl<'a> Abstractor<'a> {
 
     /// Abstract a string or format string.
     ///
-    /// For uniformity, we convert all string types into `Expr::Format`. Even if
-    /// the format has no holes, it may still consist of multiple lines that had
-    /// their leading spaces stripped, and we only glue those back together
-    /// during evaluation.
+    /// If possible we return `Expr::StringLit`, but if the string has holes, we
+    /// return `Expr::Format`.
     fn string(&self, style: QuoteStyle, parts: &[StringPart]) -> Result<AExpr> {
         let n_strip = match style {
             QuoteStyle::Double => 0,
@@ -86,14 +84,21 @@ impl<'a> Abstractor<'a> {
             }
         }
 
-        if !current.is_empty() {
-            fragments.push(FormatFragment {
-                span: current_span.expect("If we have a fragment, we should have a span."),
-                body: Expr::StringLit(current.into()),
-            });
+        if fragments.is_empty() {
+            // If we have no fragments, then we had no holes, and we can return
+            // a regular string literal.
+            Ok(Expr::StringLit(current.into()))
+        } else {
+            // If we have fragments, then we had holes, and we have to return
+            // a format string.
+            if !current.is_empty() {
+                fragments.push(FormatFragment {
+                    span: current_span.expect("If we have a fragment, we should have a span."),
+                    body: Expr::StringLit(current.into()),
+                });
+            }
+            Ok(AExpr::Format(fragments))
         }
-
-        Ok(AExpr::Format(fragments))
     }
 
     /// Abstract a statement.
@@ -131,6 +136,11 @@ impl<'a> Abstractor<'a> {
             CExpr::Stmt { stmt, body, .. } => AExpr::Stmt {
                 stmt: self.stmt(stmt)?,
                 body: Box::new(self.expr(&body.inner)?),
+            },
+
+            CExpr::Import { path_span, path } => AExpr::Import {
+                path_span: *path_span,
+                path: Box::new(self.expr(&path.inner)?),
             },
 
             CExpr::BraceLit { elements, .. } => AExpr::BraceLit(

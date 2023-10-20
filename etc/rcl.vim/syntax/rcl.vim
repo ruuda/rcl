@@ -10,7 +10,7 @@ syn keyword rclBoolean      true false
 syn keyword rclConditional  if then else
 syn keyword rclRepeat       for
 syn keyword rclOperator     and not or
-syn keyword rclKeyword      in let
+syn keyword rclKeyword      in let import
 syn keyword rclException    assert trace
 syn cluster rclKeyword      contains=rclBoolean,rclConditional,rclRepeat,rclOperator,rclKeyword,rclException
 

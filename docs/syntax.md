@@ -263,3 +263,16 @@ let widget_ids = [for widget in widgets: trace widget; widget.id];
 ```
 
 The message does not have to be a string, it can be an arbitrary value.
+
+## Imports
+
+An `import` expression evaluates to the contents of another RCL document.
+
+```rcl
+let inventory = import "inventory.rcl";
+[for server in inventory: server.name]
+```
+
+Import paths are relative to the location of the document itself, but there
+are some restrictions on whether imports are allowed. See [the imports
+chapter](imports.md) for full details.

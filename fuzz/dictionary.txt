@@ -5,6 +5,7 @@
 "false"
 "for"
 "if"
+"import"
 "in"
 "let"
 "not"
