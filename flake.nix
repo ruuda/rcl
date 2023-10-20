@@ -139,6 +139,16 @@
                 touch $out
                 '';
 
+              examples = pkgs.runCommand
+                "check-examples"
+                { buildInputs = []; }
+                ''
+                for f in ${./examples}/*; do
+                  ${debugBuild}/bin/rcl evaluate $f
+                done
+                touch $out
+                '';
+
               grammar = pkgs.runCommand
                 "check-grammar"
                 { buildInputs = [ pkgs.bison ]; }
