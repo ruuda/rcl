@@ -5,9 +5,10 @@ use std::rc::Rc;
 use arbitrary::{Arbitrary, Unstructured};
 use libfuzzer_sys::fuzz_target;
 
+use rcl::error::Error;
 use rcl::error::Result;
 use rcl::eval::Evaluator;
-use rcl::loader::Loader;
+use rcl::loader::{Document, Filesystem, Loader, PathLookup};
 use rcl::markup::MarkupMode;
 use rcl::pprint;
 use rcl::runtime::Value;
@@ -19,6 +20,24 @@ pub struct VoidTracer;
 
 impl Tracer for VoidTracer {
     fn trace(&mut self, _inputs: &Inputs, _span: Span, _message: Rc<Value>) {}
+}
+
+/// Filesystem that fails to load anything.
+///
+/// TODO: We could populate files from fuzz inputs to test imports.
+struct VoidFilesystem;
+
+impl Filesystem for VoidFilesystem {
+    fn resolve(&self, _: &str, _: &str) -> Result<PathLookup> {
+        Error::new("Void filesystem does not load files.").err()
+    }
+    fn resolve_entrypoint(&self, _: &str) -> Result<PathLookup> {
+        Error::new("Void filesystem does not load files.").err()
+    }
+    fn load(&self, _: PathLookup) -> Result<Document> {
+        Error::new("Void filesystem does not load files.").err()
+    }
+
 }
 
 #[derive(Debug)]
@@ -188,6 +207,7 @@ fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
 
 fuzz_target!(|input: Input| {
     let mut loader = Loader::new();
+    loader.set_filesystem(Box::new(VoidFilesystem));
     let result = fuzz_main(&mut loader, input);
 
     // In the error case, we do also pretty-print the error. This is mostly to

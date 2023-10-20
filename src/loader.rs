@@ -281,6 +281,11 @@ impl Loader {
         }
     }
 
+    /// Set the filesystem access handler.
+    pub fn set_filesystem(&mut self, filesystem: Box<dyn Filesystem>) {
+        self.filesystem = filesystem;
+    }
+
     /// Enable filesystem access with the given sandbox mode.
     pub fn initialize_filesystem(
         &mut self,
@@ -293,7 +298,7 @@ impl Loader {
                 err.to_string()
             })
         })?;
-        self.filesystem = Box::new(sandbox_fs);
+        self.set_filesystem(Box::new(sandbox_fs));
         Ok(())
     }
 
