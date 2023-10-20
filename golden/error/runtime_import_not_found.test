@@ -1,0 +1,8 @@
+import "this_file_does_not_exist.rcl"
+
+# output:
+stdin:1:8
+  ╷
+1 │ import "this_file_does_not_exist.rcl"
+  ╵        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Error: Failed to access path '/WORKDIR/error/this_file_does_not_exist.rcl': No such file or directory (os error 2)
