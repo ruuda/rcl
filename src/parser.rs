@@ -375,10 +375,9 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_import(&mut self) -> Result<Expr> {
         // Consume the `import` keyword.
-        let import_span = self.consume();
+        let _import_span = self.consume();
         let (path_span, path) = self.parse_prefixed_expr()?;
         let result = Expr::Import {
-            import_span,
             path_span,
             path: Box::new(path),
         };

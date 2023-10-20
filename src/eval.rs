@@ -96,7 +96,6 @@ impl<'a> Evaluator<'a> {
     fn eval_expr(&mut self, env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
         match expr {
             Expr::Import {
-                import_span,
                 path_span,
                 path: path_expr,
             } => {
@@ -130,7 +129,7 @@ impl<'a> Evaluator<'a> {
                         }
                         err
                     })?;
-                self.eval_import(env, doc, *import_span)
+                self.eval_import(env, doc, *path_span)
             }
 
             Expr::BraceLit(seqs) => {

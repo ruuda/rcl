@@ -1,26 +1,26 @@
 import "_import_cycle_a.rcl"
 
 # output:
-_import_cycle_c.rcl:1:1
+_import_cycle_c.rcl:1:8
   ╷
 1 │ import "_import_cycle_a.rcl"
-  ╵ ^~~~~~
+  ╵        ^~~~~~~~~~~~~~~~~~~~~
 Error: This import creates a cycle.
 
-_import_cycle_b.rcl:1:1
+_import_cycle_b.rcl:1:8
   ╷
 1 │ import "_import_cycle_c.rcl"
-  ╵ ^~~~~~
+  ╵        ^~~~~~~~~~~~~~~~~~~~~
 Note: Imported here.
 
-_import_cycle_a.rcl:1:1
+_import_cycle_a.rcl:1:8
   ╷
 1 │ import "_import_cycle_b.rcl"
-  ╵ ^~~~~~
+  ╵        ^~~~~~~~~~~~~~~~~~~~~
 Note: Imported here.
 
-stdin:1:1
+stdin:1:8
   ╷
 1 │ import "_import_cycle_a.rcl"
-  ╵ ^~~~~~
+  ╵        ^~~~~~~~~~~~~~~~~~~~~
 Note: Imported here.

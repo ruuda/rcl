@@ -141,9 +141,6 @@ pub enum Expr {
 
     /// Import an expression from a given file path.
     Import {
-        /// The span for the `import` keyword.
-        import_span: Span,
-
         /// The span for the path expression.
         path_span: Span,
 

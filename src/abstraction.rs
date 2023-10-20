@@ -138,12 +138,7 @@ impl<'a> Abstractor<'a> {
                 body: Box::new(self.expr(&body.inner)?),
             },
 
-            CExpr::Import {
-                import_span,
-                path_span,
-                path,
-            } => AExpr::Import {
-                import_span: *import_span,
+            CExpr::Import { path_span, path } => AExpr::Import {
                 path_span: *path_span,
                 path: Box::new(self.expr(&path.inner)?),
             },
