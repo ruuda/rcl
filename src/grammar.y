@@ -86,7 +86,6 @@ seqs
   : %empty
   | seq
   | seq ',' seqs
-  | seq ';' seqs
   ;
 
 // Note, here we use expr_op instead of expr to avoid a conflict with the let
@@ -94,7 +93,7 @@ seqs
 seq
   : expr_op
   | expr_op ':' expr
-  | IDENT '=' expr ';' seq
+  | IDENT '=' expr ',' seq
   | stmt seq
   | "for" idents "in" expr ':' seq
   | "if" expr ':' seq

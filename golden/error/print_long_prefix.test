@@ -1,10 +1,10 @@
 // This tests that error printing truncates the line if the line is really long.
-let turbo_encabulator = { baseplate = "prefabulated aluminite"; casing = "surmounted, malleable logarithmic"; spurving_bearings = "aligned with the pentametric fan"; err_unknown_variable = this-causes-an-error; };
+let turbo_encabulator = { baseplate = "prefabulated aluminite", casing = "surmounted, malleable logarithmic", spurving_bearings = "aligned with the pentametric fan", err_unknown_variable = this-causes-an-error };
 true
 
 # output:
 stdin:2:190
   ╷
-2 │ …_unknown_variable = this-causes-an-error; };
+2 │ …_unknown_variable = this-causes-an-error };
   ╵                      ^~~~~~~~~~~~~~~~~~~~
 Error: Unknown variable.

@@ -53,53 +53,35 @@ fn list<'a>(open: &'a str, close: &'a str, vs: impl Iterator<Item = &'a Rc<Value
 
 fn dict<'a>(vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>) -> Doc<'a> {
     let mut elements = Vec::new();
-    let mut sep = ",";
+
     for (k, v) in vs {
         if !elements.is_empty() {
-            elements.push(sep.into());
-            elements.push(Doc::Sep);
+            elements.push(",".into());
         }
+        elements.push(Doc::Sep);
         match k.as_ref() {
             // Format as identifier if we can, or as string if we have to.
             Value::String(k_str) if is_identifier(k_str) => {
-                if elements.is_empty() {
-                    // If a dict is formatted single-line in record syntax, we
-                    // want a space between the opening { and the field.
-                    elements.push(Doc::Sep);
-                }
                 elements.push(Doc::from(k_str.as_ref()).with_markup(Markup::Identifier));
                 elements.push(" = ".into());
-                sep = ";";
             }
             Value::String(k_str) => {
-                if elements.is_empty() {
-                    elements.push(Doc::SoftBreak);
-                }
                 elements.push(string(k_str).with_markup(Markup::Identifier));
                 elements.push(": ".into());
-                sep = ",";
             }
             _not_string => {
-                if elements.is_empty() {
-                    elements.push(Doc::SoftBreak);
-                }
                 elements.push(value(k));
                 elements.push(": ".into());
-                sep = ",";
             }
         };
         elements.push(value(v));
     }
 
     // Add a trailing separator in tall mode.
-    elements.push(Doc::tall(sep));
+    elements.push(Doc::tall(","));
 
-    // If the last element used record syntax, then in wide mode, we want a
-    // space before the closing }.
-    match sep {
-        ";" => elements.push(Doc::Sep),
-        _cm => elements.push(Doc::SoftBreak),
-    }
+    // With record syntax, in wide mode, we want a space before the closing }.
+    elements.push(Doc::Sep);
 
     let result = group! {
         "{"

@@ -1,11 +1,11 @@
 let dict = {
-  name = "Rachael";
-  model = "NEXUS-7 N7FAA52318";
+  name = "Rachael",
+  model = "NEXUS-7 N7FAA52318",
   description =
     """
     In the Voight-Kampff test, it took over a hundred questions
     to establish Rachael’s true nature.
-    """;
+    """,
 };
 
 // TODO: Should be made to preserve insertion order.

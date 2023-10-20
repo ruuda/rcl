@@ -1,5 +1,5 @@
-let x = { a = 5; b = 7; };
-let y = { a = 11; c = 13; };
+let x = { a = 5, b = 7 };
+let y = { a = 11, c = 13 };
 
 // When duplicate keys are encountered, union prefers the right-hand side.
 x | y

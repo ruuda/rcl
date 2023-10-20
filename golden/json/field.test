@@ -1,5 +1,5 @@
 let outer = {
-  inner = true;
+  inner = true,
 };
 outer.inner
 

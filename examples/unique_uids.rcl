@@ -3,13 +3,13 @@
 // for each of these services. We could define a mapping of service name to
 // uid like so:
 let uids = {
-  goat-teleporter = 10_000;
-  logs-archiver = 10_001;
-  device-monitor = 10_002;
-  prometheus-node-exporter = 10_003;
+  goat-teleporter = 10_000,
+  logs-archiver = 10_001,
+  device-monitor = 10_002,
+  prometheus-node-exporter = 10_003,
 
   // Uncomment the following line to trigger the problem explained below.
-  // prometheus-smartctl-exporter = 10_003;
+  // prometheus-smartctl-exporter = 10_003,
 };
 
 // However, in this configuration it is easy to accidentally use the same uid
