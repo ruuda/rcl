@@ -61,12 +61,6 @@ impl<'a> Evaluator<'a> {
         // Before we allow the import, check that this would not create a cycle.
         let mut error: Option<Error> = None;
         for ctx in &self.import_stack {
-            if let Some(error) = error.as_mut() {
-                if let Some(src) = ctx.imported_from {
-                    error.add_note(src, "Imported here.");
-                }
-            }
-
             if ctx.doc == doc {
                 debug_assert!(
                     error.is_none(),
@@ -74,6 +68,11 @@ impl<'a> Evaluator<'a> {
                 );
                 let err = imported_from.error("This import creates a cycle.");
                 error = Some(err);
+            }
+            if let Some(error) = error.as_mut() {
+                if let Some(src) = ctx.imported_from {
+                    error.add_note(src, "Imported here.");
+                }
             }
         }
         if let Some(mut err) = error {

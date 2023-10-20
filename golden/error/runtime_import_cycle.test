@@ -18,3 +18,9 @@ _import_cycle_a.rcl:1:1
 1 │ import "_import_cycle_b.rcl"
   ╵ ^~~~~~
 Note: Imported here.
+
+stdin:1:1
+  ╷
+1 │ import "_import_cycle_a.rcl"
+  ╵ ^~~~~~
+Note: Imported here.
