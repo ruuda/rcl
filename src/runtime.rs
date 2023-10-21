@@ -12,38 +12,34 @@ use std::rc::Rc;
 
 use crate::ast::Ident;
 use crate::error::Result;
+use crate::eval::Evaluator;
 use crate::source::Span;
 
-pub type BuiltinFnBox = Box<dyn Fn(Span, &[Rc<Value>]) -> Result<Rc<Value>>>;
-
 /// A built-in function.
-pub struct Builtin {
+#[derive(Eq, Ord, PartialEq, PartialOrd)]
+pub struct BuiltinFunction {
     pub name: &'static str,
-    pub f: BuiltinFnBox,
+    #[allow(clippy::type_complexity)]
+    pub f: for<'a> fn(&'a mut Evaluator<'a>, Span, &'a [Rc<Value>]) -> Result<Rc<Value>>,
 }
 
-impl std::fmt::Debug for Builtin {
+/// A built-in method.
+#[derive(Eq, Ord, PartialEq, PartialOrd)]
+pub struct BuiltinMethod {
+    pub name: &'static str,
+    #[allow(clippy::type_complexity)]
+    pub f: for<'a> fn(&'a mut Evaluator, Span, &'a Value, &'a [Rc<Value>]) -> Result<Rc<Value>>,
+}
+
+impl std::fmt::Debug for BuiltinFunction {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.name)
+        write!(f, "{}@{:p}", self.name, self.f)
     }
 }
 
-impl PartialEq for Builtin {
-    fn eq(&self, other: &Self) -> bool {
-        self.name.eq(other.name)
-    }
-}
-
-impl PartialOrd for Builtin {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.name.partial_cmp(other.name)
-    }
-}
-
-impl Eq for Builtin {}
-impl Ord for Builtin {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.name.cmp(other.name)
+impl std::fmt::Debug for BuiltinMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}@{:p}", self.name, self.f)
     }
 }
 
@@ -67,7 +63,9 @@ pub enum Value {
     // TODO: Should preserve insertion order.
     Dict(BTreeMap<Rc<Value>, Rc<Value>>),
 
-    Builtin(Builtin),
+    BuiltinFunction(BuiltinFunction),
+
+    BuiltinMethod(BuiltinMethod, Rc<Value>),
 }
 
 /// An environment binds names to values.
@@ -132,3 +130,54 @@ impl Default for Env {
         Self::new()
     }
 }
+
+macro_rules! builtin_method {
+    (
+        const $rust_const:ident = $rcl_name:expr,
+        fn $rust_name:ident(self: $self:pat, args: $args:pat) -> Result<Rc<Value>> $body:block
+    ) => {
+        fn $rust_name<'a>(
+            _eval: &'a mut Evaluator,
+            span: Span,
+            receiver: &'a Value,
+            args: &'a [Rc<Value>],
+        ) -> Result<Rc<Value>> {
+            match receiver {
+                $self => {
+                    match args {
+                        $args => $body,
+                        _invalid_args => {
+                            // TODO: Generate a nicer error message, don't mix Rust types.
+                            let err = crate::pprint::concat! {
+                                "Invalid arguments for "
+                                Doc::highlight($rcl_name)
+                                "."
+                            };
+                            let help = crate::pprint::concat! {
+                                "Signature of "
+                                Doc::highlight($rcl_name)
+                                " is "
+                                Doc::highlight(stringify!($args))
+                                "."
+                            };
+                            return span.error(err).with_help(help).err();
+                        }
+                    }
+                }
+                // If the receiver has the wrong type, that's a bug; we should
+                // only use these builtin methods after the type is already known.
+                invalid_self => panic!(
+                    "Should not have called {} with {:?} as receiver.",
+                    stringify!($rust_name),
+                    invalid_self,
+                ),
+            }
+        }
+
+        const $rust_const: BuiltinMethod = BuiltinMethod {
+            name: $rcl_name,
+            f: $rust_name,
+        };
+    };
+}
+pub(crate) use builtin_method;

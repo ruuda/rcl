@@ -5,4 +5,6 @@ stdin:1:20
   ╷
 1 │ {"k": "v"}.contains("k", "unexpected argument")
   ╵                    ^
-Error: Dict.contains takes a single argument.
+Error: Invalid arguments for Dict.contains.
+
+Help: Signature of Dict.contains is [arg].
