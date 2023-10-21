@@ -1,4 +1,4 @@
-// RCL -- A sane configuration language.
+// RCL -- A reasonable configuration language.
 // Copyright 2023 Ruud van Asseldonk
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +16,7 @@ use crate::markup::{Markup, MarkupMode};
 use crate::pprint::{concat, Doc};
 
 const USAGE_MAIN: &str = r#"
-RCL -- A sane configuration language.
+RCL -- A reasonable configuration language.
 
 Usage:
   rcl [<options>] <command> <arguments>
@@ -48,7 +48,7 @@ Color modes:
 "#;
 
 const USAGE_EVAL_QUERY: &str = r#"
-RCL -- A sane configuration language.
+RCL -- A reasonable configuration language.
 
 Usage:
   rcl [<options>] evaluate [<options>] <file>
@@ -80,7 +80,7 @@ See also --help for global options.
 "#;
 
 const USAGE_FORMAT: &str = r#"
-RCL -- A sane configuration language.
+RCL -- A reasonable configuration language.
 
 Usage:
   rcl [<options>] format [<options>] <file>...

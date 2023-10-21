@@ -1,4 +1,4 @@
-" RCL -- A sane configuration language.
+" RCL -- A reasonable configuration language.
 " Copyright 2023 Ruud van Asseldonk
 "
 " Licensed under the Apache License, Version 2.0 (the "License");
