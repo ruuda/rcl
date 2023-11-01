@@ -10,7 +10,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::error::{IntoError, Result};
+use crate::error::{Error, IntoError, Result};
 use crate::eval::Evaluator;
 use crate::pprint::Doc;
 use crate::runtime::{builtin_function, BuiltinFunction, Value};
@@ -18,9 +18,18 @@ use crate::source::Span;
 
 builtin_function!(
     const STD_LOAD_UTF8 = "std.load_utf8",
-    fn builtin_std_load_utf8(args: [path]) -> Result<Rc<Value>> {
-        let path_string = path.as_string();
-        unimplemented!("TODO: load_utf8({path_string})");
+    fn builtin_std_load_utf8(eval: &mut Evaluator, args: [path]) -> Result<Rc<Value>> {
+        // TODO: Do typecheck ahead of time so here we can just assume we get
+        // a string.
+        let path = match path.as_ref() {
+            Value::String(path) => path,
+            // TODO: Include arg span in the call info so we can better report
+            // an error.
+            _ => return Error::new("load_utf8 takes a String.").err(),
+        };
+        let from = eval.import_stack.last().map(|ctx| ctx.doc);
+        let doc = eval.loader.load_path(path, from)?;
+        Ok(Rc::new(eval.loader.get_doc(doc).data.into()))
     }
 );
 

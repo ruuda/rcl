@@ -203,10 +203,10 @@ pub(crate) use builtin_method;
 macro_rules! builtin_function {
     (
         const $rust_const:ident = $rcl_name:expr,
-        fn $rust_name:ident(args: $args:pat) -> Result<Rc<Value>> $body:block
+        fn $rust_name:ident($eval:ident: &mut $Evaluator:ty, args: $args:pat) -> Result<Rc<Value>> $body:block
     ) => {
         fn $rust_name<'a>(
-            _eval: &'a mut Evaluator,
+            $eval: &'a mut $Evaluator,
             span: Span,
             args: &'a [Rc<Value>],
         ) -> Result<Rc<Value>> {

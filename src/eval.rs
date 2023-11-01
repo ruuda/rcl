@@ -22,15 +22,15 @@ use crate::tracer::Tracer;
 /// An entry on the evaluation stack.
 pub struct EvalContext {
     /// The document that we are evaluating.
-    doc: DocId,
+    pub doc: DocId,
     /// The source that caused evaluation of this document.
-    imported_from: Option<Span>,
+    pub imported_from: Option<Span>,
 }
 
 pub struct Evaluator<'a> {
-    loader: &'a mut Loader,
-    tracer: &'a mut dyn Tracer,
-    import_stack: Vec<EvalContext>,
+    pub loader: &'a mut Loader,
+    pub tracer: &'a mut dyn Tracer,
+    pub import_stack: Vec<EvalContext>,
 }
 
 impl<'a> Evaluator<'a> {
