@@ -220,10 +220,10 @@ impl Filesystem for SandboxFilesystem {
     fn resolve(&self, path: &str, from: &str) -> Result<PathLookup> {
         let mut path_buf = self.workdir.clone();
 
-        if path.starts_with("//") {
+        if let Some(relative_to_workdir) = path.strip_prefix("//") {
             // The path is relative to the working directory.
-            path_buf.push(Path::new(&path[2..]));
-        } else if path.starts_with("/") {
+            path_buf.push(Path::new(relative_to_workdir));
+        } else if path.starts_with('/') {
             return Error::new("Importing absolute paths is not allowed.").err();
         } else {
             // The path is relative to the `from` file.
@@ -236,7 +236,7 @@ impl Filesystem for SandboxFilesystem {
     }
 
     fn resolve_entrypoint(&self, path: &str) -> Result<PathLookup> {
-        let path_buf: PathBuf = if path.starts_with("/") {
+        let path_buf: PathBuf = if path.starts_with('/') {
             path.into()
         } else {
             // The path is relative to the working directory.
