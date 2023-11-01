@@ -213,58 +213,31 @@ impl<'a> Evaluator<'a> {
                 let inner = self.eval_expr(env, inner_expr)?;
                 let field_name_value = Value::String(field_name.0.clone());
                 let err_unknown_field = field_span.error("Unknown field.");
-                match inner.as_ref() {
-                    Value::String(_) => {
-                        let builtin = match field_name.as_ref() {
-                            "len" => Some(STRING_LEN),
-                            _ => None,
-                        };
-                        match builtin {
-                            Some(b) => Ok(Rc::new(Value::BuiltinMethod(b, inner))),
-                            None => Err(err_unknown_field.into()),
-                        }
-                    }
-                    Value::Dict(fields) => {
-                        // First test for the builtin names, they shadow the values,
-                        // if there are any values.
-                        let builtin = match field_name.as_ref() {
-                            "contains" => Some(DICT_CONTAINS),
-                            "get" => Some(DICT_GET),
-                            "len" => Some(DICT_LEN),
-                            _ => None,
-                        };
-                        if let Some(b) = builtin {
-                            return Ok(Rc::new(Value::BuiltinMethod(b, inner)));
-                        }
+                let builtin = match (inner.as_ref(), field_name.as_ref()) {
+                    (Value::String(_), "len") => Some(STRING_LEN),
+
+                    (Value::Dict(_), "contains") => Some(DICT_CONTAINS),
+                    (Value::Dict(_), "get") => Some(DICT_GET),
+                    (Value::Dict(_), "len") => Some(DICT_LEN),
+                    (Value::Dict(fields), _field_name) => {
                         // If it wasn't a builtin, look for a key in the dict.
-                        match fields.get(&field_name_value) {
+                        return match fields.get(&field_name_value) {
                             Some(v) => Ok(v.clone()),
                             None => Err(err_unknown_field.into()),
-                        }
-                    }
-                    Value::List(_) => {
-                        let builtin = match field_name.as_ref() {
-                            "contains" => Some(LIST_CONTAINS),
-                            "len" => Some(LIST_LEN),
-                            _ => None,
                         };
-                        match builtin {
-                            Some(b) => Ok(Rc::new(Value::BuiltinMethod(b, inner))),
-                            None => Err(err_unknown_field.into()),
-                        }
                     }
-                    Value::Set(_) => {
-                        let builtin = match field_name.as_ref() {
-                            "contains" => Some(SET_CONTAINS),
-                            "len" => Some(SET_LEN),
-                            _ => None,
-                        };
-                        match builtin {
-                            Some(b) => Ok(Rc::new(Value::BuiltinMethod(b, inner))),
-                            None => Err(err_unknown_field.into()),
-                        }
-                    }
-                    _other => Err(err_unknown_field.into()),
+
+                    (Value::List(_), "contains") => Some(LIST_CONTAINS),
+                    (Value::List(_), "len") => Some(LIST_LEN),
+
+                    (Value::Set(_), "contains") => Some(SET_CONTAINS),
+                    (Value::Set(_), "len") => Some(SET_LEN),
+
+                    _other => None,
+                };
+                match builtin {
+                    Some(b) => Ok(Rc::new(Value::BuiltinMethod(b, inner))),
+                    None => Err(err_unknown_field.into()),
                 }
             }
 
