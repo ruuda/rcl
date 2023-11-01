@@ -94,6 +94,8 @@ impl<'a> Evaluator<'a> {
     }
 
     fn eval_expr(&mut self, env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
+        env.push("std".into(), crate::std::initialize());
+
         match expr {
             Expr::Import {
                 path_span,
@@ -265,6 +267,7 @@ impl<'a> Evaluator<'a> {
 
                 match fun.as_ref() {
                     Value::BuiltinMethod(f, receiver) => (f.f)(self, *open, receiver, &args[..]),
+                    Value::BuiltinFunction(f) => (f.f)(self, *open, &args[..]),
                     // TODO: Define a value for lambdas, implement the call.
                     // TODO: Add a proper type error.
                     _ => Err(function_span

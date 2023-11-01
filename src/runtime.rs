@@ -20,7 +20,7 @@ use crate::source::Span;
 pub struct BuiltinFunction {
     pub name: &'static str,
     #[allow(clippy::type_complexity)]
-    pub f: for<'a> fn(&'a mut Evaluator<'a>, Span, &'a [Rc<Value>]) -> Result<Rc<Value>>,
+    pub f: for<'a> fn(&'a mut Evaluator, Span, &'a [Rc<Value>]) -> Result<Rc<Value>>,
 }
 
 /// A built-in method.
@@ -66,6 +66,24 @@ pub enum Value {
     BuiltinFunction(BuiltinFunction),
 
     BuiltinMethod(BuiltinMethod, Rc<Value>),
+}
+
+impl Value {
+    /// Extract the string if it is one, panic otherwise.
+    #[inline]
+    pub fn as_string(&self) -> &Rc<str> {
+        match self {
+            Value::String(inner) => inner,
+            other => panic!("Expected String but got {other:?}."),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for Value {
+    #[inline]
+    fn from(value: &'a str) -> Self {
+        Value::String(value.into())
+    }
 }
 
 /// An environment binds names to values.
@@ -181,3 +199,42 @@ macro_rules! builtin_method {
     };
 }
 pub(crate) use builtin_method;
+
+macro_rules! builtin_function {
+    (
+        const $rust_const:ident = $rcl_name:expr,
+        fn $rust_name:ident(args: $args:pat) -> Result<Rc<Value>> $body:block
+    ) => {
+        fn $rust_name<'a>(
+            _eval: &'a mut Evaluator,
+            span: Span,
+            args: &'a [Rc<Value>],
+        ) -> Result<Rc<Value>> {
+            match args {
+                $args => $body,
+                _invalid_args => {
+                    // TODO: Generate a nicer error message, don't mix Rust types.
+                    let err = crate::pprint::concat! {
+                        "Invalid arguments for "
+                        Doc::highlight($rcl_name)
+                        "."
+                    };
+                    let help = crate::pprint::concat! {
+                        "Signature of "
+                        Doc::highlight($rcl_name)
+                        " is "
+                        Doc::highlight(stringify!($args))
+                        "."
+                    };
+                    return span.error(err).with_help(help).err();
+                }
+            }
+        }
+
+        const $rust_const: BuiltinFunction = BuiltinFunction {
+            name: $rcl_name,
+            f: $rust_name,
+        };
+    };
+}
+pub(crate) use builtin_function;
