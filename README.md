@@ -1,7 +1,8 @@
 # Ruud’s Configuration Language
 
-> **Warning:** RCL is vaporware. It is a proof-of-concept toy project. I will
-> likely lose interest in it before it is mature enough for serious use.
+> **Warning**
+> RCL is vaporware. It is a proof-of-concept toy project. I will likely lose
+> interest in it before it is mature enough for serious use.
 
 Ruud’s Configuration Language, RCL for short, is a domain-specific language
 optimized for specifying human-written data with just enough abstraction
