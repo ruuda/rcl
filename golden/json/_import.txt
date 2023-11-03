@@ -1,0 +1,1 @@
+This content is imported by std_read_file_utf8.test.
