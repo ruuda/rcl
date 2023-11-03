@@ -17,15 +17,15 @@ use crate::runtime::{builtin_function, BuiltinFunction, Value};
 use crate::source::Span;
 
 builtin_function!(
-    const STD_LOAD_UTF8 = "std.load_utf8",
-    fn builtin_std_load_utf8(eval: &mut Evaluator, args: [path]) -> Result<Rc<Value>> {
+    const STD_READ_FILE_UTF8 = "std.read_file_utf8",
+    fn builtin_std_read_file_utf8(eval: &mut Evaluator, args: [path]) -> Result<Rc<Value>> {
         // TODO: Do typecheck ahead of time so here we can just assume we get
         // a string.
         let path = match path.as_ref() {
             Value::String(path) => path,
             // TODO: Include arg span in the call info so we can better report
             // an error.
-            _ => return Error::new("load_utf8 takes a String.").err(),
+            _ => return Error::new("read_file_utf8 takes a String.").err(),
         };
         let from = eval.import_stack.last().map(|ctx| ctx.doc);
         let doc = eval.loader.load_path(path, from)?;
@@ -38,8 +38,8 @@ pub fn initialize() -> Rc<Value> {
     let mut builtins: BTreeMap<Rc<Value>, Rc<Value>> = BTreeMap::new();
 
     builtins.insert(
-        Rc::new("load_utf8".into()),
-        Rc::new(Value::BuiltinFunction(STD_LOAD_UTF8)),
+        Rc::new("read_file_utf8".into()),
+        Rc::new(Value::BuiltinFunction(STD_READ_FILE_UTF8)),
     );
 
     Rc::new(Value::Dict(builtins))

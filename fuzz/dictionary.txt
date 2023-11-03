@@ -48,4 +48,4 @@
 "contains"
 "get"
 "len"
-"std.load_utf8"
+"std.read_file_utf8"
