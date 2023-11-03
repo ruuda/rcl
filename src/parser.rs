@@ -776,7 +776,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse arguments in a function call.
-    fn parse_call_args(&mut self) -> Result<Box<[Prefixed<Expr>]>> {
+    fn parse_call_args(&mut self) -> Result<Box<[(Span, Prefixed<Expr>)]>> {
         let mut result = Vec::new();
 
         loop {
@@ -794,12 +794,12 @@ impl<'a> Parser<'a> {
                 return Ok(result.into_boxed_slice());
             }
 
-            let (_span, expr) = self.parse_expr()?;
+            let (span, expr) = self.parse_expr()?;
             let prefixed = Prefixed {
                 prefix,
                 inner: expr,
             };
-            result.push(prefixed);
+            result.push((span, prefixed));
 
             self.skip_non_code()?;
             match self.peek() {

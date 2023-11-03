@@ -15,7 +15,7 @@ use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::loader::Loader;
 use crate::pprint::Doc;
-use crate::runtime::{builtin_method, BuiltinMethod, Env, Value};
+use crate::runtime::{builtin_method, Env, FunctionCall, MethodCall, Value};
 use crate::source::{DocId, Span};
 use crate::tracer::Tracer;
 
@@ -238,7 +238,7 @@ impl<'a> Evaluator<'a> {
                     _other => None,
                 };
                 match builtin {
-                    Some(b) => Ok(Rc::new(Value::BuiltinMethod(b, inner))),
+                    Some(b) => Ok(Rc::new(Value::BuiltinMethod(b, *field_span, inner))),
                     None => Err(err_unknown_field.into()),
                 }
             }
@@ -262,12 +262,24 @@ impl<'a> Evaluator<'a> {
                 let fun = self.eval_expr(env, fun_expr)?;
                 let args = args_exprs
                     .iter()
-                    .map(|a| self.eval_expr(env, a))
+                    .map(|(span, a)| Ok((*span, self.eval_expr(env, a)?)))
                     .collect::<Result<Vec<_>>>()?;
 
+                let call = FunctionCall {
+                    call_span: *open,
+                    args: &args[..],
+                };
+
                 match fun.as_ref() {
-                    Value::BuiltinMethod(f, receiver) => (f.f)(self, *open, receiver, &args[..]),
-                    Value::BuiltinFunction(f) => (f.f)(self, *open, &args[..]),
+                    Value::BuiltinMethod(f, receiver_span, receiver) => {
+                        let method_call = MethodCall {
+                            call,
+                            receiver_span: *receiver_span,
+                            receiver: receiver.as_ref(),
+                        };
+                        (f.f)(self, method_call)
+                    }
+                    Value::BuiltinFunction(f) => (f.f)(self, call),
                     // TODO: Define a value for lambdas, implement the call.
                     // TODO: Add a proper type error.
                     _ => Err(function_span
@@ -645,61 +657,66 @@ impl SeqOut {
     }
 }
 
-builtin_method!(
-    const DICT_LEN = "Dict.len",
-    fn builtin_dict_len(self: Value::Dict(kvs), args: []) -> Result<Rc<Value>> {
-        Ok(Rc::new(Value::Int(kvs.len() as _)))
-    }
-);
+builtin_method!("Dict.len", const DICT_LEN, builtin_dict_len);
+fn builtin_dict_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    // TODO: Perform type check.
+    let dict = call.receiver.as_dict();
+    Ok(Rc::new(Value::Int(dict.len() as _)))
+}
 
-builtin_method!(
-    const LIST_LEN = "List.len",
-    fn builtin_list_len(self: Value::List(xs), args: []) -> Result<Rc<Value>> {
-        Ok(Rc::new(Value::Int(xs.len() as _)))
-    }
-);
+builtin_method!("List.len", const LIST_LEN, builtin_list_len);
+fn builtin_list_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    // TODO: Perform type check.
+    let list = call.receiver.as_list();
+    Ok(Rc::new(Value::Int(list.len() as _)))
+}
 
-builtin_method!(
-    const SET_LEN = "Set.len",
-    fn builtin_set_len(self: Value::Set(xs), args: []) -> Result<Rc<Value>> {
-        Ok(Rc::new(Value::Int(xs.len() as _)))
-    }
-);
+builtin_method!("Set.len", const SET_LEN, builtin_set_len);
+fn builtin_set_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    // TODO: Perform type check.
+    let set = call.receiver.as_set();
+    Ok(Rc::new(Value::Int(set.len() as _)))
+}
 
-builtin_method!(
-    const STRING_LEN = "String.len",
-    fn builtin_string_len(self: Value::String(s), args: []) -> Result<Rc<Value>> {
-        Ok(Rc::new(Value::Int(s.len() as _)))
-    }
-);
+builtin_method!("String.len", const STRING_LEN, builtin_string_len);
+fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    // TODO: Perform type check.
+    let string = call.receiver.as_string();
+    Ok(Rc::new(Value::Int(string.len() as _)))
+}
 
-builtin_method!(
-    const DICT_CONTAINS = "Dict.contains",
-    fn builtin_dict_contains(self: Value::Dict(kvs), args: [arg]) -> Result<Rc<Value>> {
-        Ok(Rc::new(Value::Bool(kvs.contains_key(arg))))
-    }
-);
+builtin_method!("Dict.contains", const DICT_CONTAINS, builtin_dict_contains);
+fn builtin_dict_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    // TODO: Perform type check.
+    let dict = call.receiver.as_dict();
+    let needle = &call.call.args[0].1;
+    Ok(Rc::new(Value::Bool(dict.contains_key(needle))))
+}
 
-builtin_method!(
-    const LIST_CONTAINS = "List.contains",
-    fn builtin_list_contains(self: Value::List(xs), args: [arg]) -> Result<Rc<Value>> {
-        Ok(Rc::new(Value::Bool(xs.contains(arg))))
-    }
-);
+builtin_method!("List.contains", const LIST_CONTAINS, builtin_list_contains);
+fn builtin_list_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    // TODO: Perform type check.
+    let list = call.receiver.as_list();
+    let needle = &call.call.args[0].1;
+    Ok(Rc::new(Value::Bool(list.contains(needle))))
+}
 
-builtin_method!(
-    const SET_CONTAINS = "Set.contains",
-    fn builtin_set_contains(self: Value::Set(xs), args: [arg]) -> Result<Rc<Value>> {
-        Ok(Rc::new(Value::Bool(xs.contains(arg))))
-    }
-);
+builtin_method!("Set.contains", const SET_CONTAINS, builtin_set_contains);
+fn builtin_set_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    // TODO: Perform type check.
+    let set = call.receiver.as_list();
+    let needle = &call.call.args[0].1;
+    Ok(Rc::new(Value::Bool(set.contains(needle))))
+}
 
-builtin_method!(
-    const DICT_GET = "Dict.get",
-    fn builtin_dict_get(self: Value::Dict(kvs), args: [k, default]) -> Result<Rc<Value>> {
-        match kvs.get(k) {
-            Some(v) => Ok(v.clone()),
-            None => Ok(default.clone()),
-        }
+builtin_method!("Dict.get", const DICT_GET, builtin_dict_get);
+fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    // TODO: Perform type check.
+    let dict = call.receiver.as_dict();
+    let key = &call.call.args[0].1;
+    let default = &call.call.args[1].1;
+    match dict.get(key) {
+        Some(v) => Ok(v.clone()),
+        None => Ok(default.clone()),
     }
-);
+}

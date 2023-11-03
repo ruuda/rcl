@@ -237,7 +237,7 @@ impl<'a> Abstractor<'a> {
                 function: Box::new(self.expr(function)?),
                 args: args
                     .iter()
-                    .map(|a| self.expr(&a.inner))
+                    .map(|(span, a)| Ok((*span, self.expr(&a.inner)?)))
                     .collect::<Result<Vec<_>>>()?,
             },
 

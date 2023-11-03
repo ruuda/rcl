@@ -144,7 +144,7 @@ pub enum Expr {
         open: Span,
         function_span: Span,
         function: Box<Expr>,
-        args: Vec<Expr>,
+        args: Vec<(Span, Expr)>,
     },
 
     /// Apply a unary operator.

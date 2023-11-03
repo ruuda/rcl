@@ -105,6 +105,6 @@ fn value(v: &Value) -> Doc {
         Value::Dict(vs) => dict(vs.iter()),
         // TODO: Add a more proper printer for functions/builtins. For now this will do.
         Value::BuiltinFunction(b) => Doc::from(b.name).with_markup(Markup::Builtin),
-        Value::BuiltinMethod(b, _receiver) => Doc::from(b.name).with_markup(Markup::Builtin),
+        Value::BuiltinMethod(b, _span, _receiver) => Doc::from(b.name).with_markup(Markup::Builtin),
     }
 }

@@ -15,12 +15,30 @@ use crate::error::Result;
 use crate::eval::Evaluator;
 use crate::source::Span;
 
+/// The arguments to a function call at runtime.
+pub struct FunctionCall<'a> {
+    /// The span of the opening paren for the call.
+    pub call_span: Span,
+    /// The arguments and their spans in the source code.
+    pub args: &'a [(Span, Rc<Value>)],
+}
+
+/// The arguments to a method call at runtime.
+pub struct MethodCall<'a> {
+    /// The source code span of the receiver of the method call.
+    pub receiver_span: Span,
+    /// The receiver of the call.
+    pub receiver: &'a Value,
+    /// Arguments to the call.
+    pub call: FunctionCall<'a>,
+}
+
 /// A built-in function.
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct BuiltinFunction {
     pub name: &'static str,
     #[allow(clippy::type_complexity)]
-    pub f: for<'a> fn(&'a mut Evaluator, Span, &'a [Rc<Value>]) -> Result<Rc<Value>>,
+    pub f: for<'a> fn(&'a mut Evaluator, FunctionCall<'a>) -> Result<Rc<Value>>,
 }
 
 /// A built-in method.
@@ -28,7 +46,7 @@ pub struct BuiltinFunction {
 pub struct BuiltinMethod {
     pub name: &'static str,
     #[allow(clippy::type_complexity)]
-    pub f: for<'a> fn(&'a mut Evaluator, Span, &'a Value, &'a [Rc<Value>]) -> Result<Rc<Value>>,
+    pub f: for<'a> fn(&'a mut Evaluator, MethodCall<'a>) -> Result<Rc<Value>>,
 }
 
 impl std::fmt::Debug for BuiltinFunction {
@@ -65,15 +83,42 @@ pub enum Value {
 
     BuiltinFunction(BuiltinFunction),
 
-    BuiltinMethod(BuiltinMethod, Rc<Value>),
+    BuiltinMethod(BuiltinMethod, Span, Rc<Value>),
 }
 
 impl Value {
+    /// Extract the dict if it is one, panic otherwise.
+    #[inline]
+    pub fn as_dict(&self) -> &BTreeMap<Rc<Value>, Rc<Value>> {
+        match self {
+            Value::Dict(inner) => inner,
+            other => panic!("Expected Dict but got {other:?}."),
+        }
+    }
+
+    /// Extract the list if it is one, panic otherwise.
+    #[inline]
+    pub fn as_list(&self) -> &[Rc<Value>] {
+        match self {
+            Value::List(inner) => inner.as_ref(),
+            other => panic!("Expected List but got {other:?}."),
+        }
+    }
+
+    /// Extract the list if it is one, panic otherwise.
+    #[inline]
+    pub fn as_set(&self) -> &BTreeSet<Rc<Value>> {
+        match self {
+            Value::Set(inner) => &inner,
+            other => panic!("Expected Set but got {other:?}."),
+        }
+    }
+
     /// Extract the string if it is one, panic otherwise.
     #[inline]
-    pub fn as_string(&self) -> &Rc<str> {
+    pub fn as_string(&self) -> &str {
         match self {
-            Value::String(inner) => inner,
+            Value::String(inner) => inner.as_ref(),
             other => panic!("Expected String but got {other:?}."),
         }
     }
@@ -149,92 +194,30 @@ impl Default for Env {
     }
 }
 
-macro_rules! builtin_method {
-    (
-        const $rust_const:ident = $rcl_name:expr,
-        fn $rust_name:ident(self: $self:pat, args: $args:pat) -> Result<Rc<Value>> $body:block
-    ) => {
-        fn $rust_name<'a>(
-            _eval: &'a mut Evaluator,
-            span: Span,
-            receiver: &'a Value,
-            args: &'a [Rc<Value>],
-        ) -> Result<Rc<Value>> {
-            match receiver {
-                $self => {
-                    match args {
-                        $args => $body,
-                        _invalid_args => {
-                            // TODO: Generate a nicer error message, don't mix Rust types.
-                            let err = crate::pprint::concat! {
-                                "Invalid arguments for "
-                                Doc::highlight($rcl_name)
-                                "."
-                            };
-                            let help = crate::pprint::concat! {
-                                "Signature of "
-                                Doc::highlight($rcl_name)
-                                " is "
-                                Doc::highlight(stringify!($args))
-                                "."
-                            };
-                            return span.error(err).with_help(help).err();
-                        }
-                    }
-                }
-                // If the receiver has the wrong type, that's a bug; we should
-                // only use these builtin methods after the type is already known.
-                invalid_self => panic!(
-                    "Should not have called {} with {:?} as receiver.",
-                    stringify!($rust_name),
-                    invalid_self,
-                ),
-            }
-        }
-
-        const $rust_const: BuiltinMethod = BuiltinMethod {
-            name: $rcl_name,
-            f: $rust_name,
-        };
-    };
-}
-pub(crate) use builtin_method;
-
 macro_rules! builtin_function {
     (
-        const $rust_const:ident = $rcl_name:expr,
-        fn $rust_name:ident($eval:ident: &mut $Evaluator:ty, args: $args:pat) -> Result<Rc<Value>> $body:block
+        $rcl_name:expr,
+        const $rust_const:ident,
+        $rust_name:ident
     ) => {
-        fn $rust_name<'a>(
-            $eval: &'a mut $Evaluator,
-            span: Span,
-            args: &'a [Rc<Value>],
-        ) -> Result<Rc<Value>> {
-            match args {
-                $args => $body,
-                _invalid_args => {
-                    // TODO: Generate a nicer error message, don't mix Rust types.
-                    let err = crate::pprint::concat! {
-                        "Invalid arguments for "
-                        Doc::highlight($rcl_name)
-                        "."
-                    };
-                    let help = crate::pprint::concat! {
-                        "Signature of "
-                        Doc::highlight($rcl_name)
-                        " is "
-                        Doc::highlight(stringify!($args))
-                        "."
-                    };
-                    return span.error(err).with_help(help).err();
-                }
-            }
-        }
-
-        const $rust_const: BuiltinFunction = BuiltinFunction {
+        const $rust_const: crate::runtime::BuiltinFunction = crate::runtime::BuiltinFunction {
             name: $rcl_name,
             f: $rust_name,
         };
     };
 }
 pub(crate) use builtin_function;
+
+macro_rules! builtin_method {
+    (
+        $rcl_name:expr,
+        const $rust_const:ident,
+        $rust_name:ident
+    ) => {
+        const $rust_const: crate::runtime::BuiltinMethod = crate::runtime::BuiltinMethod {
+            name: $rcl_name,
+            f: $rust_name,
+        };
+    };
+}
+pub(crate) use builtin_method;

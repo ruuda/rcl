@@ -10,28 +10,23 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::error::{Error, IntoError, Result};
+use crate::error::Result;
 use crate::eval::Evaluator;
-use crate::pprint::Doc;
-use crate::runtime::{builtin_function, BuiltinFunction, Value};
-use crate::source::Span;
+use crate::runtime::{builtin_function, FunctionCall, Value};
 
 builtin_function!(
-    const STD_READ_FILE_UTF8 = "std.read_file_utf8",
-    fn builtin_std_read_file_utf8(eval: &mut Evaluator, args: [path]) -> Result<Rc<Value>> {
-        // TODO: Do typecheck ahead of time so here we can just assume we get
-        // a string.
-        let path = match path.as_ref() {
-            Value::String(path) => path,
-            // TODO: Include arg span in the call info so we can better report
-            // an error.
-            _ => return Error::new("read_file_utf8 takes a String.").err(),
-        };
-        let from = eval.import_stack.last().map(|ctx| ctx.doc);
-        let doc = eval.loader.load_path(path, from)?;
-        Ok(Rc::new(eval.loader.get_doc(doc).data.into()))
-    }
+    "std.read_file_utf8",
+    const STD_READ_FILE_UTF8,
+    builtin_std_read_file_utf8
 );
+fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Value>> {
+    // TODO: Do typecheck ahead of time so here we can just assume we get
+    // a string.
+    let path = call.args[0].1.as_string();
+    let from = eval.import_stack.last().map(|ctx| ctx.doc);
+    let doc = eval.loader.load_path(path, from)?;
+    Ok(Rc::new(eval.loader.get_doc(doc).data.into()))
+}
 
 /// Initialize the standard library.
 pub fn initialize() -> Rc<Value> {

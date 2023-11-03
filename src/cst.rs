@@ -223,7 +223,7 @@ pub enum Expr {
         close: Span,
         function_span: Span,
         function: Box<Expr>,
-        args: Box<[Prefixed<Expr>]>,
+        args: Box<[(Span, Prefixed<Expr>)]>,
     },
 
     /// A unary operator.
