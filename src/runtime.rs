@@ -139,7 +139,7 @@ pub enum Value {
 impl Value {
     /// Extract the dict if it is one, panic otherwise.
     #[inline]
-    pub fn as_dict(&self) -> &BTreeMap<Rc<Value>, Rc<Value>> {
+    pub fn expect_dict(&self) -> &BTreeMap<Rc<Value>, Rc<Value>> {
         match self {
             Value::Dict(inner) => inner,
             other => panic!("Expected Dict but got {other:?}."),
@@ -148,7 +148,7 @@ impl Value {
 
     /// Extract the list if it is one, panic otherwise.
     #[inline]
-    pub fn as_list(&self) -> &[Rc<Value>] {
+    pub fn expect_list(&self) -> &[Rc<Value>] {
         match self {
             Value::List(inner) => inner.as_ref(),
             other => panic!("Expected List but got {other:?}."),
@@ -157,16 +157,16 @@ impl Value {
 
     /// Extract the list if it is one, panic otherwise.
     #[inline]
-    pub fn as_set(&self) -> &BTreeSet<Rc<Value>> {
+    pub fn expect_set(&self) -> &BTreeSet<Rc<Value>> {
         match self {
-            Value::Set(inner) => &inner,
+            Value::Set(inner) => inner,
             other => panic!("Expected Set but got {other:?}."),
         }
     }
 
     /// Extract the string if it is one, panic otherwise.
     #[inline]
-    pub fn as_string(&self) -> &str {
+    pub fn expect_string(&self) -> &str {
         match self {
             Value::String(inner) => inner.as_ref(),
             other => panic!("Expected String but got {other:?}."),
