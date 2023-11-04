@@ -21,18 +21,21 @@ builtin_function!(
 );
 fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Value>> {
     call.check_arity("std.read_file_utf8", &["path"])?;
+    let arg_span = call.args[0].0;
     let path = match call.args[0].1.as_ref() {
         Value::String(s) => s,
         _not_string => {
-            let span = call.args[0].0;
             // TODO: Add proper typechecking and a proper type error.
-            return span
+            return arg_span
                 .error("Expected a String here, but got a different type.")
                 .err();
         }
     };
     let from = eval.import_stack.last().map(|ctx| ctx.doc);
-    let doc = eval.loader.load_path(path, from)?;
+    let doc = eval
+        .loader
+        .load_path(path, from)
+        .map_err(|err| err.with_origin(arg_span))?;
     Ok(Rc::new(eval.loader.get_doc(doc).data.into()))
 }
 
