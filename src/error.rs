@@ -94,6 +94,12 @@ impl Error {
         }
     }
 
+    /// Replace the origin of the error with the given span.
+    pub fn with_origin(mut self, origin: Span) -> Error {
+        self.origin = Some(origin);
+        self
+    }
+
     /// Replace the body of the error with the given content.
     pub fn with_body<M>(mut self, body: M) -> Error
     where

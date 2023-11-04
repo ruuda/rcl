@@ -1,0 +1,4 @@
+std.read_file_utf8("_import.txt")
+
+# output:
+"This content is imported by std_read_file_utf8.test.\n"

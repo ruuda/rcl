@@ -7,14 +7,14 @@
 
 //! The parser converts a sequence of tokens into a Concrete Syntax Tree.
 
-use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, UnOp};
+use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, SpanPrefixedExpr, Stmt, StringPart, UnOp};
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
 use crate::pprint::{concat, Doc};
 use crate::source::{DocId, Span};
 
 /// Parse an input document into a concrete syntax tree.
-pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<(Span, Prefixed<Expr>)> {
+pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<SpanPrefixedExpr> {
     let mut parser = Parser::new(doc, input, tokens);
 
     // Comments at the start of the document are allowed, but the document
@@ -314,7 +314,7 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    pub fn parse_prefixed_expr(&mut self) -> Result<(Span, Prefixed<Expr>)> {
+    pub fn parse_prefixed_expr(&mut self) -> Result<SpanPrefixedExpr> {
         let pf = self.parse_prefixed(|s| s.parse_expr())?;
         Ok((
             pf.inner.0,
@@ -776,7 +776,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse arguments in a function call.
-    fn parse_call_args(&mut self) -> Result<Box<[Prefixed<Expr>]>> {
+    fn parse_call_args(&mut self) -> Result<Box<[SpanPrefixedExpr]>> {
         let mut result = Vec::new();
 
         loop {
@@ -794,12 +794,12 @@ impl<'a> Parser<'a> {
                 return Ok(result.into_boxed_slice());
             }
 
-            let (_span, expr) = self.parse_expr()?;
+            let (span, expr) = self.parse_expr()?;
             let prefixed = Prefixed {
                 prefix,
                 inner: expr,
             };
-            result.push(prefixed);
+            result.push((span, prefixed));
 
             self.skip_non_code()?;
             match self.peek() {

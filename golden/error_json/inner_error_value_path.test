@@ -33,4 +33,4 @@ at key "properties"
 at index 2
 at key "widgets"
 at key "top_level"
-Error: Functions cannot be exported as json.
+Error: Methods cannot be exported as json.

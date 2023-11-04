@@ -1,0 +1,8 @@
+std.read_file_utf8("a", "b")
+
+# output:
+stdin:1:25
+  ╷
+1 │ std.read_file_utf8("a", "b")
+  ╵                         ^~~
+Error: Unexpected argument. 'std.read_file_utf8' takes 1 argument, but got 2.

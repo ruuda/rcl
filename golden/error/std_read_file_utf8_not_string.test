@@ -1,0 +1,8 @@
+std.read_file_utf8(false)
+
+# output:
+stdin:1:20
+  ╷
+1 │ std.read_file_utf8(false)
+  ╵                    ^~~~~
+Error: Expected a String here, but got a different type.

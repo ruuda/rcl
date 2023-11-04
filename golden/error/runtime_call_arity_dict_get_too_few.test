@@ -1,0 +1,8 @@
+{}.get("key")
+
+# output:
+stdin:1:13
+  ╷
+1 │ {}.get("key")
+  ╵             ^
+Error: Missing argument 'default'. 'Dict.get' takes 2 arguments, but got 1.

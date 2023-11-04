@@ -88,6 +88,9 @@ pub struct Prefixed<T> {
     pub inner: T,
 }
 
+/// A prefixed expression, and the span of the inner expression.
+pub type SpanPrefixedExpr = (Span, Prefixed<Expr>);
+
 /// A part of a string literal or format string.
 #[derive(Debug)]
 pub enum StringPart {
@@ -223,7 +226,7 @@ pub enum Expr {
         close: Span,
         function_span: Span,
         function: Box<Expr>,
-        args: Box<[Prefixed<Expr>]>,
+        args: Box<[SpanPrefixedExpr]>,
     },
 
     /// A unary operator.

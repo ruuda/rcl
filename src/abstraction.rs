@@ -227,17 +227,19 @@ impl<'a> Abstractor<'a> {
 
             CExpr::Call {
                 open,
+                close,
                 function,
                 function_span,
                 args,
                 ..
             } => AExpr::Call {
                 open: *open,
+                close: *close,
                 function_span: *function_span,
                 function: Box::new(self.expr(function)?),
                 args: args
                     .iter()
-                    .map(|a| self.expr(&a.inner))
+                    .map(|(span, a)| Ok((*span, self.expr(&a.inner)?)))
                     .collect::<Result<Vec<_>>>()?,
             },
 

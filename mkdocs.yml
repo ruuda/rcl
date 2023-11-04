@@ -25,7 +25,13 @@ nav:
       - "Null": "null.md"
       - "Imports": "imports.md"
       - "Glossary": "glossary.md"
-  - "Reference":
+  - "Language reference":
+      - "Standard library": "stdlib.md"
+      - "Dict": "type_dict.md"
+      - "List": "type_list.md"
+      - "Set": "type_set.md"
+      - "String": "type_string.md"
+  - "Command reference":
       - "rcl": "rcl.md"
       - "rcl evaluate": "rcl_evaluate.md"
       - "rcl format": "rcl_format.md"

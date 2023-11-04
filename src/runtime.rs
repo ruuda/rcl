@@ -11,39 +11,101 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::Ident;
-use crate::error::Result;
+use crate::error::{IntoError, Result};
+use crate::eval::Evaluator;
+use crate::pprint::{concat, Doc};
 use crate::source::Span;
 
-pub type BuiltinFnBox = Box<dyn Fn(Span, &[Rc<Value>]) -> Result<Rc<Value>>>;
+/// The arguments to a function call at runtime.
+pub struct FunctionCall<'a> {
+    /// The opening paren for the call.
+    pub call_open: Span,
+
+    /// The closing paren for the call.
+    pub call_close: Span,
+
+    /// The arguments and their spans in the source code.
+    pub args: &'a [(Span, Rc<Value>)],
+}
+
+impl<'a> FunctionCall<'a> {
+    /// Return an error if the number of arguments is unexpected.
+    pub fn check_arity(&self, name: &'static str, expected_args: &[&'static str]) -> Result<()> {
+        if self.args.len() == expected_args.len() {
+            return Ok(());
+        }
+
+        if self.args.len() < expected_args.len() {
+            let missing_arg = &expected_args[self.args.len()];
+            let msg = concat! {
+                "Missing argument '"
+                Doc::highlight(missing_arg)
+                "'. '"
+                Doc::highlight(name)
+                "' takes "
+                match expected_args.len() {
+                    1 => "1 argument".to_string(),
+                    n => format!("{n} arguments"),
+                }
+                ", but got "
+                self.args.len().to_string()
+                "."
+            };
+            self.call_close.error(msg).err()
+        } else {
+            let excess_arg = &self.args[expected_args.len()];
+            let msg = concat! {
+                "Unexpected argument. '"
+                Doc::highlight(name)
+                "' takes "
+                match expected_args.len() {
+                    1 => "1 argument".to_string(),
+                    n => format!("{n} arguments"),
+                }
+                ", but got "
+                self.args.len().to_string()
+                "."
+            };
+            excess_arg.0.error(msg).err()
+        }
+    }
+}
+
+/// The arguments to a method call at runtime.
+pub struct MethodCall<'a> {
+    /// The source code span of the receiver of the method call.
+    pub receiver_span: Span,
+
+    /// The receiver of the call.
+    pub receiver: &'a Value,
+
+    /// Arguments to the call.
+    pub call: FunctionCall<'a>,
+}
 
 /// A built-in function.
-pub struct Builtin {
+#[derive(Eq, Ord, PartialEq, PartialOrd)]
+pub struct BuiltinFunction {
     pub name: &'static str,
-    pub f: BuiltinFnBox,
+    pub f: for<'a> fn(&'a mut Evaluator, FunctionCall<'a>) -> Result<Rc<Value>>,
 }
 
-impl std::fmt::Debug for Builtin {
+/// A built-in method.
+#[derive(Eq, Ord, PartialEq, PartialOrd)]
+pub struct BuiltinMethod {
+    pub name: &'static str,
+    pub f: for<'a> fn(&'a mut Evaluator, MethodCall<'a>) -> Result<Rc<Value>>,
+}
+
+impl std::fmt::Debug for BuiltinFunction {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.name)
+        write!(f, "{}@{:p}", self.name, self.f)
     }
 }
 
-impl PartialEq for Builtin {
-    fn eq(&self, other: &Self) -> bool {
-        self.name.eq(other.name)
-    }
-}
-
-impl PartialOrd for Builtin {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.name.partial_cmp(other.name)
-    }
-}
-
-impl Eq for Builtin {}
-impl Ord for Builtin {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.name.cmp(other.name)
+impl std::fmt::Debug for BuiltinMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}@{:p}", self.name, self.f)
     }
 }
 
@@ -67,7 +129,54 @@ pub enum Value {
     // TODO: Should preserve insertion order.
     Dict(BTreeMap<Rc<Value>, Rc<Value>>),
 
-    Builtin(Builtin),
+    BuiltinFunction(BuiltinFunction),
+
+    BuiltinMethod(BuiltinMethod, Span, Rc<Value>),
+}
+
+impl Value {
+    /// Extract the dict if it is one, panic otherwise.
+    #[inline]
+    pub fn expect_dict(&self) -> &BTreeMap<Rc<Value>, Rc<Value>> {
+        match self {
+            Value::Dict(inner) => inner,
+            other => panic!("Expected Dict but got {other:?}."),
+        }
+    }
+
+    /// Extract the list if it is one, panic otherwise.
+    #[inline]
+    pub fn expect_list(&self) -> &[Rc<Value>] {
+        match self {
+            Value::List(inner) => inner.as_ref(),
+            other => panic!("Expected List but got {other:?}."),
+        }
+    }
+
+    /// Extract the list if it is one, panic otherwise.
+    #[inline]
+    pub fn expect_set(&self) -> &BTreeSet<Rc<Value>> {
+        match self {
+            Value::Set(inner) => inner,
+            other => panic!("Expected Set but got {other:?}."),
+        }
+    }
+
+    /// Extract the string if it is one, panic otherwise.
+    #[inline]
+    pub fn expect_string(&self) -> &str {
+        match self {
+            Value::String(inner) => inner.as_ref(),
+            other => panic!("Expected String but got {other:?}."),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for Value {
+    #[inline]
+    fn from(value: &'a str) -> Self {
+        Value::String(value.into())
+    }
 }
 
 /// An environment binds names to values.
@@ -132,3 +241,31 @@ impl Default for Env {
         Self::new()
     }
 }
+
+macro_rules! builtin_function {
+    (
+        $rcl_name:expr,
+        const $rust_const:ident,
+        $rust_name:ident
+    ) => {
+        const $rust_const: crate::runtime::BuiltinFunction = crate::runtime::BuiltinFunction {
+            name: $rcl_name,
+            f: $rust_name,
+        };
+    };
+}
+pub(crate) use builtin_function;
+
+macro_rules! builtin_method {
+    (
+        $rcl_name:expr,
+        const $rust_const:ident,
+        $rust_name:ident
+    ) => {
+        const $rust_const: crate::runtime::BuiltinMethod = crate::runtime::BuiltinMethod {
+            name: $rcl_name,
+            f: $rust_name,
+        };
+    };
+}
+pub(crate) use builtin_method;

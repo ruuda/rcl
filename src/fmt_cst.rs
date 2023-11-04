@@ -351,7 +351,7 @@ impl<'a> Formatter<'a> {
                         Doc::SoftBreak
                         indent! {
                             Doc::join(
-                                args.iter().map(|arg| self.prefixed_expr(arg)),
+                                args.iter().map(|(_span, arg)| self.prefixed_expr(arg)),
                                 concat!{ "," Doc::Sep },
                             )
                             Doc::tall(",")

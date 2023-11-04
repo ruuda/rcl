@@ -30,5 +30,6 @@ pub mod parser;
 pub mod pprint;
 pub mod runtime;
 pub mod source;
+pub mod stdlib;
 pub mod string;
 pub mod tracer;
