@@ -4,7 +4,7 @@ The `Dict` type has the following methods.
 
 ## contains
 
-    Dict.contains :: Dict[K, V] -> K -> Bool
+    Dict.contains: (self: Dict[K, V], key: K) -> Bool
 
 Return whether the dict contains the given key. For example:
 
@@ -15,7 +15,7 @@ Return whether the dict contains the given key. For example:
 
 ## get
 
-    Dict.get :: Dict[K, V] -> K -> V -> V
+    Dict.get: (self: Dict[K, V], key: K, default: V) -> V
 
 If the dict contains the given key, return the associated value. If not, return
 the default value. For example:
@@ -28,7 +28,7 @@ let d = { a = 1, b = 2 };
 
 ## len
 
-    Dict.len :: Dict[K, V] -> Int
+    Dict.len: (self: Dict[K, V]) -> Int
 
 Return the size of the dict. For example:
 

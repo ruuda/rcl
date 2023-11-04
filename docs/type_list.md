@@ -4,7 +4,7 @@ The `List` type has the following methods.
 
 ## contains
 
-    List.contains :: List[T] -> T -> Bool
+    List.contains: (self: List[T], element: T) -> Bool
 
 Return whether the list contains a given element. For example:
 
@@ -15,7 +15,7 @@ Return whether the list contains a given element. For example:
 
 ## len
 
-    List.len :: List[T] -> Int
+    List.len: (self: List[T]) -> Int
 
 Return the number of elements in the list. For example:
 

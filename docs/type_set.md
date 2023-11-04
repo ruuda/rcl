@@ -4,7 +4,7 @@ The `Set` type has the following methods.
 
 ## contains
 
-    Set.contains :: Set[T] -> T -> Bool
+    Set.contains: (self: Set[T], element: T) -> Bool
 
 Return whether the set contains a given element. For example:
 
@@ -15,7 +15,7 @@ Return whether the set contains a given element. For example:
 
 ## len
 
-    Set.len :: Set[T] -> Int
+    Set.len: (self: Set[T]) -> Int
 
 Return the number of elements in the set. For example:
 
