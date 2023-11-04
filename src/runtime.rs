@@ -87,7 +87,6 @@ pub struct MethodCall<'a> {
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct BuiltinFunction {
     pub name: &'static str,
-    #[allow(clippy::type_complexity)]
     pub f: for<'a> fn(&'a mut Evaluator, FunctionCall<'a>) -> Result<Rc<Value>>,
 }
 
@@ -95,7 +94,6 @@ pub struct BuiltinFunction {
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct BuiltinMethod {
     pub name: &'static str,
-    #[allow(clippy::type_complexity)]
     pub f: for<'a> fn(&'a mut Evaluator, MethodCall<'a>) -> Result<Rc<Value>>,
 }
 
