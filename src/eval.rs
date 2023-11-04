@@ -94,7 +94,7 @@ impl<'a> Evaluator<'a> {
     }
 
     fn eval_expr(&mut self, env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
-        env.push("std".into(), crate::std::initialize());
+        env.push("std".into(), crate::stdlib::initialize());
 
         match expr {
             Expr::Import {
