@@ -11,24 +11,74 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::Ident;
-use crate::error::Result;
+use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
+use crate::pprint::{concat, Doc};
 use crate::source::Span;
 
 /// The arguments to a function call at runtime.
 pub struct FunctionCall<'a> {
-    /// The span of the opening paren for the call.
-    pub call_span: Span,
+    /// The opening paren for the call.
+    pub call_open: Span,
+
+    /// The closing paren for the call.
+    pub call_close: Span,
+
     /// The arguments and their spans in the source code.
     pub args: &'a [(Span, Rc<Value>)],
+}
+
+impl<'a> FunctionCall<'a> {
+    /// Return an error if the number of arguments is unexpected.
+    pub fn check_arity(&self, name: &'static str, expected_args: &[&'static str]) -> Result<()> {
+        if self.args.len() == expected_args.len() {
+            return Ok(());
+        }
+
+        if self.args.len() < expected_args.len() {
+            let missing_arg = &expected_args[self.args.len()];
+            let msg = concat! {
+                "Missing argument '"
+                Doc::highlight(missing_arg)
+                "'. '"
+                Doc::highlight(name)
+                "' takes "
+                match expected_args.len() {
+                    1 => "1 argument".to_string(),
+                    n => format!("{n} arguments"),
+                }
+                ", but got "
+                self.args.len().to_string()
+                "."
+            };
+            self.call_close.error(msg).err()
+        } else {
+            let excess_arg = &self.args[expected_args.len()];
+            let msg = concat! {
+                "Unexpected argument. '"
+                Doc::highlight(name)
+                "' takes "
+                match expected_args.len() {
+                    1 => "1 argument".to_string(),
+                    n => format!("{n} arguments"),
+                }
+                ", but got "
+                self.args.len().to_string()
+                "."
+            };
+            excess_arg.0.error(msg).err()
+        }
+    }
 }
 
 /// The arguments to a method call at runtime.
 pub struct MethodCall<'a> {
     /// The source code span of the receiver of the method call.
     pub receiver_span: Span,
+
     /// The receiver of the call.
     pub receiver: &'a Value,
+
     /// Arguments to the call.
     pub call: FunctionCall<'a>,
 }

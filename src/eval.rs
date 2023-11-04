@@ -253,6 +253,7 @@ impl<'a> Evaluator<'a> {
 
             Expr::Call {
                 open,
+                close,
                 function_span,
                 function: fun_expr,
                 args: args_exprs,
@@ -266,7 +267,8 @@ impl<'a> Evaluator<'a> {
                     .collect::<Result<Vec<_>>>()?;
 
                 let call = FunctionCall {
-                    call_span: *open,
+                    call_open: *open,
+                    call_close: *close,
                     args: &args[..],
                 };
 
@@ -659,35 +661,35 @@ impl SeqOut {
 
 builtin_method!("Dict.len", const DICT_LEN, builtin_dict_len);
 fn builtin_dict_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    // TODO: Perform type check.
+    call.call.check_arity("Dict.len", &[])?;
     let dict = call.receiver.as_dict();
     Ok(Rc::new(Value::Int(dict.len() as _)))
 }
 
 builtin_method!("List.len", const LIST_LEN, builtin_list_len);
 fn builtin_list_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    // TODO: Perform type check.
+    call.call.check_arity("List.len", &[])?;
     let list = call.receiver.as_list();
     Ok(Rc::new(Value::Int(list.len() as _)))
 }
 
 builtin_method!("Set.len", const SET_LEN, builtin_set_len);
 fn builtin_set_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    // TODO: Perform type check.
+    call.call.check_arity("Set.len", &[])?;
     let set = call.receiver.as_set();
     Ok(Rc::new(Value::Int(set.len() as _)))
 }
 
 builtin_method!("String.len", const STRING_LEN, builtin_string_len);
 fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    // TODO: Perform type check.
+    call.call.check_arity("String.len", &[])?;
     let string = call.receiver.as_string();
     Ok(Rc::new(Value::Int(string.len() as _)))
 }
 
 builtin_method!("Dict.contains", const DICT_CONTAINS, builtin_dict_contains);
 fn builtin_dict_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    // TODO: Perform type check.
+    call.call.check_arity("Dict.contains", &["key"])?;
     let dict = call.receiver.as_dict();
     let needle = &call.call.args[0].1;
     Ok(Rc::new(Value::Bool(dict.contains_key(needle))))
@@ -695,7 +697,7 @@ fn builtin_dict_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<V
 
 builtin_method!("List.contains", const LIST_CONTAINS, builtin_list_contains);
 fn builtin_list_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    // TODO: Perform type check.
+    call.call.check_arity("List.contains", &["element"])?;
     let list = call.receiver.as_list();
     let needle = &call.call.args[0].1;
     Ok(Rc::new(Value::Bool(list.contains(needle))))
@@ -703,15 +705,15 @@ fn builtin_list_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<V
 
 builtin_method!("Set.contains", const SET_CONTAINS, builtin_set_contains);
 fn builtin_set_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    // TODO: Perform type check.
-    let set = call.receiver.as_list();
+    call.call.check_arity("Set.contains", &["element"])?;
+    let set = call.receiver.as_set();
     let needle = &call.call.args[0].1;
     Ok(Rc::new(Value::Bool(set.contains(needle))))
 }
 
 builtin_method!("Dict.get", const DICT_GET, builtin_dict_get);
 fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    // TODO: Perform type check.
+    call.call.check_arity("Dict.get", &["key", "default"])?;
     let dict = call.receiver.as_dict();
     let key = &call.call.args[0].1;
     let default = &call.call.args[1].1;

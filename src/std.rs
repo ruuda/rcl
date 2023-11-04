@@ -10,7 +10,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::error::Result;
+use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
 use crate::runtime::{builtin_function, FunctionCall, Value};
 
@@ -20,9 +20,17 @@ builtin_function!(
     builtin_std_read_file_utf8
 );
 fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Value>> {
-    // TODO: Do typecheck ahead of time so here we can just assume we get
-    // a string.
-    let path = call.args[0].1.as_string();
+    call.check_arity("std.read_file_utf8", &["path"])?;
+    let path = match call.args[0].1.as_ref() {
+        Value::String(s) => s,
+        _not_string => {
+            let span = call.args[0].0;
+            // TODO: Add proper typechecking and a proper type error.
+            return span
+                .error("Expected a String here, but got a different type.")
+                .err();
+        }
+    };
     let from = eval.import_stack.last().map(|ctx| ctx.doc);
     let doc = eval.loader.load_path(path, from)?;
     Ok(Rc::new(eval.loader.get_doc(doc).data.into()))

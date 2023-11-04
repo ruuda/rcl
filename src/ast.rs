@@ -142,6 +142,8 @@ pub enum Expr {
     Call {
         /// The opening parenthesis.
         open: Span,
+        /// The closing parenthesis.
+        close: Span,
         function_span: Span,
         function: Box<Expr>,
         args: Vec<(Span, Expr)>,

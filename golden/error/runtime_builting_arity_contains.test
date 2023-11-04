@@ -1,10 +1,8 @@
 {"k": "v"}.contains("k", "unexpected argument")
 
 # output:
-stdin:1:20
+stdin:1:26
   ╷
 1 │ {"k": "v"}.contains("k", "unexpected argument")
-  ╵                    ^
-Error: Invalid arguments for Dict.contains.
-
-Help: Signature of Dict.contains is [arg].
+  ╵                          ^~~~~~~~~~~~~~~~~~~~~
+Error: Unexpected argument. 'Dict.contains' takes 1 argument, but got 2.
