@@ -1,0 +1,8 @@
+std.read_file_utf8()
+
+# output:
+stdin:1:20
+  ╷
+1 │ std.read_file_utf8()
+  ╵                    ^
+Error: Missing argument 'path'. 'std.read_file_utf8' takes 1 argument, but got 0.
