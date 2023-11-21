@@ -170,6 +170,17 @@ let should_log_verbose =
 
 [pony-ops]: https://tutorial.ponylang.io/expressions/ops.html#precedence
 
+## Indexing
+
+Brackets are used to index into collections. At the moment, only lists are
+supported. Indices must be integers and are 0-based.
+
+```rcl
+let xs = ["Deckard", "Rachael", "Tyrell"];
+xs[0]
+// Evaluates to "Deckard".
+```
+
 ## Comprehensions
 
 Inside collection literals (lists, dicts, and sets), aside from single
