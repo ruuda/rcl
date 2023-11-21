@@ -231,6 +231,10 @@ pub enum Expr {
 
     /// Index into a collection with `[]`.
     Index {
+        /// The opening bracket.
+        open: Span,
+        /// The closing bracket.
+        close: Span,
         collection_span: Span,
         collection: Box<Expr>,
         index_span: Span,

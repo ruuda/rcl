@@ -244,11 +244,15 @@ impl<'a> Abstractor<'a> {
             },
 
             CExpr::Index {
+                open,
+                close,
                 collection,
                 collection_span,
                 index,
                 index_span,
             } => AExpr::Index {
+                open: *open,
+                close: *close,
                 collection_span: *collection_span,
                 collection: Box::new(self.expr(collection)?),
                 index_span: *index_span,

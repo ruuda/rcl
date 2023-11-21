@@ -620,10 +620,12 @@ impl<'a> Parser<'a> {
                 }
                 Some(Token::LBracket) => {
                     let result_span = before.until(self.peek_span());
-                    let _open = self.push_bracket()?;
+                    let open = self.push_bracket()?;
                     let (index_span, index) = self.parse_prefixed_expr()?;
-                    let _close = self.pop_bracket()?;
+                    let close = self.pop_bracket()?;
                     result = Expr::Index {
+                        open,
+                        close,
                         collection_span: result_span,
                         collection: Box::new(result),
                         index_span,

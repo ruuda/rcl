@@ -14,7 +14,7 @@ use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::loader::Loader;
-use crate::pprint::Doc;
+use crate::pprint::{concat, Doc};
 use crate::runtime::{builtin_method, Env, FunctionCall, MethodCall, Value};
 use crate::source::{DocId, Span};
 use crate::tracer::Tracer;
@@ -291,6 +291,7 @@ impl<'a> Evaluator<'a> {
             }
 
             Expr::Index {
+                open,
                 collection_span,
                 collection: collection_expr,
                 index: index_expr,
@@ -299,7 +300,7 @@ impl<'a> Evaluator<'a> {
             } => {
                 let collection = self.eval_expr(env, collection_expr)?;
                 let index = self.eval_expr(env, index_expr)?;
-                self.eval_index(collection, *collection_span, index, *index_span)
+                self.eval_index(*open, collection, *collection_span, index, *index_span)
             }
 
             Expr::Lam(_args, _body) => unimplemented!("TODO: Define lambdas."),
@@ -359,12 +360,56 @@ impl<'a> Evaluator<'a> {
 
     fn eval_index(
         &mut self,
-        _collection: Rc<Value>,
-        _collection_span: Span,
-        _index: Rc<Value>,
-        _index_span: Span,
+        open_span: Span,
+        collection: Rc<Value>,
+        collection_span: Span,
+        index: Rc<Value>,
+        index_span: Span,
     ) -> Result<Rc<Value>> {
-        unimplemented!("TODO: Implement indexing.");
+        let xs = match collection.as_ref() {
+            Value::List(xs) => xs,
+            // TODO: Implement indexing into other collections.
+            Value::String(..) => {
+                return open_span
+                    .error("Indexing into a string is not yet supported.")
+                    .with_note(collection_span, "This is a string.")
+                    .err();
+            }
+            Value::Dict(..) => {
+                return open_span
+                    .error("Indexing into a dict is not yet supported.")
+                    .with_note(collection_span, "This is a dict.")
+                    .err();
+            }
+            _ => {
+                // TODO: Include the value itself in the error message.
+                return open_span
+                    .error("Indexing is not supported here.")
+                    .with_note(collection_span, "This value is not a list.")
+                    .err();
+            }
+        };
+        let i_signed = match index.as_ref() {
+            Value::Int(i) => *i,
+            _ => return index_span.error("Index must be an integer.").err(),
+        };
+
+        let i = match i_signed {
+            _ if i_signed >= 0 && (i_signed as usize) < xs.len() => i_signed as usize,
+            _ if i_signed > -(xs.len() as i64) && i_signed < 0 => xs.len() - (-i_signed as usize),
+            _ => {
+                let error = concat! {
+                    "Index "
+                    i_signed.to_string()
+                    " is out of bounds for list of length "
+                    xs.len().to_string()
+                    "."
+                };
+                return index_span.error(error).err();
+            }
+        };
+
+        Ok(xs[i].clone())
     }
 
     fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {
