@@ -52,6 +52,7 @@ expr_binop: expr_not_op | expr_not_op BINOP expr_binop;
 expr_not_op
   : expr_term
   | expr_not_op '(' call_args ')'
+  | expr_not_op '[' expr ']'
   | expr_not_op '.' IDENT
   ;
 

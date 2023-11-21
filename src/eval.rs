@@ -290,6 +290,18 @@ impl<'a> Evaluator<'a> {
                 }
             }
 
+            Expr::Index {
+                collection_span,
+                collection: collection_expr,
+                index: index_expr,
+                index_span,
+                ..
+            } => {
+                let collection = self.eval_expr(env, collection_expr)?;
+                let index = self.eval_expr(env, index_expr)?;
+                self.eval_index(collection, *collection_span, index, *index_span)
+            }
+
             Expr::Lam(_args, _body) => unimplemented!("TODO: Define lambdas."),
 
             Expr::UnOp {
@@ -343,6 +355,16 @@ impl<'a> Evaluator<'a> {
         }
 
         Ok(Rc::new(Value::String(result.into())))
+    }
+
+    fn eval_index(
+        &mut self,
+        _collection: Rc<Value>,
+        _collection_span: Span,
+        _index: Rc<Value>,
+        _index_span: Span,
+    ) -> Result<Rc<Value>> {
+        unimplemented!("TODO: Implement indexing.");
     }
 
     fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {

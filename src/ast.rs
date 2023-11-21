@@ -149,6 +149,14 @@ pub enum Expr {
         args: Vec<(Span, Expr)>,
     },
 
+    /// Index into a collection as `collection[index]`.
+    Index {
+        collection_span: Span,
+        collection: Box<Expr>,
+        index_span: Span,
+        index: Box<Expr>,
+    },
+
     /// Apply a unary operator.
     UnOp {
         op: UnOp,
