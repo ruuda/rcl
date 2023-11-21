@@ -1,0 +1,9 @@
+let xs = [0, 1, 2];
+xs["invalid"]
+
+# output:
+stdin:2:4
+  ╷
+2 │ xs["invalid"]
+  ╵    ^~~~~~~~~
+Error: Index must be an integer.

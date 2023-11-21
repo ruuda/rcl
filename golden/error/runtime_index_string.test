@@ -1,0 +1,14 @@
+"not supported yet"[0]
+
+# output:
+stdin:1:20
+  ╷
+1 │ "not supported yet"[0]
+  ╵                    ^
+Error: Indexing into a string is not yet supported.
+
+stdin:1:1
+  ╷
+1 │ "not supported yet"[0]
+  ╵ ^~~~~~~~~~~~~~~~~~~
+Note: This is a string.

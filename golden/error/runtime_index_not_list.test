@@ -1,0 +1,14 @@
+true[0]
+
+# output:
+stdin:1:5
+  ╷
+1 │ true[0]
+  ╵     ^
+Error: Indexing is not supported here.
+
+stdin:1:1
+  ╷
+1 │ true[0]
+  ╵ ^~~~
+Note: This value is not a list.

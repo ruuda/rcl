@@ -1,0 +1,4 @@
+let xs = ["a", "b", "c"]; xs[0]
+
+# output:
+"a"

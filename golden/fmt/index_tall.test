@@ -1,0 +1,17 @@
+[
+  xs[// A comment forces tall mode in indexing.
+  1
+  ], // But usually the brackets are tight.
+  xs[2],
+]
+
+
+# output:
+[
+  xs[
+    // A comment forces tall mode in indexing.
+    1
+  ],
+  // But usually the brackets are tight.
+  xs[2],
+]
