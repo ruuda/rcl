@@ -381,11 +381,15 @@ impl<'a> Evaluator<'a> {
                     .with_note(collection_span, "This is a dict.")
                     .err();
             }
-            _ => {
-                // TODO: Include the value itself in the error message.
+            not_list => {
+                let note = concat! {
+                    "Expected a list, but found: "
+                    format_rcl(not_list).into_owned()
+                    "."
+                };
                 return open_span
                     .error("Indexing is not supported here.")
-                    .with_note(collection_span, "This value is not a list.")
+                    .with_note(collection_span, note)
                     .err();
             }
         };

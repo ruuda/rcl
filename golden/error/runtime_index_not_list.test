@@ -11,4 +11,4 @@ stdin:1:1
   ╷
 1 │ true[0]
   ╵ ^~~~
-Note: This value is not a list.
+Note: Expected a list, but found: true.
