@@ -243,6 +243,22 @@ impl<'a> Abstractor<'a> {
                     .collect::<Result<Vec<_>>>()?,
             },
 
+            CExpr::Index {
+                open,
+                close,
+                collection,
+                collection_span,
+                index,
+                index_span,
+            } => AExpr::Index {
+                open: *open,
+                close: *close,
+                collection_span: *collection_span,
+                collection: Box::new(self.expr(collection)?),
+                index_span: *index_span,
+                index: Box::new(self.expr(&index.inner)?),
+            },
+
             CExpr::UnOp { op, op_span, body } => AExpr::UnOp {
                 op: *op,
                 op_span: *op_span,

@@ -362,6 +362,21 @@ impl<'a> Formatter<'a> {
                 }
             }
 
+            Expr::Index {
+                collection, index, ..
+            } => {
+                concat! {
+                    self.expr(collection)
+                    group! {
+                        "["
+                        Doc::SoftBreak
+                        indent! { self.prefixed_expr(index) }
+                        Doc::SoftBreak
+                        "]"
+                    }
+                }
+            }
+
             Expr::UnOp { op_span, body, .. } => {
                 concat! {
                     self.span(*op_span)

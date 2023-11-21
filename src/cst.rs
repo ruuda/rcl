@@ -229,6 +229,18 @@ pub enum Expr {
         args: Box<[SpanPrefixedExpr]>,
     },
 
+    /// Index into a collection with `[]`.
+    Index {
+        /// The opening bracket.
+        open: Span,
+        /// The closing bracket.
+        close: Span,
+        collection_span: Span,
+        collection: Box<Expr>,
+        index_span: Span,
+        index: Box<Prefixed<Expr>>,
+    },
+
     /// A unary operator.
     UnOp {
         op: UnOp,

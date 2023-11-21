@@ -1,0 +1,9 @@
+let xs = [0, 1, 2];
+xs[3]
+
+# output:
+stdin:2:4
+  ╷
+2 │ xs[3]
+  ╵    ^
+Error: Index 3 is out of bounds for list of length 3.
