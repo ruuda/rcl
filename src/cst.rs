@@ -233,7 +233,8 @@ pub enum Expr {
     Index {
         collection_span: Span,
         collection: Box<Expr>,
-        index: Box<SpanPrefixedExpr>,
+        index_span: Span,
+        index: Box<Prefixed<Expr>>,
     },
 
     /// A unary operator.

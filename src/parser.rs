@@ -618,6 +618,18 @@ impl<'a> Parser<'a> {
                         function: Box::new(result),
                     };
                 }
+                Some(Token::LBracket) => {
+                    let result_span = before.until(self.peek_span());
+                    let _open = self.push_bracket()?;
+                    let (index_span, index) = self.parse_prefixed_expr()?;
+                    let _close = self.pop_bracket()?;
+                    result = Expr::Index {
+                        collection_span: result_span,
+                        collection: Box::new(result),
+                        index_span,
+                        index: Box::new(index),
+                    };
+                }
                 Some(Token::Dot) => {
                     self.consume();
                     self.skip_non_code()?;

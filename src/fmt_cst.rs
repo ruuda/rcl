@@ -370,7 +370,7 @@ impl<'a> Formatter<'a> {
                     group! {
                         "["
                         Doc::SoftBreak
-                        indent! { self.prefixed_expr(&index.as_ref().1) }
+                        indent! { self.prefixed_expr(index) }
                         Doc::SoftBreak
                         "]"
                     }

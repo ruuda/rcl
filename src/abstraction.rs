@@ -247,11 +247,12 @@ impl<'a> Abstractor<'a> {
                 collection,
                 collection_span,
                 index,
+                index_span,
             } => AExpr::Index {
                 collection_span: *collection_span,
                 collection: Box::new(self.expr(collection)?),
-                index_span: index.as_ref().0,
-                index: Box::new(self.expr(&index.as_ref().1.inner)?),
+                index_span: *index_span,
+                index: Box::new(self.expr(&index.inner)?),
             },
 
             CExpr::UnOp { op, op_span, body } => AExpr::UnOp {
