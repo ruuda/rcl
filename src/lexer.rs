@@ -191,8 +191,14 @@ pub enum Token {
     /// `,`
     Comma,
 
+    /// `-`
+    Minus,
+
     /// `.`
     Dot,
+
+    /// `/`
+    Slash,
 
     /// `:`
     Colon,
@@ -665,7 +671,9 @@ impl<'a> Lexer<'a> {
             b'*' => Token::Star,
             b'+' => Token::Plus,
             b',' => Token::Comma,
+            b'-' => Token::Minus,
             b'.' => Token::Dot,
+            b'/' => Token::Slash,
             b':' => Token::Colon,
             b';' => Token::Semicolon,
             b'|' => Token::Pipe,

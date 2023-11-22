@@ -5,4 +5,4 @@ stdin:1:23
   ╷
 1 │ 0x7fff_ffff_ffff_ffff * 2
   ╵                       ^
-Error: Multiplication would overflow.
+Error: Multiplication 9223372036854775807 * 2 would overflow.

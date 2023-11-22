@@ -28,7 +28,8 @@ pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<SpanPrefixedE
 
 fn to_unop(token: Token) -> Option<UnOp> {
     match token {
-        Token::KwNot => Some(UnOp::Neg),
+        Token::KwNot => Some(UnOp::Not),
+        Token::Minus => Some(UnOp::Neg),
         _ => None,
     }
 }
@@ -39,7 +40,9 @@ fn to_binop(token: Token) -> Option<BinOp> {
         Token::KwOr => Some(BinOp::Or),
         Token::Pipe => Some(BinOp::Union),
         Token::Plus => Some(BinOp::Add),
+        Token::Minus => Some(BinOp::Sub),
         Token::Star => Some(BinOp::Mul),
+        Token::Slash => Some(BinOp::Div),
         Token::Lt => Some(BinOp::Lt),
         Token::Gt => Some(BinOp::Gt),
         Token::LtEq => Some(BinOp::LtEq),

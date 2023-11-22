@@ -5,4 +5,4 @@ stdin:1:23
   ╷
 1 │ 0x7fff_ffff_ffff_ffff + 1
   ╵                       ^
-Error: Addition would overflow.
+Error: Addition 9223372036854775807 + 1 would overflow.

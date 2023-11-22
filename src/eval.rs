@@ -418,7 +418,16 @@ impl<'a> Evaluator<'a> {
 
     fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {
         match (op, v.as_ref()) {
-            (UnOp::Neg, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
+            (UnOp::Not, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
+            (UnOp::Neg, Value::Int(x)) => match x.checked_neg() {
+                Some(nx) => Ok(Rc::new(Value::Int(nx))),
+                None => {
+                    let err = concat! {
+                        "Negation of " x.to_string() " would overflow."
+                    };
+                    op_span.error(err).err()
+                }
+            },
             (_op, _val) => {
                 // TODO: Add a proper type error, report the type of the value.
                 Err(op_span
@@ -457,18 +466,55 @@ impl<'a> Evaluator<'a> {
             // running a program to read its input, that would be questionable to do.
             (BinOp::And, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x && *y))),
             (BinOp::Or, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x || *y))),
-            (BinOp::Add, Value::Int(x), Value::Int(y)) => {
-                match x.checked_add(*y) {
-                    Some(z) => Ok(Rc::new(Value::Int(z))),
-                    // TODO: Also include the values themselves through pretty-printer.
-                    None => Err(op_span.error("Addition would overflow.").into()),
+            (BinOp::Add, Value::Int(x), Value::Int(y)) => match x.checked_add(*y) {
+                Some(z) => Ok(Rc::new(Value::Int(z))),
+                None => {
+                    let err = concat! {
+                        "Addition " x.to_string() " + " y.to_string() " would overflow."
+                    };
+                    op_span.error(err).err()
                 }
-            }
-            (BinOp::Mul, Value::Int(x), Value::Int(y)) => {
-                match x.checked_mul(*y) {
-                    Some(z) => Ok(Rc::new(Value::Int(z))),
-                    // TODO: Also include the values themselves through pretty-printer.
-                    None => Err(op_span.error("Multiplication would overflow.").into()),
+            },
+            (BinOp::Sub, Value::Int(x), Value::Int(y)) => match x.checked_sub(*y) {
+                Some(z) => Ok(Rc::new(Value::Int(z))),
+                None => {
+                    let err = concat! {
+                        "Subtraction " x.to_string() " - " y.to_string() " would overflow."
+                    };
+                    op_span.error(err).err()
+                }
+            },
+            (BinOp::Mul, Value::Int(x), Value::Int(y)) => match x.checked_mul(*y) {
+                Some(z) => Ok(Rc::new(Value::Int(z))),
+                None => {
+                    let err = concat! {
+                        "Multiplication " x.to_string() " * " y.to_string() " would overflow."
+                    };
+                    op_span.error(err).err()
+                }
+            },
+            (BinOp::Div, Value::Int(x), Value::Int(y)) => {
+                if *y == 0 {
+                    op_span.error("Division by zero.").err()
+                } else {
+                    // For division, the result may not be an integer. In that case,
+                    // probably the right thing to do is to add rational numbers as
+                    // values and make the result a rational. However, I don't want
+                    // to implement all of that right now, so the conservative thing
+                    // to do is to only allow division when it results in an integer.
+                    // If we'd choose integer division now, it would be a subtle
+                    // change of behavior later.
+                    let q = x / y;
+                    if q * y == *x {
+                        Ok(Rc::new(Value::Int(q)))
+                    } else {
+                        let err = concat! {
+                            "Non-integer division: "
+                            x.to_string() " is not a multiple of " y.to_string()
+                            ". Non-integer division is not supported at this time."
+                        };
+                        op_span.error(err).err()
+                    }
                 }
             }
             (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x < *y))),

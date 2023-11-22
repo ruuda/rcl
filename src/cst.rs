@@ -25,6 +25,9 @@ use crate::source::Span;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum UnOp {
     /// Negate a boolean.
+    Not,
+
+    /// Invert a number (additive inverse, i.e. negation).
     Neg,
 }
 
@@ -36,6 +39,12 @@ pub enum BinOp {
 
     /// `*` Multiply two numbers.
     Mul,
+
+    /// `/` Divide two numbers.
+    Div,
+
+    /// `-` Subtract two numbers.
+    Sub,
 
     /// `and`: Boolean AND.
     And,
