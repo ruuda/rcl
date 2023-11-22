@@ -418,7 +418,16 @@ impl<'a> Evaluator<'a> {
 
     fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {
         match (op, v.as_ref()) {
-            (UnOp::Neg, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
+            (UnOp::Not, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
+            (UnOp::Neg, Value::Int(x)) => match x.checked_neg() {
+                Some(nx) => Ok(Rc::new(Value::Int(nx))),
+                None => {
+                    let err = concat! {
+                        "Negation of " x.to_string() " would overflow."
+                    };
+                    op_span.error(err).err()
+                }
+            },
             (_op, _val) => {
                 // TODO: Add a proper type error, report the type of the value.
                 Err(op_span

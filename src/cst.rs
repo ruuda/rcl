@@ -25,6 +25,9 @@ use crate::source::Span;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum UnOp {
     /// Negate a boolean.
+    Not,
+
+    /// Invert a number (additive inverse, i.e. negation).
     Neg,
 }
 

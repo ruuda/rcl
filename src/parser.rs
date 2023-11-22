@@ -28,7 +28,8 @@ pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<SpanPrefixedE
 
 fn to_unop(token: Token) -> Option<UnOp> {
     match token {
-        Token::KwNot => Some(UnOp::Neg),
+        Token::KwNot => Some(UnOp::Not),
+        Token::Minus => Some(UnOp::Neg),
         _ => None,
     }
 }
