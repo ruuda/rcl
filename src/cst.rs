@@ -37,6 +37,9 @@ pub enum BinOp {
     /// `*` Multiply two numbers.
     Mul,
 
+    /// `-` Subtract two numbers.
+    Sub,
+
     /// `and`: Boolean AND.
     And,
 

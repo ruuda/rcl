@@ -39,6 +39,7 @@ fn to_binop(token: Token) -> Option<BinOp> {
         Token::KwOr => Some(BinOp::Or),
         Token::Pipe => Some(BinOp::Union),
         Token::Plus => Some(BinOp::Add),
+        Token::Minus => Some(BinOp::Sub),
         Token::Star => Some(BinOp::Mul),
         Token::Lt => Some(BinOp::Lt),
         Token::Gt => Some(BinOp::Gt),

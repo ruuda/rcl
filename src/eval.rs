@@ -464,6 +464,13 @@ impl<'a> Evaluator<'a> {
                     None => Err(op_span.error("Addition would overflow.").into()),
                 }
             }
+            (BinOp::Sub, Value::Int(x), Value::Int(y)) => {
+                match x.checked_sub(*y) {
+                    Some(z) => Ok(Rc::new(Value::Int(z))),
+                    // TODO: Also include the values themselves through pretty-printer.
+                    None => Err(op_span.error("Addition would overflow.").into()),
+                }
+            }
             (BinOp::Mul, Value::Int(x), Value::Int(y)) => {
                 match x.checked_mul(*y) {
                     Some(z) => Ok(Rc::new(Value::Int(z))),
