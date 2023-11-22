@@ -400,7 +400,7 @@ impl<'a> Evaluator<'a> {
 
         let i = match i_signed {
             _ if i_signed >= 0 && (i_signed as usize) < xs.len() => i_signed as usize,
-            _ if i_signed > -(xs.len() as i64) && i_signed < 0 => xs.len() - (-i_signed as usize),
+            _ if i_signed >= -(xs.len() as i64) && i_signed < 0 => xs.len() - (-i_signed as usize),
             _ => {
                 let error = concat! {
                     "Index "
