@@ -457,27 +457,33 @@ impl<'a> Evaluator<'a> {
             // running a program to read its input, that would be questionable to do.
             (BinOp::And, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x && *y))),
             (BinOp::Or, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x || *y))),
-            (BinOp::Add, Value::Int(x), Value::Int(y)) => {
-                match x.checked_add(*y) {
-                    Some(z) => Ok(Rc::new(Value::Int(z))),
-                    // TODO: Also include the values themselves through pretty-printer.
-                    None => Err(op_span.error("Addition would overflow.").into()),
+            (BinOp::Add, Value::Int(x), Value::Int(y)) => match x.checked_add(*y) {
+                Some(z) => Ok(Rc::new(Value::Int(z))),
+                None => {
+                    let err = concat! {
+                        "Addition " x.to_string() " + " y.to_string() " would overflow."
+                    };
+                    op_span.error(err).err()
                 }
-            }
-            (BinOp::Sub, Value::Int(x), Value::Int(y)) => {
-                match x.checked_sub(*y) {
-                    Some(z) => Ok(Rc::new(Value::Int(z))),
-                    // TODO: Also include the values themselves through pretty-printer.
-                    None => Err(op_span.error("Addition would overflow.").into()),
+            },
+            (BinOp::Sub, Value::Int(x), Value::Int(y)) => match x.checked_sub(*y) {
+                Some(z) => Ok(Rc::new(Value::Int(z))),
+                None => {
+                    let err = concat! {
+                        "Subtraction " x.to_string() " - " y.to_string() " would overflow."
+                    };
+                    op_span.error(err).err()
                 }
-            }
-            (BinOp::Mul, Value::Int(x), Value::Int(y)) => {
-                match x.checked_mul(*y) {
-                    Some(z) => Ok(Rc::new(Value::Int(z))),
-                    // TODO: Also include the values themselves through pretty-printer.
-                    None => Err(op_span.error("Multiplication would overflow.").into()),
+            },
+            (BinOp::Mul, Value::Int(x), Value::Int(y)) => match x.checked_mul(*y) {
+                Some(z) => Ok(Rc::new(Value::Int(z))),
+                None => {
+                    let err = concat! {
+                        "Multiplication " x.to_string() " * " y.to_string() " would overflow."
+                    };
+                    op_span.error(err).err()
                 }
-            }
+            },
             (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x < *y))),
             (BinOp::Gt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x > *y))),
             (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x <= *y))),
