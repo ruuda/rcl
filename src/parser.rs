@@ -41,6 +41,7 @@ fn to_binop(token: Token) -> Option<BinOp> {
         Token::Plus => Some(BinOp::Add),
         Token::Minus => Some(BinOp::Sub),
         Token::Star => Some(BinOp::Mul),
+        Token::Slash => Some(BinOp::Div),
         Token::Lt => Some(BinOp::Lt),
         Token::Gt => Some(BinOp::Gt),
         Token::LtEq => Some(BinOp::LtEq),

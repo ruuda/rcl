@@ -484,6 +484,30 @@ impl<'a> Evaluator<'a> {
                     op_span.error(err).err()
                 }
             },
+            (BinOp::Div, Value::Int(x), Value::Int(y)) => {
+                if *y == 0 {
+                    op_span.error("Division by zero.").err()
+                } else {
+                    // For division, the result may not be an integer. In that case,
+                    // probably the right thing to do is to add rational numbers as
+                    // values and make the result a rational. However, I don't want
+                    // to implement all of that right now, so the conservative thing
+                    // to do is to only allow division when it results in an integer.
+                    // If we'd choose integer division now, it would be a subtle
+                    // change of behavior later.
+                    let q = x / y;
+                    if q * y == *x {
+                        Ok(Rc::new(Value::Int(q)))
+                    } else {
+                        let err = concat! {
+                            "Non-integer division: "
+                            x.to_string() " is not a multiple of " y.to_string()
+                            ". Non-integer division is not supported at this time."
+                        };
+                        op_span.error(err).err()
+                    }
+                }
+            }
             (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x < *y))),
             (BinOp::Gt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x > *y))),
             (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x <= *y))),
