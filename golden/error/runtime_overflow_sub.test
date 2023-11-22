@@ -1,8 +1,8 @@
-0 - 0x7fff_ffff_ffff_ffff - 2
+(-0x7fff_ffff_ffff_ffff) - 2
 
 # output:
-stdin:1:27
+stdin:1:26
   ╷
-1 │ 0 - 0x7fff_ffff_ffff_ffff - 2
-  ╵                           ^
+1 │ (-0x7fff_ffff_ffff_ffff) - 2
+  ╵                          ^
 Error: Subtraction -9223372036854775807 - 2 would overflow.

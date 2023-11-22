@@ -1,0 +1,9 @@
+let x = (-0x7fff_ffff_ffff_ffff) - 1;
+-x
+
+# output:
+stdin:2:1
+  ╷
+2 │ -x
+  ╵ ^
+Error: Negation of -9223372036854775808 would overflow.
