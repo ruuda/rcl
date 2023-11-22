@@ -5,7 +5,8 @@
 Shorthands:
 
     rcl eval
-    rcl e
+    rcl e   (uses default --output=rcl)
+    rcl je  (sets --output=json)
 
 ## Description
 

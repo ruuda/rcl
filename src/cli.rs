@@ -32,6 +32,7 @@ Command shorthands:
   f, fmt       Alias for 'format'.
   h            Alias for 'highlight'.
   jq           Alias for 'query --output=json'.
+  je           Alias for 'eval --output=json'.
   q            Alias for 'query'.
 
 Global options:
@@ -251,6 +252,10 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             }
             Arg::Plain("evaluate") | Arg::Plain("eval") | Arg::Plain("e") if cmd.is_none() => {
                 cmd = Some("evaluate");
+            }
+            Arg::Plain("je") if cmd.is_none() => {
+                cmd = Some("evaluate");
+                eval_opts.format = OutputFormat::Json;
             }
             Arg::Plain("query") | Arg::Plain("q") if cmd.is_none() => {
                 cmd = Some("query");
@@ -473,6 +478,7 @@ mod test {
         assert_eq!(parse(&["rcl", "e", "infile", "--output=json"]), expected);
         assert_eq!(parse(&["rcl", "-ojson", "e", "infile"]), expected);
         assert_eq!(parse(&["rcl", "-orcl", "-ojson", "e", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "je", "infile"]), expected);
 
         // Test --sandbox.
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
