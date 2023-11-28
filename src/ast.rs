@@ -136,7 +136,7 @@ pub enum Expr {
     },
 
     /// Define a function.
-    Lam(Vec<Ident>, Box<Expr>),
+    Lambda { args: Vec<Ident>, body: Box<Expr> },
 
     /// Call a function.
     Call {

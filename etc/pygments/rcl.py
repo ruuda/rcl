@@ -74,7 +74,7 @@ _root_base = [
     # In the Rust lexer the punctuation is split out, and then further
     # into digraphs and monographs. Here we instead split them out by
     # token type.
-    (r"<=|>=|==|!=|<|>|\+|-|\*|/|\|", token.Operator),
+    (r"<=|>=|==|!=|=>|<|>|\+|-|\*|/|\|", token.Operator),
     (r"[)(\]\[=,.:;]", token.Token),
     (r"{", token.Token, "in_brace"),
     (r"#", token.Error),

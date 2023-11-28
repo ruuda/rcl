@@ -343,6 +343,37 @@ impl<'a> Formatter<'a> {
                 }
             }
 
+            Expr::Lambda { args, body } => {
+                let args_doc: Doc = match args.len() {
+                    0 => Doc::str("()"),
+                    1 => concat! {
+                        self.non_code(&args[0].prefix)
+                        self.span(args[0].inner)
+                    },
+                    _ => group! {
+                        "("
+                        Doc::SoftBreak
+                        indent! {
+                            Doc::join(
+                                args.iter().map(|arg| concat! {
+                                    self.non_code(&arg.prefix)
+                                    self.span(arg.inner)
+                                }),
+                                concat!{ "," Doc::Sep },
+                            )
+                            Doc::tall(",")
+                        }
+                        Doc::SoftBreak
+                        ")"
+                    },
+                };
+                concat! {
+                    args_doc
+                    " => "
+                    self.prefixed_expr(body)
+                }
+            }
+
             Expr::Call { function, args, .. } => {
                 concat! {
                     self.expr(function)

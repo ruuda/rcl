@@ -1,0 +1,29 @@
+/// Three candidates for lambda syntax:
+
+// Clean (like Javascript and Scala).
+xs.group_by(x => x.name)
+ys.group_by((k, v) => v)
+
+// With prefix token (like Python and Haskell).
+xs.group_by(fn x => x.name)
+ys.group_by(fn k, v => v)
+
+// With otherwise unused surrounding token (like Rust).
+xs.group_by(|x| x.name)
+ys.group_by(|k, v| v)
+
+// I prefer the first option, but it creates an ambiguity between parenthesized
+// expressions and lambdas that needs lookahead in the parser. That is messy and
+// can lead to weird errors. For example:
+
+let frobnicate = (x, y,,) => x + y;
+
+// If we try to parse a lambda, but fail at the duplicate `,,`, and then
+// backtrack and parse a parenthesized expression, the error would be reported
+// at the first `,` because we don't have tuples. But more natural would be to
+// report it at the `,,`. With lookahead instead of backtracking this can be a
+// bit better, but it still feels messy.
+
+// I may want to add pattern matching in the future, and if function arguments
+// can be patterns, it will be even more messy. Also with type annotations.
+// If there is a prefix token, this is much easier to handle.

@@ -225,6 +225,14 @@ impl<'a> Abstractor<'a> {
                 field_span: *field,
             },
 
+            CExpr::Lambda { args, body } => AExpr::Lambda {
+                args: args
+                    .iter()
+                    .map(|arg| arg.inner.resolve(self.input).into())
+                    .collect(),
+                body: Box::new(self.expr(&body.inner)?),
+            },
+
             CExpr::Call {
                 open,
                 close,

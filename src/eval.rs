@@ -303,7 +303,10 @@ impl<'a> Evaluator<'a> {
                 self.eval_index(*open, collection, *collection_span, index, *index_span)
             }
 
-            Expr::Lam(_args, _body) => unimplemented!("TODO: Define lambdas."),
+            Expr::Lambda {
+                args: _args,
+                body: _body,
+            } => unimplemented!("TODO: Define lambdas."),
 
             Expr::UnOp {
                 op,

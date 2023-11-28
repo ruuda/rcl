@@ -25,6 +25,7 @@ expr
 
 expr_stmt: stmt expr;
 expr_if: "if" expr "then" expr "else" expr;
+expr_import: "import" expr;
 
 // There is no operator precedence, so if there is an operator, its args must
 // not themselves contain operators. One exception is that if the operator is
@@ -39,7 +40,6 @@ expr_op
   | expr_not_op
   ;
 
-expr_import: "import" expr;
 expr_lambda: lambda_args "=>" expr;
 
 lambda_args
