@@ -25,7 +25,6 @@ expr
 
 expr_stmt: stmt expr;
 expr_if: "if" expr "then" expr "else" expr;
-expr_import: "import" expr;
 
 // There is no operator precedence, so if there is an operator, its args must
 // not themselves contain operators. One exception is that if the operator is
@@ -33,10 +32,27 @@ expr_import: "import" expr;
 // to be written as "(a + b) + c". But "a + b * c" does need to be written as
 // "a + (b * c)".
 expr_op
-  : UNOP expr_unop
-  | expr_import
+  : expr_import
+  | expr_lambda
+  | UNOP expr_unop
   | expr_not_op BINOP expr_binop
   | expr_not_op
+  ;
+
+expr_import: "import" expr;
+expr_lambda: lambda_args "=>" expr;
+
+lambda_args
+  : IDENT
+  | '(' lambda_args_inner ')'
+  ;
+
+lambda_args_inner
+  : %empty
+  // TODO: If I allow the ident without the comma, I get a reduce/reduce
+  // conflict? Is that very bad? I don't understand the counterexample.
+  // | IDENT
+  | IDENT ',' lambda_args_inner
   ;
 
 expr_unop: expr_not_op | UNOP expr_unop;
