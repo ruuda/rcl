@@ -344,7 +344,6 @@ impl<'a> Parser<'a> {
                 }
             }
             Some(Token::KwIf) => self.parse_expr_if()?,
-            Some(Token::KwImport) => self.parse_expr_import()?,
             _ => self.parse_expr_op()?,
         };
         self.decrease_depth();
@@ -519,8 +518,11 @@ impl<'a> Parser<'a> {
         }
 
         // If it was not a prefix unary operator, then we certainly have one
-        // not_op, but we may have an operator afterwards.
-        let mut result = self.parse_expr_not_op()?;
+        // import or not_op, but we may have an operator afterwards.
+        let mut result = match self.peek() {
+            Some(Token::KwImport) => self.parse_expr_import()?,
+            _ => self.parse_expr_not_op()?,
+        };
 
         // We might have binary operators following. If we find one, then
         // all the other ones must be of the same type, to avoid unclear
@@ -603,7 +605,9 @@ impl<'a> Parser<'a> {
         // TODO: check for operators before, and report a pretty error
         // to clarify that parens must be used to disambiguate.
         let before = self.peek_span();
+
         let mut result = self.parse_expr_term()?;
+
         // TODO: This span is not necessarily minimal, it may include whitespace.
         loop {
             self.skip_non_code()?;

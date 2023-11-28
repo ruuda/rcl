@@ -1,0 +1,7 @@
+[
+  import "_import.rcl",
+  import "_import.rcl",
+]
+
+# output:
+[{ answer = 42 }, { answer = 42 }]

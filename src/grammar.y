@@ -21,7 +21,6 @@ expr
   : expr_op
   | expr_stmt
   | expr_if
-  | expr_import
   ;
 
 expr_stmt: stmt expr;
@@ -35,6 +34,7 @@ expr_import: "import" expr;
 // "a + (b * c)".
 expr_op
   : UNOP expr_unop
+  | expr_import
   | expr_not_op BINOP expr_binop
   | expr_not_op
   ;
