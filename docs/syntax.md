@@ -57,6 +57,18 @@ The answer to the ultimate question is {2 * 3 * 7}.
 
 See [the chapter on strings](strings.md) for the full details.
 
+## Identifiers
+
+Names of variables, and dict fields that use record syntax, are _identifiers_.
+Identifiers must start with an underscore or <abbr>ASCII</abbr> letter, and can
+furthermore contain <abbr>ASCII</abbr> digits, and `-`, a hyphen.
+
+Allowing the hyphen in identifiers makes some types of configuration dicts
+cleaner to write, but the downside is that it can cause confusion with the `-`
+operator. The expression `a-b` is an identifier, not the binary operator `-`
+applied to `a` and `b`. To subtract `b` from `a`, add spaces around the
+operator: `a - b`.
+
 ## Lists
 
 Lists are surrounded by `[]`. The list separator is `,` and a trailing comma is
@@ -73,7 +85,7 @@ allowed but not required.
 
 Dictionaries, _dicts_ for short, are surrounded by `{}`.  Dicts can be written
 in json form, where the left-hand side is an expression. Then the key and value
-are separated by `:` and the element separator is `,`. A trailing comma is
+are separated by `:`. The element separator is `,`. A trailing comma is
 optional.
 
 ```rcl
@@ -95,8 +107,9 @@ strings precludes serialization to json.
 ```
 
 Alternatively, dicts can be written in record form, where the left-hand side
-is an identifier. Then the key and value are separated by `=`. A trailing comma
-is optional. The following value is identical to the first one above.
+is an [identifier](#identifiers). Then the key and value are separated by `=`.
+A trailing comma is optional. The following value is identical to the first one
+above.
 
 ```rcl
 {
