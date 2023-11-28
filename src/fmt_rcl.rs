@@ -104,6 +104,7 @@ fn value(v: &Value) -> Doc {
         Value::Set(vs) => list("{", "}", vs.iter()),
         Value::Dict(vs) => dict(vs.iter()),
         // TODO: Add a more proper printer for functions/builtins. For now this will do.
+        Value::Lambda(..) => Doc::from("«lambda»").with_markup(Markup::Keyword),
         Value::BuiltinFunction(b) => Doc::from(b.name).with_markup(Markup::Builtin),
         Value::BuiltinMethod(b, _span, _receiver) => Doc::from(b.name).with_markup(Markup::Builtin),
     }

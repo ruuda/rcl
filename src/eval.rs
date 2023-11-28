@@ -15,7 +15,7 @@ use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::loader::Loader;
 use crate::pprint::{concat, Doc};
-use crate::runtime::{builtin_method, Env, FunctionCall, MethodCall, Value};
+use crate::runtime::{builtin_method, Env, FunctionCall, Lambda, MethodCall, Value};
 use crate::source::{DocId, Span};
 use crate::tracer::Tracer;
 
@@ -303,10 +303,15 @@ impl<'a> Evaluator<'a> {
                 self.eval_index(*open, collection, *collection_span, index, *index_span)
             }
 
-            Expr::Lambda {
-                args: _args,
-                body: _body,
-            } => unimplemented!("TODO: Define lambdas."),
+            Expr::Lambda { span, args, body } => {
+                let result = Lambda {
+                    span: *span,
+                    env: env.clone(),
+                    args: args.clone(),
+                    body: Rc::new((**body).clone()),
+                };
+                Ok(Rc::new(Value::Lambda(result)))
+            }
 
             Expr::UnOp {
                 op,

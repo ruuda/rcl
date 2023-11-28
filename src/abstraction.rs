@@ -225,7 +225,8 @@ impl<'a> Abstractor<'a> {
                 field_span: *field,
             },
 
-            CExpr::Lambda { args, body } => AExpr::Lambda {
+            CExpr::Lambda { span, args, body } => AExpr::Lambda {
+                span: *span,
                 args: args
                     .iter()
                     .map(|arg| arg.inner.resolve(self.input).into())

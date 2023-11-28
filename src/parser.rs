@@ -81,15 +81,6 @@ struct Parser<'a> {
     span_stack: Vec<usize>,
 }
 
-/// Parser state, used for backtracking to a particular state.
-struct ParserState {
-    cursor: usize,
-    bracket_stack_depth: usize,
-    comment_anchor: Span,
-    depth: u32,
-    span_stack_depth: usize,
-}
-
 impl<'a> Parser<'a> {
     pub fn new(doc: DocId, input: &'a str, tokens: &'a [(Token, Span)]) -> Parser<'a> {
         Parser {
@@ -102,26 +93,6 @@ impl<'a> Parser<'a> {
             depth: 0,
             span_stack: Vec::new(),
         }
-    }
-
-    /// Save a snapshot of the state to be able to backtrack later.
-    fn save_snapshot(&self) -> ParserState {
-        ParserState {
-            cursor: self.cursor,
-            bracket_stack_depth: self.bracket_stack.len(),
-            comment_anchor: self.comment_anchor,
-            depth: self.depth,
-            span_stack_depth: self.span_stack.len(),
-        }
-    }
-
-    /// Backtrack to a previously saved state.
-    fn backtrack(&mut self, state: ParserState) {
-        self.cursor = state.cursor;
-        self.bracket_stack.truncate(state.bracket_stack_depth);
-        self.comment_anchor = state.comment_anchor;
-        self.depth = state.depth;
-        self.span_stack.truncate(state.span_stack_depth);
     }
 
     /// Return the token under the cursor, if there is one.
@@ -607,10 +578,11 @@ impl<'a> Parser<'a> {
         };
 
         self.skip_non_code()?;
-        self.parse_token(Token::Arrow, "Expected '=>' here.")?;
+        let arrow_span = self.parse_token(Token::Arrow, "Expected '=>' here.")?;
         let (_span, body) = self.parse_prefixed_expr()?;
 
         let result = Expr::Lambda {
+            span: arrow_span,
             args,
             body: Box::new(body),
         };

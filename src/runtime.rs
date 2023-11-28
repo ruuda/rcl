@@ -7,10 +7,11 @@
 
 //! Representations of values and scopes at runtime.
 
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
-use crate::ast::Ident;
+use crate::ast::{Expr, Ident};
 use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
 use crate::pprint::{concat, Doc};
@@ -109,6 +110,49 @@ impl std::fmt::Debug for BuiltinMethod {
     }
 }
 
+#[derive(Debug)]
+pub struct Lambda {
+    /// Source location of the `=>` that introduces this lambda.
+    ///
+    /// This span is used to identify the lambda for comparison and equality,
+    /// so we don't have to inspect its AST.
+    pub span: Span,
+
+    /// Captured environment at the time of the call.
+    ///
+    /// TODO: It might be nicer to capture only the variables that are needed,
+    /// but then we need to inspect the body AST when the lambda is produced.
+    pub env: Env,
+    pub args: Vec<Ident>,
+    pub body: Rc<Expr>,
+}
+
+impl PartialEq for Lambda {
+    fn eq(&self, other: &Lambda) -> bool {
+        // What matters for the identity of the lambda is where in the source
+        // code it was produced. If that is the same, then the args and body are
+        // necessarily the same. But the captured environment could be different,
+        // so we take that into account too.
+        (self.span, &self.env) == (other.span, &other.env)
+    }
+}
+
+impl Eq for Lambda {}
+
+impl PartialOrd for Lambda {
+    fn partial_cmp(&self, other: &Lambda) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Lambda {
+    fn cmp(&self, other: &Lambda) -> Ordering {
+        let lhs = (self.span, &self.env);
+        let rhs = (other.span, &other.env);
+        lhs.cmp(&rhs)
+    }
+}
+
 /// A value.
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Value {
@@ -128,6 +172,8 @@ pub enum Value {
 
     // TODO: Should preserve insertion order.
     Dict(BTreeMap<Rc<Value>, Rc<Value>>),
+
+    Lambda(Lambda),
 
     BuiltinFunction(BuiltinFunction),
 
@@ -180,7 +226,7 @@ impl<'a> From<&'a str> for Value {
 }
 
 /// An environment binds names to values.
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Env {
     bindings: Vec<(Ident, Rc<Value>)>,
 }

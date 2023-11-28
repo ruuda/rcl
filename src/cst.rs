@@ -229,6 +229,8 @@ pub enum Expr {
 
     /// Define a lambda.
     Lambda {
+        /// The source location of the `=>`.
+        span: Span,
         args: Box<[Prefixed<Span>]>,
         body: Box<Prefixed<Expr>>,
     },
