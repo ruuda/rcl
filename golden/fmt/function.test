@@ -1,0 +1,29 @@
+let f =
+ (
+ ) => "short value";
+
+let g = (arg1, arg2,) => [very_long_name_1, very_long_name_2, very_long_name_3, very_long_name_4];
+
+let h = (very_long_name_1, very_long_name_2, very_long_name_3, very_long_name_4, very_long_name_5) => 42;
+
+(arg1) => "should remove parens"
+
+# output:
+let f = () => "short value";
+
+let g = (arg1, arg2) => [
+  very_long_name_1,
+  very_long_name_2,
+  very_long_name_3,
+  very_long_name_4,
+];
+
+let h = (
+  very_long_name_1,
+  very_long_name_2,
+  very_long_name_3,
+  very_long_name_4,
+  very_long_name_5,
+) => 42;
+
+arg1 => "should remove parens"
