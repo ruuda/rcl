@@ -31,7 +31,11 @@ pub struct FunctionCall<'a> {
 
 impl<'a> FunctionCall<'a> {
     /// Return an error if the number of arguments is unexpected.
-    pub fn check_arity(&self, name: &'static str, expected_args: &[&'static str]) -> Result<()> {
+    pub fn check_arity_static(
+        &self,
+        name: &'static str,
+        expected_args: &[&'static str],
+    ) -> Result<()> {
         if self.args.len() == expected_args.len() {
             return Ok(());
         }
@@ -59,6 +63,43 @@ impl<'a> FunctionCall<'a> {
                 "Unexpected argument. '"
                 Doc::highlight(name)
                 "' takes "
+                match expected_args.len() {
+                    1 => "1 argument".to_string(),
+                    n => format!("{n} arguments"),
+                }
+                ", but got "
+                self.args.len().to_string()
+                "."
+            };
+            excess_arg.0.error(msg).err()
+        }
+    }
+
+    /// As `check_arity`, but for user-defined functions (lambdas).
+    pub fn check_arity_dynamic(&self, expected_args: &[Ident]) -> Result<()> {
+        if self.args.len() == expected_args.len() {
+            return Ok(());
+        }
+
+        if self.args.len() < expected_args.len() {
+            let missing_arg = &expected_args[self.args.len()];
+            let msg = concat! {
+                "Missing argument '"
+                Doc::highlight(missing_arg.as_ref()).into_owned()
+                "'. The function takes "
+                match expected_args.len() {
+                    1 => "1 argument".to_string(),
+                    n => format!("{n} arguments"),
+                }
+                ", but got "
+                self.args.len().to_string()
+                "."
+            };
+            self.call_close.error(msg).err()
+        } else {
+            let excess_arg = &self.args[expected_args.len()];
+            let msg = concat! {
+                "Unexpected argument. The function takes "
                 match expected_args.len() {
                     1 => "1 argument".to_string(),
                     n => format!("{n} arguments"),

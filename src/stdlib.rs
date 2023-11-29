@@ -20,7 +20,7 @@ builtin_function!(
     builtin_std_read_file_utf8
 );
 fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Value>> {
-    call.check_arity("std.read_file_utf8", &["path"])?;
+    call.check_arity_static("std.read_file_utf8", &["path"])?;
     let arg_span = call.args[0].0;
     let path = match call.args[0].1.as_ref() {
         Value::String(s) => s,
