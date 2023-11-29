@@ -1,0 +1,23 @@
+// Case 1: Even though we shadow `x` later, the capture is for the earlier
+// definition.
+let x = 42;
+let f = y => x + y;
+let x = 0;
+// Should return 43, not 1.
+let r1 = f(1);
+
+// Case 2: The function arguments shadow any previously defined variables.
+let x = 42;
+let f = x => x + 1;
+// Should return 1, not 43.
+let r2 = f(0);
+
+// Case 3: The captures can be different even for a function at the same source
+// location.
+let fs = [for k in [1, 2, 3]: x => x + k];
+let r3 = [for f in fs: f(10)];
+
+{ r1 = r1, r2 = r2, r3 = r3 }
+
+# output:
+{"r1": 43, "r2": 1, "r3": [11, 12, 13]}

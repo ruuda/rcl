@@ -1,0 +1,10 @@
+let f0 = () => 42;
+let f1a = x => x;
+let f1b = (x) => x;
+let f1c = (x,) => x;
+let f2a = (x, y) => x + y;
+let f2b = (x, y,) => x + y;
+[f0(), f1a(43), f1b(44), f1c(45), f2a(21, 21), f2b(21, 22)]
+
+# output:
+[42, 43, 44, 45, 42, 43]

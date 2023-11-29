@@ -1,0 +1,8 @@
+() => 1
+
+# output:
+stdin:1:1
+  ╷
+1 │ () => 1
+  ╵ ^~~~~~~
+Error: Functions cannot be exported as json.
