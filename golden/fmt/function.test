@@ -54,9 +54,10 @@ let h = (
   very_long_name_5,
 ) => 42;
 
-let doc1 =
+let doc1 = (
   // This goes before arg1.
-  x => 42;
+  x,
+) => 42;
 
 let doc2 = (
   // Argument 1.

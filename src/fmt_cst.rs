@@ -346,12 +346,11 @@ impl<'a> Formatter<'a> {
             Expr::Function { args, body, .. } => {
                 let args_doc: Doc = match args.len() {
                     0 => Doc::str("()"),
-                    1 => group! {
-                        flush_indent! {
-                            self.non_code(&args[0].prefix)
-                            self.span(args[0].inner)
-                        }
-                    },
+                    // Don't put parens around the argument if there is a single
+                    // argument that has no comments on it. If it has comments,
+                    // then we need the parens, because otherwise we might
+                    // produce a syntax error in the output.
+                    1 if args[0].prefix.is_empty() => self.span(args[0].inner),
                     _ => group! {
                         "("
                         Doc::SoftBreak
