@@ -163,7 +163,7 @@ impl<'a> Parser<'a> {
         let end = self.tokens[..self.cursor]
             .iter()
             .rev()
-            .filter(|t| !matches!(t.0, Token::Space | Token::LineComment))
+            .filter(|t| !matches!(t.0, Token::Blank | Token::LineComment))
             .map(|t| t.1.end())
             .next()
             .expect("If we pushed a start, we should find at least that.");
@@ -550,7 +550,7 @@ impl<'a> Parser<'a> {
         for i in offset.. {
             match self.peek_n(i) {
                 Some(Token::LineComment) => continue,
-                Some(Token::Space) => continue,
+                Some(Token::Blank) => continue,
                 Some(Token::Arrow) => return true,
                 _ => return false,
             }
@@ -570,7 +570,7 @@ impl<'a> Parser<'a> {
             }
             Some(Token::LParen) => {
                 self.push_bracket()?;
-                let args = self.parse_lambda_args()?;
+                let args = self.parse_function_args()?;
                 self.pop_bracket()?;
                 args
             }
@@ -880,8 +880,9 @@ impl<'a> Parser<'a> {
             }
         }
     }
-    /// Parse arguments in a lambda definition.
-    fn parse_lambda_args(&mut self) -> Result<Box<[Prefixed<Span>]>> {
+
+    /// Parse arguments in a lambda function definition.
+    fn parse_function_args(&mut self) -> Result<Box<[Prefixed<Span>]>> {
         let mut result = Vec::new();
 
         loop {

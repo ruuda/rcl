@@ -26,7 +26,9 @@ let doc2 = (
   arg2,
 ) => 42;
 
-(arg1) => "should remove parens"
+(arg1)
+
+=> "should remove parens"
 
 # output:
 let f = () => "short value";
