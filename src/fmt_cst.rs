@@ -370,13 +370,7 @@ impl<'a> Formatter<'a> {
                     },
                 };
                 concat! {
-                    args_doc
-                    // TODO: I prefer without this flush indent, but then I will
-                    // have to disallow comments on the body.
-                    group! {
-                        " => "
-                        flush_indent! { self.prefixed_expr(body) }
-                    }
+                    args_doc " => " self.expr(body)
                 }
             }
 

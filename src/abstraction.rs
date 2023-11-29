@@ -231,7 +231,7 @@ impl<'a> Abstractor<'a> {
                     .iter()
                     .map(|arg| arg.inner.resolve(self.input).into())
                     .collect(),
-                body: Box::new(self.expr(&body.inner)?),
+                body: Box::new(self.expr(body)?),
             },
 
             CExpr::Call {

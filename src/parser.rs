@@ -579,7 +579,8 @@ impl<'a> Parser<'a> {
 
         self.skip_non_code()?;
         let arrow_span = self.parse_token(Token::Arrow, "Expected '=>' here.")?;
-        let (_span, body) = self.parse_prefixed_expr()?;
+        self.skip_non_code()?;
+        let (_span, body) = self.parse_expr()?;
 
         let result = Expr::Function {
             span: arrow_span,

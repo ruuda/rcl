@@ -232,7 +232,7 @@ pub enum Expr {
         /// The source location of the `=>`.
         span: Span,
         args: Box<[Prefixed<Span>]>,
-        body: Box<Prefixed<Expr>>,
+        body: Box<Expr>,
     },
 
     /// Call a function.
