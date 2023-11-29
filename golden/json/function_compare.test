@@ -1,0 +1,20 @@
+let f1 = _ => 42;
+let f2 = _ => 42;
+
+// Functions f1 and f2 are syntactically identical, but defined in different
+// places, so they are considered distinct, and f1 orders before f2 because it
+// was defined earlier in the file.
+let r1 = [f1 == f1, f1 == f2];
+
+// Even when functions are defined in the same place, their captures can be
+// different.
+let fs = [for x in [2, 1]: _ => x];
+let r2 = [fs[0] == fs[0], fs[0] == fs[1]];
+
+// Functions can be put in a set.
+let all_fs = {f1, f2, for f in fs: f};
+
+[r1, r2, all_fs.len()]
+
+# output:
+[[true, false], [true, false], 4]
