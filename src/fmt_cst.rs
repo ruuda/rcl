@@ -346,9 +346,11 @@ impl<'a> Formatter<'a> {
             Expr::Function { args, body, .. } => {
                 let args_doc: Doc = match args.len() {
                     0 => Doc::str("()"),
-                    1 => concat! {
-                        self.non_code(&args[0].prefix)
-                        self.span(args[0].inner)
+                    1 => group! {
+                        flush_indent! {
+                            self.non_code(&args[0].prefix)
+                            self.span(args[0].inner)
+                        }
                     },
                     _ => group! {
                         "("
@@ -369,8 +371,12 @@ impl<'a> Formatter<'a> {
                 };
                 concat! {
                     args_doc
-                    " => "
-                    self.prefixed_expr(body)
+                    // TODO: I prefer without this flush indent, but then I will
+                    // have to disallow comments on the body.
+                    group! {
+                        " => "
+                        flush_indent! { self.prefixed_expr(body) }
+                    }
                 }
             }
 

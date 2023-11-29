@@ -540,7 +540,7 @@ impl<'a> Parser<'a> {
                             offset = i + 1;
                             break;
                         }
-                        None => return false,
+                        None => unreachable!("The lexer returns balanced parens."),
                         _ => continue,
                     }
                 }
