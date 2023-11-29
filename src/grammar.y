@@ -34,25 +34,25 @@ expr_import: "import" expr;
 // "a + (b * c)".
 expr_op
   : expr_import
-  | expr_lambda
+  | expr_function
   | UNOP expr_unop
   | expr_not_op BINOP expr_binop
   | expr_not_op
   ;
 
-expr_lambda: lambda_args "=>" expr;
+expr_function: function_args "=>" expr;
 
-lambda_args
+function_args
   : IDENT
-  | '(' lambda_args_inner ')'
+  | '(' function_args_inner ')'
   ;
 
-lambda_args_inner
+function_args_inner
   : %empty
   // TODO: If I allow the ident without the comma, I get a reduce/reduce
   // conflict? Is that very bad? I don't understand the counterexample.
   // | IDENT
-  | IDENT ',' lambda_args_inner
+  | IDENT ',' function_args_inner
   ;
 
 expr_unop: expr_not_op | UNOP expr_unop;

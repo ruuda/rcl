@@ -138,8 +138,8 @@ pub enum Expr {
         field_span: Span,
     },
 
-    /// Define a function.
-    Lambda {
+    /// Define a lambda function.
+    Function {
         /// The span of the `=>`.
         span: Span,
         args: Vec<Ident>,

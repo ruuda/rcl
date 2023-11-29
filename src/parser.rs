@@ -510,7 +510,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Check if we should parse a lambda (`true`) or a different expression.
+    /// Check if we should parse a function (`true`) or a different expression.
     ///
     /// There is an ambiguity in e.g. `(x)`, which could be an identifier in
     /// parens as an expression, or it could be the argument list of a lambda,
@@ -520,7 +520,7 @@ impl<'a> Parser<'a> {
     ///
     /// TODO: This is getting complex. I should consider using a prefix token
     /// to disambiguate lambdas after all.
-    fn look_ahead_is_lambda(&mut self) -> bool {
+    fn look_ahead_is_function(&mut self) -> bool {
         let mut offset = 0;
         match self.peek() {
             Some(Token::Ident) => offset = 1,
@@ -558,8 +558,8 @@ impl<'a> Parser<'a> {
         unreachable!("We'd run out of input before the loop ends.")
     }
 
-    /// Try parsing a lambda expression.
-    fn parse_expr_lambda(&mut self) -> Result<Expr> {
+    /// Try parsing a lambda function expression.
+    fn parse_expr_function(&mut self) -> Result<Expr> {
         let args = match self.peek() {
             Some(Token::Ident) => {
                 let prefixed = Prefixed {
@@ -574,14 +574,14 @@ impl<'a> Parser<'a> {
                 self.pop_bracket()?;
                 args
             }
-            _ => panic!("Should only call `parse_expr_lambda` on a lambda."),
+            _ => panic!("Should only call `parse_expr_function` on a lambda."),
         };
 
         self.skip_non_code()?;
         let arrow_span = self.parse_token(Token::Arrow, "Expected '=>' here.")?;
         let (_span, body) = self.parse_prefixed_expr()?;
 
-        let result = Expr::Lambda {
+        let result = Expr::Function {
             span: arrow_span,
             args,
             body: Box::new(body),
@@ -599,8 +599,8 @@ impl<'a> Parser<'a> {
 
         // Instead of an operator chain, it could still be an import or lambda,
         // and those cannot be followed by operators, they return here.
-        if self.look_ahead_is_lambda() {
-            return self.parse_expr_lambda();
+        if self.look_ahead_is_function() {
+            return self.parse_expr_function();
         }
         if self.peek() == Some(Token::KwImport) {
             return self.parse_expr_import();

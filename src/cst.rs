@@ -227,8 +227,8 @@ pub enum Expr {
         else_body: Box<Prefixed<Expr>>,
     },
 
-    /// Define a lambda.
-    Lambda {
+    /// Define a lambda function.
+    Function {
         /// The source location of the `=>`.
         span: Span,
         args: Box<[Prefixed<Span>]>,

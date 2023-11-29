@@ -152,10 +152,10 @@ impl std::fmt::Debug for BuiltinMethod {
 }
 
 #[derive(Debug)]
-pub struct Lambda {
-    /// Source location of the `=>` that introduces this lambda.
+pub struct Function {
+    /// Source location of the `=>` that introduces this lambda function.
     ///
-    /// This span is used to identify the lambda for comparison and equality,
+    /// This span is used to identify the function for comparison and equality,
     /// so we don't have to inspect its AST.
     pub span: Span,
 
@@ -168,8 +168,8 @@ pub struct Lambda {
     pub body: Rc<Expr>,
 }
 
-impl PartialEq for Lambda {
-    fn eq(&self, other: &Lambda) -> bool {
+impl PartialEq for Function {
+    fn eq(&self, other: &Function) -> bool {
         // What matters for the identity of the lambda is where in the source
         // code it was produced. If that is the same, then the args and body are
         // necessarily the same. But the captured environment could be different,
@@ -178,16 +178,16 @@ impl PartialEq for Lambda {
     }
 }
 
-impl Eq for Lambda {}
+impl Eq for Function {}
 
-impl PartialOrd for Lambda {
-    fn partial_cmp(&self, other: &Lambda) -> Option<Ordering> {
+impl PartialOrd for Function {
+    fn partial_cmp(&self, other: &Function) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for Lambda {
-    fn cmp(&self, other: &Lambda) -> Ordering {
+impl Ord for Function {
+    fn cmp(&self, other: &Function) -> Ordering {
         let lhs = (self.span, &self.env);
         let rhs = (other.span, &other.env);
         lhs.cmp(&rhs)
@@ -214,7 +214,7 @@ pub enum Value {
     // TODO: Should preserve insertion order.
     Dict(BTreeMap<Rc<Value>, Rc<Value>>),
 
-    Lambda(Lambda),
+    Function(Function),
 
     BuiltinFunction(BuiltinFunction),
 

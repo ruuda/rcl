@@ -15,7 +15,7 @@ use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::loader::Loader;
 use crate::pprint::{concat, Doc};
-use crate::runtime::{builtin_method, Env, FunctionCall, Lambda, MethodCall, Value};
+use crate::runtime::{builtin_method, Env, Function, FunctionCall, MethodCall, Value};
 use crate::source::{DocId, Span};
 use crate::tracer::Tracer;
 
@@ -282,7 +282,7 @@ impl<'a> Evaluator<'a> {
                         (f.f)(self, method_call)
                     }
                     Value::BuiltinFunction(f) => (f.f)(self, call),
-                    Value::Lambda(lam) => self.eval_lambda(lam, call),
+                    Value::Function(fun) => self.eval_function_call(fun, call),
                     // TODO: Add a proper type error.
                     _ => Err(function_span
                         .error("This is not a function, it cannot be called.")
@@ -303,14 +303,14 @@ impl<'a> Evaluator<'a> {
                 self.eval_index(*open, collection, *collection_span, index, *index_span)
             }
 
-            Expr::Lambda { span, args, body } => {
-                let result = Lambda {
+            Expr::Function { span, args, body } => {
+                let result = Function {
                     span: *span,
                     env: env.clone(),
                     args: args.clone(),
                     body: Rc::new((**body).clone()),
                 };
-                Ok(Rc::new(Value::Lambda(result)))
+                Ok(Rc::new(Value::Function(result)))
             }
 
             Expr::UnOp {
@@ -335,21 +335,21 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    /// Evaluate a call to a lambda.
-    pub fn eval_lambda(&mut self, lam: &Lambda, call: FunctionCall) -> Result<Rc<Value>> {
+    /// Evaluate a call to a lambda function.
+    pub fn eval_function_call(&mut self, fun: &Function, call: FunctionCall) -> Result<Rc<Value>> {
         // TODO: Add a better name, possibly also report the source span where
         // the argument is defined, not just the span of the lambda.
-        call.check_arity_dynamic(&lam.args)
-            .map_err(|err| err.with_note(lam.span, "Function defined here."))?;
+        call.check_arity_dynamic(&fun.args)
+            .map_err(|err| err.with_note(fun.span, "Function defined here."))?;
 
         // TODO: If we could stack multiple layers of envs, then we would not
         // have to clone the full thing.
-        let mut env = lam.env.clone();
-        for (arg_name, (_arg_span, arg_value)) in lam.args.iter().zip(call.args) {
+        let mut env = fun.env.clone();
+        for (arg_name, (_arg_span, arg_value)) in fun.args.iter().zip(call.args) {
             env.push(arg_name.clone(), arg_value.clone());
         }
 
-        self.eval_expr(&mut env, lam.body.as_ref())
+        self.eval_expr(&mut env, fun.body.as_ref())
     }
 
     /// Evaluate a format string.

@@ -343,7 +343,7 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::Lambda { args, body, .. } => {
+            Expr::Function { args, body, .. } => {
                 let args_doc: Doc = match args.len() {
                     0 => Doc::str("()"),
                     1 => concat! {

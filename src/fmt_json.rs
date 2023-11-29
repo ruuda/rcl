@@ -121,7 +121,7 @@ impl Formatter {
             Value::List(vs) => self.list(vs.iter())?,
             Value::Set(vs) => self.list(vs.iter())?,
             Value::Dict(vs) => self.dict(vs.iter())?,
-            Value::Lambda(..) => self.error("Lambdas cannot be exported as json.")?,
+            Value::Function(..) => self.error("Function cannot be exported as json.")?,
             Value::BuiltinFunction(..) => self.error("Functions cannot be exported as json.")?,
             Value::BuiltinMethod(..) => self.error("Methods cannot be exported as json.")?,
         };
