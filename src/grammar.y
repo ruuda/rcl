@@ -42,16 +42,22 @@ expr_op
 
 expr_function: function_args "=>" expr;
 
+// The function args grammar here is a bit of a hack. The options should really
+// be `IDENT | '(' function_args_inner ')'`. However, for the input `( IDENT )`,
+// that produces an ambiguity between expr_function and expr_term, which Bison
+// cannot resolve with a single token lookahead, and it produces a reduce/reduce
+// conflict. In the actual parser we solve this by looking further ahead for the
+// `=>`. Here, to make Bison happy, we rule out `(x) =>` as a function by
+// demanding the trailing comma.
 function_args
   : IDENT
-  | '(' function_args_inner ')'
+  | '(' ')'
+  | '(' IDENT ',' function_args_inner ')'
   ;
 
 function_args_inner
   : %empty
-  // TODO: If I allow the ident without the comma, I get a reduce/reduce
-  // conflict? Is that very bad? I don't understand the counterexample.
-  // | IDENT
+  | IDENT
   | IDENT ',' function_args_inner
   ;
 
