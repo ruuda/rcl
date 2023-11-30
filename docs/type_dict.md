@@ -30,7 +30,7 @@ let d = { a = 1, b = 2 };
 
     Dict.len: (self: Dict[K, V]) -> Int
 
-Return the size of the dict. For example:
+Return the number of keys in the dict. For example:
 
 ```rcl
 // Evaluates to 3.
