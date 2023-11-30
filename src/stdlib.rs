@@ -125,6 +125,9 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
     name: &'static str,
     elements: I,
 ) -> Result<BTreeMap<Rc<Value>, Vec<Rc<Value>>>> {
+    // TODO: Add static type checks. Right now, if you call `group_by` on an empty
+    // collection, you can provide a completely bogus get_key, and it will never
+    // be called, so that doesn't fail.
     call.call.check_arity_static(name, &["get_key"])?;
 
     let get_key = &call.call.args[0].1;
