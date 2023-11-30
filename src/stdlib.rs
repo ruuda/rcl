@@ -12,6 +12,7 @@ use std::rc::Rc;
 
 use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
+use crate::pprint::{concat, Doc};
 use crate::runtime::{builtin_function, builtin_method, FunctionCall, MethodCall, Value};
 
 builtin_function!(
@@ -129,19 +130,28 @@ fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Va
     let mut result: BTreeMap<Rc<Value>, Vec<Rc<Value>>> = BTreeMap::new();
 
     for x in list.iter() {
-        // For the call to the `get_key` function, the span we want to point at
-        // as the argument to that call, is the receiver of this method, because
-        // that list provides the values.
-        let args = [(call.receiver_span, x.clone())];
+        // The call that we construct here is internal, there is no span in the
+        // source code that we could point at. Add one nonetheless, we'll replace
+        // the error below if needed.
+        let void_span = get_key_span.take(0);
+        let args = [(void_span, x.clone())];
         let call = FunctionCall {
-            // These are not exactly the opening and closing paren, but when we call
-            // a function internally there are no parens in the source code that we
-            // could point at, so we point at the argument instead.
-            call_open: get_key_span,
-            call_close: get_key_span,
+            call_open: void_span,
+            call_close: void_span,
             args: &args,
         };
-        let key = eval.eval_call(get_key_span, get_key.as_ref(), call)?;
+        let key = eval
+            .eval_call(get_key_span, get_key.as_ref(), call)
+            .map_err(|err| {
+                err.with_prefix(
+                    get_key_span,
+                    concat! {
+                        "In call to key selector in '"
+                        Doc::highlight("List.group_by")
+                        "':"
+                    },
+                )
+            })?;
         result.entry(key).or_default().push(x.clone());
     }
 

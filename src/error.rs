@@ -94,6 +94,24 @@ impl Error {
         }
     }
 
+    /// Move the current message into the body, replace the origin.
+    ///
+    /// This can be used when `self` is the cause of the main error. Then the
+    /// message of the main error should come first, but we want to preserve the
+    /// context of the cause, along with its notes and help, if any.
+    pub fn with_prefix<M>(mut self, origin: Span, message: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        self.body = match self.body {
+            None => Some(self.message),
+            Some(b) => Some(self.message + Doc::Sep + b),
+        };
+        self.message = message.into();
+        self.origin = Some(origin);
+        self
+    }
+
     /// Replace the origin of the error with the given span.
     pub fn with_origin(mut self, origin: Span) -> Error {
         self.origin = Some(origin);

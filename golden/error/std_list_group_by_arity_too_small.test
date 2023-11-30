@@ -1,11 +1,11 @@
 [1, 2, 3].group_by(() => "this get_key has too few arguments")
 
 # output:
-stdin:1:1
+stdin:1:20
   ╷
 1 │ [1, 2, 3].group_by(() => "this get_key has too few arguments")
-  ╵ ^~~~~~~~~
-Error: Unexpected argument. The function takes 0 arguments, but got 1.
+  ╵                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Error: In call to key selector in 'List.group_by': Unexpected argument. The function takes 0 arguments, but got 1.
 
 stdin:1:23
   ╷
