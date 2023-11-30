@@ -26,6 +26,14 @@ let doc2 = (
   arg2,
 ) => 42;
 
+let with_lets = (widgets, frobnicators) =>
+  let frobnicated_widgets = [
+    for widget in widgets:
+    for frobnicator in frobnicators:
+    frobnicator(widget)
+  ];
+  [for w in frobnicated_widgets: w.turbo_encabulator];
+
 (arg1)
 
 => "should remove parens"
@@ -68,5 +76,11 @@ let doc2 = (
   // Argument 2.
   arg2,
 ) => 42;
+
+let with_lets = (widgets, frobnicators) =>
+  let frobnicated_widgets = [
+    for widget in widgets: for frobnicator in frobnicators: frobnicator(widget)
+  ];
+  [for w in frobnicated_widgets: w.turbo_encabulator];
 
 arg1 => "should remove parens"
