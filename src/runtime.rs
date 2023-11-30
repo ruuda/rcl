@@ -116,10 +116,17 @@ impl<'a> FunctionCall<'a> {
 /// The arguments to a method call at runtime.
 pub struct MethodCall<'a> {
     /// The source code span of the receiver of the method call.
+    ///
+    /// In `widget.len()`, the receiver is `widget`.
     pub receiver_span: Span,
 
     /// The receiver of the call.
     pub receiver: &'a Value,
+
+    /// The span of the method being called.
+    ///
+    /// In `widget.len()`, the method is `len`.
+    pub method_span: Span,
 
     /// Arguments to the call.
     pub call: FunctionCall<'a>,
@@ -218,7 +225,7 @@ pub enum Value {
 
     BuiltinFunction(BuiltinFunction),
 
-    BuiltinMethod(BuiltinMethod, Span, Rc<Value>),
+    BuiltinMethod(BuiltinMethod, Span, Span, Rc<Value>),
 }
 
 impl Value {

@@ -12,7 +12,8 @@ use std::rc::Rc;
 
 use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
-use crate::pprint::{concat, Doc};
+use crate::fmt_rcl::format_rcl;
+use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{builtin_function, builtin_method, FunctionCall, MethodCall, Value};
 
 builtin_function!(
@@ -178,4 +179,49 @@ fn builtin_set_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Val
         .map(|(k, vs)| (k, Rc::new(Value::Set(vs.into_iter().collect()))))
         .collect();
     Ok(Rc::new(Value::Dict(result)))
+}
+
+fn builtin_key_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+) -> Result<Rc<Value>> {
+    let method_span = call.method_span;
+    let groups = builtin_group_by_impl(eval, call, name, elements)?;
+    let mut result = BTreeMap::new();
+    for (k, mut vs) in groups.into_iter() {
+        if vs.len() > 1 {
+            return method_span
+                .error(concat! {
+                    "The key " format_rcl(k.as_ref()).into_owned() " is not unique."
+                })
+                .with_body(concat! {
+                    "The following values use this key:"
+                    Doc::HardBreak
+                    indent! {
+                        Doc::join(
+                            vs.iter().map(|v| format_rcl(v).into_owned()),
+                            Doc::HardBreak,
+                        )
+                    }
+                })
+                .err();
+        }
+        result.insert(k, vs.pop().expect("Groups have at least one element."));
+    }
+
+    Ok(Rc::new(Value::Dict(result)))
+}
+
+builtin_method!("List.key_by", const LIST_KEY_BY, builtin_list_key_by);
+fn builtin_list_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let list = call.receiver.expect_list();
+    builtin_key_by_impl(eval, call, "List.key_by", list)
+}
+
+builtin_method!("Set.key_by", const SET_KEY_BY, builtin_set_key_by);
+fn builtin_set_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let set = call.receiver.expect_set();
+    builtin_key_by_impl(eval, call, "List.key_by", set)
 }

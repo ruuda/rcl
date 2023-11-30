@@ -233,16 +233,23 @@ impl<'a> Evaluator<'a> {
 
                     (Value::List(_), "contains") => Some(stdlib::LIST_CONTAINS),
                     (Value::List(_), "group_by") => Some(stdlib::LIST_GROUP_BY),
+                    (Value::List(_), "key_by") => Some(stdlib::LIST_KEY_BY),
                     (Value::List(_), "len") => Some(stdlib::LIST_LEN),
 
                     (Value::Set(_), "contains") => Some(stdlib::SET_CONTAINS),
                     (Value::Set(_), "group_by") => Some(stdlib::SET_GROUP_BY),
+                    (Value::Set(_), "key_by") => Some(stdlib::SET_KEY_BY),
                     (Value::Set(_), "len") => Some(stdlib::SET_LEN),
 
                     _other => None,
                 };
                 match builtin {
-                    Some(b) => Ok(Rc::new(Value::BuiltinMethod(b, *inner_span, inner))),
+                    Some(b) => Ok(Rc::new(Value::BuiltinMethod(
+                        b,
+                        *inner_span,
+                        *field_span,
+                        inner,
+                    ))),
                     None => Err(err_unknown_field.into()),
                 }
             }
@@ -331,9 +338,10 @@ impl<'a> Evaluator<'a> {
         call: FunctionCall,
     ) -> Result<Rc<Value>> {
         match callee {
-            Value::BuiltinMethod(f, receiver_span, receiver) => {
+            Value::BuiltinMethod(f, receiver_span, method_span, receiver) => {
                 let method_call = MethodCall {
                     call,
+                    method_span: *method_span,
                     receiver_span: *receiver_span,
                     receiver: receiver.as_ref(),
                 };
