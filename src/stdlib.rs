@@ -118,18 +118,20 @@ fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>
     }
 }
 
-builtin_method!("List.group_by", const LIST_GROUP_BY, builtin_list_group_by);
-fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call
-        .check_arity_static("List.group_by", &["get_key"])?;
-    let list = call.receiver.expect_list();
+fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+) -> Result<BTreeMap<Rc<Value>, Vec<Rc<Value>>>> {
+    call.call.check_arity_static(name, &["get_key"])?;
 
     let get_key = &call.call.args[0].1;
     let get_key_span = call.call.args[0].0;
 
-    let mut result: BTreeMap<Rc<Value>, Vec<Rc<Value>>> = BTreeMap::new();
+    let mut groups: BTreeMap<Rc<Value>, Vec<Rc<Value>>> = BTreeMap::new();
 
-    for x in list.iter() {
+    for x in elements {
         // The call that we construct here is internal, there is no span in the
         // source code that we could point at. Add one nonetheless, we'll replace
         // the error below if needed.
@@ -147,17 +149,32 @@ fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Va
                     get_key_span,
                     concat! {
                         "In call to key selector in '"
-                        Doc::highlight("List.group_by")
+                        Doc::highlight(name)
                         "':"
                     },
                 )
             })?;
-        result.entry(key).or_default().push(x.clone());
+        groups.entry(key).or_default().push(x.clone());
     }
 
-    let result_values = result
+    Ok(groups)
+}
+
+fn builtin_group_by<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+) -> Result<Rc<Value>> {
+    let result = builtin_group_by_impl(eval, call, name, elements)?
         .into_iter()
         .map(|(k, v)| (k, Rc::new(Value::List(v))))
         .collect();
-    Ok(Rc::new(Value::Dict(result_values)))
+    Ok(Rc::new(Value::Dict(result)))
+}
+
+builtin_method!("List.group_by", const LIST_GROUP_BY, builtin_list_group_by);
+fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let list = call.receiver.expect_list();
+    builtin_group_by(eval, call, "List.group_by", list)
 }
