@@ -223,5 +223,5 @@ fn builtin_list_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Valu
 builtin_method!("Set.key_by", const SET_KEY_BY, builtin_set_key_by);
 fn builtin_set_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     let set = call.receiver.expect_set();
-    builtin_key_by_impl(eval, call, "List.key_by", set)
+    builtin_key_by_impl(eval, call, "Set.key_by", set)
 }

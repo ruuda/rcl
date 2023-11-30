@@ -1,0 +1,15 @@
+let foods = [
+  { category = "fruit", name = "apple" },
+  { category = "fruit", name = "pear" },
+  { category = "vegetable", name = "onion" },
+  { category = "vegetable", name = "carrot" },
+];
+foods.key_by(food => food.name)
+
+# output:
+{
+  apple = { category = "fruit", name = "apple" },
+  carrot = { category = "vegetable", name = "carrot" },
+  onion = { category = "vegetable", name = "onion" },
+  pear = { category = "fruit", name = "pear" },
+}
