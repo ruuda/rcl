@@ -299,3 +299,16 @@ let inventory = import "inventory.rcl";
 Import paths are relative to the location of the document itself, but there
 are some restrictions on whether imports are allowed. See [the imports
 chapter](imports.md) for full details.
+
+## Functions
+
+A `=>` arrow introduces a function.
+
+```rcl
+let double_input = x => x * 2;
+let add = (x, y) => x + y;
+// Evaluates to 42.
+add(double_input(11), 20)
+```
+
+See [the chapter on functions](functions.md) for more details.

@@ -163,7 +163,7 @@ impl<'a> Parser<'a> {
         let end = self.tokens[..self.cursor]
             .iter()
             .rev()
-            .filter(|t| !matches!(t.0, Token::Space | Token::LineComment))
+            .filter(|t| !matches!(t.0, Token::Blank | Token::LineComment))
             .map(|t| t.1.end())
             .next()
             .expect("If we pushed a start, we should find at least that.");
@@ -510,19 +510,104 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    /// Check if we should parse a function (`true`) or a different expression.
+    ///
+    /// There is an ambiguity in e.g. `(x)`, which could be an identifier in
+    /// parens as an expression, or it could be the argument list of a lambda,
+    /// and we don't know that until we see the token after it. So look ahead
+    /// until we either see a `=>` and we know it's a lambda, or until we see
+    /// some violation and we know it's not a lambda.
+    ///
+    /// TODO: This is getting complex. I should consider using a prefix token
+    /// to disambiguate lambdas after all.
+    fn look_ahead_is_function(&mut self) -> bool {
+        let mut offset = 0;
+        match self.peek() {
+            Some(Token::Ident) => offset = 1,
+            Some(Token::LParen) => {
+                // Find the next closing paren, and continue parsing from there.
+                // We don't have to be exact here, because this is only used to
+                // look ahead to see if we should parse a lambda or expr. We
+                // don't consider unbalanced parens, and we also don't return
+                // false early even if we see a token that would be invalid for
+                // a lambda. We do this to get more helpful errors, e.g. if you
+                // write `(x, [y]) => x + y`, then it still looks like the
+                // intent was a lambda and we can error on the `[`, rather than
+                // trying to parse an expression and failing on the `,`.
+                for i in 1.. {
+                    match self.peek_n(i) {
+                        Some(Token::RParen) => {
+                            offset = i + 1;
+                            break;
+                        }
+                        None => unreachable!("The lexer returns balanced parens."),
+                        _ => continue,
+                    }
+                }
+            }
+            _ => return false,
+        };
+        for i in offset.. {
+            match self.peek_n(i) {
+                Some(Token::LineComment) => continue,
+                Some(Token::Blank) => continue,
+                Some(Token::Arrow) => return true,
+                _ => return false,
+            }
+        }
+        unreachable!("We'd run out of input before the loop ends.")
+    }
+
+    /// Try parsing a lambda function expression.
+    fn parse_expr_function(&mut self) -> Result<Expr> {
+        let args = match self.peek() {
+            Some(Token::Ident) => {
+                let prefixed = Prefixed {
+                    prefix: [].into(),
+                    inner: self.consume(),
+                };
+                [prefixed].into()
+            }
+            Some(Token::LParen) => {
+                self.push_bracket()?;
+                let args = self.parse_function_args()?;
+                self.pop_bracket()?;
+                args
+            }
+            _ => panic!("Should only call `parse_expr_function` on a lambda."),
+        };
+
+        self.skip_non_code()?;
+        let arrow_span = self.parse_token(Token::Arrow, "Expected '=>' here.")?;
+        self.skip_non_code()?;
+        let (_span, body) = self.parse_expr()?;
+
+        let result = Expr::Function {
+            span: arrow_span,
+            args,
+            body: Box::new(body),
+        };
+        Ok(result)
+    }
+
     fn parse_expr_op(&mut self) -> Result<Expr> {
         // First we check all the rules for prefix unary operators.
         self.check_bad_unop()?;
+
         if self.peek().and_then(to_unop).is_some() {
             return self.parse_expr_unop();
         }
 
-        // If it was not a prefix unary operator, then we certainly have one
-        // import or not_op, but we may have an operator afterwards.
-        let mut result = match self.peek() {
-            Some(Token::KwImport) => self.parse_expr_import()?,
-            _ => self.parse_expr_not_op()?,
-        };
+        // Instead of an operator chain, it could still be an import or lambda,
+        // and those cannot be followed by operators, they return here.
+        if self.look_ahead_is_function() {
+            return self.parse_expr_function();
+        }
+        if self.peek() == Some(Token::KwImport) {
+            return self.parse_expr_import();
+        }
+
+        let mut result = self.parse_expr_not_op()?;
 
         // We might have binary operators following. If we find one, then
         // all the other ones must be of the same type, to avoid unclear
@@ -792,6 +877,43 @@ impl<'a> Parser<'a> {
                     return Ok(result);
                 }
                 invalid => panic!("The lexer should not have produced {invalid:?} in a string."),
+            }
+        }
+    }
+
+    /// Parse arguments in a lambda function definition.
+    fn parse_function_args(&mut self) -> Result<Box<[Prefixed<Span>]>> {
+        let mut result = Vec::new();
+
+        loop {
+            let prefix = self.parse_non_code();
+            if self.peek() == Some(Token::RParen) {
+                // TODO: In this case we lose the prefix that we parsed.
+                // See also the comment in `parse_call_args` below.
+                return Ok(result.into_boxed_slice());
+            }
+
+            let ident = self.parse_ident()?;
+            let prefixed = Prefixed {
+                prefix,
+                inner: ident,
+            };
+            result.push(prefixed);
+
+            self.skip_non_code()?;
+            match self.peek() {
+                Some(Token::RParen) => continue,
+                Some(Token::Comma) => {
+                    self.consume();
+                    continue;
+                }
+                _ => {
+                    // If we don't find a separator, nor the end of the args,
+                    // that's an error. We can report an unmatched bracket
+                    // as the problem, because it is.
+                    self.pop_bracket()?;
+                    unreachable!("pop_bracket should have failed.");
+                }
             }
         }
     }

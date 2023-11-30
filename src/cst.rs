@@ -227,6 +227,14 @@ pub enum Expr {
         else_body: Box<Prefixed<Expr>>,
     },
 
+    /// Define a lambda function.
+    Function {
+        /// The source location of the `=>`.
+        span: Span,
+        args: Box<[Prefixed<Span>]>,
+        body: Box<Expr>,
+    },
+
     /// Call a function.
     Call {
         /// The opening parenthesis.

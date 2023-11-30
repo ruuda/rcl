@@ -18,7 +18,7 @@ use crate::source::Span;
 // TODO: Should we deduplicate idents, or even all strings, in a hash table?
 // Should they be slices into the source document? For now the easy thing is to
 // just make them strings, we can optimize later.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Ident(pub Rc<str>);
 
 impl fmt::Debug for Ident {
@@ -46,7 +46,8 @@ impl From<&str> for Ident {
 }
 
 /// A part of a format string, either a hole or a string literal.
-#[derive(Debug)]
+// TODO: Should not be cloneable, make it GC'able instead.
+#[derive(Clone, Debug)]
 pub struct FormatFragment {
     /// For a hole, the span of the expression that fills the hole.
     pub span: Span,
@@ -59,7 +60,8 @@ pub struct FormatFragment {
 /// constructs that look like statements, which evaluate a left-hand side,
 /// and then evaluate a body in a modified environment. For lack of a better
 /// name, we do call those _statements_.
-#[derive(Debug)]
+// TODO: Should not be cloneable, make it GC'able instead.
+#[derive(Clone, Debug)]
 pub enum Stmt {
     /// A let-binding.
     Let { ident: Ident, value: Box<Expr> },
@@ -81,7 +83,8 @@ pub enum Stmt {
 }
 
 /// An expression.
-#[derive(Debug)]
+// TODO: Should not be cloneable, make it GC'able instead.
+#[derive(Clone, Debug)]
 pub enum Expr {
     /// A statement-like expression.
     Stmt { stmt: Stmt, body: Box<Expr> },
@@ -135,8 +138,13 @@ pub enum Expr {
         field_span: Span,
     },
 
-    /// Define a function.
-    Lam(Vec<Ident>, Box<Expr>),
+    /// Define a lambda function.
+    Function {
+        /// The span of the `=>`.
+        span: Span,
+        args: Vec<Ident>,
+        body: Box<Expr>,
+    },
 
     /// Call a function.
     Call {
@@ -178,7 +186,8 @@ pub enum Expr {
 }
 
 /// The innermost part of comprehension ([`Seq`]).
-#[derive(Debug)]
+// TODO: Should not be cloneable, make it GC'able instead.
+#[derive(Clone, Debug)]
 pub enum Yield {
     /// A single element.
     Elem { span: Span, value: Box<Expr> },
@@ -193,7 +202,8 @@ pub enum Yield {
 }
 
 /// One or more elements of a sequence.
-#[derive(Debug)]
+// TODO: Should not be cloneable, make it GC'able instead.
+#[derive(Clone, Debug)]
 pub enum Seq {
     /// Yield a value or key-value pair.
     Yield(Yield),

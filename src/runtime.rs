@@ -7,10 +7,11 @@
 
 //! Representations of values and scopes at runtime.
 
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
-use crate::ast::Ident;
+use crate::ast::{Expr, Ident};
 use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
 use crate::pprint::{concat, Doc};
@@ -30,7 +31,11 @@ pub struct FunctionCall<'a> {
 
 impl<'a> FunctionCall<'a> {
     /// Return an error if the number of arguments is unexpected.
-    pub fn check_arity(&self, name: &'static str, expected_args: &[&'static str]) -> Result<()> {
+    pub fn check_arity_static(
+        &self,
+        name: &'static str,
+        expected_args: &[&'static str],
+    ) -> Result<()> {
         if self.args.len() == expected_args.len() {
             return Ok(());
         }
@@ -58,6 +63,43 @@ impl<'a> FunctionCall<'a> {
                 "Unexpected argument. '"
                 Doc::highlight(name)
                 "' takes "
+                match expected_args.len() {
+                    1 => "1 argument".to_string(),
+                    n => format!("{n} arguments"),
+                }
+                ", but got "
+                self.args.len().to_string()
+                "."
+            };
+            excess_arg.0.error(msg).err()
+        }
+    }
+
+    /// As `check_arity`, but for user-defined functions (lambdas).
+    pub fn check_arity_dynamic(&self, expected_args: &[Ident]) -> Result<()> {
+        if self.args.len() == expected_args.len() {
+            return Ok(());
+        }
+
+        if self.args.len() < expected_args.len() {
+            let missing_arg = &expected_args[self.args.len()];
+            let msg = concat! {
+                "Missing argument '"
+                Doc::highlight(missing_arg.as_ref()).into_owned()
+                "'. The function takes "
+                match expected_args.len() {
+                    1 => "1 argument".to_string(),
+                    n => format!("{n} arguments"),
+                }
+                ", but got "
+                self.args.len().to_string()
+                "."
+            };
+            self.call_close.error(msg).err()
+        } else {
+            let excess_arg = &self.args[expected_args.len()];
+            let msg = concat! {
+                "Unexpected argument. The function takes "
                 match expected_args.len() {
                     1 => "1 argument".to_string(),
                     n => format!("{n} arguments"),
@@ -109,6 +151,49 @@ impl std::fmt::Debug for BuiltinMethod {
     }
 }
 
+#[derive(Debug)]
+pub struct Function {
+    /// Source location of the `=>` that introduces this lambda function.
+    ///
+    /// This span is used to identify the function for comparison and equality,
+    /// so we don't have to inspect its AST.
+    pub span: Span,
+
+    /// Captured environment at the time of the call.
+    ///
+    /// TODO: It might be nicer to capture only the variables that are needed,
+    /// but then we need to inspect the body AST when the lambda is produced.
+    pub env: Env,
+    pub args: Vec<Ident>,
+    pub body: Rc<Expr>,
+}
+
+impl PartialEq for Function {
+    fn eq(&self, other: &Function) -> bool {
+        // What matters for the identity of the lambda is where in the source
+        // code it was produced. If that is the same, then the args and body are
+        // necessarily the same. But the captured environment could be different,
+        // so we take that into account too.
+        (self.span, &self.env) == (other.span, &other.env)
+    }
+}
+
+impl Eq for Function {}
+
+impl PartialOrd for Function {
+    fn partial_cmp(&self, other: &Function) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Function {
+    fn cmp(&self, other: &Function) -> Ordering {
+        let lhs = (self.span, &self.env);
+        let rhs = (other.span, &other.env);
+        lhs.cmp(&rhs)
+    }
+}
+
 /// A value.
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Value {
@@ -128,6 +213,8 @@ pub enum Value {
 
     // TODO: Should preserve insertion order.
     Dict(BTreeMap<Rc<Value>, Rc<Value>>),
+
+    Function(Function),
 
     BuiltinFunction(BuiltinFunction),
 
@@ -180,7 +267,7 @@ impl<'a> From<&'a str> for Value {
 }
 
 /// An environment binds names to values.
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Env {
     bindings: Vec<(Ident, Rc<Value>)>,
 }

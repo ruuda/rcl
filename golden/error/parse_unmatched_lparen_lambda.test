@@ -1,0 +1,14 @@
+(a b) => 2
+
+# output:
+stdin:1:4
+  ╷
+1 │ (a b) => 2
+  ╵    ^
+Error: Expected ')'.
+
+stdin:1:1
+  ╷
+1 │ (a b) => 2
+  ╵ ^
+Note: Unmatched '(' opened here.

@@ -1,0 +1,4 @@
+"abc".len
+
+# output:
+String.len

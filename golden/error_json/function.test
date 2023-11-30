@@ -1,9 +1,0 @@
-// Note, .len is an unserializable function, we don't call it!
-"frobnicator".len
-
-# output:
-stdin:1:1
-  ╷
-1 │ // Note, .len is an unserializable function, we don't call it!
-  ╵ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Error: Methods cannot be exported as json.

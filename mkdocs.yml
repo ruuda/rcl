@@ -24,6 +24,7 @@ nav:
       - "Strings": "strings.md"
       - "Null": "null.md"
       - "Imports": "imports.md"
+      - "Functions": "functions.md"
       - "Glossary": "glossary.md"
   - "Language reference":
       - "Standard library": "stdlib.md"

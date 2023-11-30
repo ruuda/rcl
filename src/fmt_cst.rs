@@ -343,6 +343,36 @@ impl<'a> Formatter<'a> {
                 }
             }
 
+            Expr::Function { args, body, .. } => {
+                let args_doc: Doc = match args.len() {
+                    0 => Doc::str("()"),
+                    // Don't put parens around the argument if there is a single
+                    // argument that has no comments on it. If it has comments,
+                    // then we need the parens, because otherwise we might
+                    // produce a syntax error in the output.
+                    1 if args[0].prefix.is_empty() => self.span(args[0].inner),
+                    _ => group! {
+                        "("
+                        Doc::SoftBreak
+                        indent! {
+                            Doc::join(
+                                args.iter().map(|arg| concat! {
+                                    self.non_code(&arg.prefix)
+                                    self.span(arg.inner)
+                                }),
+                                concat!{ "," Doc::Sep },
+                            )
+                            Doc::tall(",")
+                        }
+                        Doc::SoftBreak
+                        ")"
+                    },
+                };
+                concat! {
+                    args_doc " => " self.expr(body)
+                }
+            }
+
             Expr::Call { function, args, .. } => {
                 concat! {
                     self.expr(function)
