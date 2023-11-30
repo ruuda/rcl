@@ -61,6 +61,7 @@ _root_base = [
                 "contains",
                 "get",
                 "group_by",
+                "key_by",
                 "len",
                 "std",
             ),

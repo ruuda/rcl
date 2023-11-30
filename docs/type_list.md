@@ -42,6 +42,36 @@ foods.group_by(food => food.category)
 }
 ```
 
+## key_by
+
+    List.key_by: (self: List[T], get_key: T -> U) -> Dict[U, T]
+
+Build a dictionary with the key selected by `get_key` as key, and the list
+elements as values. The keys must be unique. When a key is not unique, this
+method fails and reports the conflicting values.
+
+```rcl
+let replicants = [
+  { name = "rachael", generation = 7 },
+  { name = "rbatty", generation = 6 },
+  { name = "zsalome", generation = 6 },
+];
+
+replicants.key_by(r => r.name)
+// Evaluates to:
+{
+  rachael = { name = "rachael", generation = 7 },
+  rbatty = { name = "rbatty", generation = 6 },
+  zsalome = { name = "zsalome", generation = 6 },
+}
+
+replicants.key_by(r => r.generation)
+// This fails with the following error:
+// Error: The key 6 is not unique. The following values use this key:
+//   { generation = 6, name = "rbatty" }
+//   { generation = 6, name = "zsalome" }
+```
+
 ## len
 
     List.len: (self: List[T]) -> Int

@@ -41,6 +41,15 @@ foods.group_by(food => food.category)
 }
 ```
 
+## key_by
+
+    Set.key_by: (self: Set[T], get_key: T -> U) -> Dict[U, T]
+
+Build a dictionary with the key selected by `get_key` as key, and the set
+elements as values. The keys must be unique. When a key is not unique, this
+method fails and reports the conflicting values. See also
+[`List.key_by`](type_list.md#key_by) for an example.
+
 ## len
 
     Set.len: (self: Set[T]) -> Int
