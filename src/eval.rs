@@ -15,8 +15,9 @@ use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::loader::Loader;
 use crate::pprint::{concat, Doc};
-use crate::runtime::{builtin_method, Env, Function, FunctionCall, MethodCall, Value};
+use crate::runtime::{Env, Function, FunctionCall, MethodCall, Value};
 use crate::source::{DocId, Span};
+use crate::stdlib;
 use crate::tracer::Tracer;
 
 /// An entry on the evaluation stack.
@@ -216,11 +217,11 @@ impl<'a> Evaluator<'a> {
                 let field_name_value = Value::String(field_name.0.clone());
                 let err_unknown_field = field_span.error("Unknown field.");
                 let builtin = match (inner.as_ref(), field_name.as_ref()) {
-                    (Value::String(_), "len") => Some(STRING_LEN),
+                    (Value::String(_), "len") => Some(stdlib::STRING_LEN),
 
-                    (Value::Dict(_), "contains") => Some(DICT_CONTAINS),
-                    (Value::Dict(_), "get") => Some(DICT_GET),
-                    (Value::Dict(_), "len") => Some(DICT_LEN),
+                    (Value::Dict(_), "contains") => Some(stdlib::DICT_CONTAINS),
+                    (Value::Dict(_), "get") => Some(stdlib::DICT_GET),
+                    (Value::Dict(_), "len") => Some(stdlib::DICT_LEN),
                     (Value::Dict(fields), _field_name) => {
                         // If it wasn't a builtin, look for a key in the dict.
                         return match fields.get(&field_name_value) {
@@ -229,11 +230,11 @@ impl<'a> Evaluator<'a> {
                         };
                     }
 
-                    (Value::List(_), "contains") => Some(LIST_CONTAINS),
-                    (Value::List(_), "len") => Some(LIST_LEN),
+                    (Value::List(_), "contains") => Some(stdlib::LIST_CONTAINS),
+                    (Value::List(_), "len") => Some(stdlib::LIST_LEN),
 
-                    (Value::Set(_), "contains") => Some(SET_CONTAINS),
-                    (Value::Set(_), "len") => Some(SET_LEN),
+                    (Value::Set(_), "contains") => Some(stdlib::SET_CONTAINS),
+                    (Value::Set(_), "len") => Some(stdlib::SET_LEN),
 
                     _other => None,
                 };
@@ -798,71 +799,5 @@ impl SeqOut {
             SeqOut::Dict(_first, keys, values) => Ok((keys, values)),
             SeqOut::SetOrDict => unreachable!("Should have been replaced by now."),
         }
-    }
-}
-
-builtin_method!("Dict.len", const DICT_LEN, builtin_dict_len);
-fn builtin_dict_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("Dict.len", &[])?;
-    let dict = call.receiver.expect_dict();
-    Ok(Rc::new(Value::Int(dict.len() as _)))
-}
-
-builtin_method!("List.len", const LIST_LEN, builtin_list_len);
-fn builtin_list_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("List.len", &[])?;
-    let list = call.receiver.expect_list();
-    Ok(Rc::new(Value::Int(list.len() as _)))
-}
-
-builtin_method!("Set.len", const SET_LEN, builtin_set_len);
-fn builtin_set_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("Set.len", &[])?;
-    let set = call.receiver.expect_set();
-    Ok(Rc::new(Value::Int(set.len() as _)))
-}
-
-builtin_method!("String.len", const STRING_LEN, builtin_string_len);
-fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("String.len", &[])?;
-    let string = call.receiver.expect_string();
-    Ok(Rc::new(Value::Int(string.len() as _)))
-}
-
-builtin_method!("Dict.contains", const DICT_CONTAINS, builtin_dict_contains);
-fn builtin_dict_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("Dict.contains", &["key"])?;
-    let dict = call.receiver.expect_dict();
-    let needle = &call.call.args[0].1;
-    Ok(Rc::new(Value::Bool(dict.contains_key(needle))))
-}
-
-builtin_method!("List.contains", const LIST_CONTAINS, builtin_list_contains);
-fn builtin_list_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call
-        .check_arity_static("List.contains", &["element"])?;
-    let list = call.receiver.expect_list();
-    let needle = &call.call.args[0].1;
-    Ok(Rc::new(Value::Bool(list.contains(needle))))
-}
-
-builtin_method!("Set.contains", const SET_CONTAINS, builtin_set_contains);
-fn builtin_set_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("Set.contains", &["element"])?;
-    let set = call.receiver.expect_set();
-    let needle = &call.call.args[0].1;
-    Ok(Rc::new(Value::Bool(set.contains(needle))))
-}
-
-builtin_method!("Dict.get", const DICT_GET, builtin_dict_get);
-fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call
-        .check_arity_static("Dict.get", &["key", "default"])?;
-    let dict = call.receiver.expect_dict();
-    let key = &call.call.args[0].1;
-    let default = &call.call.args[1].1;
-    match dict.get(key) {
-        Some(v) => Ok(v.clone()),
-        None => Ok(default.clone()),
     }
 }

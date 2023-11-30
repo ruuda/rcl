@@ -335,7 +335,7 @@ macro_rules! builtin_function {
         const $rust_const:ident,
         $rust_name:ident
     ) => {
-        const $rust_const: crate::runtime::BuiltinFunction = crate::runtime::BuiltinFunction {
+        pub const $rust_const: crate::runtime::BuiltinFunction = crate::runtime::BuiltinFunction {
             name: $rcl_name,
             f: $rust_name,
         };
@@ -349,7 +349,7 @@ macro_rules! builtin_method {
         const $rust_const:ident,
         $rust_name:ident
     ) => {
-        const $rust_const: crate::runtime::BuiltinMethod = crate::runtime::BuiltinMethod {
+        pub const $rust_const: crate::runtime::BuiltinMethod = crate::runtime::BuiltinMethod {
             name: $rcl_name,
             f: $rust_name,
         };
