@@ -60,7 +60,9 @@ _root_base = [
             (
                 "contains",
                 "get",
+                "group_by",
                 "len",
+                "std",
             ),
             suffix=r"\b",
         ),
