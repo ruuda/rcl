@@ -236,6 +236,7 @@ impl<'a> Evaluator<'a> {
                     (Value::List(_), "len") => Some(stdlib::LIST_LEN),
 
                     (Value::Set(_), "contains") => Some(stdlib::SET_CONTAINS),
+                    (Value::Set(_), "group_by") => Some(stdlib::SET_GROUP_BY),
                     (Value::Set(_), "len") => Some(stdlib::SET_LEN),
 
                     _other => None,

@@ -1,0 +1,19 @@
+let foods = {
+  { category = "fruit", name = "apple" },
+  { category = "fruit", name = "pear" },
+  { category = "vegetable", name = "onion" },
+  { category = "vegetable", name = "carrot" },
+};
+foods.group_by(food => food.category)
+
+# output:
+{
+  fruit = {
+    { category = "fruit", name = "apple" },
+    { category = "fruit", name = "pear" },
+  },
+  vegetable = {
+    { category = "vegetable", name = "carrot" },
+    { category = "vegetable", name = "onion" },
+  },
+}

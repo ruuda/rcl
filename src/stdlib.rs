@@ -160,21 +160,22 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
     Ok(groups)
 }
 
-fn builtin_group_by<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
-    eval: &mut Evaluator,
-    call: MethodCall,
-    name: &'static str,
-    elements: I,
-) -> Result<Rc<Value>> {
-    let result = builtin_group_by_impl(eval, call, name, elements)?
+builtin_method!("List.group_by", const LIST_GROUP_BY, builtin_list_group_by);
+fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let list = call.receiver.expect_list();
+    let result = builtin_group_by_impl(eval, call, "List.group_by", list)?
         .into_iter()
-        .map(|(k, v)| (k, Rc::new(Value::List(v))))
+        .map(|(k, vs)| (k, Rc::new(Value::List(vs))))
         .collect();
     Ok(Rc::new(Value::Dict(result)))
 }
 
-builtin_method!("List.group_by", const LIST_GROUP_BY, builtin_list_group_by);
-fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    let list = call.receiver.expect_list();
-    builtin_group_by(eval, call, "List.group_by", list)
+builtin_method!("Set.group_by", const SET_GROUP_BY, builtin_set_group_by);
+fn builtin_set_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let set = call.receiver.expect_set();
+    let result = builtin_group_by_impl(eval, call, "Set.group_by", set)?
+        .into_iter()
+        .map(|(k, vs)| (k, Rc::new(Value::Set(vs.into_iter().collect()))))
+        .collect();
+    Ok(Rc::new(Value::Dict(result)))
 }

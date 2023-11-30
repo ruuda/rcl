@@ -17,7 +17,8 @@ Return whether the list contains a given element. For example:
 
     List.group_by: (self: List[T], get_key: T -> U) -> Dict[U, List[T]]
 
-Group the elements of the list by a key selected by `get_key`.
+Group the elements of the list by a key selected by `get_key`. Within groups,
+the original order of elements is preserved.
 
 ```rcl
 let foods = [
