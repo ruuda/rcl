@@ -199,6 +199,7 @@ fn builtin_key_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
                 .with_body(concat! {
                     "The following values use this key:"
                     Doc::HardBreak
+                    Doc::HardBreak
                     indent! {
                         Doc::join(
                             vs.iter().map(|v| format_rcl(v).into_owned()),
