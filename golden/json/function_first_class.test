@@ -1,0 +1,5 @@
+let apply_twice = (f, x) => f(f(x));
+apply_twice(x => x * x, 4)
+
+# output:
+256
