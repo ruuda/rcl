@@ -231,6 +231,7 @@ impl<'a> Evaluator<'a> {
                     }
 
                     (Value::List(_), "contains") => Some(stdlib::LIST_CONTAINS),
+                    (Value::List(_), "group_by") => Some(stdlib::LIST_GROUP_BY),
                     (Value::List(_), "len") => Some(stdlib::LIST_LEN),
 
                     (Value::Set(_), "contains") => Some(stdlib::SET_CONTAINS),
@@ -273,22 +274,7 @@ impl<'a> Evaluator<'a> {
                     args: &args[..],
                 };
 
-                match fun.as_ref() {
-                    Value::BuiltinMethod(f, receiver_span, receiver) => {
-                        let method_call = MethodCall {
-                            call,
-                            receiver_span: *receiver_span,
-                            receiver: receiver.as_ref(),
-                        };
-                        (f.f)(self, method_call)
-                    }
-                    Value::BuiltinFunction(f) => (f.f)(self, call),
-                    Value::Function(fun) => self.eval_function_call(fun, call),
-                    // TODO: Add a proper type error.
-                    _ => Err(function_span
-                        .error("This is not a function, it cannot be called.")
-                        .into()),
-                }
+                self.eval_call(*function_span, fun.as_ref(), call)
             }
 
             Expr::Index {
@@ -333,6 +319,30 @@ impl<'a> Evaluator<'a> {
                 let rhs = self.eval_expr(env, rhs_expr)?;
                 self.eval_binop(*op, *op_span, lhs, rhs)
             }
+        }
+    }
+
+    pub fn eval_call(
+        &mut self,
+        callee_span: Span,
+        callee: &Value,
+        call: FunctionCall,
+    ) -> Result<Rc<Value>> {
+        match callee {
+            Value::BuiltinMethod(f, receiver_span, receiver) => {
+                let method_call = MethodCall {
+                    call,
+                    receiver_span: *receiver_span,
+                    receiver: receiver.as_ref(),
+                };
+                (f.f)(self, method_call)
+            }
+            Value::BuiltinFunction(f) => (f.f)(self, call),
+            Value::Function(fun) => self.eval_function_call(fun, call),
+            // TODO: Add a proper type error.
+            _ => Err(callee_span
+                .error("This is not a function, it cannot be called.")
+                .into()),
         }
     }
 

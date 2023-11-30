@@ -116,3 +116,38 @@ fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>
         None => Ok(default.clone()),
     }
 }
+
+builtin_method!("List.group_by", const LIST_GROUP_BY, builtin_list_group_by);
+fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("List.group_by", &["get_key"])?;
+    let list = call.receiver.expect_list();
+
+    let get_key = &call.call.args[0].1;
+    let get_key_span = call.call.args[0].0;
+
+    let mut result: BTreeMap<Rc<Value>, Vec<Rc<Value>>> = BTreeMap::new();
+
+    for x in list.iter() {
+        // For the call to the `get_key` function, the span we want to point at
+        // as the argument to that call, is the receiver of this method, because
+        // that list provides the values.
+        let args = [(call.receiver_span, x.clone())];
+        let call = FunctionCall {
+            // These are not exactly the opening and closing paren, but when we call
+            // a function internally there are no parens in the source code that we
+            // could point at, so we point at the argument instead.
+            call_open: get_key_span,
+            call_close: get_key_span,
+            args: &args,
+        };
+        let key = eval.eval_call(get_key_span, get_key.as_ref(), call)?;
+        result.entry(key).or_default().push(x.clone());
+    }
+
+    let result_values = result
+        .into_iter()
+        .map(|(k, v)| (k, Rc::new(Value::List(v))))
+        .collect();
+    Ok(Rc::new(Value::Dict(result_values)))
+}
