@@ -211,6 +211,7 @@ impl<'a> Evaluator<'a> {
             Expr::Field {
                 field_span,
                 field: field_name,
+                inner_span,
                 inner: inner_expr,
             } => {
                 let inner = self.eval_expr(env, inner_expr)?;
@@ -240,7 +241,7 @@ impl<'a> Evaluator<'a> {
                     _other => None,
                 };
                 match builtin {
-                    Some(b) => Ok(Rc::new(Value::BuiltinMethod(b, *field_span, inner))),
+                    Some(b) => Ok(Rc::new(Value::BuiltinMethod(b, *inner_span, inner))),
                     None => Err(err_unknown_field.into()),
                 }
             }

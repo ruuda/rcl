@@ -319,7 +319,7 @@ impl<'a> Formatter<'a> {
             // TODO: Parse as vec with multiple dots, so we can toggle an entire
             // method chain as all-or-nothing wide or tall. For now, we just
             // don't line-wrap field access.
-            Expr::Field { inner, field } => {
+            Expr::Field { inner, field, .. } => {
                 concat! {
                     self.expr(inner) "." self.span(*field)
                 }

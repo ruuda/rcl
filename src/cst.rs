@@ -215,7 +215,11 @@ pub enum Expr {
     Var(Span),
 
     /// Access a field on the inner expression.
-    Field { inner: Box<Expr>, field: Span },
+    Field {
+        inner_span: Span,
+        inner: Box<Expr>,
+        field: Span,
+    },
 
     /// A conditional expression.
     IfThenElse {

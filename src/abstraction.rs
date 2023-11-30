@@ -219,8 +219,13 @@ impl<'a> Abstractor<'a> {
                 ident: span.resolve(self.input).into(),
             },
 
-            CExpr::Field { inner, field } => AExpr::Field {
+            CExpr::Field {
+                inner,
+                inner_span,
+                field,
+            } => AExpr::Field {
                 inner: Box::new(self.expr(inner)?),
+                inner_span: *inner_span,
                 field: field.resolve(self.input).into(),
                 field_span: *field,
             },
