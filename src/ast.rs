@@ -76,8 +76,7 @@ pub enum Stmt {
 
     /// Print the message for debugging.
     Trace {
-        /// The span of the `trace` keyword. Here we report the trace from.
-        trace_span: Span,
+        message_span: Span,
         message: Box<Expr>,
     },
 }

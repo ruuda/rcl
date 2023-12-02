@@ -119,11 +119,10 @@ impl<'a> Abstractor<'a> {
                 message: Box::new(self.expr(message)?),
             },
             CStmt::Trace {
-                trace_span,
                 message,
-                ..
+                message_span,
             } => AStmt::Trace {
-                trace_span: *trace_span,
+                message_span: *message_span,
                 message: Box::new(self.expr(message)?),
             },
         };

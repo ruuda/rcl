@@ -4,9 +4,9 @@ trace "Value to trace."; 0
 
 # output:
 0
-stdin:3:1
+stdin:3:7
   ╷
 3 │ trace "Value to trace."; 0
-  ╵ ^~~~~
+  ╵       ^~~~~~~~~~~~~~~~~
 Trace: "Value to trace."
 

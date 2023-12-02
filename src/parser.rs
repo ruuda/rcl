@@ -492,7 +492,6 @@ impl<'a> Parser<'a> {
         )?;
 
         let result = Stmt::Trace {
-            trace_span,
             message_span,
             message: Box::new(message),
         };

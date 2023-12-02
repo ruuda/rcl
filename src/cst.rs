@@ -136,7 +136,6 @@ pub enum Stmt {
 
     /// Trace prints the message (for debugging) and then evaluates to the body.
     Trace {
-        trace_span: Span,
         message_span: Span,
         message: Box<Expr>,
     },

@@ -631,12 +631,12 @@ impl<'a> Evaluator<'a> {
                 }
             }
             Stmt::Trace {
-                trace_span,
+                message_span,
                 message: message_expr,
             } => {
                 let message = self.eval_expr(env, message_expr)?;
                 self.tracer
-                    .trace(&self.loader.as_inputs(), *trace_span, message);
+                    .trace(&self.loader.as_inputs(), *message_span, message);
             }
         }
         Ok(())
