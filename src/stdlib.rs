@@ -232,3 +232,23 @@ fn builtin_set_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value
     let set = call.receiver.expect_set();
     builtin_key_by_impl(eval, call, "Set.key_by", set)
 }
+
+builtin_method!("String.split", const STRING_SPLIT, builtin_string_split);
+fn builtin_string_split(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("String.split", &["separator"])?;
+    let string = call.receiver.expect_string();
+
+    let sep_arg = &call.call.args[0];
+    let sep = match sep_arg.value.as_ref() {
+        Value::String(sep) => sep.as_ref(),
+        _ => return sep_arg.span.error("Separator must be a string.").err(),
+    };
+
+    let result: Vec<Rc<Value>> = string
+        .split(sep)
+        .map(|part| Rc::new(Value::from(part)))
+        .collect();
+
+    Ok(Rc::new(Value::List(result)))
+}
