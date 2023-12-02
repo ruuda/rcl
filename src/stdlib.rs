@@ -265,3 +265,20 @@ fn builtin_string_split_lines(_eval: &mut Evaluator, call: MethodCall) -> Result
 
     Ok(Rc::new(Value::List(result)))
 }
+
+builtin_method!("String.parse_int", const STRING_PARSE_INT, builtin_string_parse_int);
+fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    use std::str::FromStr;
+
+    call.call.check_arity_static("String.parse_int", &[])?;
+    let string = call.receiver.expect_string();
+
+    match i64::from_str(string.as_ref()) {
+        Ok(i) => Ok(Rc::new(Value::Int(i))),
+        Err(..) => call
+            .receiver_span
+            .error("Failed to parse as integer:")
+            .with_body(format_rcl(call.receiver).into_owned())
+            .err(),
+    }
+}

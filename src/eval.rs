@@ -231,6 +231,7 @@ impl<'a> Evaluator<'a> {
                     (Value::String(_), "len") => Some(stdlib::STRING_LEN),
                     (Value::String(_), "split") => Some(stdlib::STRING_SPLIT),
                     (Value::String(_), "split_lines") => Some(stdlib::STRING_SPLIT_LINES),
+                    (Value::String(_), "parse_int") => Some(stdlib::STRING_PARSE_INT),
 
                     (Value::Dict(_), "contains") => Some(stdlib::DICT_CONTAINS),
                     (Value::Dict(_), "get") => Some(stdlib::DICT_GET),
