@@ -10,3 +10,9 @@ stdin:5:8
 5 │ widget.is_prefabulated
   ╵        ^~~~~~~~~~~~~~~
 Error: Unknown field.
+
+stdin:5:1
+  ╷
+5 │ widget.is_prefabulated
+  ╵ ^~~~~~
+Note: On value: { marzlevanes = ["hydrocoptic"], name = "Turbo encabulator" }

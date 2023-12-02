@@ -226,7 +226,7 @@ impl<'a> Evaluator<'a> {
             } => {
                 let inner = self.eval_expr(env, inner_expr)?;
                 let field_name_value = Value::String(field_name.0.clone());
-                let err_unknown_field = field_span.error("Unknown field.");
+
                 let builtin = match (inner.as_ref(), field_name.as_ref()) {
                     (Value::String(_), "len") => Some(stdlib::STRING_LEN),
                     (Value::String(_), "split") => Some(stdlib::STRING_SPLIT),
@@ -240,7 +240,20 @@ impl<'a> Evaluator<'a> {
                         // If it wasn't a builtin, look for a key in the dict.
                         return match fields.get(&field_name_value) {
                             Some(v) => Ok(v.clone()),
-                            None => Err(err_unknown_field.into()),
+                            None => {
+                                return field_span
+                                    .error("Unknown field.")
+                                    .with_note(
+                                        *inner_span,
+                                        concat! {
+                                            // TODO: Printing the full value may be overkill,
+                                            // the full value could be very large. We
+                                            // could print the dict keys here.
+                                            "On value: " format_rcl(inner.as_ref()).into_owned()
+                                        },
+                                    )
+                                    .err();
+                            }
                         };
                     }
 
@@ -263,7 +276,19 @@ impl<'a> Evaluator<'a> {
                         method_span: *field_span,
                         method: b,
                     })),
-                    None => Err(err_unknown_field.into()),
+                    None => {
+                        return field_span
+                            .error("Unknown field.")
+                            .with_note(
+                                *inner_span,
+                                concat! {
+                                    // TODO: Printing the full value may be overkill,
+                                    // the full value could be very large.
+                                    "On value: " format_rcl(inner.as_ref()).into_owned()
+                                },
+                            )
+                            .err();
+                    }
                 }
             }
 

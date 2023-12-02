@@ -6,3 +6,9 @@ stdin:1:21
 1 │ "turbo encabulator".is_prefabulated
   ╵                     ^~~~~~~~~~~~~~~
 Error: Unknown field.
+
+stdin:1:1
+  ╷
+1 │ "turbo encabulator".is_prefabulated
+  ╵ ^~~~~~~~~~~~~~~~~~~
+Note: On value: "turbo encabulator"
