@@ -360,9 +360,9 @@ impl<'a> Evaluator<'a> {
             Value::BuiltinFunction(f) => (f.f)(self, call),
             Value::Function(fun) => self.eval_function_call(fun, call),
             // TODO: Add a proper type error.
-            _ => Err(callee_span
+            _ => callee_span
                 .error("This is not a function, it cannot be called.")
-                .into()),
+                .err(),
         }
     }
 
