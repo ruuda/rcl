@@ -14,6 +14,25 @@ Return whether the list contains a given element. For example:
 [true, false]
 ```
 
+## fold
+
+    List.fold: (self: List[T], seed: U, reduce: (U, T) -> U) -> U
+
+Left-fold the function `reduce` over the list, with `seed` as the initial
+accumulator value.
+
+```rcl
+[2, 3, 5, 7, 11].fold(
+  { min = 99, max = 0 },
+  (acc, x) => {
+    min = if acc.min < x then acc.min else x,
+    max = if acc.max > x then acc.max else x,
+  },
+)
+// Evaluates to:
+{ max = 11, min = 11 }
+```
+
 ## group_by
 
     List.group_by: (self: List[T], get_key: T -> U) -> Dict[U, List[T]]
