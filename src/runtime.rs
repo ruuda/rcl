@@ -17,6 +17,12 @@ use crate::eval::Evaluator;
 use crate::pprint::{concat, Doc};
 use crate::source::Span;
 
+/// A value provided as argument to a function call.
+pub struct CallArg {
+    pub span: Span,
+    pub value: Rc<Value>,
+}
+
 /// The arguments to a function call at runtime.
 pub struct FunctionCall<'a> {
     /// The opening paren for the call.
@@ -26,7 +32,7 @@ pub struct FunctionCall<'a> {
     pub call_close: Span,
 
     /// The arguments and their spans in the source code.
-    pub args: &'a [(Span, Rc<Value>)],
+    pub args: &'a [CallArg],
 }
 
 impl<'a> FunctionCall<'a> {
@@ -71,7 +77,7 @@ impl<'a> FunctionCall<'a> {
                 self.args.len().to_string()
                 "."
             };
-            excess_arg.0.error(msg).err()
+            excess_arg.span.error(msg).err()
         }
     }
 
@@ -108,7 +114,7 @@ impl<'a> FunctionCall<'a> {
                 self.args.len().to_string()
                 "."
             };
-            excess_arg.0.error(msg).err()
+            excess_arg.span.error(msg).err()
         }
     }
 }

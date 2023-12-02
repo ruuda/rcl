@@ -15,7 +15,7 @@ use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::loader::Loader;
 use crate::pprint::{concat, Doc};
-use crate::runtime::{Env, Function, FunctionCall, MethodCall, Value};
+use crate::runtime::{CallArg, Env, Function, FunctionCall, MethodCall, Value};
 use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
@@ -274,7 +274,12 @@ impl<'a> Evaluator<'a> {
                 let fun = self.eval_expr(env, fun_expr)?;
                 let args = args_exprs
                     .iter()
-                    .map(|(span, a)| Ok((*span, self.eval_expr(env, a)?)))
+                    .map(|(span, a)| {
+                        Ok(CallArg {
+                            span: *span,
+                            value: self.eval_expr(env, a)?,
+                        })
+                    })
                     .collect::<Result<Vec<_>>>()?;
 
                 let call = FunctionCall {
@@ -371,8 +376,8 @@ impl<'a> Evaluator<'a> {
         // TODO: If we could stack multiple layers of envs, then we would not
         // have to clone the full thing.
         let mut env = fun.env.clone();
-        for (arg_name, (_arg_span, arg_value)) in fun.args.iter().zip(call.args) {
-            env.push(arg_name.clone(), arg_value.clone());
+        for (arg_name, CallArg { value, .. }) in fun.args.iter().zip(call.args) {
+            env.push(arg_name.clone(), value.clone());
         }
 
         self.eval_expr(&mut env, fun.body.as_ref())

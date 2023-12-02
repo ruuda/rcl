@@ -14,7 +14,7 @@ use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
 use crate::fmt_rcl::format_rcl;
 use crate::pprint::{concat, indent, Doc};
-use crate::runtime::{builtin_function, builtin_method, FunctionCall, MethodCall, Value};
+use crate::runtime::{builtin_function, builtin_method, CallArg, FunctionCall, MethodCall, Value};
 
 builtin_function!(
     "std.read_file_utf8",
@@ -23,8 +23,8 @@ builtin_function!(
 );
 fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Value>> {
     call.check_arity_static("std.read_file_utf8", &["path"])?;
-    let arg_span = call.args[0].0;
-    let path = match call.args[0].1.as_ref() {
+    let arg_span = call.args[0].span;
+    let path = match call.args[0].value.as_ref() {
         Value::String(s) => s,
         _not_string => {
             // TODO: Add proper typechecking and a proper type error.
@@ -85,7 +85,7 @@ builtin_method!("Dict.contains", const DICT_CONTAINS, builtin_dict_contains);
 fn builtin_dict_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     call.call.check_arity_static("Dict.contains", &["key"])?;
     let dict = call.receiver.expect_dict();
-    let needle = &call.call.args[0].1;
+    let needle = &call.call.args[0].value;
     Ok(Rc::new(Value::Bool(dict.contains_key(needle))))
 }
 
@@ -94,7 +94,7 @@ fn builtin_list_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<V
     call.call
         .check_arity_static("List.contains", &["element"])?;
     let list = call.receiver.expect_list();
-    let needle = &call.call.args[0].1;
+    let needle = &call.call.args[0].value;
     Ok(Rc::new(Value::Bool(list.contains(needle))))
 }
 
@@ -102,7 +102,7 @@ builtin_method!("Set.contains", const SET_CONTAINS, builtin_set_contains);
 fn builtin_set_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     call.call.check_arity_static("Set.contains", &["element"])?;
     let set = call.receiver.expect_set();
-    let needle = &call.call.args[0].1;
+    let needle = &call.call.args[0].value;
     Ok(Rc::new(Value::Bool(set.contains(needle))))
 }
 
@@ -111,8 +111,8 @@ fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>
     call.call
         .check_arity_static("Dict.get", &["key", "default"])?;
     let dict = call.receiver.expect_dict();
-    let key = &call.call.args[0].1;
-    let default = &call.call.args[1].1;
+    let key = &call.call.args[0].value;
+    let default = &call.call.args[1].value;
     match dict.get(key) {
         Some(v) => Ok(v.clone()),
         None => Ok(default.clone()),
@@ -130,8 +130,8 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
     // be called, so that doesn't fail.
     call.call.check_arity_static(name, &["get_key"])?;
 
-    let get_key = &call.call.args[0].1;
-    let get_key_span = call.call.args[0].0;
+    let get_key = &call.call.args[0].value;
+    let get_key_span = call.call.args[0].span;
 
     let mut groups: BTreeMap<Rc<Value>, Vec<Rc<Value>>> = BTreeMap::new();
 
@@ -140,7 +140,10 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
         // source code that we could point at. Add one nonetheless, we'll replace
         // the error below if needed.
         let void_span = get_key_span.take(0);
-        let args = [(void_span, x.clone())];
+        let args = [CallArg {
+            span: void_span,
+            value: x.clone(),
+        }];
         let call = FunctionCall {
             call_open: void_span,
             call_close: void_span,
