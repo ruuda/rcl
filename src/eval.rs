@@ -258,6 +258,7 @@ impl<'a> Evaluator<'a> {
                     }
 
                     (Value::List(_), "contains") => Some(stdlib::LIST_CONTAINS),
+                    (Value::List(_), "fold") => Some(stdlib::LIST_FOLD),
                     (Value::List(_), "group_by") => Some(stdlib::LIST_GROUP_BY),
                     (Value::List(_), "key_by") => Some(stdlib::LIST_KEY_BY),
                     (Value::List(_), "len") => Some(stdlib::LIST_LEN),

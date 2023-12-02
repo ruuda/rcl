@@ -282,3 +282,59 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<R
             .err(),
     }
 }
+
+builtin_method!("List.fold", const LIST_FOLD, builtin_list_fold);
+fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    // TODO: Add static type checks. Right now you could provide a bogus
+    // function to fold over an empty list and that doesn't fail.
+    call.call
+        .check_arity_static("List.fold", &["seed", "reduce"])?;
+
+    let list = call.receiver.expect_list();
+    let seed = &call.call.args[0];
+    let reduce = &call.call.args[1];
+
+    let mut acc = seed.value.clone();
+
+    for element in list.iter() {
+        // The call that we construct here is internal, there is no span in the
+        // source code that we could point at. Add one nonetheless, we'll
+        // replace the error below if needed.
+        let void_span = reduce.span.take(0);
+        let args = [
+            CallArg {
+                span: void_span,
+                value: acc,
+            },
+            CallArg {
+                span: void_span,
+                value: element.clone(),
+            },
+        ];
+        let call = FunctionCall {
+            call_open: void_span,
+            call_close: void_span,
+            args: &args,
+        };
+        acc = eval
+            .eval_call(reduce.span, reduce.value.as_ref(), call)
+            .map_err(|err| {
+                // TODO: This is also not ideal, if you pass a function whose
+                // body is a BinOp, then if that fails, it can pinpoint the
+                // exact location in the source tree where it fails, but now we
+                // are masking the value. But for other errors, e.g. an arity
+                // error, we don't have a span we can point at, and overriding
+                // is good. How to fix this?
+                err.with_prefix(
+                    reduce.span,
+                    concat! {
+                        "In call to reduce in '"
+                        Doc::highlight("List.fold")
+                        "':"
+                    },
+                )
+            })?;
+    }
+
+    Ok(acc)
+}
