@@ -47,8 +47,14 @@
 
 # Builtin methods.
 "contains"
+"fold"
 "get"
 "group_by"
 "key_by"
 "len"
+"parse_int"
+"reverse"
+"split"
+"split_lines"
+"std.range"
 "std.read_file_utf8"

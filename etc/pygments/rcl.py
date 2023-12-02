@@ -59,10 +59,15 @@ _root_base = [
         words(
             (
                 "contains",
+                "fold",
                 "get",
                 "group_by",
                 "key_by",
                 "len",
+                "parse_int",
+                "reverse",
+                "split",
+                "split_lines",
                 "std",
             ),
             suffix=r"\b",
