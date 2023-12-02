@@ -230,6 +230,7 @@ impl<'a> Evaluator<'a> {
                 let builtin = match (inner.as_ref(), field_name.as_ref()) {
                     (Value::String(_), "len") => Some(stdlib::STRING_LEN),
                     (Value::String(_), "split") => Some(stdlib::STRING_SPLIT),
+                    (Value::String(_), "split_lines") => Some(stdlib::STRING_SPLIT_LINES),
 
                     (Value::Dict(_), "contains") => Some(stdlib::DICT_CONTAINS),
                     (Value::Dict(_), "get") => Some(stdlib::DICT_GET),

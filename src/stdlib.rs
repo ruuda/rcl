@@ -252,3 +252,16 @@ fn builtin_string_split(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Va
 
     Ok(Rc::new(Value::List(result)))
 }
+
+builtin_method!("String.split_lines", const STRING_SPLIT_LINES, builtin_string_split_lines);
+fn builtin_string_split_lines(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("String.split_lines", &[])?;
+    let string = call.receiver.expect_string();
+
+    let result: Vec<Rc<Value>> = string
+        .lines()
+        .map(|part| Rc::new(Value::from(part)))
+        .collect();
+
+    Ok(Rc::new(Value::List(result)))
+}
