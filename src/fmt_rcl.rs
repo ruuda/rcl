@@ -106,8 +106,6 @@ fn value(v: &Value) -> Doc {
         // TODO: Add a more proper printer for functions/builtins. For now this will do.
         Value::Function(..) => Doc::from("«function»").with_markup(Markup::Keyword),
         Value::BuiltinFunction(b) => Doc::from(b.name).with_markup(Markup::Builtin),
-        Value::BuiltinMethod(b, _sr, _sm, _receiver) => {
-            Doc::from(b.name).with_markup(Markup::Builtin)
-        }
+        Value::BuiltinMethod { method, .. } => Doc::from(method.name).with_markup(Markup::Builtin),
     }
 }

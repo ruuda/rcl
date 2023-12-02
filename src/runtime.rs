@@ -225,7 +225,12 @@ pub enum Value {
 
     BuiltinFunction(BuiltinFunction),
 
-    BuiltinMethod(BuiltinMethod, Span, Span, Rc<Value>),
+    BuiltinMethod {
+        method_span: Span,
+        method: BuiltinMethod,
+        receiver_span: Span,
+        receiver: Rc<Value>,
+    },
 }
 
 impl Value {

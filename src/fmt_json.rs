@@ -123,7 +123,7 @@ impl Formatter {
             Value::Dict(vs) => self.dict(vs.iter())?,
             Value::Function(..) => self.error("Functions cannot be exported as json.")?,
             Value::BuiltinFunction(..) => self.error("Functions cannot be exported as json.")?,
-            Value::BuiltinMethod(..) => self.error("Methods cannot be exported as json.")?,
+            Value::BuiltinMethod { .. } => self.error("Methods cannot be exported as json.")?,
         };
         Ok(result)
     }

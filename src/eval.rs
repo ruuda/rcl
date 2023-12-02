@@ -244,12 +244,12 @@ impl<'a> Evaluator<'a> {
                     _other => None,
                 };
                 match builtin {
-                    Some(b) => Ok(Rc::new(Value::BuiltinMethod(
-                        b,
-                        *inner_span,
-                        *field_span,
-                        inner,
-                    ))),
+                    Some(b) => Ok(Rc::new(Value::BuiltinMethod {
+                        receiver_span: *inner_span,
+                        receiver: inner,
+                        method_span: *field_span,
+                        method: b,
+                    })),
                     None => Err(err_unknown_field.into()),
                 }
             }
@@ -338,14 +338,19 @@ impl<'a> Evaluator<'a> {
         call: FunctionCall,
     ) -> Result<Rc<Value>> {
         match callee {
-            Value::BuiltinMethod(f, receiver_span, method_span, receiver) => {
+            Value::BuiltinMethod {
+                method_span,
+                method,
+                receiver_span,
+                receiver,
+            } => {
                 let method_call = MethodCall {
                     call,
                     method_span: *method_span,
                     receiver_span: *receiver_span,
                     receiver: receiver.as_ref(),
                 };
-                (f.f)(self, method_call)
+                (method.f)(self, method_call)
             }
             Value::BuiltinFunction(f) => (f.f)(self, call),
             Value::Function(fun) => self.eval_function_call(fun, call),
