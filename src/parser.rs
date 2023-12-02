@@ -725,11 +725,13 @@ impl<'a> Parser<'a> {
                     };
                 }
                 Some(Token::Dot) => {
+                    let result_span = before.until(self.peek_span());
                     self.consume();
                     self.skip_non_code()?;
                     let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
                     result = Expr::Field {
                         field,
+                        inner_span: result_span,
                         inner: Box::new(result),
                     };
                 }

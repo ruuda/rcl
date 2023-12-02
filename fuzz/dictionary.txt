@@ -48,5 +48,7 @@
 # Builtin methods.
 "contains"
 "get"
+"group_by"
+"key_by"
 "len"
 "std.read_file_utf8"

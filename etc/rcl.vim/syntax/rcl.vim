@@ -44,7 +44,7 @@ syn region  rclFormatTriple  start='f"""' end='"""' skip='\\"\|\\{' contains=rcl
 
 " See also https://vi.stackexchange.com/questions/5966/ for why the `contains`
 " needs to end in `[]`.
-syn keyword rclBuiltin contains[] get len
+syn keyword rclBuiltin contains[] get group_by key_by len std
 
 syn cluster rclString contains=rclStringDouble,rclStringTriple,rclFormatDouble,rclFormatTriple
 highlight link rclStringDouble rclString

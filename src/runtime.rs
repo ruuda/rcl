@@ -17,6 +17,12 @@ use crate::eval::Evaluator;
 use crate::pprint::{concat, Doc};
 use crate::source::Span;
 
+/// A value provided as argument to a function call.
+pub struct CallArg {
+    pub span: Span,
+    pub value: Rc<Value>,
+}
+
 /// The arguments to a function call at runtime.
 pub struct FunctionCall<'a> {
     /// The opening paren for the call.
@@ -26,7 +32,7 @@ pub struct FunctionCall<'a> {
     pub call_close: Span,
 
     /// The arguments and their spans in the source code.
-    pub args: &'a [(Span, Rc<Value>)],
+    pub args: &'a [CallArg],
 }
 
 impl<'a> FunctionCall<'a> {
@@ -71,7 +77,7 @@ impl<'a> FunctionCall<'a> {
                 self.args.len().to_string()
                 "."
             };
-            excess_arg.0.error(msg).err()
+            excess_arg.span.error(msg).err()
         }
     }
 
@@ -108,7 +114,7 @@ impl<'a> FunctionCall<'a> {
                 self.args.len().to_string()
                 "."
             };
-            excess_arg.0.error(msg).err()
+            excess_arg.span.error(msg).err()
         }
     }
 }
@@ -116,10 +122,17 @@ impl<'a> FunctionCall<'a> {
 /// The arguments to a method call at runtime.
 pub struct MethodCall<'a> {
     /// The source code span of the receiver of the method call.
+    ///
+    /// In `widget.len()`, the receiver is `widget`.
     pub receiver_span: Span,
 
     /// The receiver of the call.
     pub receiver: &'a Value,
+
+    /// The span of the method being called.
+    ///
+    /// In `widget.len()`, the method is `len`.
+    pub method_span: Span,
 
     /// Arguments to the call.
     pub call: FunctionCall<'a>,
@@ -218,7 +231,12 @@ pub enum Value {
 
     BuiltinFunction(BuiltinFunction),
 
-    BuiltinMethod(BuiltinMethod, Span, Rc<Value>),
+    BuiltinMethod {
+        method_span: Span,
+        method: BuiltinMethod,
+        receiver_span: Span,
+        receiver: Rc<Value>,
+    },
 }
 
 impl Value {
@@ -335,7 +353,7 @@ macro_rules! builtin_function {
         const $rust_const:ident,
         $rust_name:ident
     ) => {
-        const $rust_const: crate::runtime::BuiltinFunction = crate::runtime::BuiltinFunction {
+        pub const $rust_const: crate::runtime::BuiltinFunction = crate::runtime::BuiltinFunction {
             name: $rcl_name,
             f: $rust_name,
         };
@@ -349,7 +367,7 @@ macro_rules! builtin_method {
         const $rust_const:ident,
         $rust_name:ident
     ) => {
-        const $rust_const: crate::runtime::BuiltinMethod = crate::runtime::BuiltinMethod {
+        pub const $rust_const: crate::runtime::BuiltinMethod = crate::runtime::BuiltinMethod {
             name: $rcl_name,
             f: $rust_name,
         };

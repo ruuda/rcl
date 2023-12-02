@@ -134,6 +134,7 @@ pub enum Expr {
     /// Access a field on the inner expression.
     Field {
         inner: Box<Expr>,
+        inner_span: Span,
         field: Ident,
         field_span: Span,
     },

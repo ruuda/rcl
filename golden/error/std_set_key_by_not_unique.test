@@ -1,0 +1,18 @@
+let replicants = {
+  { name = "Rachael", generation = 7 },
+  { name = "Roy Batty", generation = 6 },
+  { name = "Pris Stratton", generation = 6 },
+  { name = "Zhora Salome", generation = 6 },
+};
+replicants.key_by(r => r.generation)
+
+# output:
+stdin:7:12
+  ╷
+7 │ replicants.key_by(r => r.generation)
+  ╵            ^~~~~~
+Error: The key 6 is not unique. The following values use this key:
+
+  { generation = 6, name = "Pris Stratton" }
+  { generation = 6, name = "Roy Batty" }
+  { generation = 6, name = "Zhora Salome" }

@@ -1,0 +1,14 @@
+[1, 2, 3].group_by((k, v) => "this get_key has too many arguments")
+
+# output:
+stdin:1:20
+  ╷
+1 │ [1, 2, 3].group_by((k, v) => "this get_key has too many arguments")
+  ╵                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Error: In call to key selector in 'List.group_by': Missing argument 'v'. The function takes 2 arguments, but got 1.
+
+stdin:1:27
+  ╷
+1 │ [1, 2, 3].group_by((k, v) => "this get_key has too many arguments")
+  ╵                           ^~
+Note: Function defined here.

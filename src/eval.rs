@@ -15,8 +15,9 @@ use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::loader::Loader;
 use crate::pprint::{concat, Doc};
-use crate::runtime::{builtin_method, Env, Function, FunctionCall, MethodCall, Value};
+use crate::runtime::{CallArg, Env, Function, FunctionCall, MethodCall, Value};
 use crate::source::{DocId, Span};
+use crate::stdlib;
 use crate::tracer::Tracer;
 
 /// An entry on the evaluation stack.
@@ -210,17 +211,18 @@ impl<'a> Evaluator<'a> {
             Expr::Field {
                 field_span,
                 field: field_name,
+                inner_span,
                 inner: inner_expr,
             } => {
                 let inner = self.eval_expr(env, inner_expr)?;
                 let field_name_value = Value::String(field_name.0.clone());
                 let err_unknown_field = field_span.error("Unknown field.");
                 let builtin = match (inner.as_ref(), field_name.as_ref()) {
-                    (Value::String(_), "len") => Some(STRING_LEN),
+                    (Value::String(_), "len") => Some(stdlib::STRING_LEN),
 
-                    (Value::Dict(_), "contains") => Some(DICT_CONTAINS),
-                    (Value::Dict(_), "get") => Some(DICT_GET),
-                    (Value::Dict(_), "len") => Some(DICT_LEN),
+                    (Value::Dict(_), "contains") => Some(stdlib::DICT_CONTAINS),
+                    (Value::Dict(_), "get") => Some(stdlib::DICT_GET),
+                    (Value::Dict(_), "len") => Some(stdlib::DICT_LEN),
                     (Value::Dict(fields), _field_name) => {
                         // If it wasn't a builtin, look for a key in the dict.
                         return match fields.get(&field_name_value) {
@@ -229,16 +231,25 @@ impl<'a> Evaluator<'a> {
                         };
                     }
 
-                    (Value::List(_), "contains") => Some(LIST_CONTAINS),
-                    (Value::List(_), "len") => Some(LIST_LEN),
+                    (Value::List(_), "contains") => Some(stdlib::LIST_CONTAINS),
+                    (Value::List(_), "group_by") => Some(stdlib::LIST_GROUP_BY),
+                    (Value::List(_), "key_by") => Some(stdlib::LIST_KEY_BY),
+                    (Value::List(_), "len") => Some(stdlib::LIST_LEN),
 
-                    (Value::Set(_), "contains") => Some(SET_CONTAINS),
-                    (Value::Set(_), "len") => Some(SET_LEN),
+                    (Value::Set(_), "contains") => Some(stdlib::SET_CONTAINS),
+                    (Value::Set(_), "group_by") => Some(stdlib::SET_GROUP_BY),
+                    (Value::Set(_), "key_by") => Some(stdlib::SET_KEY_BY),
+                    (Value::Set(_), "len") => Some(stdlib::SET_LEN),
 
                     _other => None,
                 };
                 match builtin {
-                    Some(b) => Ok(Rc::new(Value::BuiltinMethod(b, *field_span, inner))),
+                    Some(b) => Ok(Rc::new(Value::BuiltinMethod {
+                        receiver_span: *inner_span,
+                        receiver: inner,
+                        method_span: *field_span,
+                        method: b,
+                    })),
                     None => Err(err_unknown_field.into()),
                 }
             }
@@ -263,7 +274,12 @@ impl<'a> Evaluator<'a> {
                 let fun = self.eval_expr(env, fun_expr)?;
                 let args = args_exprs
                     .iter()
-                    .map(|(span, a)| Ok((*span, self.eval_expr(env, a)?)))
+                    .map(|(span, a)| {
+                        Ok(CallArg {
+                            span: *span,
+                            value: self.eval_expr(env, a)?,
+                        })
+                    })
                     .collect::<Result<Vec<_>>>()?;
 
                 let call = FunctionCall {
@@ -272,22 +288,7 @@ impl<'a> Evaluator<'a> {
                     args: &args[..],
                 };
 
-                match fun.as_ref() {
-                    Value::BuiltinMethod(f, receiver_span, receiver) => {
-                        let method_call = MethodCall {
-                            call,
-                            receiver_span: *receiver_span,
-                            receiver: receiver.as_ref(),
-                        };
-                        (f.f)(self, method_call)
-                    }
-                    Value::BuiltinFunction(f) => (f.f)(self, call),
-                    Value::Function(fun) => self.eval_function_call(fun, call),
-                    // TODO: Add a proper type error.
-                    _ => Err(function_span
-                        .error("This is not a function, it cannot be called.")
-                        .into()),
-                }
+                self.eval_call(*function_span, fun.as_ref(), call)
             }
 
             Expr::Index {
@@ -335,6 +336,36 @@ impl<'a> Evaluator<'a> {
         }
     }
 
+    pub fn eval_call(
+        &mut self,
+        callee_span: Span,
+        callee: &Value,
+        call: FunctionCall,
+    ) -> Result<Rc<Value>> {
+        match callee {
+            Value::BuiltinMethod {
+                method_span,
+                method,
+                receiver_span,
+                receiver,
+            } => {
+                let method_call = MethodCall {
+                    call,
+                    method_span: *method_span,
+                    receiver_span: *receiver_span,
+                    receiver: receiver.as_ref(),
+                };
+                (method.f)(self, method_call)
+            }
+            Value::BuiltinFunction(f) => (f.f)(self, call),
+            Value::Function(fun) => self.eval_function_call(fun, call),
+            // TODO: Add a proper type error.
+            _ => callee_span
+                .error("This is not a function, it cannot be called.")
+                .err(),
+        }
+    }
+
     /// Evaluate a call to a lambda function.
     pub fn eval_function_call(&mut self, fun: &Function, call: FunctionCall) -> Result<Rc<Value>> {
         // TODO: Add a better name, possibly also report the source span where
@@ -345,8 +376,8 @@ impl<'a> Evaluator<'a> {
         // TODO: If we could stack multiple layers of envs, then we would not
         // have to clone the full thing.
         let mut env = fun.env.clone();
-        for (arg_name, (_arg_span, arg_value)) in fun.args.iter().zip(call.args) {
-            env.push(arg_name.clone(), arg_value.clone());
+        for (arg_name, CallArg { value, .. }) in fun.args.iter().zip(call.args) {
+            env.push(arg_name.clone(), value.clone());
         }
 
         self.eval_expr(&mut env, fun.body.as_ref())
@@ -798,71 +829,5 @@ impl SeqOut {
             SeqOut::Dict(_first, keys, values) => Ok((keys, values)),
             SeqOut::SetOrDict => unreachable!("Should have been replaced by now."),
         }
-    }
-}
-
-builtin_method!("Dict.len", const DICT_LEN, builtin_dict_len);
-fn builtin_dict_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("Dict.len", &[])?;
-    let dict = call.receiver.expect_dict();
-    Ok(Rc::new(Value::Int(dict.len() as _)))
-}
-
-builtin_method!("List.len", const LIST_LEN, builtin_list_len);
-fn builtin_list_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("List.len", &[])?;
-    let list = call.receiver.expect_list();
-    Ok(Rc::new(Value::Int(list.len() as _)))
-}
-
-builtin_method!("Set.len", const SET_LEN, builtin_set_len);
-fn builtin_set_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("Set.len", &[])?;
-    let set = call.receiver.expect_set();
-    Ok(Rc::new(Value::Int(set.len() as _)))
-}
-
-builtin_method!("String.len", const STRING_LEN, builtin_string_len);
-fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("String.len", &[])?;
-    let string = call.receiver.expect_string();
-    Ok(Rc::new(Value::Int(string.len() as _)))
-}
-
-builtin_method!("Dict.contains", const DICT_CONTAINS, builtin_dict_contains);
-fn builtin_dict_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("Dict.contains", &["key"])?;
-    let dict = call.receiver.expect_dict();
-    let needle = &call.call.args[0].1;
-    Ok(Rc::new(Value::Bool(dict.contains_key(needle))))
-}
-
-builtin_method!("List.contains", const LIST_CONTAINS, builtin_list_contains);
-fn builtin_list_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call
-        .check_arity_static("List.contains", &["element"])?;
-    let list = call.receiver.expect_list();
-    let needle = &call.call.args[0].1;
-    Ok(Rc::new(Value::Bool(list.contains(needle))))
-}
-
-builtin_method!("Set.contains", const SET_CONTAINS, builtin_set_contains);
-fn builtin_set_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call.check_arity_static("Set.contains", &["element"])?;
-    let set = call.receiver.expect_set();
-    let needle = &call.call.args[0].1;
-    Ok(Rc::new(Value::Bool(set.contains(needle))))
-}
-
-builtin_method!("Dict.get", const DICT_GET, builtin_dict_get);
-fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
-    call.call
-        .check_arity_static("Dict.get", &["key", "default"])?;
-    let dict = call.receiver.expect_dict();
-    let key = &call.call.args[0].1;
-    let default = &call.call.args[1].1;
-    match dict.get(key) {
-        Some(v) => Ok(v.clone()),
-        None => Ok(default.clone()),
     }
 }

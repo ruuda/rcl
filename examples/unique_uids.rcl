@@ -13,22 +13,9 @@ let uids = {
 };
 
 // However, in this configuration it is easy to accidentally use the same uid
-// twice, which would be disastrous. We can prevent this statically using an
-// assertion:
-let unique_uids = {for _name, uid in uids: uid};
-let names_per_uid = {
-  for target_uid in unique_uids:
-  target_uid: [
-    for service_name, service_uid in uids:
-    if target_uid == service_uid:
-    service_name
-  ]
-};
-let reused_uids = {
-  for uid, services in names_per_uid:
-  if services.len() > 1:
-  uid: services
-};
-assert reused_uids.len() == 0, ["Some UIDs are used twice:", reused_uids];
+// twice, which would be disastrous. We can prevent this statically by inverting
+// the mapping, and using `key_by`.
+let all_users = [for name, uid in uids: { name = name, uid = uid }];
+let users_by_uid = all_users.key_by(u => u.uid);
 
 uids

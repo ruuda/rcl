@@ -12,7 +12,9 @@ use std::rc::Rc;
 
 use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
-use crate::runtime::{builtin_function, FunctionCall, Value};
+use crate::fmt_rcl::format_rcl;
+use crate::pprint::{concat, indent, Doc};
+use crate::runtime::{builtin_function, builtin_method, CallArg, FunctionCall, MethodCall, Value};
 
 builtin_function!(
     "std.read_file_utf8",
@@ -21,8 +23,8 @@ builtin_function!(
 );
 fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Value>> {
     call.check_arity_static("std.read_file_utf8", &["path"])?;
-    let arg_span = call.args[0].0;
-    let path = match call.args[0].1.as_ref() {
+    let arg_span = call.args[0].span;
+    let path = match call.args[0].value.as_ref() {
         Value::String(s) => s,
         _not_string => {
             // TODO: Add proper typechecking and a proper type error.
@@ -49,4 +51,184 @@ pub fn initialize() -> Rc<Value> {
     );
 
     Rc::new(Value::Dict(builtins))
+}
+
+builtin_method!("Dict.len", const DICT_LEN, builtin_dict_len);
+fn builtin_dict_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("Dict.len", &[])?;
+    let dict = call.receiver.expect_dict();
+    Ok(Rc::new(Value::Int(dict.len() as _)))
+}
+
+builtin_method!("List.len", const LIST_LEN, builtin_list_len);
+fn builtin_list_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("List.len", &[])?;
+    let list = call.receiver.expect_list();
+    Ok(Rc::new(Value::Int(list.len() as _)))
+}
+
+builtin_method!("Set.len", const SET_LEN, builtin_set_len);
+fn builtin_set_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("Set.len", &[])?;
+    let set = call.receiver.expect_set();
+    Ok(Rc::new(Value::Int(set.len() as _)))
+}
+
+builtin_method!("String.len", const STRING_LEN, builtin_string_len);
+fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("String.len", &[])?;
+    let string = call.receiver.expect_string();
+    Ok(Rc::new(Value::Int(string.len() as _)))
+}
+
+builtin_method!("Dict.contains", const DICT_CONTAINS, builtin_dict_contains);
+fn builtin_dict_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("Dict.contains", &["key"])?;
+    let dict = call.receiver.expect_dict();
+    let needle = &call.call.args[0].value;
+    Ok(Rc::new(Value::Bool(dict.contains_key(needle))))
+}
+
+builtin_method!("List.contains", const LIST_CONTAINS, builtin_list_contains);
+fn builtin_list_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("List.contains", &["element"])?;
+    let list = call.receiver.expect_list();
+    let needle = &call.call.args[0].value;
+    Ok(Rc::new(Value::Bool(list.contains(needle))))
+}
+
+builtin_method!("Set.contains", const SET_CONTAINS, builtin_set_contains);
+fn builtin_set_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("Set.contains", &["element"])?;
+    let set = call.receiver.expect_set();
+    let needle = &call.call.args[0].value;
+    Ok(Rc::new(Value::Bool(set.contains(needle))))
+}
+
+builtin_method!("Dict.get", const DICT_GET, builtin_dict_get);
+fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("Dict.get", &["key", "default"])?;
+    let dict = call.receiver.expect_dict();
+    let key = &call.call.args[0].value;
+    let default = &call.call.args[1].value;
+    match dict.get(key) {
+        Some(v) => Ok(v.clone()),
+        None => Ok(default.clone()),
+    }
+}
+
+fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+) -> Result<BTreeMap<Rc<Value>, Vec<Rc<Value>>>> {
+    // TODO: Add static type checks. Right now, if you call `group_by` on an empty
+    // collection, you can provide a completely bogus get_key, and it will never
+    // be called, so that doesn't fail.
+    call.call.check_arity_static(name, &["get_key"])?;
+
+    let get_key = &call.call.args[0].value;
+    let get_key_span = call.call.args[0].span;
+
+    let mut groups: BTreeMap<Rc<Value>, Vec<Rc<Value>>> = BTreeMap::new();
+
+    for x in elements {
+        // The call that we construct here is internal, there is no span in the
+        // source code that we could point at. Add one nonetheless, we'll replace
+        // the error below if needed.
+        let void_span = get_key_span.take(0);
+        let args = [CallArg {
+            span: void_span,
+            value: x.clone(),
+        }];
+        let call = FunctionCall {
+            call_open: void_span,
+            call_close: void_span,
+            args: &args,
+        };
+        let key = eval
+            .eval_call(get_key_span, get_key.as_ref(), call)
+            .map_err(|err| {
+                err.with_prefix(
+                    get_key_span,
+                    concat! {
+                        "In call to key selector in '"
+                        Doc::highlight(name)
+                        "':"
+                    },
+                )
+            })?;
+        groups.entry(key).or_default().push(x.clone());
+    }
+
+    Ok(groups)
+}
+
+builtin_method!("List.group_by", const LIST_GROUP_BY, builtin_list_group_by);
+fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let list = call.receiver.expect_list();
+    let result = builtin_group_by_impl(eval, call, "List.group_by", list)?
+        .into_iter()
+        .map(|(k, vs)| (k, Rc::new(Value::List(vs))))
+        .collect();
+    Ok(Rc::new(Value::Dict(result)))
+}
+
+builtin_method!("Set.group_by", const SET_GROUP_BY, builtin_set_group_by);
+fn builtin_set_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let set = call.receiver.expect_set();
+    let result = builtin_group_by_impl(eval, call, "Set.group_by", set)?
+        .into_iter()
+        .map(|(k, vs)| (k, Rc::new(Value::Set(vs.into_iter().collect()))))
+        .collect();
+    Ok(Rc::new(Value::Dict(result)))
+}
+
+fn builtin_key_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+) -> Result<Rc<Value>> {
+    let method_span = call.method_span;
+    let groups = builtin_group_by_impl(eval, call, name, elements)?;
+    let mut result = BTreeMap::new();
+    for (k, mut vs) in groups.into_iter() {
+        if vs.len() > 1 {
+            return method_span
+                .error(concat! {
+                    "The key " format_rcl(k.as_ref()).into_owned() " is not unique."
+                })
+                .with_body(concat! {
+                    "The following values use this key:"
+                    Doc::HardBreak
+                    Doc::HardBreak
+                    indent! {
+                        Doc::join(
+                            vs.iter().map(|v| format_rcl(v).into_owned()),
+                            Doc::HardBreak,
+                        )
+                    }
+                })
+                .err();
+        }
+        result.insert(k, vs.pop().expect("Groups have at least one element."));
+    }
+
+    Ok(Rc::new(Value::Dict(result)))
+}
+
+builtin_method!("List.key_by", const LIST_KEY_BY, builtin_list_key_by);
+fn builtin_list_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let list = call.receiver.expect_list();
+    builtin_key_by_impl(eval, call, "List.key_by", list)
+}
+
+builtin_method!("Set.key_by", const SET_KEY_BY, builtin_set_key_by);
+fn builtin_set_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let set = call.receiver.expect_set();
+    builtin_key_by_impl(eval, call, "Set.key_by", set)
 }

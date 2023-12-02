@@ -8,18 +8,32 @@ let group_devices = {
 };
 
 // We want to construct the inverse mapping of devices to group memberships.
-// This is a bit inefficient because it computes the full Cartesian product of
-// devices and groups, but it will suffice for now.
+// We can do this by first flattening to memberships, then grouping, and then
+// removing redundant information.
+let memberships = [
+  for group, members in group_devices:
+  for device in members:
+  { group = group, device = device }
+];
+let result_1 = {
+  for device, ms in memberships.group_by(m => m.device):
+  device: [for m in ms: m.group]
+};
+
+// Alternatively, we can first compute all unique devices, and then for every
+// device, see which groups it's a member of.
 let devices = {
   for _group, devices in group_devices:
   for device in devices:
   device
 };
-{
+let result_2 = {
   for device in devices:
   device: [
     for group, g_devs in group_devices:
     if g_devs.contains(device):
     group
   ]
-}
+};
+
+[result_1, result_2]
