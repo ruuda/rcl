@@ -41,10 +41,45 @@ fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Resul
     Ok(Rc::new(eval.loader.get_doc(doc).data.into()))
 }
 
+builtin_function!(
+    "std.range",
+    const STD_RANGE,
+    builtin_std_range
+);
+fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Value>> {
+    call.check_arity_static("std.range", &["lower", "upper"])?;
+    let lower = match call.args[0].value.as_ref() {
+        Value::Int(i) => *i,
+        _not_string => {
+            // TODO: Add proper typechecking and a proper type error.
+            return call.args[0]
+                .span
+                .error("Expected an Int here, but got a different type.")
+                .err();
+        }
+    };
+    let upper = match call.args[1].value.as_ref() {
+        Value::Int(i) => *i,
+        _not_string => {
+            // TODO: Add proper typechecking and a proper type error.
+            return call.args[1]
+                .span
+                .error("Expected an Int here, but got a different type.")
+                .err();
+        }
+    };
+    let values: Vec<_> = (lower..upper).map(|i| Rc::new(Value::Int(i))).collect();
+    Ok(Rc::new(Value::List(values)))
+}
+
 /// Initialize the standard library.
 pub fn initialize() -> Rc<Value> {
     let mut builtins: BTreeMap<Rc<Value>, Rc<Value>> = BTreeMap::new();
 
+    builtins.insert(
+        Rc::new("range".into()),
+        Rc::new(Value::BuiltinFunction(STD_RANGE)),
+    );
     builtins.insert(
         Rc::new("read_file_utf8".into()),
         Rc::new(Value::BuiltinFunction(STD_READ_FILE_UTF8)),
