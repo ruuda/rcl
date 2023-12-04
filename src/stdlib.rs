@@ -13,6 +13,7 @@ use std::rc::Rc;
 use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
 use crate::fmt_rcl::format_rcl;
+use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{builtin_function, builtin_method, CallArg, FunctionCall, MethodCall, Value};
 
@@ -48,7 +49,7 @@ builtin_function!(
 );
 fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Value>> {
     call.check_arity_static("std.range", &["lower", "upper"])?;
-    let lower = match call.args[0].value.as_ref() {
+    let lower: i64 = match call.args[0].value.as_ref() {
         Value::Int(i) => *i,
         _not_string => {
             // TODO: Add proper typechecking and a proper type error.
@@ -58,7 +59,7 @@ fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Val
                 .err();
         }
     };
-    let upper = match call.args[1].value.as_ref() {
+    let upper: i64 = match call.args[1].value.as_ref() {
         Value::Int(i) => *i,
         _not_string => {
             // TODO: Add proper typechecking and a proper type error.
@@ -68,7 +69,36 @@ fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Val
                 .err();
         }
     };
-    let values: Vec<_> = (lower..upper).map(|i| Rc::new(Value::Int(i))).collect();
+
+    let range = lower..upper;
+
+    // Because we materialize the entire list, it's easy to cause out of memory
+    // with a single call to `range`. To prevent that, put an upper limit on the
+    // size. We use a lower limit when fuzzing because it runs with less memory,
+    // and also to keep the fuzzer fast. For production, empirically, a limit of
+    // 1e6 takes about a second to evaluate, so calling `std.range` with much
+    // larger values makes little sense anyway.
+    #[cfg(fuzzing)]
+    let max_len = 500;
+    #[cfg(not(fuzzing))]
+    let max_len = 1_000_000;
+
+    if upper.saturating_sub(lower) > max_len {
+        return call
+            .call_close
+            .error(concat! {
+                "Range "
+                Doc::string(lower.to_string()).with_markup(Markup::Number)
+                ".."
+                Doc::string(upper.to_string()).with_markup(Markup::Number)
+                " exceeds the maximum length of "
+                Doc::string(max_len.to_string()).with_markup(Markup::Number)
+                ". The list would require too much memory."
+            })
+            .err();
+    }
+
+    let values: Vec<_> = range.map(|i| Rc::new(Value::Int(i))).collect();
     Ok(Rc::new(Value::List(values)))
 }
 
