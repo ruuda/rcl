@@ -1,0 +1,9 @@
+let x = "Here we define x, it is referenced in the imported file.";
+import "_import_clean_env.rcl"
+
+# output:
+_import_clean_env.rcl:3:1
+  ╷
+3 │ x
+  ╵ ^
+Error: Unknown variable.

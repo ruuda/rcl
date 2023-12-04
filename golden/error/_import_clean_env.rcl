@@ -1,0 +1,3 @@
+// This variable is not defined here. Even if it is defined at the place where
+// we import this document, it should still cause evaluation to fail.
+x
