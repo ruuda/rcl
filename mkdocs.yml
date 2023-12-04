@@ -17,6 +17,7 @@ markdown_extensions:
 nav:
   - "Overview": "index.md"
   - "User guide":
+      - "Tutorial": "tutorial.md"
       - "Installation": "installation.md"
       - "Syntax highlighting": "syntax_highlighting.md"
   - "Language guide":

@@ -1,0 +1,46 @@
+{
+  "buckets": [
+    {
+      "name": "alpha_hourly",
+      "region": "eu-west",
+      "lifecycle_policy": {
+        "delete_after_seconds": 345600
+      }
+    },
+    {
+      "name": "alpha_daily",
+      "region": "eu-west",
+      "lifecycle_policy": {
+        "delete_after_seconds": 2592000
+      }
+    },
+    {
+      "name": "alpha_monthly",
+      "region": "eu-west",
+      "lifecycle_policy": {
+        "delete_after_seconds": 31536000
+      }
+    },
+    {
+      "name": "bravo_hourly",
+      "region": "eu-west",
+      "lifecycle_policy": {
+        "delete_after_seconds": 34560
+      }
+    },
+    {
+      "name": "bravo_daily",
+      "region": "us-west",
+      "lifecycle_policy": {
+        "delete_after_seconds": 2592000
+      }
+    },
+    {
+      "name": "bravo_monthly",
+      "region": "eu-west",
+      "lifecycle_policy": {
+        "delete_after_seconds": 31536000
+      }
+    }
+  ]
+}
