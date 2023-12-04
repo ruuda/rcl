@@ -102,3 +102,15 @@ Return the number of elements in the list. For example:
 // Evaluates to 3.
 [1, 2, 3].len()
 ```
+
+## reverse
+
+    List.reverse (self: List[T]) -> List[T]
+
+Return the list in reverse.
+
+```rcl
+[1, 2, 3].reverse()
+// Evaluates to:
+[3, 2, 1]
+```
