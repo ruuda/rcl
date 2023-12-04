@@ -373,3 +373,11 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>
 
     Ok(acc)
 }
+
+builtin_method!("List.reverse", const LIST_REVERSE, builtin_list_reverse);
+fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("List.reverse", &[])?;
+    let list = call.receiver.expect_list();
+    let reversed = list.iter().rev().cloned().collect();
+    Ok(Rc::new(Value::List(reversed)))
+}
