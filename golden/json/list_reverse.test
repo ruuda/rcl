@@ -1,0 +1,4 @@
+["a", "b", "c"].reverse()
+
+# output:
+["c", "b", "a"]
