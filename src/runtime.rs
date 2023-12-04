@@ -295,10 +295,18 @@ pub struct Env {
 pub struct EnvCheckpoint(usize);
 
 impl Env {
+    /// Create a new empty environment.
     pub fn new() -> Env {
         Env {
             bindings: Vec::new(),
         }
+    }
+
+    /// Create a new environment with an initialized standard library.
+    pub fn with_prelude() -> Env {
+        let mut env = Env::new();
+        env.push("std".into(), crate::stdlib::initialize());
+        env
     }
 
     pub fn lookup(&self, name: &Ident) -> Option<&Rc<Value>> {

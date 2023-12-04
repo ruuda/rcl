@@ -116,7 +116,7 @@ impl App {
                     .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
 
                 let mut tracer = self.get_tracer();
-                let mut env = Env::new();
+                let mut env = Env::with_prelude();
                 let doc = self.loader.load_cli_target(fname)?;
                 let val = self.loader.evaluate(doc, &mut env, &mut tracer)?;
                 // TODO: Need to get last inner span.
@@ -138,12 +138,12 @@ impl App {
 
                 // First we evaluate the input document.
                 let mut tracer = self.get_tracer();
-                let mut env = Env::new();
+                let mut env = Env::with_prelude();
                 let val_input = self.loader.evaluate(input, &mut env, &mut tracer)?;
 
                 // Then we bind that to the variable `input`, and in that context, we
                 // evaluate the query expression.
-                let mut env = Env::new();
+                let mut env = Env::with_prelude();
                 env.push("input".into(), val_input);
                 let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
 

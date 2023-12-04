@@ -32,6 +32,11 @@ pub struct Evaluator<'a> {
     pub loader: &'a mut Loader,
     pub tracer: &'a mut dyn Tracer,
     pub import_stack: Vec<EvalContext>,
+
+    /// The single instance of the standard library.
+    ///
+    /// Because it is immutable, it can be reused across evaluations.
+    pub stdlib: Rc<Value>,
 }
 
 impl<'a> Evaluator<'a> {
@@ -40,6 +45,7 @@ impl<'a> Evaluator<'a> {
             loader,
             tracer,
             import_stack: Vec::new(),
+            stdlib: stdlib::initialize(),
         }
     }
 
@@ -58,7 +64,7 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate a document for an import.
-    fn eval_import(&mut self, env: &mut Env, doc: DocId, imported_from: Span) -> Result<Rc<Value>> {
+    fn eval_import(&mut self, doc: DocId, imported_from: Span) -> Result<Rc<Value>> {
         // Before we allow the import, check that this would not create a cycle.
         let mut error: Option<Error> = None;
         for ctx in &self.import_stack {
@@ -88,15 +94,19 @@ impl<'a> Evaluator<'a> {
             doc,
             imported_from: Some(imported_from),
         };
+
+        // Evaluate the import in its own clean environment, it should not be
+        // affected by the surrounding environment of the import statement.
+        let mut env = Env::with_prelude();
+
         self.import_stack.push(ctx);
-        let result = self.eval_expr(env, &expr)?;
+        let result = self.eval_expr(&mut env, &expr)?;
         self.import_stack.pop().expect("Push/pop are balanced.");
+
         Ok(result)
     }
 
     fn eval_expr(&mut self, env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
-        env.push("std".into(), crate::stdlib::initialize());
-
         match expr {
             Expr::Import {
                 path_span,
@@ -132,7 +142,7 @@ impl<'a> Evaluator<'a> {
                         }
                         err
                     })?;
-                self.eval_import(env, doc, *path_span)
+                self.eval_import(doc, *path_span)
             }
 
             Expr::BraceLit(seqs) => {
