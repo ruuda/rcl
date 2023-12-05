@@ -1,0 +1,30 @@
+// Ideas from discussion with foldr:
+// Maybe group by and key by could be built into comprehensions?
+
+// Group by:
+{
+  for w in widgets:
+  group by w.age into age, ws:
+  age: ws
+}
+
+// Would be similar to the current:
+widgets.group_by(w => w.age)
+
+// Key by could just be a uniqueness annotation in comprehensions:
+let users_by_uid = {
+  for username, uid in uids_by_user:
+  unique uid: username
+};
+
+// Would be similar to the current:
+{
+  for uid, uobj in [for u, uid in uids_by_user: { user = u, uid = uid }].key_by(u => u.uid):
+  uid: uobj.u
+}
+
+// Bikeshed, should the keyword be "unique" or "distinct"?
+let users_by_uid = {
+  for username, uid in uids_by_user:
+  distinct uid: username
+};
