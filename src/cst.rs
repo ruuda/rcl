@@ -307,6 +307,8 @@ pub enum Seq {
         field: Box<Expr>,
         value_span: Span,
         value: Box<Expr>,
+        /// Whether the `distinct` keyword was present before the key.
+        distinct: bool,
     },
 
     /// A `key = value` mapping, where the key is an identifier.
@@ -316,6 +318,8 @@ pub enum Seq {
         field: Span,
         value_span: Span,
         value: Box<Expr>,
+        /// Whether the `distinct` keyword was present before the key.
+        distinct: bool,
     },
 
     /// A "statement" in the middle of a sequence literal.

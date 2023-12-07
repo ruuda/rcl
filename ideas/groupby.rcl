@@ -28,3 +28,20 @@ let users_by_uid = {
   for username, uid in uids_by_user:
   distinct uid: username
 };
+
+// Should it act on the key and apply to inserting the element in the result
+// collection, or should it apply separately as a seq and apply to the
+// syntactict location?
+
+// Option A: syntactic location. Detects duplicate uids among uids_by_user_2,
+// but does not prevent overwriting keys from uids_by_user_1.
+let users_by_uid_a = {
+  for username, uid in uids_by_user_1: uid; uid: username,
+  for username, uid in uids_by_user_2: distinct uid; uid: username,
+};
+
+// Option B: At insert time. Prevents overwriting.
+let users_by_uid_a = {
+  for username, uid in uids_by_user_1: uid; uid: username,
+  for username, uid in uids_by_user_2: distinct uid: username,
+};

@@ -1038,9 +1038,20 @@ impl<'a> Parser<'a> {
     fn parse_seq(&mut self) -> Result<(Span, Seq)> {
         self.begin_span();
 
+        // A `ident = v` or `expr: v` assoc can optionally be preceded by the
+        // `distinct` keyword.
+        let distinct = match self.peek() {
+            Some(Token::KwDistinct) => {
+                let span = self.consume();
+                self.skip_non_code()?;
+                Some(span)
+            }
+            _ => None,
+        };
+
         // Here we have a lookahead of two tokens ... not great if we want to
         // keep the grammar simple, but for making the syntax prettier it is
-        // worth some complications to allow { a = b; p = q } notation.
+        // worth some complications to allow { a = b, p = q } notation.
         let next1 = self.peek();
         let next2 = self.peek_n(1);
 
@@ -1048,7 +1059,9 @@ impl<'a> Parser<'a> {
             // TODO: Would need to skip noncode here ... maybe it's better to
             // parse an expression, and re-interpret it later if it reads like a
             // variable access?
-            (Some(Token::Ident), Some(Token::Eq1)) => self.parse_seq_assoc_ident()?,
+            (Some(Token::Ident), Some(Token::Eq1)) => {
+                self.parse_seq_assoc_ident(distinct.is_some())?
+            }
             (Some(Token::KwAssert | Token::KwLet | Token::KwTrace), _) => {
                 let stmt = self.parse_stmt()?;
                 let (body_span, body) = self.parse_prefixed_seq()?;
@@ -1077,6 +1090,7 @@ impl<'a> Parser<'a> {
                             field: Box::new(expr),
                             value_span,
                             value: Box::new(value),
+                            distinct: distinct.is_some(),
                         }
                     }
                     _ => Seq::Elem {
@@ -1087,10 +1101,27 @@ impl<'a> Parser<'a> {
             }
         };
 
+        // Rather than restricting the options for what to parse after we
+        // see a `distinct`, we allow any Seq, but then report the error
+        // retroactively. This is both easier to implement, and results in
+        // better errors for the user.
+        match (distinct, &result) {
+            (None, _) => { /* ok */ }
+            (Some(..), Seq::AssocExpr { .. }) => { /* ok */ }
+            (Some(..), Seq::AssocIdent { .. }) => { /* ok */ }
+            (Some(distinct_span), _) => {
+                return distinct_span
+                    .error(
+                        "Distinct can only be used in front of 'ident = value' or 'expr: value'.",
+                    )
+                    .err()
+            }
+        }
+
         Ok((self.end_span(), result))
     }
 
-    fn parse_seq_assoc_ident(&mut self) -> Result<Seq> {
+    fn parse_seq_assoc_ident(&mut self, distinct: bool) -> Result<Seq> {
         let ident = self.consume();
 
         self.skip_non_code()?;
@@ -1104,6 +1135,7 @@ impl<'a> Parser<'a> {
             field: ident,
             value_span,
             value: Box::new(value),
+            distinct,
         };
 
         Ok(result)
