@@ -101,6 +101,9 @@ pub enum Token {
     /// `assert`
     KwAssert,
 
+    /// `distinct`
+    KwDistinct,
+
     /// `false`
     KwFalse,
 
@@ -489,6 +492,7 @@ impl<'a> Lexer<'a> {
         match ident {
             "and" => Token::KwAnd,
             "assert" => Token::KwAssert,
+            "distinct" => Token::KwDistinct,
             "else" => Token::KwElse,
             "false" => Token::KwFalse,
             "for" => Token::KwFor,

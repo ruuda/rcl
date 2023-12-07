@@ -1,6 +1,7 @@
 # Keywords
 "and"
 "assert"
+"distinct"
 "else"
 "false"
 "for"

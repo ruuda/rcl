@@ -37,6 +37,7 @@ _root_base = [
             (
                 "and",
                 "assert",
+                "distinct",
                 "else",
                 "false",
                 "for",

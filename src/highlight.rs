@@ -41,6 +41,7 @@ fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
 
         Token::KwAnd
         | Token::KwAssert
+        | Token::KwDistinct
         | Token::KwElse
         | Token::KwFalse
         | Token::KwFor
