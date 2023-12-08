@@ -7,6 +7,7 @@
 
 //! Types that represent a parsed command line, and functions to parse it.
 
+use std::io::IsTerminal;
 use std::str::FromStr;
 
 use crate::cli_utils::{match_option, parse_option, Arg, ArgIter};
@@ -52,15 +53,16 @@ const USAGE_EVAL_QUERY: &str = r#"
 RCL -- A reasonable configuration language.
 
 Usage:
-  rcl [<options>] evaluate [<options>] <file>
-  rcl [<options>] query    [<options>] <file> <query>
+  rcl [<options>] evaluate [<options>] [<file>]
+  rcl [<options>] query    [<options>] [<file>] <query>
 
 The 'evaluate' command evaluates the expression in the input file and prints it
 to stdout. The 'query' command additionally evaluates an expression against the
 result.
 
 Arguments:
-  <file>     The input file to process, or '-' for stdin.
+  <file>     The input file to process, or '-' for stdin. When the file is not
+             specified and stdin is not a TTY, stdin is used as input.
   <query>    An RCL expression to evaluate. The result of evaluating the input
              file is bound to the variable 'input'.
 
@@ -84,13 +86,14 @@ const USAGE_FORMAT: &str = r#"
 RCL -- A reasonable configuration language.
 
 Usage:
-  rcl [<options>] format [<options>] <file>...
+  rcl [<options>] format [<options>] [<file>...]
 
 The 'format' command formats one or more input documents in standard style.
 
 Arguments:
   <file>...        The input files to process, or '-' for stdin. When --in-place
-                   is used, there can be multiple input files.
+                   is used, there can be multiple input files. When no file is
+                   specified and stdin is not a TTY, stdin is used as input.
 
 Options:
   -i --in-place       Rewrite files in-place instead of writing to stdout.
@@ -188,7 +191,7 @@ pub enum Cmd {
 }
 
 /// Parse the command line.
-pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
+pub fn parse(args: Vec<String>, stdin: &dyn IsTerminal) -> Result<(GlobalOptions, Cmd)> {
     let mut args = ArgIter::new(args);
 
     // Skip over the program name.
@@ -322,7 +325,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
         Some("evaluate") => Cmd::Evaluate {
             eval_opts,
             format_opts,
-            fname: get_unique_target(targets)?,
+            fname: get_unique_target(targets, stdin)?,
         },
         Some("query") => {
             let (fname, query) = match targets.len() {
@@ -330,6 +333,17 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     targets.remove(0),
                     // Not a file, but a consequence of the CLI parsing that
                     // handles - being stdin/stdout.
+                    match targets.remove(0) {
+                        Target::File(query) => query,
+                        Target::Stdin => "-".to_string(),
+                    },
+                ),
+                // If no file was specified, default to stdin, unless stdin is
+                // a TTY, because that makes the application appear to hang and
+                // it's likely not what the user intended; if it was intentional
+                // they can specify '-' as input explicitly.
+                1 if !stdin.is_terminal() => (
+                    Target::Stdin,
                     match targets.remove(0) {
                         Target::File(query) => query,
                         Target::Stdin => "-".to_string(),
@@ -356,12 +370,12 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 FormatTarget::InPlace { fnames: targets }
             } else {
                 FormatTarget::Stdout {
-                    fname: get_unique_target(targets)?,
+                    fname: get_unique_target(targets, stdin)?,
                 }
             },
         },
         Some("highlight") => Cmd::Highlight {
-            fname: get_unique_target(targets)?,
+            fname: get_unique_target(targets, stdin)?,
         },
         None => Cmd::Help { usage: USAGE_MAIN },
         _ => panic!("Should have returned an error before getting here."),
@@ -369,9 +383,13 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     Ok((global_opts, result))
 }
 
-fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
+fn get_unique_target(mut targets: Vec<Target>, stdin: &dyn IsTerminal) -> Result<Target> {
     match targets.pop() {
-        None => Error::new("Expected an input file. See --help for usage.").err(),
+        None if stdin.is_terminal() => {
+            Error::new("Expected an input file. See --help for usage.").err()
+        }
+        // If stdin is not a terminal, default to stdin.
+        None => Ok(Target::Stdin),
         Some(_) if !targets.is_empty() => {
             Error::new("Too many input files. See --help for usage.").err()
         }
