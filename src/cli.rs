@@ -399,8 +399,24 @@ fn get_unique_target(mut targets: Vec<Target>, stdin: &dyn IsTerminal) -> Result
     }
 }
 
+#[cfg(any(test, fuzzing))]
+mod fake_stdin {
+    pub struct FakeStdin {
+        pub is_terminal: bool,
+    }
+
+    impl std::io::IsTerminal for FakeStdin {
+        fn is_terminal(&self) -> bool {
+            self.is_terminal
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use std::io::IsTerminal;
+
+    use crate::cli::fake_stdin::FakeStdin;
     use crate::cli::{
         Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat, SandboxMode,
         Target,
@@ -408,7 +424,14 @@ mod test {
     use crate::markup::MarkupMode;
     use crate::pprint::Config;
 
-    fn fail_parse(args: &[&'static str]) -> String {
+    const TTY: FakeStdin = FakeStdin { is_terimal: true };
+    const NOT_TTY: FakeStdin = FakeStdin { is_terimal: false };
+
+    fn fail_parse_tty(args: &[&'static str]) -> String {
+        fail_parse_with(args, &TTY)
+    }
+
+    fn fail_parse_with(args: &[&'static str], stdin: &dyn IsTerminal) -> String {
         let args_vec: Vec<_> = args.iter().map(|a| a.to_string()).collect();
         let err = super::parse(args_vec).err().unwrap();
         let cfg = Config {
@@ -418,9 +441,17 @@ mod test {
         err.report(&[]).println(&cfg)
     }
 
-    fn parse(args: &[&'static str]) -> (GlobalOptions, Cmd) {
+    fn parse_tty(args: &[&'static str]) -> (GlobalOptions, Cmd) {
+        parse_with(args, &TTY);
+    }
+
+    fn parse_not_tty(args: &[&'static str]) -> (GlobalOptions, Cmd) {
+        parse_with(args, &NOT_TTY);
+    }
+
+    fn parse_with(args: &[&'static str], stdin: &dyn IsTerminal) -> (GlobalOptions, Cmd) {
         let args_vec: Vec<_> = args.iter().map(|a| a.to_string()).collect();
-        super::parse(args_vec).unwrap()
+        super::parse(args_vec, stdin).unwrap()
     }
 
     #[test]
@@ -437,32 +468,35 @@ mod test {
         let mut expected = (expected_opt, expected_cmd);
 
         // All of the aliases should behave the same.
-        assert_eq!(parse(&["rcl", "evaluate", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "eval", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "e", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "evaluate", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "eval", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "e", "infile"]), expected);
 
         // Test that --color works.
-        assert_eq!(parse(&["rcl", "--color=auto", "e", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "--color=auto", "e", "infile"]), expected);
         expected.0.markup = Some(MarkupMode::None);
-        assert_eq!(parse(&["rcl", "--color=none", "e", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "--color=none", "e", "infile"]), expected);
         expected.0.markup = Some(MarkupMode::Ansi);
-        assert_eq!(parse(&["rcl", "--color=ansi", "e", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "--color=ansi", "e", "infile"]), expected);
 
         // We should be able to pass --color in any place.
-        assert_eq!(parse(&["rcl", "--color=ansi", "e", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "--color", "ansi", "e", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "--color=ansi", "e", "infile"]), expected);
         assert_eq!(
-            parse(&["rcl", "eval", "--color", "ansi", "infile"]),
+            parse_tty(&["rcl", "--color", "ansi", "e", "infile"]),
             expected
         );
         assert_eq!(
-            parse(&["rcl", "eval", "infile", "--color", "ansi"]),
+            parse_tty(&["rcl", "eval", "--color", "ansi", "infile"]),
+            expected
+        );
+        assert_eq!(
+            parse_tty(&["rcl", "eval", "infile", "--color", "ansi"]),
             expected
         );
 
         // If we specify an option twice, the last one takes precedence.
         assert_eq!(
-            parse(&["rcl", "e", "infile", "--color=none", "--color=ansi"]),
+            parse_tty(&["rcl", "e", "infile", "--color=none", "--color=ansi"]),
             expected
         );
 
@@ -471,14 +505,17 @@ mod test {
         if let Cmd::Evaluate { format_opts, .. } = &mut expected.1 {
             format_opts.width = 42;
         }
-        assert_eq!(parse(&["rcl", "e", "--width=42", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "e", "--width", "42", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "e", "-w42", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "e", "-w", "42", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "e", "infile", "-w42"]), expected);
-        assert_eq!(parse(&["rcl", "-w42", "e", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "e", "--width=42", "infile"]), expected);
         assert_eq!(
-            parse(&["rcl", "-w100", "e", "--width=42", "infile"]),
+            parse_tty(&["rcl", "e", "--width", "42", "infile"]),
+            expected
+        );
+        assert_eq!(parse_tty(&["rcl", "e", "-w42", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "e", "-w", "42", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "e", "infile", "-w42"]), expected);
+        assert_eq!(parse_tty(&["rcl", "-w42", "e", "infile"]), expected);
+        assert_eq!(
+            parse_tty(&["rcl", "-w100", "e", "--width=42", "infile"]),
             expected
         );
 
@@ -493,12 +530,21 @@ mod test {
             format_opts.width = 80;
             eval_opts.format = OutputFormat::Json;
         }
-        assert_eq!(parse(&["rcl", "e", "infile", "-ojson"]), expected);
-        assert_eq!(parse(&["rcl", "e", "infile", "--output", "json"]), expected);
-        assert_eq!(parse(&["rcl", "e", "infile", "--output=json"]), expected);
-        assert_eq!(parse(&["rcl", "-ojson", "e", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "-orcl", "-ojson", "e", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "je", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "e", "infile", "-ojson"]), expected);
+        assert_eq!(
+            parse_tty(&["rcl", "e", "infile", "--output", "json"]),
+            expected
+        );
+        assert_eq!(
+            parse_tty(&["rcl", "e", "infile", "--output=json"]),
+            expected
+        );
+        assert_eq!(parse_tty(&["rcl", "-ojson", "e", "infile"]), expected);
+        assert_eq!(
+            parse_tty(&["rcl", "-orcl", "-ojson", "e", "infile"]),
+            expected
+        );
+        assert_eq!(parse_tty(&["rcl", "je", "infile"]), expected);
 
         // Test --sandbox.
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
@@ -506,43 +552,43 @@ mod test {
             eval_opts.sandbox = SandboxMode::Unrestricted;
         }
         assert_eq!(
-            parse(&["rcl", "e", "infile", "--sandbox=unrestricted"]),
+            parse_tty(&["rcl", "e", "infile", "--sandbox=unrestricted"]),
             expected
         );
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
             eval_opts.sandbox = SandboxMode::Workdir;
         }
         assert_eq!(
-            parse(&["rcl", "e", "infile", "--sandbox=workdir"]),
+            parse_tty(&["rcl", "e", "infile", "--sandbox=workdir"]),
             expected
         );
-        assert_eq!(parse(&["rcl", "e", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "e", "infile"]), expected);
     }
 
     #[test]
     fn parse_cmd_eval_fails_on_invalid_usage() {
         assert_eq!(
-            fail_parse(&["rcl", "eval"]),
+            fail_parse_tty(&["rcl", "eval"]),
             "Error: Expected an input file. See --help for usage.\n"
         );
         assert_eq!(
-            fail_parse(&["rcl", "eval", "infile", "--width=bobcat"]),
+            fail_parse_tty(&["rcl", "eval", "infile", "--width=bobcat"]),
             "Error: 'bobcat' is not valid for --width. See --help for usage.\n"
         );
         assert_eq!(
-            fail_parse(&["rcl", "eval", "infile", "-wbobcat"]),
+            fail_parse_tty(&["rcl", "eval", "infile", "-wbobcat"]),
             "Error: 'bobcat' is not valid for -w. See --help for usage.\n"
         );
         assert_eq!(
-            fail_parse(&["rcl", "eval", "infile", "--output=yamr"]),
+            fail_parse_tty(&["rcl", "eval", "infile", "--output=yamr"]),
             "Error: Expected --output to be followed by one of json, rcl. See --help for usage.\n"
         );
         assert_eq!(
-            fail_parse(&["rcl", "frobnicate", "infile"]),
+            fail_parse_tty(&["rcl", "frobnicate", "infile"]),
             "Error: Unknown command 'frobnicate'. See --help for usage.\n"
         );
         assert_eq!(
-            fail_parse(&["rcl", "eval", "--frobnicate", "infile"]),
+            fail_parse_tty(&["rcl", "eval", "--frobnicate", "infile"]),
             "Error: Unknown option '--frobnicate'. See --help for usage.\n"
         );
     }
@@ -562,13 +608,13 @@ mod test {
         let mut expected = (expected_opt, expected_cmd);
 
         // All of the aliases should behave the same.
-        assert_eq!(parse(&["rcl", "format", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "fmt", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "f", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "format", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "fmt", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "f", "infile"]), expected);
 
         // Without --in-place, we can do only one arg.
         assert_eq!(
-            fail_parse(&["rcl", "f", "f1", "f2"]),
+            fail_parse_tty(&["rcl", "f", "f1", "f2"]),
             "Error: Too many input files. See --help for usage.\n",
         );
 
@@ -577,26 +623,32 @@ mod test {
                 fnames: vec![Target::File("f1".into()), Target::File("f2".into())],
             };
         }
-        assert_eq!(parse(&["rcl", "f", "--in-place", "f1", "f2"]), expected);
-        assert_eq!(parse(&["rcl", "-i", "f", "f1", "f2"]), expected);
+        assert_eq!(parse_tty(&["rcl", "f", "--in-place", "f1", "f2"]), expected);
+        assert_eq!(parse_tty(&["rcl", "-i", "f", "f1", "f2"]), expected);
     }
 
     #[test]
     fn parse_cmd_help_version() {
-        assert!(matches!(parse(&["rcl", "--help"]).1, Cmd::Help { .. }));
-        assert!(matches!(parse(&["rcl", "--version"]).1, Cmd::Version));
-        assert!(matches!(parse(&["rcl", "eval", "-h"]).1, Cmd::Help { .. }));
+        assert!(matches!(parse_tty(&["rcl", "--help"]).1, Cmd::Help { .. }));
+        assert!(matches!(parse_tty(&["rcl", "--version"]).1, Cmd::Version));
         assert!(matches!(
-            parse(&["rcl", "format", "-h"]).1,
+            parse_tty(&["rcl", "eval", "-h"]).1,
             Cmd::Help { .. }
         ));
         assert!(matches!(
-            parse(&["rcl", "highlight", "-h"]).1,
+            parse_tty(&["rcl", "format", "-h"]).1,
             Cmd::Help { .. }
         ));
-        assert!(matches!(parse(&["rcl", "query", "-h"]).1, Cmd::Help { .. }));
+        assert!(matches!(
+            parse_tty(&["rcl", "highlight", "-h"]).1,
+            Cmd::Help { .. }
+        ));
+        assert!(matches!(
+            parse_tty(&["rcl", "query", "-h"]).1,
+            Cmd::Help { .. }
+        ));
         // Missing subcommand also triggers help.
-        assert!(matches!(parse(&["rcl"]).1, Cmd::Help { .. }));
+        assert!(matches!(parse_tty(&["rcl"]).1, Cmd::Help { .. }));
     }
 
     #[test]
@@ -609,7 +661,7 @@ mod test {
             fname: Target::File("infile".into()),
         };
         let expected = (expected_opt, expected_cmd);
-        assert_eq!(parse(&["rcl", "highlight", "infile"]), expected);
+        assert_eq!(parse_tty(&["rcl", "highlight", "infile"]), expected);
     }
 
     #[test]
@@ -625,16 +677,19 @@ mod test {
             query: "input.name".to_string(),
         };
         let mut expected = (expected_opt, expected_cmd);
-        assert_eq!(parse(&["rcl", "query", "infile", "input.name"]), expected);
-        assert_eq!(parse(&["rcl", "q", "infile", "input.name"]), expected);
+        assert_eq!(
+            parse_tty(&["rcl", "query", "infile", "input.name"]),
+            expected
+        );
+        assert_eq!(parse_tty(&["rcl", "q", "infile", "input.name"]), expected);
 
         if let Cmd::Query { eval_opts, .. } = &mut expected.1 {
             eval_opts.format = OutputFormat::Json
         };
-        assert_eq!(parse(&["rcl", "jq", "infile", "input.name"]), expected);
+        assert_eq!(parse_tty(&["rcl", "jq", "infile", "input.name"]), expected);
 
         assert_eq!(
-            fail_parse(&["rcl", "q", "infile"]),
+            fail_parse_tty(&["rcl", "q", "infile"]),
             "Error: Expected an input file and a query. See --help for usage.\n",
         );
     }
@@ -642,25 +697,25 @@ mod test {
     #[test]
     fn parse_cmd_handles_stdin_and_double_dash() {
         assert_eq!(
-            parse(&["rcl", "highlight", "infile"]).1,
+            parse_tty(&["rcl", "highlight", "infile"]).1,
             Cmd::Highlight {
                 fname: Target::File("infile".into()),
             }
         );
         assert_eq!(
-            parse(&["rcl", "highlight", "--", "infile"]).1,
+            parse_tty(&["rcl", "highlight", "--", "infile"]).1,
             Cmd::Highlight {
                 fname: Target::File("infile".into()),
             }
         );
         assert_eq!(
-            parse(&["rcl", "highlight", "-"]).1,
+            parse_tty(&["rcl", "highlight", "-"]).1,
             Cmd::Highlight {
                 fname: Target::Stdin,
             }
         );
         assert_eq!(
-            parse(&["rcl", "highlight", "--", "-"]).1,
+            parse_tty(&["rcl", "highlight", "--", "-"]).1,
             Cmd::Highlight {
                 fname: Target::File("-".into()),
             }
