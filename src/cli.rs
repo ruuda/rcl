@@ -388,7 +388,9 @@ fn get_unique_target(mut targets: Vec<Target>, stdin: &dyn IsTerminal) -> Result
         None if stdin.is_terminal() => {
             Error::new("Expected an input file. See --help for usage.").err()
         }
-        // If stdin is not a terminal, default to stdin.
+        // If stdin is not a terminal, default to stdin. We don't
+        // unconditionally default to stdin, because if you don't know that the
+        // application is waiting for EOF, it looks like it hangs.
         None => Ok(Target::Stdin),
         Some(_) if !targets.is_empty() => {
             Error::new("Too many input files. See --help for usage.").err()
