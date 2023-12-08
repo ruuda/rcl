@@ -104,6 +104,18 @@ Options:
 See also --help for global options.
 "#;
 
+/// Whether stdin is a TTY or not.
+pub enum StdinIs {
+    Terminal,
+    NonInteractive,
+}
+
+impl StdinIs {
+    pub fn from_stdin() {
+        use std::io::IsTerminal;
+    }
+}
+
 /// Options that apply to all subcommands.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct GlobalOptions {
