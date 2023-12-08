@@ -98,7 +98,8 @@ impl App {
     }
 
     fn main(&mut self) -> Result<()> {
-        let (opts, cmd) = cli::parse(std::env::args().collect())?;
+        let stdin = std::io::stdin();
+        let (opts, cmd) = cli::parse(std::env::args().collect(), &stdin)?;
         self.opts = opts;
 
         match cmd {
