@@ -114,14 +114,14 @@ configuration looks like this:
       region = "eu-west",
       lifecycle_policy = {
         delete_after_seconds = 345_600,
-      }
+      },
     },
     {
       name = "alpha-daily",
       region = "eu-west",
       lifecycle_policy = {
         delete_after_seconds = 2_592_000,
-      }
+      },
     },
     {
       name = "alpha-monthly",
