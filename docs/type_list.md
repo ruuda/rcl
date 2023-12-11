@@ -30,7 +30,7 @@ accumulator value.
   },
 )
 // Evaluates to:
-{ max = 11, min = 11 }
+{ max = 11, min = 2 }
 ```
 
 ## group_by
@@ -105,7 +105,7 @@ Return the number of elements in the list. For example:
 
 ## reverse
 
-    List.reverse (self: List[T]) -> List[T]
+    List.reverse: (self: List[T]) -> List[T]
 
 Return the list in reverse.
 
