@@ -9,8 +9,9 @@ The `List` type has the following methods.
 Return whether the list contains a given element. For example:
 
 ```rcl
-// Evaluates to [true, false].
 [for needle in ["a", "z"]: ["a", "b", "c"].contains(needle)]
+// Evaluates to:
+[true, false]
 ```
 
 ## group_by
