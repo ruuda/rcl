@@ -1,0 +1,8 @@
+[1].fold(0, "not callable")
+
+# output:
+stdin:1:13
+  ╷
+1 │ [1].fold(0, "not callable")
+  ╵             ^~~~~~~~~~~~~~
+Error: In call to reduce in 'List.fold': This is not a function, it cannot be called.

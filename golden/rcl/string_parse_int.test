@@ -1,0 +1,7 @@
+[
+  "42".parse_int(),
+  "-42".parse_int(),
+]
+
+# output:
+[42, -42]

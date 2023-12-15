@@ -1,0 +1,8 @@
+"foo,bar,baz".split(1)
+
+# output:
+stdin:1:21
+  ╷
+1 │ "foo,bar,baz".split(1)
+  ╵                     ^
+Error: Separator must be a string.

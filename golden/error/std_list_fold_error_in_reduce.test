@@ -1,0 +1,15 @@
+// We can't call .len() on an int, this causes a type error in the reduce function.
+[1, 2].fold(0, (acc, x) => acc + x.len())
+
+# output:
+stdin:2:16
+  ╷
+2 │ [1, 2].fold(0, (acc, x) => acc + x.len())
+  ╵                ^~~~~~~~~~~~~~~~~~~~~~~~~
+Error: In call to reduce in 'List.fold': Unknown field.
+
+stdin:2:34
+  ╷
+2 │ [1, 2].fold(0, (acc, x) => acc + x.len())
+  ╵                                  ^
+Note: On value: 1

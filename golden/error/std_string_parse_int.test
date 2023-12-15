@@ -1,0 +1,11 @@
+// TODO: Should the error point at the receiver? It's nice sometimes, but it
+// may also be confused for a syntax error in other occasions, we should at
+// least point at the call paren as well.
+"0xbadbeef".parse_int()
+
+# output:
+stdin:4:1
+  ╷
+4 │ "0xbadbeef".parse_int()
+  ╵ ^~~~~~~~~~~
+Error: Failed to parse as integer: "0xbadbeef"

@@ -1,0 +1,8 @@
+std.range("not int", 10)
+
+# output:
+stdin:1:11
+  ╷
+1 │ std.range("not int", 10)
+  ╵           ^~~~~~~~~
+Error: Expected an Int here, but got a different type.

@@ -1,0 +1,12 @@
+{
+  a =
+    """
+    Line 1
+    Line 2
+    """.split_lines(),
+  crlf1 = "a\r\nb\r\nc\r\n".split_lines(),
+  crlf2 = "a\r\nb\r\nc".split_lines(),
+}
+
+# output:
+{ a = ["Line 1", "Line 2"], crlf1 = ["a", "b", "c"], crlf2 = ["a", "b", "c"] }
