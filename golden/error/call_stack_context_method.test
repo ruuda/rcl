@@ -1,0 +1,23 @@
+// The method String.len is not a valid key selector function, but it does have
+// a name, so it gets mentioned in the error context.
+let f = "ABC".len;
+[1, 2, 3].group_by(f)
+
+# output:
+stdin:4:20
+  ╷
+4 │ [1, 2, 3].group_by(f)
+  ╵                    ^
+Error: Unexpected argument. 'String.len' takes 0 arguments, but got 1.
+
+stdin:4:20
+  ╷
+4 │ [1, 2, 3].group_by(f)
+  ╵                    ^
+In call to key selector from 'List.group_by', method 'String.len'.
+
+stdin:4:19
+  ╷
+4 │ [1, 2, 3].group_by(f)
+  ╵                   ^
+In call to method 'List.group_by'.
