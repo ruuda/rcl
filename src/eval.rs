@@ -327,8 +327,9 @@ impl<'a> Evaluator<'a> {
                     call_close: *close,
                     args: &args[..],
                 };
+                let error_context = || None;
 
-                self.eval_call(*function_span, fun.as_ref(), call)
+                self.eval_call(*function_span, fun.as_ref(), call, error_context)
             }
 
             Expr::Index {
@@ -376,12 +377,17 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    pub fn eval_call(
+    pub fn eval_call<MkErr>(
         &mut self,
         callee_span: Span,
         callee: &Value,
         call: FunctionCall,
-    ) -> Result<Rc<Value>> {
+        error_context: MkErr,
+    ) -> Result<Rc<Value>>
+    where
+        MkErr: FnOnce() -> Option<Doc<'static>>,
+    {
+        let call_open = call.call_open;
         match callee {
             Value::BuiltinMethod {
                 method_span,
@@ -395,14 +401,39 @@ impl<'a> Evaluator<'a> {
                     receiver_span: *receiver_span,
                     receiver: receiver.as_ref(),
                 };
-                (method.f)(self, method_call)
+                (method.f)(self, method_call).map_err(|err| {
+                    let msg = match error_context() {
+                        None => concat! { "In call to method '" Doc::highlight(method.name) "'." },
+                        Some(ctx) => concat! { ctx ", method '" Doc::highlight(method.name) "'." },
+                    };
+                    err.with_call_frame(call_open, msg).into()
+                })
             }
-            Value::BuiltinFunction(f) => (f.f)(self, call),
-            Value::Function(fun) => self.eval_function_call(fun, call),
+            Value::BuiltinFunction(f) => (f.f)(self, call).map_err(|err| {
+                let msg = match error_context() {
+                    None => concat! { "In call to function '" Doc::highlight(f.name) "'." },
+                    Some(ctx) => concat! { ctx ", function '" Doc::highlight(f.name) "'." },
+                };
+                err.with_call_frame(call_open, msg).into()
+            }),
+            Value::Function(fun) => self.eval_function_call(fun, call).map_err(|err| {
+                let msg = match error_context() {
+                    None => "In call to function.".into(),
+                    Some(ctx) => concat! { ctx "." },
+                };
+                err.with_call_frame(call_open, msg).into()
+            }),
             // TODO: Add a proper type error.
-            _ => callee_span
-                .error("This is not a function, it cannot be called.")
-                .err(),
+            _ => {
+                let msg = match error_context() {
+                    None => "In call.".into(),
+                    Some(ctx) => concat! { ctx "." },
+                };
+                callee_span
+                    .error("This is not a function, it cannot be called.")
+                    .with_call_frame(call_open, msg)
+                    .err()
+            }
         }
     }
 

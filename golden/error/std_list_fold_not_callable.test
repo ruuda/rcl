@@ -5,4 +5,16 @@ stdin:1:13
   ╷
 1 │ [1].fold(0, "not callable")
   ╵             ^~~~~~~~~~~~~~
-Error: In call to reduce in 'List.fold': This is not a function, it cannot be called.
+Error: This is not a function, it cannot be called.
+
+stdin:1:13
+  ╷
+1 │ [1].fold(0, "not callable")
+  ╵             ^~~~~~~~~~~~~~
+In call to reduce function from 'List.fold'.
+
+stdin:1:9
+  ╷
+1 │ [1].fold(0, "not callable")
+  ╵         ^
+In call to method 'List.fold'.

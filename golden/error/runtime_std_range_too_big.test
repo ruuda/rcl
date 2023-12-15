@@ -9,3 +9,9 @@ stdin:3:34
 3 │ let err = std.range(10, 1_000_011);
   ╵                                  ^
 Error: Range 10..1000011 exceeds the maximum length of 1000000. The list would require too much memory.
+
+stdin:3:20
+  ╷
+3 │ let err = std.range(10, 1_000_011);
+  ╵                    ^
+In call to function 'std.range'.

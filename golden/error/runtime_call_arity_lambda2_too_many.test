@@ -8,6 +8,12 @@ stdin:2:17
   ╵                 ^~~~~~
 Error: Unexpected argument. The function takes 2 arguments, but got 3.
 
+stdin:2:2
+  ╷
+2 │ f("one", "too", "many")
+  ╵  ^
+In call to function.
+
 stdin:1:16
   ╷
 1 │ let f = (x, y) => x;

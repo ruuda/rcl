@@ -6,3 +6,9 @@ stdin:1:11
 1 │ std.range("not int", 10)
   ╵           ^~~~~~~~~
 Error: Expected an Int here, but got a different type.
+
+stdin:1:10
+  ╷
+1 │ std.range("not int", 10)
+  ╵          ^
+In call to function 'std.range'.

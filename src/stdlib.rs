@@ -202,30 +202,23 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
 
     for x in elements {
         // The call that we construct here is internal, there is no span in the
-        // source code that we could point at. Add one nonetheless, we'll replace
-        // the error below if needed.
+        // source code that we could point at. Point at the full argument so we
+        // still have something to highlight.
         let void_span = get_key_span.take(0);
         let args = [CallArg {
             span: void_span,
             value: x.clone(),
         }];
         let call = FunctionCall {
-            call_open: void_span,
-            call_close: void_span,
+            call_open: get_key_span,
+            call_close: get_key_span,
             args: &args,
         };
-        let key = eval
-            .eval_call(get_key_span, get_key.as_ref(), call)
-            .map_err(|err| {
-                err.with_prefix(
-                    get_key_span,
-                    concat! {
-                        "In call to key selector in '"
-                        Doc::highlight(name)
-                        "':"
-                    },
-                )
-            })?;
+        let key = eval.eval_call(get_key_span, get_key.as_ref(), call, || {
+            Some(concat! {
+                "In call to key selector from '" Doc::highlight(name) "'"
+            })
+        })?;
         groups.entry(key).or_default().push(x.clone());
     }
 
@@ -363,8 +356,8 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>
 
     for element in list.iter() {
         // The call that we construct here is internal, there is no span in the
-        // source code that we could point at. Add one nonetheless, we'll
-        // replace the error below if needed.
+        // source code that we could point at. To have something to pin errors
+        // to, we'll take the entire span of the 'reduce' argument.
         let void_span = reduce.span.take(0);
         let args = [
             CallArg {
@@ -377,28 +370,15 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>
             },
         ];
         let call = FunctionCall {
-            call_open: void_span,
-            call_close: void_span,
+            call_open: reduce.span,
+            call_close: reduce.span,
             args: &args,
         };
-        acc = eval
-            .eval_call(reduce.span, reduce.value.as_ref(), call)
-            .map_err(|err| {
-                // TODO: This is also not ideal, if you pass a function whose
-                // body is a BinOp, then if that fails, it can pinpoint the
-                // exact location in the source tree where it fails, but now we
-                // are masking the value. But for other errors, e.g. an arity
-                // error, we don't have a span we can point at, and overriding
-                // is good. How to fix this?
-                err.with_prefix(
-                    reduce.span,
-                    concat! {
-                        "In call to reduce in '"
-                        Doc::highlight("List.fold")
-                        "':"
-                    },
-                )
-            })?;
+        acc = eval.eval_call(reduce.span, reduce.value.as_ref(), call, || {
+            Some(concat! {
+                "In call to reduce function from '" Doc::highlight("List.fold") "'"
+            })
+        })?;
     }
 
     Ok(acc)

@@ -16,3 +16,9 @@ Error: The key 6 is not unique. The following values use this key:
   { generation = 6, name = "Roy Batty" }
   { generation = 6, name = "Pris Stratton" }
   { generation = 6, name = "Zhora Salome" }
+
+stdin:7:18
+  ╷
+7 │ replicants.key_by(r => r.generation)
+  ╵                  ^
+In call to method 'List.key_by'.

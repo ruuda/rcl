@@ -63,6 +63,9 @@ pub struct Error {
     /// The source location of the error.
     pub origin: Option<Span>,
 
+    /// The call stack around the origin of the error.
+    pub call_stack: Vec<(Span, Doc<'static>)>,
+
     /// For errors that originated from a value, the path in the value.
     pub path: Vec<PathElement>,
 
@@ -88,28 +91,11 @@ impl Error {
             message: message.into(),
             body: None,
             origin: None,
+            call_stack: Vec::new(),
             path: Vec::new(),
             notes: Vec::new(),
             help: None,
         }
-    }
-
-    /// Move the current message into the body, replace the origin.
-    ///
-    /// This can be used when `self` is the cause of the main error. Then the
-    /// message of the main error should come first, but we want to preserve the
-    /// context of the cause, along with its notes and help, if any.
-    pub fn with_prefix<M>(mut self, origin: Span, message: M) -> Error
-    where
-        Doc<'static>: From<M>,
-    {
-        self.body = match self.body {
-            None => Some(self.message),
-            Some(b) => Some(self.message + Doc::Sep + b),
-        };
-        self.message = message.into();
-        self.origin = Some(origin);
-        self
     }
 
     /// Replace the origin of the error with the given span.
@@ -124,6 +110,23 @@ impl Error {
         Doc<'static>: From<M>,
     {
         self.body = Some(body.into());
+        self
+    }
+
+    /// Append a frame to the error's call stack.
+    pub fn add_call_frame<M>(&mut self, at: Span, message: M)
+    where
+        Doc<'static>: From<M>,
+    {
+        self.call_stack.push((at, message.into()));
+    }
+
+    /// Append a frame to the error's call stack.
+    pub fn with_call_frame<M>(mut self, at: Span, message: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        self.add_call_frame(at, message);
         self
     }
 
@@ -217,6 +220,13 @@ impl Error {
         if let Some(body) = self.body {
             result.push(" ".into());
             result.push(body);
+        }
+
+        for (call_span, call_frame_message) in self.call_stack {
+            result.push(Doc::HardBreak);
+            result.push(Doc::HardBreak);
+            result.push(highlight_span(inputs, call_span, Markup::Error));
+            result.push(call_frame_message);
         }
 
         for (note_span, note_message) in self.notes {

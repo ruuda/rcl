@@ -6,3 +6,9 @@ stdin:1:25
 1 │ std.read_file_utf8("a", "b")
   ╵                         ^~~
 Error: Unexpected argument. 'std.read_file_utf8' takes 1 argument, but got 2.
+
+stdin:1:19
+  ╷
+1 │ std.read_file_utf8("a", "b")
+  ╵                   ^
+In call to function 'std.read_file_utf8'.

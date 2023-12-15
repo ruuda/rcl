@@ -6,3 +6,9 @@ stdin:1:20
 1 │ std.read_file_utf8(false)
   ╵                    ^~~~~
 Error: Expected a String here, but got a different type.
+
+stdin:1:19
+  ╷
+1 │ std.read_file_utf8(false)
+  ╵                   ^
+In call to function 'std.read_file_utf8'.

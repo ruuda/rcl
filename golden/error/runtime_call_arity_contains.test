@@ -6,3 +6,9 @@ stdin:1:26
 1 │ {"k": "v"}.contains("k", "unexpected argument")
   ╵                          ^~~~~~~~~~~~~~~~~~~~~
 Error: Unexpected argument. 'Dict.contains' takes 1 argument, but got 2.
+
+stdin:1:20
+  ╷
+1 │ {"k": "v"}.contains("k", "unexpected argument")
+  ╵                    ^
+In call to method 'Dict.contains'.

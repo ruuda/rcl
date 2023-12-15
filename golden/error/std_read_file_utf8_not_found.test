@@ -6,3 +6,9 @@ stdin:1:20
 1 │ std.read_file_utf8("non_existing_path.txt")
   ╵                    ^~~~~~~~~~~~~~~~~~~~~~~
 Error: Failed to access path '/WORKDIR/error/non_existing_path.txt': No such file or directory (os error 2)
+
+stdin:1:19
+  ╷
+1 │ std.read_file_utf8("non_existing_path.txt")
+  ╵                   ^
+In call to function 'std.read_file_utf8'.
