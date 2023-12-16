@@ -18,33 +18,23 @@ simple functional programming language that resembles [Python][python] and
 [jq]:      https://jqlang.github.io/jq/manual/
 [nixpkgs]: https://github.com/nixos/nixpkgs
 
-_Vaporware warning:
-This is a proof-of-concept toy project. I will likely lose interest in it before
-it is mature enough for serious use. Some of the content in this manual is
-hypothetical._
+_**Warning:** While RCL is usable, it is still in an early exploratory stage
+with frequent breaking changes. This is a hobby project without stability
+promise._
 
 ## Example
 
 ```rcl
- // TODO: Add a better example.
- let sevices_at = {
-   server01 = ["ssh", "http"],
-   server02 = ["ssh", "imap"],
-   server03 = ["ssh", "pop3"],
- };
- let ports_for = {
-   ssh = [22],
-   http = [80, 443],
-   imap = [993],
-   pop3 = [995],
- };
- let firewall_rules = {
-   for server, services in services_at:
-   server: [
-     for service in services:
-     for port in ports_for[service]:
-     { rule = "allow", port = port }
-   ]
- };
- firewall_rules
+// Configuration for a hypothetical infrastructure-as-code schema.
+{
+  backup_buckets = [
+    let retention_days = { hourly = 4, daily = 30, monthly = 365 };
+    for database in ["alpha", "bravo"]:
+    for period, days in retention_days: {
+      name = f"{database}-{period}",
+      region = "eu-west",
+      lifecycle_policy = { delete_after_seconds = days * 24 * 3600 },
+    }
+  ],
+}
 ```
