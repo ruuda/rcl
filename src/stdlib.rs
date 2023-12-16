@@ -391,3 +391,25 @@ fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Va
     let reversed = list.iter().rev().cloned().collect();
     Ok(Rc::new(Value::List(reversed)))
 }
+
+builtin_method!("Dict.keys", const DICT_KEYS, builtin_dict_keys);
+fn builtin_dict_keys(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let result = call
+        .receiver
+        .expect_dict()
+        .keys()
+        .map(|k| k.clone())
+        .collect();
+    Ok(Rc::new(Value::Set(result)))
+}
+
+builtin_method!("Dict.values", const DICT_VALUES, builtin_dict_values);
+fn builtin_dict_values(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    let result = call
+        .receiver
+        .expect_dict()
+        .values()
+        .map(|k| k.clone())
+        .collect();
+    Ok(Rc::new(Value::List(result)))
+}
