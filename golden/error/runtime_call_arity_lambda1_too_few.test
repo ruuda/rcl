@@ -8,14 +8,14 @@ stdin:2:3
   ╵   ^
 Error: Missing argument '_'. The function takes 1 argument, but got 0.
 
-stdin:2:2
-  ╷
-2 │ f()
-  ╵  ^
-In call to function.
-
 stdin:1:11
   ╷
 1 │ let f = _ => 42;
   ╵           ^~
 Note: Function defined here.
+
+stdin:2:2
+  ╷
+2 │ f()
+  ╵  ^
+In call to function.

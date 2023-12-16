@@ -7,6 +7,12 @@ stdin:1:20
   ╵                    ^
 Error: Unexpected argument. The function takes 0 arguments, but got 1.
 
+stdin:1:23
+  ╷
+1 │ [1, 2, 3].group_by(() => "this get_key has too few arguments")
+  ╵                       ^~
+Note: Function defined here.
+
 stdin:1:20
   ╷
 1 │ [1, 2, 3].group_by(() => "this get_key has too few arguments")
@@ -18,9 +24,3 @@ stdin:1:19
 1 │ [1, 2, 3].group_by(() => "this get_key has too few arguments")
   ╵                   ^
 In call to method 'List.group_by'.
-
-stdin:1:23
-  ╷
-1 │ [1, 2, 3].group_by(() => "this get_key has too few arguments")
-  ╵                       ^~
-Note: Function defined here.

@@ -8,6 +8,12 @@ stdin:2:36
   ╵                                    ^~~
 Error: Unknown field.
 
+stdin:2:34
+  ╷
+2 │ [1, 2].fold(0, (acc, x) => acc + x.len())
+  ╵                                  ^
+Note: On value: 1
+
 stdin:2:16
   ╷
 2 │ [1, 2].fold(0, (acc, x) => acc + x.len())
@@ -19,9 +25,3 @@ stdin:2:12
 2 │ [1, 2].fold(0, (acc, x) => acc + x.len())
   ╵            ^
 In call to method 'List.fold'.
-
-stdin:2:34
-  ╷
-2 │ [1, 2].fold(0, (acc, x) => acc + x.len())
-  ╵                                  ^
-Note: On value: 1

@@ -222,13 +222,6 @@ impl Error {
             result.push(body);
         }
 
-        for (call_span, call_frame_message) in self.call_stack {
-            result.push(Doc::HardBreak);
-            result.push(Doc::HardBreak);
-            result.push(highlight_span(inputs, call_span, Markup::Error));
-            result.push(call_frame_message);
-        }
-
         for (note_span, note_message) in self.notes {
             result.push(Doc::HardBreak);
             result.push(Doc::HardBreak);
@@ -244,6 +237,15 @@ impl Error {
             result.push(Doc::from("Help:").with_markup(Markup::Warning));
             result.push(" ".into());
             result.push(help_message);
+        }
+
+        // We print the call stack last, after the help and notes, because the
+        // help and notes refer to the inner error.
+        for (call_span, call_frame_message) in self.call_stack {
+            result.push(Doc::HardBreak);
+            result.push(Doc::HardBreak);
+            result.push(highlight_span(inputs, call_span, Markup::Error));
+            result.push(call_frame_message);
         }
 
         Doc::Concat(result)
