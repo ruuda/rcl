@@ -187,24 +187,14 @@ fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>
 builtin_method!("Dict.keys", const DICT_KEYS, builtin_dict_keys);
 fn builtin_dict_keys(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     call.call.check_arity_static("Dict.keys", &[])?;
-    let result = call
-        .receiver
-        .expect_dict()
-        .keys()
-        .map(|k| k.clone())
-        .collect();
+    let result = call.receiver.expect_dict().keys().cloned().collect();
     Ok(Rc::new(Value::Set(result)))
 }
 
 builtin_method!("Dict.values", const DICT_VALUES, builtin_dict_values);
 fn builtin_dict_values(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     call.call.check_arity_static("Dict.values", &[])?;
-    let result = call
-        .receiver
-        .expect_dict()
-        .values()
-        .map(|k| k.clone())
-        .collect();
+    let result = call.receiver.expect_dict().values().cloned().collect();
     Ok(Rc::new(Value::List(result)))
 }
 
