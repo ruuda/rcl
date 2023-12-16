@@ -305,17 +305,20 @@ impl<'a> Abstractor<'a> {
                 op_span,
                 field,
                 value,
+                distinct,
                 ..
             } => ASeq::Yield(Yield::Assoc {
                 op_span: *op_span,
                 key: Box::new(self.expr(field)?),
                 value: Box::new(self.expr(value)?),
+                distinct: *distinct,
             }),
 
             CSeq::AssocIdent {
                 op_span,
                 field,
                 value,
+                distinct,
                 ..
             } => {
                 // We convert the `key = value` as if it had been written
@@ -326,6 +329,7 @@ impl<'a> Abstractor<'a> {
                     op_span: *op_span,
                     key: Box::new(key_expr),
                     value: Box::new(self.expr(value)?),
+                    distinct: *distinct,
                 })
             }
 

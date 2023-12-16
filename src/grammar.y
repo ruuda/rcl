@@ -88,6 +88,7 @@ expr_term
   : '{' seqs '}'
   | '[' seqs ']'
   | '(' expr ')'
+  | "distinct" '{' seqs '}'
   | FSTRING_OPEN fstring
   | STRING
   | NUMBER
@@ -115,13 +116,11 @@ seqs
 // and for from the comprehension.
 seq
   : expr_op
-  | distinct expr_op ':' expr
-  | distinct IDENT '=' expr ',' seq
+  | expr_op ':' expr
+  | IDENT '=' expr ',' seq
   | stmt seq
   | "for" idents "in" expr ':' seq
   | "if" expr ':' seq
   ;
-
-distinct: %empty | "distinct";
 
 idents: IDENT | idents ',' IDENT;

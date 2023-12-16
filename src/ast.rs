@@ -198,6 +198,8 @@ pub enum Yield {
         op_span: Span,
         key: Box<Expr>,
         value: Box<Expr>,
+        /// Whether the `distinct` keyword was present before the key.
+        distinct: bool,
     },
 }
 

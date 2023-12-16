@@ -774,10 +774,12 @@ impl<'a> Evaluator<'a> {
                 op_span,
                 key: key_expr,
                 value: value_expr,
+                distinct: _distinct,
             }) => {
                 let (out_keys, out_values) = out.keys_values(*op_span)?;
                 let key = self.eval_expr(env, key_expr)?;
                 let value = self.eval_expr(env, value_expr)?;
+                // TODO: Check distinct.
                 out_keys.push(key);
                 out_values.push(value);
                 Ok(())

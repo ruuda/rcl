@@ -36,12 +36,20 @@ let users_by_uid = {
 // Option A: syntactic location. Detects duplicate uids among uids_by_user_2,
 // but does not prevent overwriting keys from uids_by_user_1.
 let users_by_uid_a = {
-  for username, uid in uids_by_user_1: uid; uid: username,
+  for username, uid in uids_by_user_1: uid: username,
   for username, uid in uids_by_user_2: distinct uid; uid: username,
 };
 
 // Option B: At insert time. Prevents overwriting.
-let users_by_uid_a = {
-  for username, uid in uids_by_user_1: uid; uid: username,
+let users_by_uid_b = {
+  for username, uid in uids_by_user_1: uid: username,
   for username, uid in uids_by_user_2: distinct uid: username,
 };
+
+// Option C: It applies to the entire comprehension. That sidesteps the entire
+// debate, it's probably what you want anyway, and it may also be easier to
+// implement. It also makes it work both for sets and lists.
+let users_by_uid_c = distinct {
+  for username, uid in uids_by_user_1: uid; uid: username,
+  for username, uid in uids_by_user_2: uid: username,
+}
