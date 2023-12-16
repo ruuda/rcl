@@ -234,8 +234,11 @@ impl<'a> Evaluator<'a> {
                     (Value::String(_), "parse_int") => Some(stdlib::STRING_PARSE_INT),
 
                     (Value::Dict(_), "contains") => Some(stdlib::DICT_CONTAINS),
+                    (Value::Dict(_), "except") => Some(stdlib::DICT_EXCEPT),
                     (Value::Dict(_), "get") => Some(stdlib::DICT_GET),
+                    (Value::Dict(_), "keys") => Some(stdlib::DICT_KEYS),
                     (Value::Dict(_), "len") => Some(stdlib::DICT_LEN),
+                    (Value::Dict(_), "values") => Some(stdlib::DICT_VALUES),
                     (Value::Dict(fields), _field_name) => {
                         // If it wasn't a builtin, look for a key in the dict.
                         return match fields.get(&field_name_value) {
@@ -265,6 +268,7 @@ impl<'a> Evaluator<'a> {
                     (Value::List(_), "reverse") => Some(stdlib::LIST_REVERSE),
 
                     (Value::Set(_), "contains") => Some(stdlib::SET_CONTAINS),
+                    (Value::Set(_), "except") => Some(stdlib::SET_EXCEPT),
                     (Value::Set(_), "group_by") => Some(stdlib::SET_GROUP_BY),
                     (Value::Set(_), "key_by") => Some(stdlib::SET_KEY_BY),
                     (Value::Set(_), "len") => Some(stdlib::SET_LEN),

@@ -184,6 +184,38 @@ fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>
     }
 }
 
+builtin_method!("Dict.keys", const DICT_KEYS, builtin_dict_keys);
+fn builtin_dict_keys(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("Dict.keys", &[])?;
+    let result = call.receiver.expect_dict().keys().cloned().collect();
+    Ok(Rc::new(Value::Set(result)))
+}
+
+builtin_method!("Dict.values", const DICT_VALUES, builtin_dict_values);
+fn builtin_dict_values(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("Dict.values", &[])?;
+    let result = call.receiver.expect_dict().values().cloned().collect();
+    Ok(Rc::new(Value::List(result)))
+}
+
+builtin_method!("Dict.except", const DICT_EXCEPT, builtin_dict_except);
+fn builtin_dict_except(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("Dict.except", &["key"])?;
+    let mut result = call.receiver.expect_dict().clone();
+    let key = &call.call.args[0].value;
+    result.remove(key);
+    Ok(Rc::new(Value::Dict(result)))
+}
+
+builtin_method!("Set.except", const SET_EXCEPT, builtin_set_except);
+fn builtin_set_except(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("Set.except", &["element"])?;
+    let mut result = call.receiver.expect_set().clone();
+    let element = &call.call.args[0].value;
+    result.remove(element);
+    Ok(Rc::new(Value::Set(result)))
+}
+
 fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
     eval: &mut Evaluator,
     call: MethodCall,

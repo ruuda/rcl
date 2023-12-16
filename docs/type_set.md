@@ -13,6 +13,19 @@ Return whether the set contains a given element. For example:
 [for needle in ["a", "z"]: {"a", "b", "c"}.contains(needle)]
 ```
 
+## except
+
+    Set.except: (self: Set[T], element: T) -> Set[T]
+
+Return a copy of the set, with the given element omitted. If the element was not
+present in the first place, then the result is identical to the input.
+
+```rcl
+{1, 2, 3}.except(2)
+// Evaluates to:
+{1, 3}
+```
+
 ## group_by
 
     Set.group_by: (self: Set[T], get_key: T -> U) -> Dict[U, Set[T]]
