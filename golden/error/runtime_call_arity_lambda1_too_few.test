@@ -13,3 +13,9 @@ stdin:1:11
 1 │ let f = _ => 42;
   ╵           ^~
 Note: Function defined here.
+
+stdin:2:2
+  ╷
+2 │ f()
+  ╵  ^
+In call to function.

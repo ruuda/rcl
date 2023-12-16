@@ -1,0 +1,14 @@
+"0xbadbeef".parse_int()
+
+# output:
+stdin:1:1
+  ╷
+1 │ "0xbadbeef".parse_int()
+  ╵ ^~~~~~~~~~~
+Error: Failed to parse as integer: "0xbadbeef"
+
+stdin:1:22
+  ╷
+1 │ "0xbadbeef".parse_int()
+  ╵                      ^
+In call to method 'String.parse_int'.

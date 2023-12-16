@@ -12,3 +12,14 @@ stdin:7:19
 7 │ turbo_encabulator.is_prefabulated
   ╵                   ^~~~~~~~~~~~~~~
 Error: Unknown field.
+
+stdin:7:1
+  ╷
+7 │ turbo_encabulator.is_prefabulated
+  ╵ ^~~~~~~~~~~~~~~~~
+Note: On value: [
+  "differential girdlespacing",
+  "hydrocoptic marzlevanes",
+  "pentametric fan",
+  "spurving bearings",
+]

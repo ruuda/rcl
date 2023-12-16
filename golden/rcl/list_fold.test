@@ -1,0 +1,23 @@
+{
+  int = [2, 3, 5, 8, 11, 13].fold(0, (x, y) => x + y),
+  str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),
+}
+
+# output:
+stdin:3:56
+  ╷
+3 │   str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),
+  ╵                                                        ^
+Error: This operator is not supported for these values.
+
+stdin:3:40
+  ╷
+3 │   str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),
+  ╵                                        ^~~~~~~~~~~~~~~~~~~
+In call to reduce function from 'List.fold'.
+
+stdin:3:35
+  ╷
+3 │   str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),
+  ╵                                   ^
+In call to method 'List.fold'.

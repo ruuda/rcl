@@ -226,9 +226,12 @@ impl<'a> Evaluator<'a> {
             } => {
                 let inner = self.eval_expr(env, inner_expr)?;
                 let field_name_value = Value::String(field_name.0.clone());
-                let err_unknown_field = field_span.error("Unknown field.");
+
                 let builtin = match (inner.as_ref(), field_name.as_ref()) {
                     (Value::String(_), "len") => Some(stdlib::STRING_LEN),
+                    (Value::String(_), "split") => Some(stdlib::STRING_SPLIT),
+                    (Value::String(_), "split_lines") => Some(stdlib::STRING_SPLIT_LINES),
+                    (Value::String(_), "parse_int") => Some(stdlib::STRING_PARSE_INT),
 
                     (Value::Dict(_), "contains") => Some(stdlib::DICT_CONTAINS),
                     (Value::Dict(_), "get") => Some(stdlib::DICT_GET),
@@ -237,14 +240,29 @@ impl<'a> Evaluator<'a> {
                         // If it wasn't a builtin, look for a key in the dict.
                         return match fields.get(&field_name_value) {
                             Some(v) => Ok(v.clone()),
-                            None => Err(err_unknown_field.into()),
+                            None => {
+                                return field_span
+                                    .error("Unknown field.")
+                                    .with_note(
+                                        *inner_span,
+                                        concat! {
+                                            // TODO: Printing the full value may be overkill,
+                                            // the full value could be very large. We
+                                            // could print the dict keys here.
+                                            "On value: " format_rcl(inner.as_ref()).into_owned()
+                                        },
+                                    )
+                                    .err();
+                            }
                         };
                     }
 
                     (Value::List(_), "contains") => Some(stdlib::LIST_CONTAINS),
+                    (Value::List(_), "fold") => Some(stdlib::LIST_FOLD),
                     (Value::List(_), "group_by") => Some(stdlib::LIST_GROUP_BY),
                     (Value::List(_), "key_by") => Some(stdlib::LIST_KEY_BY),
                     (Value::List(_), "len") => Some(stdlib::LIST_LEN),
+                    (Value::List(_), "reverse") => Some(stdlib::LIST_REVERSE),
 
                     (Value::Set(_), "contains") => Some(stdlib::SET_CONTAINS),
                     (Value::Set(_), "group_by") => Some(stdlib::SET_GROUP_BY),
@@ -260,7 +278,19 @@ impl<'a> Evaluator<'a> {
                         method_span: *field_span,
                         method: b,
                     })),
-                    None => Err(err_unknown_field.into()),
+                    None => {
+                        field_span
+                            .error("Unknown field.")
+                            .with_note(
+                                *inner_span,
+                                concat! {
+                                    // TODO: Printing the full value may be overkill,
+                                    // the full value could be very large.
+                                    "On value: " format_rcl(inner.as_ref()).into_owned()
+                                },
+                            )
+                            .err()
+                    }
                 }
             }
 
@@ -297,8 +327,9 @@ impl<'a> Evaluator<'a> {
                     call_close: *close,
                     args: &args[..],
                 };
+                let error_context = || None;
 
-                self.eval_call(*function_span, fun.as_ref(), call)
+                self.eval_call(*function_span, fun.as_ref(), call, error_context)
             }
 
             Expr::Index {
@@ -346,12 +377,17 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    pub fn eval_call(
+    pub fn eval_call<MkErr>(
         &mut self,
         callee_span: Span,
         callee: &Value,
         call: FunctionCall,
-    ) -> Result<Rc<Value>> {
+        error_context: MkErr,
+    ) -> Result<Rc<Value>>
+    where
+        MkErr: FnOnce() -> Option<Doc<'static>>,
+    {
+        let call_open = call.call_open;
         match callee {
             Value::BuiltinMethod {
                 method_span,
@@ -365,14 +401,39 @@ impl<'a> Evaluator<'a> {
                     receiver_span: *receiver_span,
                     receiver: receiver.as_ref(),
                 };
-                (method.f)(self, method_call)
+                (method.f)(self, method_call).map_err(|err| {
+                    let msg = match error_context() {
+                        None => concat! { "In call to method '" Doc::highlight(method.name) "'." },
+                        Some(ctx) => concat! { ctx ", method '" Doc::highlight(method.name) "'." },
+                    };
+                    err.with_call_frame(call_open, msg).into()
+                })
             }
-            Value::BuiltinFunction(f) => (f.f)(self, call),
-            Value::Function(fun) => self.eval_function_call(fun, call),
+            Value::BuiltinFunction(f) => (f.f)(self, call).map_err(|err| {
+                let msg = match error_context() {
+                    None => concat! { "In call to function '" Doc::highlight(f.name) "'." },
+                    Some(ctx) => concat! { ctx ", function '" Doc::highlight(f.name) "'." },
+                };
+                err.with_call_frame(call_open, msg).into()
+            }),
+            Value::Function(fun) => self.eval_function_call(fun, call).map_err(|err| {
+                let msg = match error_context() {
+                    None => "In call to function.".into(),
+                    Some(ctx) => concat! { ctx "." },
+                };
+                err.with_call_frame(call_open, msg).into()
+            }),
             // TODO: Add a proper type error.
-            _ => callee_span
-                .error("This is not a function, it cannot be called.")
-                .err(),
+            _ => {
+                let msg = match error_context() {
+                    None => "In call.".into(),
+                    Some(ctx) => concat! { ctx "." },
+                };
+                callee_span
+                    .error("This is not a function, it cannot be called.")
+                    .with_call_frame(call_open, msg)
+                    .err()
+            }
         }
     }
 

@@ -1,0 +1,23 @@
+// The function std.range is not a valid key selector function, but it does have
+// a name, so it gets mentioned in the error context.
+let f = std.range;
+[1, 2, 3].group_by(f)
+
+# output:
+stdin:4:20
+  ╷
+4 │ [1, 2, 3].group_by(f)
+  ╵                    ^
+Error: Missing argument 'upper'. 'std.range' takes 2 arguments, but got 1.
+
+stdin:4:20
+  ╷
+4 │ [1, 2, 3].group_by(f)
+  ╵                    ^
+In call to key selector from 'List.group_by', function 'std.range'.
+
+stdin:4:19
+  ╷
+4 │ [1, 2, 3].group_by(f)
+  ╵                   ^
+In call to method 'List.group_by'.

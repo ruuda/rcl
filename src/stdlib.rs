@@ -13,6 +13,7 @@ use std::rc::Rc;
 use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
 use crate::fmt_rcl::format_rcl;
+use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{builtin_function, builtin_method, CallArg, FunctionCall, MethodCall, Value};
 
@@ -41,10 +42,74 @@ fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Resul
     Ok(Rc::new(eval.loader.get_doc(doc).data.into()))
 }
 
+builtin_function!(
+    "std.range",
+    const STD_RANGE,
+    builtin_std_range
+);
+fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Rc<Value>> {
+    call.check_arity_static("std.range", &["lower", "upper"])?;
+    let lower: i64 = match call.args[0].value.as_ref() {
+        Value::Int(i) => *i,
+        _not_string => {
+            // TODO: Add proper typechecking and a proper type error.
+            return call.args[0]
+                .span
+                .error("Expected an Int here, but got a different type.")
+                .err();
+        }
+    };
+    let upper: i64 = match call.args[1].value.as_ref() {
+        Value::Int(i) => *i,
+        _not_string => {
+            // TODO: Add proper typechecking and a proper type error.
+            return call.args[1]
+                .span
+                .error("Expected an Int here, but got a different type.")
+                .err();
+        }
+    };
+
+    let range = lower..upper;
+
+    // Because we materialize the entire list, it's easy to cause out of memory
+    // with a single call to `range`. To prevent that, put an upper limit on the
+    // size. We use a lower limit when fuzzing because it runs with less memory,
+    // and also to keep the fuzzer fast. For production, empirically, a limit of
+    // 1e6 takes about a second to evaluate, so calling `std.range` with much
+    // larger values makes little sense anyway.
+    #[cfg(fuzzing)]
+    let max_len = 500;
+    #[cfg(not(fuzzing))]
+    let max_len = 1_000_000;
+
+    if upper.saturating_sub(lower) > max_len {
+        return call
+            .call_close
+            .error(concat! {
+                "Range "
+                Doc::string(lower.to_string()).with_markup(Markup::Number)
+                ".."
+                Doc::string(upper.to_string()).with_markup(Markup::Number)
+                " exceeds the maximum length of "
+                Doc::string(max_len.to_string()).with_markup(Markup::Number)
+                ". The list would require too much memory."
+            })
+            .err();
+    }
+
+    let values: Vec<_> = range.map(|i| Rc::new(Value::Int(i))).collect();
+    Ok(Rc::new(Value::List(values)))
+}
+
 /// Initialize the standard library.
 pub fn initialize() -> Rc<Value> {
     let mut builtins: BTreeMap<Rc<Value>, Rc<Value>> = BTreeMap::new();
 
+    builtins.insert(
+        Rc::new("range".into()),
+        Rc::new(Value::BuiltinFunction(STD_RANGE)),
+    );
     builtins.insert(
         Rc::new("read_file_utf8".into()),
         Rc::new(Value::BuiltinFunction(STD_READ_FILE_UTF8)),
@@ -137,30 +202,23 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Rc<Value>>>(
 
     for x in elements {
         // The call that we construct here is internal, there is no span in the
-        // source code that we could point at. Add one nonetheless, we'll replace
-        // the error below if needed.
+        // source code that we could point at. Point at the full argument so we
+        // still have something to highlight.
         let void_span = get_key_span.take(0);
         let args = [CallArg {
             span: void_span,
             value: x.clone(),
         }];
         let call = FunctionCall {
-            call_open: void_span,
-            call_close: void_span,
+            call_open: get_key_span,
+            call_close: get_key_span,
             args: &args,
         };
-        let key = eval
-            .eval_call(get_key_span, get_key.as_ref(), call)
-            .map_err(|err| {
-                err.with_prefix(
-                    get_key_span,
-                    concat! {
-                        "In call to key selector in '"
-                        Doc::highlight(name)
-                        "':"
-                    },
-                )
-            })?;
+        let key = eval.eval_call(get_key_span, get_key.as_ref(), call, || {
+            Some(concat! {
+                "In call to key selector from '" Doc::highlight(name) "'"
+            })
+        })?;
         groups.entry(key).or_default().push(x.clone());
     }
 
@@ -231,4 +289,105 @@ builtin_method!("Set.key_by", const SET_KEY_BY, builtin_set_key_by);
 fn builtin_set_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     let set = call.receiver.expect_set();
     builtin_key_by_impl(eval, call, "Set.key_by", set)
+}
+
+builtin_method!("String.split", const STRING_SPLIT, builtin_string_split);
+fn builtin_string_split(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("String.split", &["separator"])?;
+    let string = call.receiver.expect_string();
+
+    let sep_arg = &call.call.args[0];
+    let sep = match sep_arg.value.as_ref() {
+        Value::String(sep) => sep.as_ref(),
+        _ => return sep_arg.span.error("Separator must be a string.").err(),
+    };
+
+    let result: Vec<Rc<Value>> = string
+        .split(sep)
+        .map(|part| Rc::new(Value::from(part)))
+        .collect();
+
+    Ok(Rc::new(Value::List(result)))
+}
+
+builtin_method!("String.split_lines", const STRING_SPLIT_LINES, builtin_string_split_lines);
+fn builtin_string_split_lines(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("String.split_lines", &[])?;
+    let string = call.receiver.expect_string();
+
+    let result: Vec<Rc<Value>> = string
+        .lines()
+        .map(|part| Rc::new(Value::from(part)))
+        .collect();
+
+    Ok(Rc::new(Value::List(result)))
+}
+
+builtin_method!("String.parse_int", const STRING_PARSE_INT, builtin_string_parse_int);
+fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    use std::str::FromStr;
+
+    call.call.check_arity_static("String.parse_int", &[])?;
+    let string = call.receiver.expect_string();
+
+    match i64::from_str(string) {
+        Ok(i) => Ok(Rc::new(Value::Int(i))),
+        Err(..) => call
+            .receiver_span
+            .error("Failed to parse as integer:")
+            .with_body(format_rcl(call.receiver).into_owned())
+            .err(),
+    }
+}
+
+builtin_method!("List.fold", const LIST_FOLD, builtin_list_fold);
+fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    // TODO: Add static type checks. Right now you could provide a bogus
+    // function to fold over an empty list and that doesn't fail.
+    call.call
+        .check_arity_static("List.fold", &["seed", "reduce"])?;
+
+    let list = call.receiver.expect_list();
+    let seed = &call.call.args[0];
+    let reduce = &call.call.args[1];
+
+    let mut acc = seed.value.clone();
+
+    for element in list.iter() {
+        // The call that we construct here is internal, there is no span in the
+        // source code that we could point at. To have something to pin errors
+        // to, we'll take the entire span of the 'reduce' argument.
+        let void_span = reduce.span.take(0);
+        let args = [
+            CallArg {
+                span: void_span,
+                value: acc,
+            },
+            CallArg {
+                span: void_span,
+                value: element.clone(),
+            },
+        ];
+        let call = FunctionCall {
+            call_open: reduce.span,
+            call_close: reduce.span,
+            args: &args,
+        };
+        acc = eval.eval_call(reduce.span, reduce.value.as_ref(), call, || {
+            Some(concat! {
+                "In call to reduce function from '" Doc::highlight("List.fold") "'"
+            })
+        })?;
+    }
+
+    Ok(acc)
+}
+
+builtin_method!("List.reverse", const LIST_REVERSE, builtin_list_reverse);
+fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("List.reverse", &[])?;
+    let list = call.receiver.expect_list();
+    let reversed = list.iter().rev().cloned().collect();
+    Ok(Rc::new(Value::List(reversed)))
 }

@@ -1,0 +1,19 @@
+{
+  a = "foo, bar, baz".split(", "),
+  b = "|x|y|z".split("|"),
+  c = "x&y&&z&".split("&"),
+  // Splitting on empty string creates a leading and trailing empty string.
+  // I'm not sure how I feel about this, maybe splitting on empty string should
+  // be an error. It's an error in Python at least. But the current behavior is
+  // what Rust's split does, and it comes in handy for leetcoding if you need
+  // the chars. TODO: Add a .chars() method and then disallow empty separator.
+  d = "xyz".split(""),
+}
+
+# output:
+{
+  a = ["foo", "bar", "baz"],
+  b = ["", "x", "y", "z"],
+  c = ["x", "y", "", "z", ""],
+  d = ["", "x", "y", "z", ""],
+}

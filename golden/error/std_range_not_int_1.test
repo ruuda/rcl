@@ -1,0 +1,14 @@
+std.range(0, "not int")
+
+# output:
+stdin:1:14
+  ╷
+1 │ std.range(0, "not int")
+  ╵              ^~~~~~~~~
+Error: Expected an Int here, but got a different type.
+
+stdin:1:10
+  ╷
+1 │ std.range(0, "not int")
+  ╵          ^
+In call to function 'std.range'.

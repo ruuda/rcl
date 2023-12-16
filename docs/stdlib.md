@@ -4,6 +4,24 @@ The <abbr>RCL</abbr> standard library is a dict of functions that is in scope by
 default under the name `std`. Most of the built-in functionality is not in this
 `std` dict, but in methods on the builtin types. See the next chapters for those.
 
+## range
+
+    std.range: (lower: Int, upper: Int) -> List[Int]
+
+Return the range of integers `lower` through `upper`. The lower bound is
+inclusive and the upper bound is exclusive. When the lower bound is greater
+than the upper bound, `range` returns an empty list.
+
+```rcl
+std.range(3, 7)
+// Evaluates to:
+[3, 4, 5, 6]
+
+std.range(7, 3)
+// Evaluates to:
+[]
+```
+
 ## read_file_utf8
 
     std.read_file_utf8: (path: String) -> String

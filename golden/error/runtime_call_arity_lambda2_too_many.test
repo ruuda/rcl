@@ -13,3 +13,9 @@ stdin:1:16
 1 │ let f = (x, y) => x;
   ╵                ^~
 Note: Function defined here.
+
+stdin:2:2
+  ╷
+2 │ f("one", "too", "many")
+  ╵  ^
+In call to function.
