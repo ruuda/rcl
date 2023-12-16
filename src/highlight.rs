@@ -26,8 +26,8 @@ fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
         Token::NumBinary | Token::NumHexadecimal | Token::NumDecimal => cyan,
         Token::Ident => match token_bytes {
             // Give the builtins a different color.
-            b"contains" | b"fold" | b"get" | b"group_by" | b"key_by" | b"len" | b"parse_int"
-            | b"reverse" | b"split" | b"split_lines" | b"std" => red,
+            b"contains" | b"fold" | b"get" | b"group_by" | b"key_by" | b"keys" | b"len"
+            | b"parse_int" | b"reverse" | b"split" | b"split_lines" | b"std" | b"values" => red,
             _ => blue,
         },
 

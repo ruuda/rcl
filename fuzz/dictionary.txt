@@ -51,6 +51,7 @@
 "get"
 "group_by"
 "key_by"
+"keys"
 "len"
 "parse_int"
 "reverse"
@@ -58,3 +59,4 @@
 "split_lines"
 "std.range"
 "std.read_file_utf8"
+"values"
