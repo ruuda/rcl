@@ -13,6 +13,23 @@ Return whether the dict contains the given key. For example:
 [for needle in ["a", "z"]: { a = 1, b = 2, c = 3 }.contains(needle)]
 ```
 
+## except
+
+    Dict.except: (self: Dict[K, V], key: K) -> Dict[K, V]
+
+Return a copy of the dictionary, with the given key omitted. If the key was not
+present in the first place, then the result is identical to the input.
+
+```rcl
+let replicant = {
+  name = "Leon Kowalski",
+  serial = "NEXUS-6 N6MAC41717",
+};
+replicant.except("serial")
+// Evaluates to:
+{ name = "Leon Kowalski" }
+```
+
 ## get
 
     Dict.get: (self: Dict[K, V], key: K, default: V) -> V

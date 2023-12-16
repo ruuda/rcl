@@ -59,6 +59,7 @@ _root_base = [
         words(
             (
                 "contains",
+                "except",
                 "fold",
                 "get",
                 "group_by",

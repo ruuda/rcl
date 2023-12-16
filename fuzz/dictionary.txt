@@ -47,6 +47,7 @@
 
 # Builtin methods.
 "contains"
+"except"
 "fold"
 "get"
 "group_by"
