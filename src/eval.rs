@@ -279,7 +279,7 @@ impl<'a> Evaluator<'a> {
                         method: b,
                     })),
                     None => {
-                        return field_span
+                        field_span
                             .error("Unknown field.")
                             .with_note(
                                 *inner_span,
@@ -289,7 +289,7 @@ impl<'a> Evaluator<'a> {
                                     "On value: " format_rcl(inner.as_ref()).into_owned()
                                 },
                             )
-                            .err();
+                            .err()
                     }
                 }
             }

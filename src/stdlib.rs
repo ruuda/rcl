@@ -331,7 +331,7 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<R
     call.call.check_arity_static("String.parse_int", &[])?;
     let string = call.receiver.expect_string();
 
-    match i64::from_str(string.as_ref()) {
+    match i64::from_str(string) {
         Ok(i) => Ok(Rc::new(Value::Int(i))),
         Err(..) => call
             .receiver_span
