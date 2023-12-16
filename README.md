@@ -1,9 +1,5 @@
 # Ruud’s Configuration Language
 
-> [!WARNING]
-> While RCL is usable, it is still in an early exploratory stage with frequent
-> breaking changes. This is a hobby project without stability promise.
-
 Ruud’s Configuration Language, RCL for short, is a domain-specific language
 optimized for specifying human-written data with just enough abstraction
 features to avoid repetition. It is a superset of json that extends it into a
@@ -17,6 +13,10 @@ simple functional programming language that resembles [Python][python] and
    that can be referenced from a single consistent entry point, in the same way
    that Nix enables this for [Nixpkgs][nixpkgs].
 
+> [!WARNING]
+> While RCL is usable, it is still in an early exploratory stage with frequent
+> breaking changes. This is a hobby project without stability promise.
+
 [python]:  https://www.python.org/
 [nix]:     https://nixos.org/manual/nix/stable/language/
 [jq]:      https://jqlang.github.io/jq/manual/
@@ -28,6 +28,7 @@ See [the manual](https://docs.ruuda.nl/rcl/) for more information. The most
 useful chapters to get started:
 
  * [Installation](https://docs.ruuda.nl/rcl/installation/)
+ * [Tutorial](https://docs.ruuda.nl/rcl/tutorial/)
  * [Syntax guide](https://docs.ruuda.nl/rcl/syntax/)
 
 You may also find the examples in the `examples` directory instructive.
@@ -61,38 +62,32 @@ Why another config language?
 
  * **Vaporware, not fully implemented:** RCL is a superset of json.
 
- * **Vaporware, not implemented:** RCL should be statically typed, in the
-   sense that errors in unreachable code should cause evaluation to fail.
-
- * **Vaporware, not implemented:** RCL should be structurally typed with
-   Hindley-Milner-style type inference. Types should *not* be first-class,
-   in the sense that the type and value namespaces don’t mix, and you can’t
-   bind types to variables.
-
- * Strictly evaluated. Maybe it should become lazily evaluated when you want to
-   build something big like Nixpkgs with it; for now strict is fast enough.
-
 ## Usage
 
 Build:
 
-    cargo build
+    cargo build --release
+
+Print usage:
+
+    target/release/rcl
+    target/release/rcl eval --help
 
 Evaluate an RCL expression to json:
 
-    target/debug/rcl eval examples/tags.rcl
+    target/release/rcl eval examples/tags.rcl
 
 Query an RCL or json document:
 
-    target/debug/rcl query examples/tags.rcl input.tags.ams01
+    target/release/rcl query examples/tags.rcl input.tags.ams01
 
 Autoformat an RCL expression (non-destructive, prints to stdout):
 
-    target/debug/rcl fmt examples/tags.rcl
+    target/release/rcl fmt examples/tags.rcl
 
 Highlight an RCL expression in your terminal:
 
-    target/debug/rcl highlight examples/tags.rcl
+    target/release/rcl highlight examples/tags.rcl
 
 ## Development
 

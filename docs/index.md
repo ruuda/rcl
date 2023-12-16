@@ -25,7 +25,10 @@ promise._
 ## Example
 
 ```rcl
-// Configuration for a hypothetical infrastructure-as-code schema.
+// Configuration that defines cloud storage buckets for storing backups of two
+// databases, "alpha" and "bravo", at three different frequencies. This schema
+// is for a hypothetical infrastructure-as-code tool. See the tutorial for more
+// details.
 {
   backup_buckets = [
     let retention_days = { hourly = 4, daily = 30, monthly = 365 };
