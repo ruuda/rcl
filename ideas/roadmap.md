@@ -7,6 +7,7 @@
    without quotes.
  * Actually implement the `--in-place` for `rcl fmt`.
  * Add a `--follow` for `rcl fmt` that follows imports.
+ * Replace `if cond then t else f` syntax with `if cond: t else: f`.
 
 ## Mid-term
 
