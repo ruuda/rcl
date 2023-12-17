@@ -1,6 +1,6 @@
 # rcl evaluate
 
-    rcl evaluate [-o | --output <format>] [-w | --width <width>] [--] <file>
+    rcl evaluate [-o | --output <format>] [-w | --width <width>] [--] [<file>]
 
 Shorthands:
 
@@ -10,8 +10,9 @@ Shorthands:
 
 ## Description
 
-Read an RCL expression from the file `<file>`, and evaluate it. When `<file>`
-is `-`, read from stdin instead. Print the evaluated result to stdout.
+Read an <abbr>RCL</abbr> expression from the file `<file>`, and evaluate it.
+Print the evaluated result to stdout. When `<file>` is `-`, read from stdin.
+When no file is specified, the input defaults to stdin.
 
 ## Options
 

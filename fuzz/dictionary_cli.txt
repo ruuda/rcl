@@ -1,0 +1,23 @@
+# Commands
+"evaluate"
+"fmt"
+"format"
+"highlight"
+"query"
+
+# Options
+"--color"
+"--directory"
+"--help"
+"--in-place"
+"--output"
+"--sandbox"
+"--version"
+"--width"
+
+# Option arguments
+"auto"
+"ansi"
+"none"
+"workdir"
+"unrestricted"

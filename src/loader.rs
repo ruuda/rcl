@@ -425,6 +425,23 @@ impl Loader {
                 self.load_file(path)
             }
             Target::Stdin => self.load_stdin(),
+            Target::StdinDefault => {
+                // We are in the case where the input is stdin, but stdin was
+                // selected implitictly, through the absence of a file argument.
+                // If stdin is a TTY, and the user doesn't know that the
+                // application defaulted to stdin and is waiting for input, then
+                // it looks like the application hangs. Print a note to stderr
+                // to educate the user.
+                use std::io::IsTerminal;
+                if std::io::stdin().is_terminal() {
+                    eprintln!(
+                        "No input file was specified, defaulting to stdin. See also --help.\n\
+                        To silence this note, select stdin explicitly with '-'.\n\
+                        Waiting for input ..."
+                    );
+                }
+                self.load_stdin()
+            }
         }
     }
 }

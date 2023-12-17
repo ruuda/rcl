@@ -1,6 +1,6 @@
 # rcl format
 
-    rcl format [-w | --width <width>] [-i | --in-place] [--] <file>...
+    rcl format [-w | --width <width>] [-i | --in-place] [--] [<file>...]
 
 Shorthands:
 
@@ -9,9 +9,10 @@ Shorthands:
 
 ## Description
 
-Read an RCL expression from `<file>` and format it according to the standard
-style. When `<file>` is `-`, read from stdin instead. Print the result to
-stdout, unless `--in-place` is used.
+Read an <abbr>RCL</abbr> expression from `<file>` and format it according to the
+standard style. When `<file>` is `-`, read from stdin. When no files are
+specified, the input defaults to stdin. Print the result to stdout, unless
+`--in-place` is used.
 
 ## Options
 

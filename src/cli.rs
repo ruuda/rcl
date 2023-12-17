@@ -52,15 +52,16 @@ const USAGE_EVAL_QUERY: &str = r#"
 RCL -- A reasonable configuration language.
 
 Usage:
-  rcl [<options>] evaluate [<options>] <file>
-  rcl [<options>] query    [<options>] <file> <query>
+  rcl [<options>] evaluate [<options>] [<file>]
+  rcl [<options>] query    [<options>] [<file>] <query>
 
 The 'evaluate' command evaluates the expression in the input file and prints it
 to stdout. The 'query' command additionally evaluates an expression against the
 result.
 
 Arguments:
-  <file>     The input file to process, or '-' for stdin.
+  <file>     The input file to process, or '-' for stdin. Defaults to stdin when
+             no file is specified.
   <query>    An RCL expression to evaluate. The result of evaluating the input
              file is bound to the variable 'input'.
 
@@ -84,13 +85,14 @@ const USAGE_FORMAT: &str = r#"
 RCL -- A reasonable configuration language.
 
 Usage:
-  rcl [<options>] format [<options>] <file>...
+  rcl [<options>] format [<options>] [<file>...]
 
 The 'format' command formats one or more input documents in standard style.
 
 Arguments:
   <file>...        The input files to process, or '-' for stdin. When --in-place
-                   is used, there can be multiple input files.
+                   is used, there can be multiple input files. Defaults to stdin
+                   when no file is specified.
 
 Options:
   -i --in-place       Rewrite files in-place instead of writing to stdout.
@@ -149,8 +151,19 @@ impl Default for FormatOptions {
 /// Input to act on.
 #[derive(Debug, Eq, PartialEq)]
 pub enum Target {
+    /// A file, selected explicitly.
     File(String),
+
+    /// Stdin, selected explicitly.
     Stdin,
+
+    /// Stdin, selected by default through absence of a file argument.
+    ///
+    /// We distinguish this from explicit `Stdin`, so we can print a
+    /// note/warning when stdin is a TTY, because that case is likely
+    /// unintentional, and it looks like the application hangs when the
+    /// user doesn't realize it's waiting for input.
+    StdinDefault,
 }
 
 /// For the `fmt` command, which documents to format, and in what mode.
@@ -333,6 +346,19 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     match targets.remove(0) {
                         Target::File(query) => query,
                         Target::Stdin => "-".to_string(),
+                        Target::StdinDefault => {
+                            unreachable!("Only produced through absence of args.")
+                        }
+                    },
+                ),
+                1 => (
+                    Target::StdinDefault,
+                    match targets.remove(0) {
+                        Target::File(query) => query,
+                        Target::Stdin => "-".to_string(),
+                        Target::StdinDefault => {
+                            unreachable!("Only produced through absence of args.")
+                        }
                     },
                 ),
                 _ => {
@@ -371,7 +397,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
 
 fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
     match targets.pop() {
-        None => Error::new("Expected an input file. See --help for usage.").err(),
+        None => Ok(Target::StdinDefault),
         Some(_) if !targets.is_empty() => {
             Error::new("Too many input files. See --help for usage.").err()
         }
@@ -497,14 +523,21 @@ mod test {
             expected
         );
         assert_eq!(parse(&["rcl", "e", "infile"]), expected);
+
+        // Test that defaulting to stdin works. If '-' is there we get it
+        // explicitly, if it's not, we get it implicitly.
+        if let Cmd::Evaluate { fname, .. } = &mut expected.1 {
+            *fname = Target::Stdin;
+        }
+        assert_eq!(parse(&["rcl", "e", "-"]), expected);
+        if let Cmd::Evaluate { fname, .. } = &mut expected.1 {
+            *fname = Target::StdinDefault;
+        }
+        assert_eq!(parse(&["rcl", "e"]), expected);
     }
 
     #[test]
     fn parse_cmd_eval_fails_on_invalid_usage() {
-        assert_eq!(
-            fail_parse(&["rcl", "eval"]),
-            "Error: Expected an input file. See --help for usage.\n"
-        );
         assert_eq!(
             fail_parse(&["rcl", "eval", "infile", "--width=bobcat"]),
             "Error: 'bobcat' is not valid for --width. See --help for usage.\n"
@@ -613,10 +646,18 @@ mod test {
         };
         assert_eq!(parse(&["rcl", "jq", "infile", "input.name"]), expected);
 
-        assert_eq!(
-            fail_parse(&["rcl", "q", "infile"]),
-            "Error: Expected an input file and a query. See --help for usage.\n",
-        );
+        if let Cmd::Query {
+            eval_opts,
+            fname,
+            query,
+            ..
+        } = &mut expected.1
+        {
+            eval_opts.format = OutputFormat::Rcl;
+            *fname = Target::StdinDefault;
+            *query = "infile".to_string();
+        };
+        assert_eq!(parse(&["rcl", "q", "infile"]), expected);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # rcl query
 
-    rcl query [-o | --output <format>] [-w | --width <width>] [--] <file> <expr>
+    rcl query [-o | --output <format>] [-w | --width <width>] [--] [<file>] <expr>
 
 Shorthands:
 
@@ -11,8 +11,8 @@ Shorthands:
 
 Evaluate an expression against an input.
 
- * Read an RCL expression from `<file>`. When `<file>` is `-`,
-   read from stdin instead.
+ * Read an <abbr>RCL</abbr> expression from `<file>`. When `<file>` is `-`,
+   read from stdin. When no file is specified, the input defaults to stdin.
  * Evaluate the expression `<expr>`, in a context where the variable `input`
    is bound to the result of the input document.
 
