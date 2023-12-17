@@ -12,13 +12,7 @@ Shorthands:
 
 Read an <abbr>RCL</abbr> expression from the file `<file>`, and evaluate it.
 Print the evaluated result to stdout. When `<file>` is `-`, read from stdin.
-When no file is specified and stdin is not a <abbr>TTY</abbr>, the input
-defaults to stdin.[^1]
-
-[^1]: When stdin is a <abbr>TTY</abbr>, it is not the default input, to avoid
-      confusing new users, who might not realize that `rcl` is waiting for an
-      <abbr>EOF</abbr> on stdin. If using stdin is intentional, specify `-` as
-      the file.
+When no file is specified, the input defaults to stdin.
 
 ## Options
 

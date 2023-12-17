@@ -10,14 +10,9 @@ Shorthands:
 ## Description
 
 Read an <abbr>RCL</abbr> expression from `<file>` and format it according to the
-standard style. When `<file>` is `-`, read from stdin. When no file is specified
-and stdin is not a <abbr>TTY</abbr>, the input defaults to stdin.[^1] Print the
-result to stdout, unless `--in-place` is used.
-
-[^1]: When stdin is a <abbr>TTY</abbr>, it is not the default input, to avoid
-      confusing new users, who might not realize that `rcl` is waiting for an
-      <abbr>EOF</abbr> on stdin. If using stdin is intentional, specify `-` as
-      the file.
+standard style. When `<file>` is `-`, read from stdin. When no files are
+specified, the input defaults to stdin. Print the result to stdout, unless
+`--in-place` is used.
 
 ## Options
 

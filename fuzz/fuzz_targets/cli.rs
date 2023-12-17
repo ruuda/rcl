@@ -4,14 +4,8 @@
 
 use libfuzzer_sys::fuzz_target;
 
-use rcl::cli::{self, StdinCapabilities};
+use rcl::cli;
 
-fuzz_target!(|input: (Vec<String>, bool)| {
-    let argv = input.0;
-    let stdin = if input.1 {
-        StdinCapabilities::Terminal
-    } else {
-        StdinCapabilities::NonInteractive
-    };
-    let _ = cli::parse(argv, stdin);
+fuzz_target!(|input: Vec<String>| {
+    let _ = cli::parse(input);
 });

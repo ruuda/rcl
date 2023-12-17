@@ -8,10 +8,7 @@
 use std::io::Write;
 use std::rc::Rc;
 
-use rcl::cli::{
-    self, Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat,
-    StdinCapabilities,
-};
+use rcl::cli::{self, Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat};
 use rcl::error::{Error, Result};
 use rcl::loader::{Loader, SandboxMode};
 use rcl::markup::MarkupMode;
@@ -101,8 +98,7 @@ impl App {
     }
 
     fn main(&mut self) -> Result<()> {
-        let stdin = StdinCapabilities::from_stdin();
-        let (opts, cmd) = cli::parse(std::env::args().collect(), stdin)?;
+        let (opts, cmd) = cli::parse(std::env::args().collect())?;
         self.opts = opts;
 
         match cmd {
