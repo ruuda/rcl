@@ -27,7 +27,10 @@ def seed_one(fname: str) -> int:
     Extract the test case and write it into the fuzz directory. Return the
     length of the input in bytes.
     """
-    input_lines: List[str] = []
+    # Prepend a comment line that is required for the fuzzer to decide how
+    # it will treat this input, see also `fuzz_targets/main.rs`. `e` means
+    # "evaluate", and `Z` is '\n' + 80, for a format width of 80 columns.
+    input_lines: List[str] = ["//eZ\n"]
 
     with open(fname, "r", encoding="utf-8") as f:
         for line in f:
