@@ -2,4 +2,40 @@ let f = f => f(f);
 f(f)
 
 # output:
-TODO
+stdin:1:15
+  ╷
+1 │ let f = f => f(f);
+  ╵               ^
+Error: Evaluation budget exceeded. This call exceeds the maximum call depth of 100.
+
+stdin:1:15
+  ╷
+1 │ let f = f => f(f);
+  ╵               ^
+In call to function.
+
+stdin:1:15
+  ╷
+1 │ let f = f => f(f);
+  ╵               ^
+In call to function.
+
+stdin:1:15
+  ╷
+1 │ let f = f => f(f);
+  ╵               ^
+In call to function.
+
+stdin:1:15
+  ╷
+1 │ let f = f => f(f);
+  ╵               ^
+In call to function.
+
+stdin:1:15
+  ╷
+1 │ let f = f => f(f);
+  ╵               ^
+In call to function.
+
+Note: The call stack is too deep to display in full. Only the innermost calls are shown above.

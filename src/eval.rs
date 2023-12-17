@@ -37,6 +37,11 @@ pub struct Evaluator<'a> {
     ///
     /// Because it is immutable, it can be reused across evaluations.
     pub stdlib: Rc<Value>,
+
+    /// The depth of the call stack.
+    ///
+    /// Used to error before we overflow the native stack.
+    pub call_depth: u32,
 }
 
 impl<'a> Evaluator<'a> {
@@ -46,6 +51,7 @@ impl<'a> Evaluator<'a> {
             tracer,
             import_stack: Vec::new(),
             stdlib: stdlib::initialize(),
+            call_depth: 0,
         }
     }
 
@@ -392,7 +398,25 @@ impl<'a> Evaluator<'a> {
         MkErr: FnOnce() -> Option<Doc<'static>>,
     {
         let call_open = call.call_open;
-        match callee {
+
+        // Error out when the call stack gets too deep, instead of waiting for
+        // the native call stack to overflow. In practice, unless you are doing
+        // recursion, the call stack shouldn't be extremely deep, and for
+        // recursion we need a better solution, so set a fairly low limit.
+        let max_call_depth = 100;
+        self.call_depth += 1;
+
+        if self.call_depth >= max_call_depth {
+            return call_open
+                .error(concat! {
+                    "Evaluation budget exceeded. This call exceeds the maximum call depth of "
+                    max_call_depth.to_string()
+                    "."
+                })
+                .err();
+        }
+
+        let result = match callee {
             Value::BuiltinMethod {
                 method_span,
                 method,
@@ -438,7 +462,11 @@ impl<'a> Evaluator<'a> {
                     .with_call_frame(call_open, msg)
                     .err()
             }
-        }
+        };
+
+        self.call_depth -= 1;
+
+        result
     }
 
     /// Evaluate a call to a lambda function.
