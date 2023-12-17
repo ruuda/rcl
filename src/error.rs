@@ -240,12 +240,29 @@ impl Error {
         }
 
         // We print the call stack last, after the help and notes, because the
-        // help and notes refer to the inner error.
-        for (call_span, call_frame_message) in self.call_stack {
+        // help and notes refer to the inner error. If the call stack is
+        // enormous, that probably means the error is exceeding the call depth
+        // (stack overflow), so truncate it.
+        let mut call_stack = self.call_stack;
+        let truncate = call_stack.len() > 5;
+        if truncate {
+            call_stack.truncate(5);
+        }
+        for (call_span, call_frame_message) in call_stack {
             result.push(Doc::HardBreak);
             result.push(Doc::HardBreak);
             result.push(highlight_span(inputs, call_span, Markup::Error));
             result.push(call_frame_message);
+        }
+        if truncate {
+            result.push(Doc::HardBreak);
+            result.push(Doc::HardBreak);
+            result.push(Doc::from("Note:").with_markup(Markup::Warning));
+            result.push(
+                " The call stack is too deep to display in full. \
+                Only the innermost calls are shown above."
+                    .into(),
+            );
         }
 
         Doc::Concat(result)
