@@ -20,7 +20,7 @@ This can be used to peek into a sub-element of a document that evaluates to a
 large expression, but it can also be used for ad-hoc data querying, as an
 alternative to [`jq`](https://jqlang.github.io/jq/). For example:
 
-    echo '[12, 42, 33]' | rcl q - '[for x in input: f"Double {x} is {x * 2}."]'
+    echo '[12, 42, 33]' | rcl q '[for x in input: f"Double {x} is {x * 2}."]'
     ["Double 12 is 24.","Double 42 is 84.","Double 33 is 66."]
 
 ## Options
