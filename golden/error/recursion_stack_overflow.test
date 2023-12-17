@@ -1,0 +1,5 @@
+let f = f => f(f);
+f(f)
+
+# output:
+TODO
