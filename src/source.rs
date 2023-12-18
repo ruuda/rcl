@@ -68,7 +68,7 @@ impl Span {
         // an input larger than 262 TiB before it happens, so we can get away
         // with a panic.
         assert!(
-            end <= 0xffff_ffff_ffff,
+            end as u128 <= 0xffff_ffff_ffff,
             // coverage:off -- Error is not tested, I don't have such large disk.
             "Document should not be larger than 262 TiB.",
             // coverage:on

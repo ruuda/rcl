@@ -164,6 +164,31 @@ Tell Python where to find the shared object, run the interpreter:
     >>> help(rcl.loads)
     >>> rcl.load_file("examples/buckets.rcl")
 
+## Building WASM
+
+Build a large-ish binary:
+
+    cargo build --profile=release-wasm --target=wasm32-unknown-unknown
+
+Build a much smaller binary, but requires nightly:
+
+    cargo +nightly build --profile=release-wasm --target=wasm32-unknown-unknown \
+      -Z build-std=std,panic_abort \
+      -Z build-std-features=panic_immediate_abort
+
+Shrink the binary further with [`wasm-opt` from Binaryen][binaryen]:
+
+    wasm-opt -Oz target/wasm32-unknown-unknown/release-wasm/rcl.wasm --output target/rcl.wasm
+
+Inspect the wasm file to confirm it doesn't contain needless fluff:
+
+    wasm-dis target/rcl.wasm
+
+TODO: Uh oh, it looks like it has the full CLI docs in there ... can we make a
+WASM module that *only* does evaluation of an input string?
+
+[binaryen]: https://github.com/WebAssembly/binaryen
+
 ## License
 
 RCL is licensed under the [Apache 2.0][apache2] license. It may be used in

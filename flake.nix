@@ -128,6 +128,7 @@
                 # rebuilds half the Python universe, so instead we take the
                 # cached version that does not depend on our patched pygments.
                 pkgs.python311Packages.black
+                pkgs.binaryen
                 pkgs.maturin
                 pkgs.rustup
                 pythonEnv
