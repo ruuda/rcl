@@ -73,10 +73,11 @@ Options:
   --sandbox <mode>      Sandboxing mode, see below. Defaults to 'workdir'.
 
 Output modes:
-  json  Output pretty-printed JSON.
-  raw   If the document is a string, output the string itself. If the document
-        is a list or set of strings, output each string on its own line.
-  rcl   Output pretty-printed RCL.
+  json          Output pretty-printed JSON.
+  raw           If the document is a string, output the string itself. If the
+                document is a list or set of strings, output each string on its
+                own line.
+  rcl           Output pretty-printed RCL.
 
 Sandboxing modes:
   workdir       Only allow importing files inside the working directory and
