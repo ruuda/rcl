@@ -21,6 +21,7 @@ pub mod error;
 pub mod eval;
 pub mod fmt_cst;
 pub mod fmt_json;
+pub mod fmt_raw;
 pub mod fmt_rcl;
 pub mod highlight;
 pub mod lexer;

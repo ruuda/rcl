@@ -69,6 +69,7 @@ impl App {
         value: Rc<Value>,
     ) -> Result<()> {
         let out_doc = match eval_opts.format {
+            OutputFormat::Raw => rcl::fmt_raw::format_raw(value_span, value.as_ref())?,
             OutputFormat::Rcl => rcl::fmt_rcl::format_rcl(value.as_ref()),
             OutputFormat::Json => rcl::fmt_json::format_json(value_span, value.as_ref())?,
         };

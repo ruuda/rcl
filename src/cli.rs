@@ -66,12 +66,17 @@ Arguments:
              file is bound to the variable 'input'.
 
 Options:
-  -o --output <format>  Output format, can be one of 'json', 'rcl'.
-                        Defaults to 'rcl'.
+  -o --output <format>  Output format, can be one of 'json', 'raw', 'rcl', see
+                        below. Defaults to 'rcl'.
   -w --width <width>    Target width for pretty-printing, must be an integer.
                         Defaults to 80.
-  --sandbox <mode>      Sandboxing mode, can be one of 'workdir' (the default)
-                        and 'unrestricted'.
+  --sandbox <mode>      Sandboxing mode, see below. Defaults to 'workdir'.
+
+Output modes:
+  json  Output pretty-printed JSON.
+  raw   If the document is a string, output the string itself. If the document
+        is a list or set of strings, output each string on its own line.
+  rcl   Output pretty-printed RCL.
 
 Sandboxing modes:
   workdir       Only allow importing files inside the working directory and
@@ -121,6 +126,7 @@ pub struct GlobalOptions {
 #[derive(Debug, Default, Eq, PartialEq)]
 pub enum OutputFormat {
     Json,
+    Raw,
     #[default]
     Rcl,
 }
@@ -230,6 +236,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 eval_opts.format = match_option! {
                     args: arg,
                     "json" => OutputFormat::Json,
+                    "raw" => OutputFormat::Raw,
                     "rcl" => OutputFormat::Rcl,
                 }
             }
@@ -506,6 +513,11 @@ mod test {
         assert_eq!(parse(&["rcl", "-orcl", "-ojson", "e", "infile"]), expected);
         assert_eq!(parse(&["rcl", "je", "infile"]), expected);
 
+        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
+            eval_opts.format = OutputFormat::Raw;
+        }
+        assert_eq!(parse(&["rcl", "e", "infile", "-oraw"]), expected);
+
         // Test --sandbox.
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
             eval_opts.format = OutputFormat::Rcl;
@@ -548,7 +560,7 @@ mod test {
         );
         assert_eq!(
             fail_parse(&["rcl", "eval", "infile", "--output=yamr"]),
-            "Error: Expected --output to be followed by one of json, rcl. See --help for usage.\n"
+            "Error: Expected --output to be followed by one of json, raw, rcl. See --help for usage.\n"
         );
         assert_eq!(
             fail_parse(&["rcl", "frobnicate", "infile"]),
