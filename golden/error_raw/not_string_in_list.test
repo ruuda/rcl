@@ -1,0 +1,12 @@
+["This one is fine", {"This one is not": 1}]
+
+# output:
+stdin:1:1
+  ╷
+1 │ ["This one is fine", {"This one is not": 1}]
+  ╵ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+in value
+at index 1
+Error: Expected a string for raw output, but got non-string value: {
+  "This one is not": 1,
+}

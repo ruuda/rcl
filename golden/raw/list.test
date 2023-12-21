@@ -1,0 +1,13 @@
+[
+  "A list of strings",
+  "results in one line of output",
+  "per line in the list.",
+  "Newlines\nare still allowed.",
+]
+
+# output:
+A list of strings
+results in one line of output
+per line in the list.
+Newlines
+are still allowed.

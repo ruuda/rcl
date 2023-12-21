@@ -18,7 +18,20 @@ When no file is specified, the input defaults to stdin.
 
 ### `-o` `--output <format>`
 
-Output in the given format. Can be one of `json` or `rcl`. Defaults to `rcl`.
+Output in the given format. The following formats are supported:
+
+<dl>
+  <dt>json</dt>
+  <dd>Output pretty-printed <abbr>JSON</abbr>.</dd>
+  <dt>raw</dt>
+  <dd>If the document is a string, output the string itself. If the document is
+  a list or set of strings, output each string on its own line.</dd>
+  <dt>rcl</dt>
+  <dd>Output pretty-printed <abbr>RCL</abbr>.</dd>
+</dl>
+
+The default output format is `rcl`. For the `je` command shorthand, the default
+output format is `json`.
 
 ### `-w` `--width <width>`
 

@@ -1,0 +1,8 @@
+null
+
+# output:
+stdin:1:1
+  ╷
+1 │ null
+  ╵ ^~~~
+Error: Expected a string for raw output, but got non-string value: null
