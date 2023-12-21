@@ -186,12 +186,15 @@ let should_log_verbose =
 ## Indexing
 
 Brackets are used to index into collections. At the moment, only lists are
-supported. Indices must be integers and are 0-based.
+supported. Indices must be integers and are 0-based. Negative indices index
+from the back of the list.
 
 ```rcl
 let xs = ["Deckard", "Rachael", "Tyrell"];
-xs[0]
 // Evaluates to "Deckard".
+xs[0]
+// Evaluates to "Tyrell".
+xs[-1]
 ```
 
 ## Comprehensions
