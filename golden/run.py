@@ -87,10 +87,14 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
             cmd = ["eval"]
         case "error_json":
             cmd = ["eval", "--output=json"]
+        case "error_raw":
+            cmd = ["eval", "--output=raw"]
         case "fmt":
             cmd = ["fmt"]
         case "json":
             cmd = ["eval", "--output=json"]
+        case "raw":
+            cmd = ["eval", "--output=raw"]
         case "rcl":
             cmd = ["eval", "--output=rcl"]
         case unknown:

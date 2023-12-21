@@ -36,10 +36,10 @@ impl Formatter {
         Formatter { caller }
     }
 
-    fn error_not_string<'a>(&self, v: &Value) -> Error {
+    fn error_not_string(&self, v: &Value) -> Error {
         self.caller.error(concat! {
-            "Expected a string for raw output, but got a non-string value: "
-            format_rcl(&v).into_owned()
+            "Expected a string for raw output, but got non-string value: "
+            format_rcl(v).into_owned()
         })
     }
 
