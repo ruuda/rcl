@@ -223,12 +223,30 @@ let populations = {
 
 The following operators are supported. Most of them are similar to Python.
 
-| Operator | Arity  | Description |
-|----------|--------|-------------|
-| `not`    | unary  | Boolean negation |
-| `and`    | binary | Boolean <abbr>AND</abbr> |
-| `or`     | binary | Boolean <abbr>OR</abbr> |
-| `|`      | binary | Set or dict union, right-biased for dicts |
+Unary operators that operate to the left of an expression, e.g. `not x`:
+
+| Operator | Description |
+|----------|-------------|
+| `not`    | Boolean negation |
+| `-`      | Numeric negation |
+
+Binary operators that operate between two expressions, e.g. `x and y`:
+
+| Operator | Description |
+|----------|-------------|
+| `and`    | Boolean <abbr>AND</abbr> |
+| `or`     | Boolean <abbr>OR</abbr> |
+| `==`     | Equal to |
+| `!=`     | Not equal to |
+| `<`      | Less than |
+| `<=`     | Less than or equal to |
+| `>`      | Greater than |
+| `>=`     | Greater than or equal to |
+| `|`      | Set or dict union, right-biased for dicts |
+| `+`      | Numeric addition |
+| `-`      | Numeric subtraction |
+| `*`      | Numeric multiplication |
+| `/`      | Numeric division |
 
 Unlike most other languages (but [like Pony][pony-ops]), RCL does not have
 different precedence levels. To avoid confusing combinations of operators, you
