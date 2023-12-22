@@ -154,6 +154,71 @@ let flavor = "sweet";
 A let-binding is an _expression_, not an assignment statement. The expression
 evaluates to the expression after `;`.
 
+## Indexing
+
+Brackets are used to index into collections. At the moment, only lists are
+supported. Indices must be integers and are 0-based. Negative indices index
+from the back of the list.
+
+```rcl
+let xs = ["Deckard", "Rachael", "Tyrell"];
+// Evaluates to "Deckard".
+xs[0]
+// Evaluates to "Tyrell".
+xs[-1]
+```
+
+TODO: Support indexing into dicts.
+
+## Field access
+
+The `.` can be used to access methods on values.
+
+```rcl
+// Evaluates to 3.
+"abc".len()
+
+// Evaluates to false.
+{1, 2, 3}.contains(4)
+```
+
+The `.` can also be used to access fields of dictionaries. In most cases this
+can be used as a more readable alternative to indexing notation.
+
+```rcl
+let replicant = { name = "Zhora Salome", model = "NEXUS-6 N6FAB61216" };
+// Evaluates to "Zhora Salome".
+replicant.name
+```
+
+When a dictionary contains a key with the same name as a built-in method, the
+method takes precedence.
+
+```rcl
+let confusing = { len = 100 };
+
+// Evaluates to builtin method Dict.len, not to the integer 100.
+confusing.len
+```
+
+To access the value, use indexing notation instead. The same applies to keys
+that are not valid identifiers, such as keys with spaces or
+non-<abbr>ASCII</abbr> letters.
+
+```rcl
+let confusing = { len = 100 };
+// Evaluates to 100.
+confusing["len"]
+
+let populations = {
+  "Amsterdam": 1_459_402,
+  "Düsseldorf": 1_220_000,
+  "New York": 19_426_449,
+};
+// Evaluates to [1459402, 1220000, 19426449].
+[populations.Amsterdam, populations["Düsseldorf"], populations["New York"]]
+```
+
 ## Operators
 
 The following operators are supported. Most of them are similar to Python.
@@ -182,20 +247,6 @@ let should_log_verbose =
 ```
 
 [pony-ops]: https://tutorial.ponylang.io/expressions/ops.html#precedence
-
-## Indexing
-
-Brackets are used to index into collections. At the moment, only lists are
-supported. Indices must be integers and are 0-based. Negative indices index
-from the back of the list.
-
-```rcl
-let xs = ["Deckard", "Rachael", "Tyrell"];
-// Evaluates to "Deckard".
-xs[0]
-// Evaluates to "Tyrell".
-xs[-1]
-```
 
 ## Comprehensions
 
