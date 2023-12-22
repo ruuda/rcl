@@ -1,12 +1,20 @@
 # Functions
 
 Aside from built-in methods and functions, <abbr>RCL</abbr> supports
-user-defined functions. Functions are _anonymous_, in the sense that the name
-you use to call them is not an inherent property of the function, but of the
-variable that it is assigned to. Functions are _closures_, in the sense that the
-function body can reference variables defined outside of the body. Such
-functions are sometimes called _lambda functions_ or _lambdas_ in other
-languages.
+user-defined functions.
+
+```rcl
+let add = (x, y) => x + y;
+// Evaluates to 42.
+add(22, 20)
+```
+
+Functions are _first-class_: they are values that can be assigned to variables
+and passed to other functions. Functions are _anonymous_: the name you use to
+call them is not an inherent property of the function, but of the variable that
+it is assigned to. Functions are _closures_: the function body can reference
+variables defined outside of the body. Such functions are sometimes called
+_lambda functions_ or _lambdas_ in other languages.
 
 ## Defining functions
 
@@ -14,9 +22,9 @@ A `=>` arrow creates a function, with the arguments on the left and the body
 on the right.
 
 ```rcl
-let add = (x, y) => x + y;
+let sub = (x, y) => x - y;
 // Evaluates to 42.
-add(22, 20)
+sub(50, 8)
 ```
 
 A trailing comma in the argument list is optional.
@@ -60,7 +68,7 @@ let fs = [for k in [1, 2, 3]: x => x * k];
 
 ## First-class functions
 
-Functions are values and can be passed to functions.
+Functions are values and can be passed to functions:
 
 ```rcl
 let apply_twice = (f, x) => f(f(x));
@@ -68,4 +76,24 @@ let apply_twice = (f, x) => f(f(x));
 apply_twice(x => x * x, 4)
 ```
 
-TODO: Add `group_by` example once I implement `group_by`.
+This is useful with built-in methods such as
+[`List.group_by`](type_list.md#group_by).
+
+```rcl
+let replicants = [
+  { activation_year = 2016, name = "Pris Stratton" },
+  { activation_year = 2016, name = "Roy Batty" },
+  { activation_year = 2017, name = "Leon Kowalski" },
+];
+replicants.group_by(r => r.activation_year)
+// Evaluates to:
+{
+  2016 = [
+    { activation_year = 2016, name = "Pris Stratton" },
+    { activation_year = 2016, name = "Roy Batty" },
+  ],
+  2017 = [
+    { activation_year = 2017, name = "Leon Kowalski" },
+  ],
+}
+```
