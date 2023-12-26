@@ -1,0 +1,14 @@
+"abc".starts_with(123)
+
+# output:
+stdin:1:19
+  ╷
+1 │ "abc".starts_with(123)
+  ╵                   ^~~
+Error: Prefix must be a string.
+
+stdin:1:18
+  ╷
+1 │ "abc".starts_with(123)
+  ╵                  ^
+In call to method 'String.starts_with'.

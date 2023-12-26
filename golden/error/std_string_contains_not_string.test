@@ -1,0 +1,14 @@
+"abc".contains(123)
+
+# output:
+stdin:1:16
+  ╷
+1 │ "abc".contains(123)
+  ╵                ^~~
+Error: Needle must be a string.
+
+stdin:1:15
+  ╷
+1 │ "abc".contains(123)
+  ╵               ^
+In call to method 'String.contains'.

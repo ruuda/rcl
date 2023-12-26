@@ -1,0 +1,10 @@
+[
+  "abc".contains("qabcd"),
+  "abc".contains("abc"),
+  "abc".contains("aqc"),
+  "abc".contains("b"),
+  "abc".contains(""),
+]
+
+# output:
+[false, true, false, true, true]

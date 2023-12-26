@@ -396,7 +396,7 @@ fn builtin_string_ends_with(_eval: &mut Evaluator, call: MethodCall) -> Result<R
         Value::String(s) => s.as_ref(),
         _ => return suffix_arg.span.error("Suffix must be a string.").err(),
     };
-    Ok(Rc::new(Value::Bool(string.starts_with(suffix))))
+    Ok(Rc::new(Value::Bool(string.ends_with(suffix))))
 }
 
 builtin_method!("String.contains", const STRING_CONTAINS, builtin_string_contains);

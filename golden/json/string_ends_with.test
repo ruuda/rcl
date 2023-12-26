@@ -1,0 +1,10 @@
+[
+  "abc".ends_with("qabc"),
+  "abc".ends_with("abc"),
+  "abc".ends_with("qbc"),
+  "abc".ends_with("c"),
+  "abc".ends_with(""),
+]
+
+# output:
+[false, true, false, true, true]
