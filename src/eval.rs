@@ -234,10 +234,13 @@ impl<'a> Evaluator<'a> {
                 let field_name_value = Value::String(field_name.0.clone());
 
                 let builtin = match (inner.as_ref(), field_name.as_ref()) {
+                    (Value::String(_), "contains") => Some(stdlib::STRING_CONTAINS),
+                    (Value::String(_), "ends_with") => Some(stdlib::STRING_ENDS_WITH),
                     (Value::String(_), "len") => Some(stdlib::STRING_LEN),
+                    (Value::String(_), "parse_int") => Some(stdlib::STRING_PARSE_INT),
                     (Value::String(_), "split") => Some(stdlib::STRING_SPLIT),
                     (Value::String(_), "split_lines") => Some(stdlib::STRING_SPLIT_LINES),
-                    (Value::String(_), "parse_int") => Some(stdlib::STRING_PARSE_INT),
+                    (Value::String(_), "starts_with") => Some(stdlib::STRING_STARTS_WITH),
 
                     (Value::Dict(_), "contains") => Some(stdlib::DICT_CONTAINS),
                     (Value::Dict(_), "except") => Some(stdlib::DICT_EXCEPT),

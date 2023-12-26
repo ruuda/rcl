@@ -59,6 +59,7 @@ _root_base = [
         words(
             (
                 "contains",
+                "ends_with",
                 "except",
                 "fold",
                 "get",
@@ -70,6 +71,7 @@ _root_base = [
                 "reverse",
                 "split",
                 "split_lines",
+                "starts_with",
                 "std",
                 "values",
             ),

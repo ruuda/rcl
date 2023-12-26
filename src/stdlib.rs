@@ -373,6 +373,45 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<R
     }
 }
 
+builtin_method!("String.starts_with", const STRING_STARTS_WITH, builtin_string_starts_with);
+fn builtin_string_starts_with(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("String.starts_with", &["prefix"])?;
+    let string = call.receiver.expect_string();
+    let prefix_arg = &call.call.args[0];
+    let prefix = match prefix_arg.value.as_ref() {
+        Value::String(s) => s.as_ref(),
+        _ => return prefix_arg.span.error("Prefix must be a string.").err(),
+    };
+    Ok(Rc::new(Value::Bool(string.starts_with(prefix))))
+}
+
+builtin_method!("String.ends_with", const STRING_ENDS_WITH, builtin_string_ends_with);
+fn builtin_string_ends_with(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("String.ends_with", &["suffix"])?;
+    let string = call.receiver.expect_string();
+    let suffix_arg = &call.call.args[0];
+    let suffix = match suffix_arg.value.as_ref() {
+        Value::String(s) => s.as_ref(),
+        _ => return suffix_arg.span.error("Suffix must be a string.").err(),
+    };
+    Ok(Rc::new(Value::Bool(string.starts_with(suffix))))
+}
+
+builtin_method!("String.contains", const STRING_CONTAINS, builtin_string_contains);
+fn builtin_string_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("String.contains", &["needle"])?;
+    let string = call.receiver.expect_string();
+    let needle_arg = &call.call.args[0];
+    let needle = match needle_arg.value.as_ref() {
+        Value::String(s) => s.as_ref(),
+        _ => return needle_arg.span.error("Needle must be a string.").err(),
+    };
+    Ok(Rc::new(Value::Bool(string.contains(needle))))
+}
+
 builtin_method!("List.fold", const LIST_FOLD, builtin_list_fold);
 fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     // TODO: Add static type checks. Right now you could provide a bogus
