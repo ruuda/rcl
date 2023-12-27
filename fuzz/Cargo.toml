@@ -44,3 +44,9 @@ name = "main"
 path = "fuzz_targets/main.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "string_len"
+path = "fuzz_targets/string_len.rs"
+test = false
+doc = false
