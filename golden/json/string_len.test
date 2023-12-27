@@ -1,0 +1,17 @@
+let strings = [
+  "example",
+  // The string "Z\u{00fc}rich"
+  "Zürich",
+  // The string "Zu\u{0308}rich"
+  "Zürich",
+  // The string "\u{1f574}\u{fe0e}"
+  "🕴︎",
+];
+[
+  for s in strings:
+  assert s.len() == s.chars().len(), ["String.len counts chars.", s, s.chars()];
+  s.len()
+]
+
+# output:
+[7, 6, 7, 2]

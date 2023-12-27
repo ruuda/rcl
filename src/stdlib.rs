@@ -143,7 +143,7 @@ builtin_method!("String.len", const STRING_LEN, builtin_string_len);
 fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     call.call.check_arity_static("String.len", &[])?;
     let string = call.receiver.expect_string();
-    Ok(Rc::new(Value::Int(string.len() as _)))
+    Ok(Rc::new(Value::Int(string.chars().count() as _)))
 }
 
 builtin_method!("Dict.contains", const DICT_CONTAINS, builtin_dict_contains);

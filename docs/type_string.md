@@ -54,12 +54,21 @@ Return whether the string ends in `suffix`.
 
     String.len: (self: String) -> Int
 
-Return the number of bytes in the <abbr>UTF-8</abbr> encoding of the string.
-For example:
+Return the number of Unicode code points that make up the string. This can be
+less than the byte length of the <abbr>UTF-8</abbr> encoding of the string.
 
 ```rcl
-// Evaluates to [7, 2, 10].
-[for s in ["example", "ü", "🕴︎︎"]: s.len()]
+[
+  "example".len(),
+  // The string "Z\u{00fc}rich"
+  "Zürich".len(),
+  // The string "Zu\u{0308}rich"
+  "Zürich".len(),
+  // The string "\u{1f574}\u{fe0e}"
+  "🕴︎".len(),
+]
+// Evaluates to:
+[7, 6, 7, 2]
 ```
 
 ## parse_int
