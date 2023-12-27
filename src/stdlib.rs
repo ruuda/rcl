@@ -412,6 +412,24 @@ fn builtin_string_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc
     Ok(Rc::new(Value::Bool(string.contains(needle))))
 }
 
+builtin_method!("String.chars", const STRING_CHARS, builtin_string_chars);
+fn builtin_string_chars(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("String.chars", &[])?;
+    let string = call.receiver.expect_string();
+
+    // Copy each of the code points (chars) into its own string, return that
+    // as a list of characters.
+    let mut result = Vec::with_capacity(string.len());
+    let mut i = 0;
+    for (j, _ch) in string.char_indices().skip(1) {
+        result.push(Rc::new(Value::from(&string[i..j])));
+        i = j;
+    }
+    result.push(Rc::new(Value::from(&string[i..])));
+
+    Ok(Rc::new(Value::List(result)))
+}
+
 builtin_method!("List.fold", const LIST_FOLD, builtin_list_fold);
 fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     // TODO: Add static type checks. Right now you could provide a bogus

@@ -46,6 +46,7 @@
 "0x7fffffffffffffff"
 
 # Builtin methods.
+"chars"
 "contains"
 "ends_with"
 "except"

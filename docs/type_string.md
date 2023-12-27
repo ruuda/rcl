@@ -2,6 +2,26 @@
 
 The `String` type has the following methods.
 
+## chars
+
+    String.chars: (self: String) -> List[String]
+
+Return a list of the individual Unicode code points that make up the string. The
+result is a list of single-character strings (where a character is a code point).
+Like Python, <abbr>RCL</abbr> does not have a separate character type.
+
+```rcl
+// The string "Z\u{00fc}rich"
+"Zürich".chars()
+// Evaluates to:
+["Z", "ü", "r", "i", "c", "h"]
+
+// The string "Zu\u{0308}rich"
+"Zürich".chars()
+// Evaluates to:
+["Z", "u", "̈", "r", "i", "c", "h"]
+```
+
 ## contains
 
     String.contains: (self: String, needle: String) -> Bool

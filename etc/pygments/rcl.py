@@ -58,6 +58,7 @@ _root_base = [
     (
         words(
             (
+                "chars",
                 "contains",
                 "ends_with",
                 "except",
