@@ -1,0 +1,18 @@
+[
+  "".chars(),
+  "a".chars(),
+  "abc".chars(),
+  // The string "Z\u{00fc}rich"
+  "Zürich".chars(),
+  // The string "Zu\u{0308}rich"
+  "Zürich".chars(),
+]
+
+# output:
+[
+  [],
+  ["a"],
+  ["a", "b", "c"],
+  ["Z", "ü", "r", "i", "c", "h"],
+  ["Z", "u", "̈", "r", "i", "c", "h"]
+]

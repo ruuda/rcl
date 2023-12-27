@@ -425,7 +425,10 @@ fn builtin_string_chars(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Va
         result.push(Rc::new(Value::from(&string[i..j])));
         i = j;
     }
-    result.push(Rc::new(Value::from(&string[i..])));
+
+    if !string[i..].is_empty() {
+        result.push(Rc::new(Value::from(&string[i..])));
+    }
 
     Ok(Rc::new(Value::List(result)))
 }
