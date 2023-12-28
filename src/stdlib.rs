@@ -335,6 +335,10 @@ fn builtin_string_split(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Va
         _ => return sep_arg.span.error("Separator must be a string.").err(),
     };
 
+    if sep.is_empty() {
+        return sep_arg.span.error("Cannot split on empty separator.").err();
+    }
+
     let result: Vec<Rc<Value>> = string
         .split(sep)
         .map(|part| Rc::new(Value::from(part)))

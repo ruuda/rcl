@@ -1,0 +1,14 @@
+"xyz".split("")
+
+# output:
+stdin:1:13
+  ╷
+1 │ "xyz".split("")
+  ╵             ^~
+Error: Cannot split on empty separator.
+
+stdin:1:12
+  ╷
+1 │ "xyz".split("")
+  ╵            ^
+In call to method 'String.split'.

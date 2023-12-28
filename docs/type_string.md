@@ -89,7 +89,8 @@ evaluation aborts with an error.
 
 Split the string on all occurrences of the separator. If the separator occurs
 multiple times in a row, or at the start or end of the string, this produces
-empty strings in the result.
+empty strings in the result. Trying to use an empty string as separator will
+abort evaluation with an error.
 
 ```rcl
 "Leon, Roy, Rachael".split(", ")
