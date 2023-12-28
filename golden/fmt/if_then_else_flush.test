@@ -1,18 +1,16 @@
 if
+  true
+:
   // When an if-then-else occurs at the top level, the flush break that the
   // formatter uses should not cause a blank line in the document.
-  true
-then
   "yes yes"
-else
+else:
   "oh no"
 
 # output:
-if
+if true:
   // When an if-then-else occurs at the top level, the flush break that the
   // formatter uses should not cause a blank line in the document.
-  true
-then
   "yes yes"
-else
+else:
   "oh no"

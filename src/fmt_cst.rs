@@ -333,11 +333,12 @@ impl<'a> Formatter<'a> {
             } => {
                 group! {
                     flush_indent! {
-                        "if" Doc::Sep
-                        indent! { self.prefixed_expr(condition) } Doc::Sep
-                        "then" Doc::Sep
-                        indent! { self.prefixed_expr(then_body) } Doc::Sep
-                        "else" Doc::Sep
+                        "if " self.expr(condition) ":"
+                        Doc::Sep
+                        indent! { self.prefixed_expr(then_body) }
+                        Doc::Sep
+                        "else:"
+                        Doc::Sep
                         indent! { self.prefixed_expr(else_body) }
                     }
                 }

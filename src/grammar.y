@@ -24,7 +24,7 @@ expr
   ;
 
 expr_stmt: stmt expr;
-expr_if: "if" expr "then" expr "else" expr;
+expr_if: "if" expr ':' expr "else" ':' expr;
 expr_import: "import" expr;
 
 // There is no operator precedence, so if there is an operator, its args must
