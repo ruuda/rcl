@@ -1,18 +1,13 @@
 #![no_main]
 
-use std::rc::Rc;
-
 use arbitrary::{Arbitrary, Unstructured};
 use libfuzzer_sys::fuzz_target;
 
-use rcl::error::Error;
 use rcl::error::Result;
 use rcl::eval::Evaluator;
-use rcl::loader::{Document, Filesystem, Loader, PathLookup, VoidFilesystem};
+use rcl::loader::{Loader, VoidFilesystem};
 use rcl::markup::MarkupMode;
 use rcl::pprint;
-use rcl::runtime::Value;
-use rcl::source::{Inputs, Span};
 use rcl::tracer::VoidTracer;
 
 #[derive(Debug)]
