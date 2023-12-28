@@ -219,6 +219,23 @@ let populations = {
 [populations.Amsterdam, populations["Düsseldorf"], populations["New York"]]
 ```
 
+## Conditionals
+
+An if-else expression evaluates to the _then_ or _else_ part depending on the
+condition:
+
+```rcl
+let log_level = if flags.contains("--verbose"): 5 else: 1;
+
+let rustc_codegen_opts =
+  if config.is_debug:
+    { opt-level = 0, debuginfo = 2 }
+  else:
+    { opt-level = 2, target-cpu = "native" };
+```
+
+Because an if-else expression is an _expression_, the _else_ part is mandatory.
+
 ## Operators
 
 The following operators are supported. Most of them are similar to Python.
@@ -298,6 +315,21 @@ let labels = {
   for label in all_server_labels:
   if not excluded_labels.contains(label):
   label
+};
+```
+
+An `if` inside a comprehension controls the loop, it is not part of an
+[if-else expression](#conditionals). To use an if-else expression inside a
+comprehension, enclose it in parentheses:
+
+```rcl
+let target_os = {
+  for server in servers:
+  // This 'if' excludes servers from before 2021 from the resulting dict.
+  if server.year_acquired >= 2021:
+  server.name:
+  // This 'if' is part of an if-else expression.
+  (if server.year_acquired >= 2023: "ubuntu:22.04" else: "ubuntu:20.04")
 };
 ```
 
