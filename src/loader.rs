@@ -105,6 +105,23 @@ impl Filesystem for PanicFilesystem {
     }
 }
 
+/// Filesystem that fails to load anything.
+#[cfg(fuzzing)]
+pub struct VoidFilesystem;
+
+#[cfg(fuzzing)]
+impl Filesystem for VoidFilesystem {
+    fn resolve(&self, _: &str, _: &str) -> Result<PathLookup> {
+        Error::new("Void filesystem does not load files.").err()
+    }
+    fn resolve_entrypoint(&self, _: &str) -> Result<PathLookup> {
+        Error::new("Void filesystem does not load files.").err()
+    }
+    fn load(&self, _: PathLookup) -> Result<Document> {
+        Error::new("Void filesystem does not load files.").err()
+    }
+}
+
 /// The policy about which documents can be loaded from the filesystem.
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum SandboxMode {

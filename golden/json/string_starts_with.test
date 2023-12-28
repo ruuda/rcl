@@ -1,0 +1,10 @@
+[
+  "abc".starts_with("abcd"),
+  "abc".starts_with("abc"),
+  "abc".starts_with("abe"),
+  "abc".starts_with("a"),
+  "abc".starts_with(""),
+]
+
+# output:
+[false, true, false, true, true]

@@ -1,0 +1,14 @@
+"abc".ends_with(123)
+
+# output:
+stdin:1:17
+  ╷
+1 │ "abc".ends_with(123)
+  ╵                 ^~~
+Error: Suffix must be a string.
+
+stdin:1:16
+  ╷
+1 │ "abc".ends_with(123)
+  ╵                ^
+In call to method 'String.ends_with'.

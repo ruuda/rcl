@@ -143,7 +143,7 @@ builtin_method!("String.len", const STRING_LEN, builtin_string_len);
 fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     call.call.check_arity_static("String.len", &[])?;
     let string = call.receiver.expect_string();
-    Ok(Rc::new(Value::Int(string.len() as _)))
+    Ok(Rc::new(Value::Int(string.chars().count() as _)))
 }
 
 builtin_method!("Dict.contains", const DICT_CONTAINS, builtin_dict_contains);
@@ -335,6 +335,10 @@ fn builtin_string_split(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Va
         _ => return sep_arg.span.error("Separator must be a string.").err(),
     };
 
+    if sep.is_empty() {
+        return sep_arg.span.error("Cannot split on empty separator.").err();
+    }
+
     let result: Vec<Rc<Value>> = string
         .split(sep)
         .map(|part| Rc::new(Value::from(part)))
@@ -371,6 +375,66 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<R
             .with_body(format_rcl(call.receiver).into_owned())
             .err(),
     }
+}
+
+builtin_method!("String.starts_with", const STRING_STARTS_WITH, builtin_string_starts_with);
+fn builtin_string_starts_with(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("String.starts_with", &["prefix"])?;
+    let string = call.receiver.expect_string();
+    let prefix_arg = &call.call.args[0];
+    let prefix = match prefix_arg.value.as_ref() {
+        Value::String(s) => s.as_ref(),
+        _ => return prefix_arg.span.error("Prefix must be a string.").err(),
+    };
+    Ok(Rc::new(Value::Bool(string.starts_with(prefix))))
+}
+
+builtin_method!("String.ends_with", const STRING_ENDS_WITH, builtin_string_ends_with);
+fn builtin_string_ends_with(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("String.ends_with", &["suffix"])?;
+    let string = call.receiver.expect_string();
+    let suffix_arg = &call.call.args[0];
+    let suffix = match suffix_arg.value.as_ref() {
+        Value::String(s) => s.as_ref(),
+        _ => return suffix_arg.span.error("Suffix must be a string.").err(),
+    };
+    Ok(Rc::new(Value::Bool(string.ends_with(suffix))))
+}
+
+builtin_method!("String.contains", const STRING_CONTAINS, builtin_string_contains);
+fn builtin_string_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("String.contains", &["needle"])?;
+    let string = call.receiver.expect_string();
+    let needle_arg = &call.call.args[0];
+    let needle = match needle_arg.value.as_ref() {
+        Value::String(s) => s.as_ref(),
+        _ => return needle_arg.span.error("Needle must be a string.").err(),
+    };
+    Ok(Rc::new(Value::Bool(string.contains(needle))))
+}
+
+builtin_method!("String.chars", const STRING_CHARS, builtin_string_chars);
+fn builtin_string_chars(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("String.chars", &[])?;
+    let string = call.receiver.expect_string();
+
+    // Copy each of the code points (chars) into its own string, return that
+    // as a list of characters.
+    let mut result = Vec::with_capacity(string.len());
+    let mut i = 0;
+    for (j, _ch) in string.char_indices().skip(1) {
+        result.push(Rc::new(Value::from(&string[i..j])));
+        i = j;
+    }
+
+    if !string[i..].is_empty() {
+        result.push(Rc::new(Value::from(&string[i..])));
+    }
+
+    Ok(Rc::new(Value::List(result)))
 }
 
 builtin_method!("List.fold", const LIST_FOLD, builtin_list_fold);

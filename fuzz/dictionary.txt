@@ -46,7 +46,9 @@
 "0x7fffffffffffffff"
 
 # Builtin methods.
+"chars"
 "contains"
+"ends_with"
 "except"
 "fold"
 "get"
@@ -58,6 +60,7 @@
 "reverse"
 "split"
 "split_lines"
+"starts_with"
 "std.range"
 "std.read_file_utf8"
 "values"
