@@ -7,7 +7,7 @@
 
 syn keyword rclNull         null
 syn keyword rclBoolean      true false
-syn keyword rclConditional  if then else
+syn keyword rclConditional  if else
 syn keyword rclRepeat       for
 syn keyword rclOperator     and not or
 syn keyword rclKeyword      in let import

@@ -10,7 +10,6 @@
 "let"
 "not"
 "or"
-"then"
 "trace"
 "true"
 

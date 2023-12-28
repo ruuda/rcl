@@ -50,7 +50,6 @@ fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
         | Token::KwNot
         | Token::KwNull
         | Token::KwOr
-        | Token::KwThen
         | Token::KwTrace
         | Token::KwTrue => green,
 

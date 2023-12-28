@@ -1,16 +1,19 @@
 [
-  if true then "true" else "false"
+  if true: "true" else: "false"
 ]
 
 # output:
-stdin:2:11
+stdin:2:19
   ╷
-2 │   if true then "true" else "false"
-  ╵           ^~~~
-Error: Expected ':' here.
+2 │   if true: "true" else: "false"
+  ╵                   ^~~~
+Error: Expected ']'.
 
-stdin:2:3
+stdin:1:1
   ╷
-2 │   if true then "true" else "false"
-  ╵   ^~
-Note: This 'if' is part of a comprehension. For an if-then-else expression, enclose the expression in parentheses.
+1 │ [
+  ╵ ^
+Note: Unmatched '[' opened here.
+
+Help: Inside a comprehension, 'if' controls the loop, there is no 'else' part.
+To use an if-else expression inside a comprehension, enclose the expression in parentheses.
