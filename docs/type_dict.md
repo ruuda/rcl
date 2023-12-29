@@ -1,6 +1,29 @@
 # Dict
 
-The `Dict` type has the following methods.
+The `Dict` type supports the following methods and operators.
+
+## Indexing
+
+Brackets can be used to get the value for a particular key:
+
+```rcl
+// Evaluates to 2.
+let d = { x = 2, y = 3 }; d["x"]
+```
+
+When the key is not present, evaluation aborts with an error. Use [`get`](#get)
+to handle optional keys gracefully.
+
+## Union operator
+
+The `|` operator returns the union of two dictionaries. When a key occurs on
+both sides, the value is taken from the right side.
+
+```rcl
+{ x = 2, y = 3 } | { y = 5, z = 7 }
+// Evaluates to:
+{ x = 2, y = 5, z = 7 }
+```
 
 ## contains
 
