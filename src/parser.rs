@@ -364,12 +364,22 @@ impl<'a> Parser<'a> {
         self.skip_non_code()?;
         self.parse_token_with_note(
             Token::KwElse,
-            "Expected 'else:' here.",
+            "Expected 'else' here.",
             if_span,
             "To match this 'if'.",
         )?;
-        self.skip_non_code()?;
-        self.parse_token(Token::Colon, "Expected ':' here after 'else'.")?;
+
+        // If a user wrote `else:`, add friendly error to clarify that there
+        // shouldn't be a colon. For symmetry with `if cond:`, one might expect
+        // the colon to be there.
+        if let Some(Token::Colon) = self.peek() {
+            return self
+                .consume()
+                .error("Expected an expression after 'else'.")
+                .with_help("In an if-else expression, there is no ':' after 'else'.")
+                .err();
+        }
+
         let (else_span, else_body) = self.parse_prefixed_expr()?;
 
         let result = Expr::IfThenElse {

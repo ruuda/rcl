@@ -1,11 +1,11 @@
 [
-  if true: "true" else: "false"
+  if true: "true" else "false"
 ]
 
 # output:
 stdin:2:19
   ╷
-2 │   if true: "true" else: "false"
+2 │   if true: "true" else "false"
   ╵                   ^~~~
 Error: Expected ']'.
 

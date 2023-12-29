@@ -1,8 +1,8 @@
-if 0: "false" else: "true"
+if 0: "false" else "true"
 
 # output:
 stdin:1:4
   ╷
-1 │ if 0: "false" else: "true"
+1 │ if 0: "false" else "true"
   ╵    ^
 Error: Condition should be a boolean.

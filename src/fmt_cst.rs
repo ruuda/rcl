@@ -337,7 +337,7 @@ impl<'a> Formatter<'a> {
                         Doc::Sep
                         indent! { self.prefixed_expr(then_body) }
                         Doc::Sep
-                        "else:"
+                        "else"
                         Doc::Sep
                         indent! { self.prefixed_expr(else_body) }
                     }

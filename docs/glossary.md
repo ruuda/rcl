@@ -30,7 +30,7 @@ _lambda functions_ or _lambdas_ in other languages.
 Like everything in <abbr>RCL</abbr>, if-else is an _expression_, not control
 flow for statements. Some languages have a _ternary operator_ that plays the
 same role. For example, `cond ? x : y` in C, or `x if cond else y` in Python,
-would be written `if cond: x else: y` in <abbr>RCL</abbr>.
+would be written `if cond: x else y` in <abbr>RCL</abbr>.
 
 ### List
 A [list](syntax.md#lists) is an ordered collection of values, not necessarily
