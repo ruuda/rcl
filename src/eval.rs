@@ -558,22 +558,20 @@ impl<'a> Evaluator<'a> {
                 self.eval_index_dict(dict, collection_span, index.as_ref(), index_span)
             }
             // TODO: Implement indexing into strings.
-            Value::String(..) => {
-                return open_span
-                    .error("Indexing into a string is not yet supported.")
-                    .with_note(collection_span, "This is a string.")
-                    .err();
-            }
+            Value::String(..) => open_span
+                .error("Indexing into a string is not yet supported.")
+                .with_note(collection_span, "This is a string.")
+                .err(),
             not_indexable => {
                 let note = concat! {
                     "Expected a dict or list, but found: "
                     format_rcl(not_indexable).into_owned()
                     "."
                 };
-                return open_span
+                open_span
                     .error("Indexing is not supported here.")
                     .with_note(collection_span, note)
-                    .err();
+                    .err()
             }
         }
     }
