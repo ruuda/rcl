@@ -164,7 +164,7 @@ We could encode that:
     felix1.species
 
 Bikeshed: Is the separator for optional fields `:?` or `?:`? I find `:?`
-slightly easier to type.
+slightly easier to type. TypeScript uses `?:`.
 
 ## Runtime representation
 
@@ -199,7 +199,87 @@ binding, then we _have_ the supposed type given by the user, and we only need to
 check that the runtime value conforms to it. No unification needed, no need to
 store a type per expression.
 
-## Simple use case
+## The type universe.
 
 The simplest use case would be type annotations on let bindings. Let's ignore
 functions for now, and complex dict operations.
+
+We have the primitive types:
+
+ * `Bool`
+ * `String`
+ * `Null`
+ * `Int` ... Should there be `UInt` as well? And how to deal with number types
+   in general? Allow constraints like in Cue?
+
+We have type constructors for the collections:
+
+ * `Dict[K, V]`
+ * `Set[T]`
+ * `List[T]`
+
+We have struct types, which are also dictionaries at runtime, but which can have
+a more accurate type description:
+
+ * Open: `{ field_n: TypeN, ... }`
+ * Closed: `{ field_n: TypeN }`
+ * With optional fields: `{ field:? Type }`.
+
+String literals can also be types, which have a single valid value: that string:
+
+ * `"foo"`, `"bar"`, etc.
+
+Values of a union type can have either value:
+
+ * `Int | Bool`
+ * Can be used multiple times: `Int | Bool | String`.
+
+It would have no special meaning on struct types. But maybe we do want a way to
+combine struct types, that reflects the behavior of the `|` operator?
+
+    type Animal = { species: "cat" | "dog", age_years: Int };
+    type Pet = { name: String };
+    let felix: Animal + Pet = { ... };
+
+But then it's not so logical that `|` acts as union on dicts, if it doesn't do
+that on the type level. Maybe the dict union operator should be `+` instead?
+That would also be symmetric with making `-` the operator to omit keys.
+
+How does TypeScript do all of this? They are facing pretty much the same
+problem, they might have solved it in a reasonable way, and at the very least
+many people will be familiar with it. Also PureScript row types, but as far as
+I'm aware they don't have operators at the type level, only ways to combine the
+rows.
+
+Let's move on to functions, we can give them arrow types:
+
+    let double: Int -> Int = x => x * 2;
+    let add1: (Int, Int) -> Int = (x, y) => x + y;
+
+If we choose to allow it, we could put types on the arguments too:
+
+    let add2 = (x: Int, y: Int) => x + y;
+
+If we go with the implementation outlined before, there is a subtle difference.
+For `add1`, we have the type statically, and we can compute the type of
+`add1(x, y)` without executing the call. On the other hand, `add2(x, y)` is
+untyped. As a first step of the call, we would verify that the provided
+arguments have the correct types. For `add1`, we have to typecheck the entire
+body to confirm the return type.
+
+Finally, we need type variables to type many of the builtin methods. We could
+have a rule that all free variables are type variables, but maybe that's
+fragile. Maybe type variables need to be lowercase, and type constructors
+uppercase, like in Haskell?
+
+    Dict.get: (self: Dict[k, v], key: k, default: v) -> v
+
+Type variables are one way to type an empty dict or list, though if we had a
+type lattice that may be even nicer.
+
+    let empty_list: List[a] = []
+    let empty_dict: Dict[k, v] = {}
+    let empty_list: List[Void] = []
+
+But we don't need the `Void` type if we don't infer a type for the empty list in
+the first place.
