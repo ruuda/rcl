@@ -51,7 +51,7 @@ fn list<'a>(open: &'a str, close: &'a str, vs: impl Iterator<Item = &'a Rc<Value
     }
 }
 
-fn dict<'a>(vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>) -> Doc<'a> {
+pub fn dict<'a>(vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>) -> Doc<'a> {
     let mut elements = Vec::new();
 
     for (k, v) in vs {
