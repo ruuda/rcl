@@ -261,7 +261,9 @@ impl<'a> Evaluator<'a> {
                 inner_span,
                 inner: inner_expr,
             } => {
+                self.inc_eval_depth(*inner_span)?;
                 let inner = self.eval_expr(env, inner_expr)?;
+                self.dec_eval_depth();
                 let field_name_value = Value::String(field_name.0.clone());
 
                 let builtin = match (inner.as_ref(), field_name.as_ref()) {
