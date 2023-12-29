@@ -1,0 +1,15 @@
+let d = { x = 10, y = 20 };
+d["z"]
+
+# output:
+stdin:2:3
+  ╷
+2 │ d["z"]
+  ╵   ^~~
+Error: Dict does not have a key "z".
+
+stdin:2:1
+  ╷
+2 │ d["z"]
+  ╵ ^
+Note: On value: { x = 10, y = 20 }

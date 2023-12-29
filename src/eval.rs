@@ -12,7 +12,7 @@ use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
 use crate::error::{Error, IntoError, Result};
-use crate::fmt_rcl::format_rcl;
+use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
 use crate::pprint::{concat, Doc};
 use crate::runtime::{CallArg, Env, Function, FunctionCall, MethodCall, Value};
@@ -552,54 +552,85 @@ impl<'a> Evaluator<'a> {
         index: Rc<Value>,
         index_span: Span,
     ) -> Result<Rc<Value>> {
-        let xs = match collection.as_ref() {
-            Value::List(xs) => xs,
-            // TODO: Implement indexing into other collections.
-            Value::String(..) => {
-                return open_span
-                    .error("Indexing into a string is not yet supported.")
-                    .with_note(collection_span, "This is a string.")
-                    .err();
+        match collection.as_ref() {
+            Value::List(xs) => self.eval_index_list(xs, index.as_ref(), index_span),
+            Value::Dict(dict) => {
+                self.eval_index_dict(dict, collection_span, index.as_ref(), index_span)
             }
-            Value::Dict(..) => {
-                return open_span
-                    .error("Indexing into a dict is not yet supported.")
-                    .with_note(collection_span, "This is a dict.")
-                    .err();
-            }
-            not_list => {
+            // TODO: Implement indexing into strings.
+            Value::String(..) => open_span
+                .error("Indexing into a string is not yet supported.")
+                .with_note(collection_span, "This is a string.")
+                .err(),
+            not_indexable => {
                 let note = concat! {
-                    "Expected a list, but found: "
-                    format_rcl(not_list).into_owned()
+                    "Expected a dict or list, but found: "
+                    format_rcl(not_indexable).into_owned()
                     "."
                 };
-                return open_span
+                open_span
                     .error("Indexing is not supported here.")
                     .with_note(collection_span, note)
-                    .err();
+                    .err()
             }
-        };
-        let i_signed = match index.as_ref() {
+        }
+    }
+
+    fn eval_index_list(
+        &mut self,
+        list: &[Rc<Value>],
+        index: &Value,
+        index_span: Span,
+    ) -> Result<Rc<Value>> {
+        let i_signed = match index {
             Value::Int(i) => *i,
             _ => return index_span.error("Index must be an integer.").err(),
         };
 
         let i = match i_signed {
-            _ if i_signed >= 0 && (i_signed as usize) < xs.len() => i_signed as usize,
-            _ if i_signed >= -(xs.len() as i64) && i_signed < 0 => xs.len() - (-i_signed as usize),
+            _ if i_signed >= 0 && (i_signed as usize) < list.len() => i_signed as usize,
+            _ if i_signed >= -(list.len() as i64) && i_signed < 0 => {
+                list.len() - (-i_signed as usize)
+            }
             _ => {
                 let error = concat! {
                     "Index "
                     i_signed.to_string()
                     " is out of bounds for list of length "
-                    xs.len().to_string()
+                    list.len().to_string()
                     "."
                 };
                 return index_span.error(error).err();
             }
         };
 
-        Ok(xs[i].clone())
+        Ok(list[i].clone())
+    }
+
+    fn eval_index_dict(
+        &mut self,
+        dict: &BTreeMap<Rc<Value>, Rc<Value>>,
+        dict_span: Span,
+        index: &Value,
+        index_span: Span,
+    ) -> Result<Rc<Value>> {
+        match dict.get(index) {
+            None => index_span
+                .error(concat! {
+                    "Dict does not have a key "
+                    format_rcl(index).into_owned()
+                    "."
+                })
+                .with_note(
+                    dict_span,
+                    concat! {
+                        "On value: "
+                        fmt_rcl::dict(dict.iter()).into_owned()
+                    },
+                )
+                .err(),
+            Some(v) => Ok(v.clone()),
+        }
     }
 
     fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {
