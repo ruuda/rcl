@@ -38,10 +38,10 @@ pub struct Evaluator<'a> {
     /// Because it is immutable, it can be reused across evaluations.
     pub stdlib: Rc<Value>,
 
-    /// The depth of the call stack.
+    /// The depth of the evaluation stack.
     ///
     /// Used to error before we overflow the native stack.
-    pub call_depth: u32,
+    pub eval_depth: u32,
 }
 
 impl<'a> Evaluator<'a> {
@@ -51,8 +51,36 @@ impl<'a> Evaluator<'a> {
             tracer,
             import_stack: Vec::new(),
             stdlib: stdlib::initialize(),
-            call_depth: 0,
+            eval_depth: 0,
         }
+    }
+
+    #[inline]
+    fn inc_eval_depth(&mut self, at: Span) -> Result<()> {
+        // Error out when the call stack gets too deep, instead of waiting for
+        // the native call stack to overflow. In practice, unless you are doing
+        // recursion, the call stack shouldn't be extremely deep, and for
+        // recursion we need a better solution, so set a fairly low limit.
+        let max_eval_depth = 150;
+        self.eval_depth += 1;
+
+        if self.eval_depth >= max_eval_depth {
+            return at
+                .error(concat! {
+                    "Evaluation budget exceeded. "
+                    "This expression exceeds the maximum evaluation depth of "
+                    max_eval_depth.to_string()
+                    "."
+                })
+                .err();
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    fn dec_eval_depth(&mut self) {
+        self.eval_depth -= 1;
     }
 
     /// Evaluate a document as the entry point of evaluation.
@@ -207,8 +235,9 @@ impl<'a> Evaluator<'a> {
                 body_then,
                 body_else,
             } => {
+                self.inc_eval_depth(*condition_span)?;
                 let cond = self.eval_expr(env, condition)?;
-                match cond.as_ref() {
+                let result = match cond.as_ref() {
                     Value::Bool(true) => self.eval_expr(env, body_then),
                     Value::Bool(false) => self.eval_expr(env, body_else),
                     _ => {
@@ -216,7 +245,9 @@ impl<'a> Evaluator<'a> {
                         let err = condition_span.error("Condition should be a boolean.");
                         Err(err.into())
                     }
-                }
+                };
+                self.dec_eval_depth();
+                result
             }
 
             Expr::Var { span, ident } => match env.lookup(ident) {
@@ -374,8 +405,11 @@ impl<'a> Evaluator<'a> {
                 op_span,
                 body: value_expr,
             } => {
+                self.inc_eval_depth(*op_span)?;
                 let value = self.eval_expr(env, value_expr)?;
-                self.eval_unop(*op, *op_span, value)
+                let result = self.eval_unop(*op, *op_span, value)?;
+                self.dec_eval_depth();
+                Ok(result)
             }
 
             Expr::BinOp {
@@ -384,9 +418,12 @@ impl<'a> Evaluator<'a> {
                 lhs: lhs_expr,
                 rhs: rhs_expr,
             } => {
+                self.inc_eval_depth(*op_span)?;
                 let lhs = self.eval_expr(env, lhs_expr)?;
                 let rhs = self.eval_expr(env, rhs_expr)?;
-                self.eval_binop(*op, *op_span, lhs, rhs)
+                let result = self.eval_binop(*op, *op_span, lhs, rhs)?;
+                self.dec_eval_depth();
+                Ok(result)
             }
         }
     }
@@ -402,23 +439,7 @@ impl<'a> Evaluator<'a> {
         MkErr: FnOnce() -> Option<Doc<'static>>,
     {
         let call_open = call.call_open;
-
-        // Error out when the call stack gets too deep, instead of waiting for
-        // the native call stack to overflow. In practice, unless you are doing
-        // recursion, the call stack shouldn't be extremely deep, and for
-        // recursion we need a better solution, so set a fairly low limit.
-        let max_call_depth = 100;
-        self.call_depth += 1;
-
-        if self.call_depth >= max_call_depth {
-            return call_open
-                .error(concat! {
-                    "Evaluation budget exceeded. This call exceeds the maximum call depth of "
-                    max_call_depth.to_string()
-                    "."
-                })
-                .err();
-        }
+        self.inc_eval_depth(call_open)?;
 
         let result = match callee {
             Value::BuiltinMethod {
@@ -468,7 +489,7 @@ impl<'a> Evaluator<'a> {
             }
         };
 
-        self.call_depth -= 1;
+        self.dec_eval_depth();
 
         result
     }

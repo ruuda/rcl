@@ -1,0 +1,44 @@
+// Even with a limit on the depth of function calls, if every call causes a very
+// deep stack frame, for example due to naively evaluating unary operators, we
+// can still overflow the native stack.
+let f = f => ------------f(f);
+f(f)
+
+# output:
+stdin:4:19
+  ╷
+4 │ let f = f => ------------f(f);
+  ╵                   ^
+Error: Evaluation budget exceeded. This expression exceeds the maximum evaluation depth of 150.
+
+stdin:4:27
+  ╷
+4 │ let f = f => ------------f(f);
+  ╵                           ^
+In call to function.
+
+stdin:4:27
+  ╷
+4 │ let f = f => ------------f(f);
+  ╵                           ^
+In call to function.
+
+stdin:4:27
+  ╷
+4 │ let f = f => ------------f(f);
+  ╵                           ^
+In call to function.
+
+stdin:4:27
+  ╷
+4 │ let f = f => ------------f(f);
+  ╵                           ^
+In call to function.
+
+stdin:4:27
+  ╷
+4 │ let f = f => ------------f(f);
+  ╵                           ^
+In call to function.
+
+Note: The call stack is too deep to display in full. Only the innermost calls are shown above.
