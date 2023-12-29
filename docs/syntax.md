@@ -154,11 +154,10 @@ let flavor = "sweet";
 A let-binding is an _expression_, not an assignment statement. The expression
 evaluates to the expression after `;`.
 
-## Indexing
+## List indexing
 
-Brackets are used to index into collections. At the moment, only lists are
-supported. Indices must be integers and are 0-based. Negative indices index
-from the back of the list.
+Brackets are used to index into lists. Indices must be integers and are 0-based.
+Negative indices index from the back of the list.
 
 ```rcl
 let xs = ["Deckard", "Rachael", "Tyrell"];
@@ -168,7 +167,23 @@ xs[0]
 xs[-1]
 ```
 
-TODO: Support indexing into dicts.
+## Dictionary indexing
+
+Brackets are also used to look up a key in a dictionary.
+
+```rcl
+let replicants = {
+  "NEXUS-7 N7FAA52318": "Rachael",
+  "NEXUS-6 N6MAA10816": "Roy Batty",
+  "NEXUS-6 N6MAC41717": "Leon Kowalski",
+};
+// Evaluates to "Rachael".
+replicants["NEXUS-7 N7FAA52318"]
+```
+
+Looking up a key that does not occur in the dictionary causes evaluation to
+abort with an error. To handle optional keys gracefully, use
+[the `Dict.get` method](type_dict.md#get).
 
 ## Field access
 
