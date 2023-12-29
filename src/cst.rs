@@ -223,7 +223,7 @@ pub enum Expr {
     /// A conditional expression.
     IfThenElse {
         condition_span: Span,
-        condition: Box<Prefixed<Expr>>,
+        condition: Box<Expr>,
         then_span: Span,
         then_body: Box<Prefixed<Expr>>,
         else_span: Span,

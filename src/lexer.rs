@@ -131,9 +131,6 @@ pub enum Token {
     /// `or`
     KwOr,
 
-    /// `then`
-    KwThen,
-
     /// `trace`
     KwTrace,
 
@@ -499,7 +496,6 @@ impl<'a> Lexer<'a> {
             "not" => Token::KwNot,
             "null" => Token::KwNull,
             "or" => Token::KwOr,
-            "then" => Token::KwThen,
             "trace" => Token::KwTrace,
             "true" => Token::KwTrue,
             _ => Token::Ident,

@@ -75,7 +75,7 @@ struct Parser<'a> {
     /// A stack of the starting points of the spans that we are currently parsing.
     ///
     /// This is used to provide full enclosing spans of parts of expressions.
-    /// For example, the condition of an if-then-else may itself be a complex
+    /// For example, the condition of an if-else may itself be a complex
     /// expression, and the CST nodes of the condition don't expose a single
     /// span that covers it entirely, so we track this separately.
     span_stack: Vec<usize>,
@@ -353,15 +353,33 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_if(&mut self) -> Result<Expr> {
         // Consume the `if` keyword.
-        let _if = self.consume();
-        let (condition_span, condition) = self.parse_prefixed_expr()?;
+        let if_span = self.consume();
+        self.skip_non_code()?;
+        let (condition_span, condition) = self.parse_expr()?;
 
         self.skip_non_code()?;
-        self.parse_token(Token::KwThen, "Expected 'then' here.")?;
+        self.parse_token(Token::Colon, "Expected ':' after the condition.")?;
         let (then_span, then_body) = self.parse_prefixed_expr()?;
 
         self.skip_non_code()?;
-        self.parse_token(Token::KwElse, "Expected 'else' here.")?;
+        self.parse_token_with_note(
+            Token::KwElse,
+            "Expected 'else' here.",
+            if_span,
+            "To match this 'if'.",
+        )?;
+
+        // If a user wrote `else:`, add friendly error to clarify that there
+        // shouldn't be a colon. For symmetry with `if cond:`, one might expect
+        // the colon to be there.
+        if let Some(Token::Colon) = self.peek() {
+            return self
+                .consume()
+                .error("Expected an expression after 'else'.")
+                .with_help("In an if-else expression, there is no ':' after 'else'.")
+                .err();
+        }
+
         let (else_span, else_body) = self.parse_prefixed_expr()?;
 
         let result = Expr::IfThenElse {
@@ -993,8 +1011,24 @@ impl<'a> Parser<'a> {
                     self.consume();
                     continue;
                 }
+                // All of the next tokens are unexpected, but we add special
+                // errors for them to help the user along.
                 Some(Token::Semicolon) => {
                     return self.error("Expected ',' instead of ';' here.").err();
+                }
+                Some(Token::KwElse) => {
+                    return self
+                        .pop_bracket()
+                        .expect_err("We are in a seq.")
+                        .with_help(concat! {
+                            "Inside a comprehension, '"
+                            Doc::highlight("if")
+                            "' controls the loop, there is no '" Doc::highlight("else") "' part."
+                            Doc::Sep
+                            "To use an if-else expression inside a comprehension, "
+                            "enclose the expression in parentheses."
+                        })
+                        .err();
                 }
                 // If we don't find a separator, nor the end of the collection
                 // literal, that's an error. We can report an unmatched bracket
@@ -1151,29 +1185,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_seq_if(&mut self) -> Result<Seq> {
-        let if_ = self.consume();
+        let _if = self.consume();
 
         self.skip_non_code()?;
         let (condition_span, condition) = self.parse_expr()?;
 
         self.skip_non_code()?;
-
-        // Parse the colon, but also add a hint if this looks like an
-        // if-then-else.
-        match self.peek() {
-            Some(Token::Colon) => self.consume(),
-            Some(Token::KwThen) => {
-                return self
-                    .error("Expected ':' here.")
-                    .with_note(
-                        if_,
-                        "This 'if' is part of a comprehension. \
-                        For an if-then-else expression, enclose the expression in parentheses.",
-                    )
-                    .err();
-            }
-            _ => return self.error("Expected ':' after the condition.").err(),
-        };
+        self.parse_token(Token::Colon, "Expected ':' after the condition.")?;
 
         let (_body_span, body) = self.parse_prefixed_seq()?;
 

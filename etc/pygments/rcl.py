@@ -47,7 +47,6 @@ _root_base = [
                 "not",
                 "null",
                 "or",
-                "then",
                 "trace",
                 "true",
             ),

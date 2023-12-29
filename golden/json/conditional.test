@@ -1,6 +1,6 @@
 [
-  (if true then "true" else "false"),
-  (if false then "true" else "false"),
+  (if true: "true" else "false"),
+  (if false: "true" else "false"),
 ]
 
 # output:

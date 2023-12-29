@@ -4,9 +4,7 @@ let f =
 
 let g1 = (arg1, arg2,) => [very_long_name_1, very_long_name_2, very_long_name_3, very_long_name_4, very_long_name_5];
 let g2 = (rec_self, k) =>
-  if
-    {0, 1}.contains(k)
-  then
+  if {0, 1}.contains(k):
     1
   else
     rec_self(rec_self, k - 1) + rec_self(rec_self, k - 2);
@@ -49,9 +47,7 @@ let g1 = (arg1, arg2) => [
   very_long_name_5,
 ];
 let g2 = (rec_self, k) =>
-  if
-    {0, 1}.contains(k)
-  then
+  if {0, 1}.contains(k):
     1
   else
     rec_self(rec_self, k - 1) + rec_self(rec_self, k - 2);
