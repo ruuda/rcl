@@ -100,9 +100,14 @@ fstring
   ;
 
 stmt
-  : "let" IDENT '=' expr ';'
+  : "let" IDENT optional_type_hint '=' expr ';'
   | "assert" expr ',' expr ';'
   | "trace" expr ';'
+  ;
+
+optional_type_hint
+  : %empty
+  | ':' type_expr
   ;
 
 seqs
@@ -123,3 +128,22 @@ seq
   ;
 
 idents: IDENT | idents ',' IDENT;
+
+type_expr
+  : type_term
+  | '(' types ')' "->" type_expr
+  | type_term "->" type_expr
+  ;
+
+types
+  : %empty
+  | type_expr
+  | type_expr ',' type_expr
+  ;
+
+type_term
+  : '(' type_expr ')'
+  | IDENT
+  | STRING
+  | IDENT '[' types ']'
+  ;
