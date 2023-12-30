@@ -122,7 +122,7 @@ pub enum Stmt {
     /// A let-binding that binds `value` to the name `ident` in `body`.
     Let {
         ident: Span,
-        type_: Option<Box<Type>>,
+        type_: Option<Box<Prefixed<Type>>>,
         value_span: Span,
         value: Box<Expr>,
     },
