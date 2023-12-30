@@ -10,7 +10,7 @@
 //! The formatter converts the CST into a [`Doc`], which can subsequently be
 //! pretty-printed for formatting.
 
-use crate::cst::{Expr, NonCode, Prefixed, Seq, Stmt, StringPart};
+use crate::cst::{Expr, NonCode, Prefixed, Seq, Stmt, StringPart, Type};
 use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
 use crate::source::Span;
@@ -183,14 +183,34 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    pub fn prefixed_type(&self, type_: &Prefixed<Type>) -> Doc<'a> {
+        concat! {
+            self.non_code(&type_.prefix)
+            self.type_(&type_.inner)
+        }
+    }
+
     pub fn stmt(&self, stmt: &Stmt) -> Doc<'a> {
         // TODO: Make statement chains a first class construct, so we can format
         // them either wide or tall.
         match stmt {
-            Stmt::Let { ident, value, .. } => {
-                concat! {
-                    "let " self.span(*ident) " = " self.expr(value) ";"
+            Stmt::Let {
+                ident,
+                value,
+                type_,
+                ..
+            } => {
+                let mut result: Vec<Doc<'a>> = Vec::new();
+                result.push("let ".into());
+                result.push(self.span(*ident));
+                if let Some(t) = type_ {
+                    result.push(": ".into());
+                    result.push(self.prefixed_type(t));
                 }
+                result.push(" = ".into());
+                result.push(self.expr(value));
+                result.push(";".into());
+                Doc::Concat(result)
             }
             Stmt::Assert {
                 condition, message, ..
@@ -528,6 +548,36 @@ impl<'a> Formatter<'a> {
                     body_doc
                 };
                 (result, sep)
+            }
+        }
+    }
+
+    pub fn type_(&self, type_: &Type) -> Doc<'a> {
+        match type_ {
+            Type::Term(span) => self.span(*span),
+            Type::Constructor {
+                name: name_span,
+                args,
+            } => {
+                concat! {
+                    self.span(*name_span)
+                    group! {
+                        "["
+                        Doc::SoftBreak
+                        indent! {
+                            Doc::join(
+                                args.iter().map(|arg| self.prefixed_type(arg)),
+                                concat!{ "," Doc::Sep },
+                            )
+                            Doc::tall(",")
+                        }
+                        Doc::SoftBreak
+                        "]"
+                    }
+                }
+            }
+            Type::Function { args: _, result: _ } => {
+                unimplemented!("TODO: Format function types.");
             }
         }
     }
