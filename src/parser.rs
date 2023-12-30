@@ -1264,15 +1264,12 @@ impl<'a> Parser<'a> {
         // Optionally, the term can be followed by `[` to instantiate a generic
         // type.
         self.skip_non_code()?;
-        if let Some(Token::LBracket) = self.peek() {
+        if let (Type::Term(name), Some(Token::LBracket)) = (&term, self.peek()) {
             self.push_bracket()?;
             let args = self.parse_types()?;
             self.pop_bracket()?;
 
-            let type_apply = Type::Apply {
-                constructor: Box::new(term),
-                args,
-            };
+            let type_apply = Type::Apply { name: *name, args };
             return Ok(type_apply);
         }
 

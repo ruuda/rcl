@@ -774,10 +774,17 @@ impl<'a> Evaluator<'a> {
 
     fn eval_stmt(&mut self, env: &mut Env, stmt: &Stmt) -> Result<()> {
         match stmt {
-            Stmt::Let { ident, value } => {
+            Stmt::Let {
+                ident,
+                type_,
+                value,
+            } => {
                 // Note, this is not a recursive let, the variable is not bound when
                 // we evaluate the expression.
                 let v = self.eval_expr(env, value)?;
+                if let Some(t) = type_ {
+                    unimplemented!("TODO: Check that the value conforms to the type {t:?}.");
+                }
                 env.push(ident.clone(), v);
             }
             Stmt::Assert {
