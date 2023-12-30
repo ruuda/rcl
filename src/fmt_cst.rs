@@ -555,12 +555,9 @@ impl<'a> Formatter<'a> {
     pub fn type_(&self, type_: &Type) -> Doc<'a> {
         match type_ {
             Type::Term(span) => self.span(*span),
-            Type::Constructor {
-                name: name_span,
-                args,
-            } => {
+            Type::Apply { constructor, args } => {
                 concat! {
-                    self.span(*name_span)
+                    self.type_(constructor)
                     group! {
                         "["
                         Doc::SoftBreak

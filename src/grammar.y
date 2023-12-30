@@ -133,6 +133,7 @@ type_expr
   : type_term
   | '(' types ')' "->" type_expr
   | type_term "->" type_expr
+  | type_term '[' types ']'
   ;
 
 types
@@ -145,5 +146,4 @@ type_term
   : '(' type_expr ')'
   | IDENT
   | STRING
-  | IDENT '[' types ']'
   ;
