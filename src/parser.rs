@@ -487,6 +487,7 @@ impl<'a> Parser<'a> {
 
         let result = Stmt::Let {
             ident,
+            type_: None,
             value_span,
             value: Box::new(value),
         };
