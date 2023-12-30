@@ -479,7 +479,28 @@ impl<'a> Parser<'a> {
             Some(Token::Colon) => {
                 self.consume();
                 let type_ = self.parse_prefixed_type()?;
-                self.parse_token(Token::Eq1, "Expected '=' here.")?;
+                // After the type annotation, only `=` is valid, but if we see
+                // something that looks like it might be part of a function
+                // type, educate the user about how to do that.
+                match self.peek() {
+                    Some(Token::Eq1) => self.consume(),
+                    Some(Token::FatArrow) => {
+                        return self
+                            .error("Expected '=' after type annotation.")
+                            .with_help(
+                                "Function types require parentheses \
+                                and use '->' instead of '=>', e.g. '(Int) -> Bool'.",
+                            )
+                            .err();
+                    }
+                    Some(Token::ThinArrow) => {
+                        return self
+                            .error("Expected '=' after type annotation.")
+                            .with_help("Function types require parentheses, e.g. '(Int) -> Bool'.")
+                            .err();
+                    }
+                    _ => return self.error("Expected '=' after type annotation.").err(),
+                };
                 Some(Box::new(type_))
             }
             Some(Token::Eq1) => {
