@@ -357,12 +357,12 @@ pub enum Type {
     /// For example, `Dict[k, v]`.
     Apply {
         constructor: Box<Type>,
-        args: Vec<Prefixed<Type>>,
+        args: Box<[Prefixed<Type>]>,
     },
 
     /// A function type with zero or more arguments, and one result type.
     Function {
-        args: Vec<Prefixed<Type>>,
-        result: Box<Prefixed<Type>>,
+        args: Box<[Prefixed<Type>]>,
+        result: Box<Type>,
     },
 }
