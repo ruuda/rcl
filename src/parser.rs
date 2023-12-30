@@ -507,7 +507,7 @@ impl<'a> Parser<'a> {
                 self.consume();
                 None
             }
-            _ => return self.consume().error("Expected '=' or ':' here.").err(),
+            _ => return self.error("Expected '=' or ':' here.").err(),
         };
 
         self.skip_non_code()?;
