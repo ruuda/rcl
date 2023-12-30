@@ -555,27 +555,35 @@ impl<'a> Formatter<'a> {
     pub fn type_(&self, type_: &Type) -> Doc<'a> {
         match type_ {
             Type::Term(span) => self.span(*span),
-            Type::Apply { constructor, args } => {
-                concat! {
-                    self.type_(constructor)
-                    group! {
-                        "["
-                        Doc::SoftBreak
-                        indent! {
-                            Doc::join(
-                                args.iter().map(|arg| self.prefixed_type(arg)),
-                                concat!{ "," Doc::Sep },
-                            )
-                            Doc::tall(",")
-                        }
-                        Doc::SoftBreak
-                        "]"
-                    }
-                }
+            Type::Apply { constructor, args } => concat! {
+                self.type_(constructor)
+                self.types("[", args, "]")
+            },
+            Type::Function { args, result } => concat! {
+                self.types("(", args, ")")
+                " -> "
+                self.type_(result)
+            },
+        }
+    }
+
+    /// A list of types enclosed by opening and closing delimiters.
+    pub fn types(
+        &self,
+        open: &'static str,
+        types: &[Prefixed<Type>],
+        close: &'static str,
+    ) -> Doc<'a> {
+        group! {
+            open
+            indent! {
+                Doc::join(
+                    types.iter().map(|t| self.prefixed_type(t)),
+                    concat!{ "," Doc::Sep },
+                )
+                Doc::tall(",")
             }
-            Type::Function { args: _, result: _ } => {
-                unimplemented!("TODO: Format function types.");
-            }
+            close
         }
     }
 }
