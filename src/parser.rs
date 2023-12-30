@@ -1226,16 +1226,31 @@ impl<'a> Parser<'a> {
 
     fn parse_type(&mut self) -> Result<Type> {
         self.increase_depth()?;
-        let result = match self.peek() {
-            Some(Token::Ident) => {
-                // TODO: Look ahead for `[` and `->`.
-                let span = self.consume();
-                Type::Term(span)
+        let result = self.parse_type_term()?;
+        loop {
+            self.skip_non_code()?;
+            match self.peek() {
+                Some(Token::LBracket) => {
+                    unimplemented!("TODO: Parse type application.");
+                }
+                Some(Token::Arrow) => {
+                    unimplemented!("TODO: Parse function type.");
+                }
+                _ => break,
             }
-            _ => return self.error("Expected a type here.").err(),
-        };
+        }
         self.decrease_depth();
         Ok(result)
+    }
+
+    fn parse_type_term(&mut self) -> Result<Type> {
+        match self.peek() {
+            Some(Token::Ident) => {
+                let span = self.consume();
+                Ok(Type::Term(span))
+            }
+            _ => self.error("Expected a type here.").err(),
+        }
     }
 
     /// Confirm that there is no trailing content left to parse.

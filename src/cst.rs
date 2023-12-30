@@ -352,11 +352,11 @@ pub enum Type {
     /// For example, `Int` (primitive), or `Widget` (user-defined).
     Term(Span),
 
-    /// A type constructor applies a generic type.
+    /// Instantiate a generic type; apply a type constructor.
     ///
     /// For example, `Dict[k, v]`.
-    Constructor {
-        name: Span,
+    Apply {
+        constructor: Box<Type>,
         args: Vec<Prefixed<Type>>,
     },
 
