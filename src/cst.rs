@@ -356,7 +356,7 @@ pub enum Type {
     ///
     /// For example, `Dict[k, v]`.
     Apply {
-        constructor: Box<Type>,
+        name: Span,
         args: Box<[Prefixed<Type>]>,
     },
 

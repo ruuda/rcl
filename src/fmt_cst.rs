@@ -555,8 +555,8 @@ impl<'a> Formatter<'a> {
     pub fn type_(&self, type_: &Type) -> Doc<'a> {
         match type_ {
             Type::Term(span) => self.span(*span),
-            Type::Apply { constructor, args } => concat! {
-                self.type_(constructor)
+            Type::Apply { name, args } => concat! {
+                self.span(*name)
                 self.types("[", args, "]")
             },
             Type::Function { args, result } => concat! {

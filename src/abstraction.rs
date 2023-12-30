@@ -13,9 +13,11 @@
 //! * Converting literals in the source code into values in the runtime.
 //! * Removing syntactical differences (e.g. converting `k = v;` into `"k": v`).
 
-use crate::ast::{Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Yield};
+use crate::ast::{
+    Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
+};
 use crate::cst::Prefixed;
-use crate::cst::{Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart};
+use crate::cst::{Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart, Type as CType};
 use crate::error::{IntoError, Result};
 use crate::lexer::QuoteStyle;
 use crate::string;
@@ -104,8 +106,17 @@ impl<'a> Abstractor<'a> {
     /// Abstract a statement.
     pub fn stmt(&self, stmt: &CStmt) -> Result<AStmt> {
         let result = match stmt {
-            CStmt::Let { ident, value, .. } => AStmt::Let {
+            CStmt::Let {
+                ident,
+                type_,
+                value,
+                ..
+            } => AStmt::Let {
                 ident: ident.resolve(self.input).into(),
+                type_: match type_ {
+                    None => None,
+                    Some(t) => Some(Box::new(self.type_expr(&t.inner)?)),
+                },
                 value: Box::new(self.expr(value)?),
             },
             CStmt::Assert {
@@ -365,5 +376,10 @@ impl<'a> Abstractor<'a> {
             },
         };
         Ok(result)
+    }
+
+    /// Abstract a type expression.
+    pub fn type_expr(&self, _type_: &CType) -> Result<AType> {
+        unimplemented!();
     }
 }
