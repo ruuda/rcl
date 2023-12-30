@@ -576,6 +576,7 @@ impl<'a> Formatter<'a> {
     ) -> Doc<'a> {
         group! {
             open
+            Doc::SoftBreak
             indent! {
                 Doc::join(
                     types.iter().map(|t| self.prefixed_type(t)),
@@ -583,6 +584,7 @@ impl<'a> Formatter<'a> {
                 )
                 Doc::tall(",")
             }
+            Doc::SoftBreak
             close
         }
     }
