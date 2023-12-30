@@ -553,6 +553,11 @@ impl<'a> Parser<'a> {
     ///
     /// TODO: This is getting complex. I should consider using a prefix token
     /// to disambiguate lambdas after all.
+    ///
+    /// TODO II: A better way to handle this: when closing a matching ), write
+    /// to a side buffer the index of the token next to the opening (. That way,
+    /// when we have a (, we can jump ahead to the closing ), and peek what
+    /// comes after that closing ).
     fn look_ahead_is_function(&mut self) -> bool {
         let mut offset = 0;
         match self.peek() {
@@ -584,7 +589,7 @@ impl<'a> Parser<'a> {
             match self.peek_n(i) {
                 Some(Token::LineComment) => continue,
                 Some(Token::Blank) => continue,
-                Some(Token::Arrow) => return true,
+                Some(Token::FatArrow) => return true,
                 _ => return false,
             }
         }
@@ -611,7 +616,7 @@ impl<'a> Parser<'a> {
         };
 
         self.skip_non_code()?;
-        let arrow_span = self.parse_token(Token::Arrow, "Expected '=>' here.")?;
+        let arrow_span = self.parse_token(Token::FatArrow, "Expected '=>' here.")?;
         self.skip_non_code()?;
         let (_span, body) = self.parse_expr()?;
 
@@ -1221,26 +1226,88 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_prefixed_type(&mut self) -> Result<Prefixed<Type>> {
-        self.parse_prefixed(|s| s.parse_type())
+        self.parse_prefixed(|s| s.parse_type_expr())
     }
 
-    fn parse_type(&mut self) -> Result<Type> {
-        self.increase_depth()?;
-        let result = self.parse_type_term()?;
+    /// Parse a type expression.
+    fn parse_type_expr(&mut self) -> Result<Type> {
+        // If it starts with a `(`, then that is the start of an argument list,
+        // and we are parsing a function type.
+        if let Some(Token::LParen) = self.peek() {
+            return self.parse_type_function();
+        }
+
+        // Otherwise, we definitely start with a term.
+        let term = self.parse_type_term()?;
+
+        // Optionally, the term can be followed by `[` to instantiate a generic
+        // type.
+        self.skip_non_code()?;
+        if let Some(Token::LBracket) = self.peek() {
+            self.push_bracket()?;
+            let args = self.parse_types()?;
+            self.pop_bracket()?;
+
+            let type_apply = Type::Apply {
+                constructor: Box::new(term),
+                args,
+            };
+            return Ok(type_apply);
+        }
+
+        // When it's not followed by a `[`, then this is a regular term.
+        Ok(term)
+    }
+
+    /// Parse a function type that starts with a `(`.
+    fn parse_type_function(&mut self) -> Result<Type> {
+        self.push_bracket()?;
+        let args = self.parse_types()?;
+        self.pop_bracket()?;
+        self.skip_non_code()?;
+        self.parse_token(Token::ThinArrow, "Expected '->' here in function type.")?;
+        let result_type = self.parse_type_expr()?;
+        let fn_type = Type::Function {
+            args,
+            result: Box::new(result_type),
+        };
+        Ok(fn_type)
+    }
+
+    /// Parse a comma-delimited list of types with optional trailing comma.
+    fn parse_types(&mut self) -> Result<Box<[Prefixed<Type>]>> {
+        let mut result = Vec::new();
         loop {
+            let prefix = self.parse_non_code();
+            if matches!(self.peek(), Some(Token::RParen | Token::RBracket)) {
+                // TODO: In this case we lose the prefix that we parsed.
+                // See also the comment in `parse_seqs`.
+                return Ok(result.into_boxed_slice());
+            }
+
+            let type_ = self.parse_type_expr()?;
+            let prefixed = Prefixed {
+                prefix,
+                inner: type_,
+            };
+            result.push(prefixed);
+
             self.skip_non_code()?;
             match self.peek() {
-                Some(Token::LBracket) => {
-                    unimplemented!("TODO: Parse type application.");
+                Some(Token::RParen | Token::RBracket) => continue,
+                Some(Token::Comma) => {
+                    self.consume();
+                    continue;
                 }
-                Some(Token::Arrow) => {
-                    unimplemented!("TODO: Parse function type.");
+                _ => {
+                    // If we don't find a separator, nor the end of the list,
+                    // that's an error. We can report an unmatched bracket
+                    // as the problem, because it is.
+                    self.pop_bracket()?;
+                    unreachable!("pop_bracket should have failed.");
                 }
-                _ => break,
             }
         }
-        self.decrease_depth();
-        Ok(result)
     }
 
     fn parse_type_term(&mut self) -> Result<Type> {
@@ -1249,6 +1316,7 @@ impl<'a> Parser<'a> {
                 let span = self.consume();
                 Ok(Type::Term(span))
             }
+            // TODO: Consider string literals as type terms too.
             _ => self.error("Expected a type here.").err(),
         }
     }

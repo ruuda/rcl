@@ -130,10 +130,12 @@ seq
 idents: IDENT | idents ',' IDENT;
 
 type_expr
-  : type_term
-  | '(' types ')' "->" type_expr
-  | type_term "->" type_expr
+  // Note, we could allow single-argument function types without the parens as
+  // well, but let's keep it simple for now and require the parens on function
+  // types.
+  : '(' types ')' "->" type_expr
   | type_term '[' types ']'
+  | type_term
   ;
 
 types
@@ -143,7 +145,6 @@ types
   ;
 
 type_term
-  : '(' type_expr ')'
-  | IDENT
+  : IDENT
   | STRING
   ;
