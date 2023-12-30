@@ -7,7 +7,9 @@
 
 //! The parser converts a sequence of tokens into a Concrete Syntax Tree.
 
-use crate::cst::{BinOp, Expr, NonCode, Prefixed, Seq, SpanPrefixedExpr, Stmt, StringPart, UnOp};
+use crate::cst::{
+    BinOp, Expr, NonCode, Prefixed, Seq, SpanPrefixedExpr, Stmt, StringPart, Type, UnOp,
+};
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
 use crate::pprint::{concat, Doc};
@@ -471,8 +473,21 @@ impl<'a> Parser<'a> {
         self.skip_non_code()?;
         let ident = self.parse_ident()?;
 
+        // Parse the optional type signature, and then the '='.
         self.skip_non_code()?;
-        self.parse_token(Token::Eq1, "Expected '=' here.")?;
+        let type_: Option<Box<Prefixed<Type>>> = match self.peek() {
+            Some(Token::Colon) => {
+                self.consume();
+                let type_ = self.parse_prefixed_type()?;
+                self.parse_token(Token::Eq1, "Expected '=' here.")?;
+                Some(Box::new(type_))
+            }
+            Some(Token::Eq1) => {
+                self.consume();
+                None
+            }
+            _ => return self.consume().error("Expected '=' or ':' here.").err(),
+        };
 
         self.skip_non_code()?;
         let (value_span, value) = self.parse_expr()?;
@@ -487,7 +502,7 @@ impl<'a> Parser<'a> {
 
         let result = Stmt::Let {
             ident,
-            type_: None,
+            type_,
             value_span,
             value: Box::new(value),
         };
@@ -1202,6 +1217,24 @@ impl<'a> Parser<'a> {
             body: Box::new(body),
         };
 
+        Ok(result)
+    }
+
+    pub fn parse_prefixed_type(&mut self) -> Result<Prefixed<Type>> {
+        self.parse_prefixed(|s| s.parse_type())
+    }
+
+    fn parse_type(&mut self) -> Result<Type> {
+        self.increase_depth()?;
+        let result = match self.peek() {
+            Some(Token::Ident) => {
+                // TODO: Look ahead for `[` and `->`.
+                let span = self.consume();
+                Type::Term(span)
+            }
+            _ => return self.error("Expected a type here.").err(),
+        };
+        self.decrease_depth();
         Ok(result)
     }
 
