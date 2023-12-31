@@ -34,3 +34,4 @@ pub mod source;
 pub mod stdlib;
 pub mod string;
 pub mod tracer;
+pub mod types;
