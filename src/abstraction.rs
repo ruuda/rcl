@@ -381,7 +381,10 @@ impl<'a> Abstractor<'a> {
     /// Abstract a type expression.
     pub fn type_expr(&self, type_: &CType) -> Result<AType> {
         let result = match type_ {
-            CType::Term(span) => AType::Term(span.resolve(self.input).into()),
+            CType::Term(span) => AType::Term {
+                span: *span,
+                name: span.resolve(self.input).into(),
+            },
             CType::Apply { name, args } => AType::Apply {
                 name: name.resolve(self.input).into(),
                 args: args

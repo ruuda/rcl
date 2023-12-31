@@ -960,10 +960,30 @@ impl<'a> Evaluator<'a> {
 
     fn eval_type_expr(&mut self, env: &mut Env, type_: &AType) -> Result<Rc<Type>> {
         match type_ {
-            AType::Term(name) => match env.lookup_type(name) {
+            AType::Term { span, name } => match env.lookup_type(name) {
                 Some(t) => Ok(t.clone()),
                 None => {
-                    unimplemented!("TODO: Record type span so we can report an error there.");
+                    let err = span.error("Unknown type.");
+                    // TODO: Handle type constructors more first-class after all?
+                    let err = match name.as_ref() {
+                        "Dict" => err.with_help(concat!{
+                            "'" Doc::highlight("Dict") "' without type parameters cannot be used directly."
+                            Doc::SoftBreak
+                            "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Int]") "'."
+                        }),
+                        "List" => err.with_help(concat!{
+                            "'" Doc::highlight("List") "' without type parameters cannot be used directly."
+                            Doc::SoftBreak
+                            "Specify an element type, e.g. '" Doc::highlight("List[String]") "'."
+                        }),
+                        "Set" => err.with_help(concat!{
+                            "'" Doc::highlight("Set") "' without type parameters cannot be used directly."
+                            Doc::SoftBreak
+                            "Specify an element type, e.g. '" Doc::highlight("Set[String]") "'."
+                        }),
+                        _ => err,
+                    };
+                    err.err()
                 }
             },
             AType::Function { args, result } => {

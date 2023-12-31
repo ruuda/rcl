@@ -252,7 +252,7 @@ pub enum Type {
     /// A term is a named type, not necessarily primitive.
     ///
     /// For example, `Int` (primitive), or `Widget` (user-defined).
-    Term(Ident),
+    Term { span: Span, name: Ident },
 
     /// Instantiate a generic type; apply a type constructor.
     ///
