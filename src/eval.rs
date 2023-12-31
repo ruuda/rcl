@@ -250,7 +250,7 @@ impl<'a> Evaluator<'a> {
                 result
             }
 
-            Expr::Var { span, ident } => match env.lookup(ident) {
+            Expr::Var { span, ident } => match env.lookup_value(ident) {
                 Some(value) => Ok(value.clone()),
                 None => Err(span.error("Unknown variable.").into()),
             },
@@ -509,7 +509,7 @@ impl<'a> Evaluator<'a> {
         // have to clone the full thing.
         let mut env = fun.env.clone();
         for (arg_name, CallArg { value, .. }) in fun.args.iter().zip(call.args) {
-            env.push(arg_name.clone(), value.clone());
+            env.push_value(arg_name.clone(), value.clone());
         }
 
         self.eval_expr(&mut env, fun.body.as_ref())
@@ -785,7 +785,7 @@ impl<'a> Evaluator<'a> {
                 if let Some(t) = type_ {
                     unimplemented!("TODO: Check that the value conforms to the type {t:?}.");
                 }
-                env.push(ident.clone(), v);
+                env.push_value(ident.clone(), v);
             }
             Stmt::Assert {
                 condition_span,
@@ -879,7 +879,7 @@ impl<'a> Evaluator<'a> {
                 match (&idents[..], collection_value.as_ref()) {
                     ([name], Value::List(xs)) => {
                         for x in xs {
-                            let ck = env.push(name.clone(), x.clone());
+                            let ck = env.push_value(name.clone(), x.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
                         }
@@ -894,7 +894,7 @@ impl<'a> Evaluator<'a> {
                     }
                     ([name], Value::Set(xs)) => {
                         for x in xs {
-                            let ck = env.push(name.clone(), x.clone());
+                            let ck = env.push_value(name.clone(), x.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
                         }
@@ -910,8 +910,8 @@ impl<'a> Evaluator<'a> {
                     ([k_name, v_name], Value::Dict(xs)) => {
                         for (k, v) in xs {
                             let ck = env.checkpoint();
-                            env.push(k_name.clone(), k.clone());
-                            env.push(v_name.clone(), v.clone());
+                            env.push_value(k_name.clone(), k.clone());
+                            env.push_value(v_name.clone(), v.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
                         }
