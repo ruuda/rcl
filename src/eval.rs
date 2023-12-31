@@ -10,7 +10,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
+use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, Type as AType, UnOp, Yield};
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
@@ -19,6 +19,7 @@ use crate::runtime::{CallArg, Env, Function, FunctionCall, MethodCall, Value};
 use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
+use crate::types::Type;
 
 /// An entry on the evaluation stack.
 pub struct EvalContext {
@@ -782,8 +783,9 @@ impl<'a> Evaluator<'a> {
                 // Note, this is not a recursive let, the variable is not bound when
                 // we evaluate the expression.
                 let v = self.eval_expr(env, value)?;
-                if let Some(t) = type_ {
-                    unimplemented!("TODO: Check that the value conforms to the type {t:?}.");
+                if let Some(type_expr) = type_ {
+                    let type_ = self.eval_type_expr(env, type_expr)?;
+                    unimplemented!("TODO: Check that the value conforms to the type {type_:?}.");
                 }
                 env.push_value(ident.clone(), v);
             }
@@ -952,6 +954,41 @@ impl<'a> Evaluator<'a> {
                 self.eval_seq(env, body, out)?;
                 env.pop(ck);
                 Ok(())
+            }
+        }
+    }
+
+    fn eval_type_expr(&mut self, env: &mut Env, type_: &AType) -> Result<Rc<Type>> {
+        match type_ {
+            AType::Term(name) => match env.lookup_type(name) {
+                Some(t) => Ok(t.clone()),
+                None => {
+                    unimplemented!("TODO: Record type span so we can report an error there.");
+                }
+            },
+            AType::Function { args, result } => {
+                let args_types = args
+                    .iter()
+                    .map(|t| self.eval_type_expr(env, t))
+                    .collect::<Result<Vec<_>>>()?;
+                let result_type = self.eval_type_expr(env, result)?;
+                let fn_type = Type::Function {
+                    args: args_types,
+                    result: result_type,
+                };
+                Ok(Rc::new(fn_type))
+            }
+            AType::Apply { name, args } => {
+                let _args_types = args
+                    .iter()
+                    .map(|t| self.eval_type_expr(env, t))
+                    .collect::<Result<Vec<_>>>()?;
+                match name.as_ref() {
+                    "Dict" => unimplemented!("TODO: Implement Dict type expr."),
+                    "List" => unimplemented!("TODO: Implement List type expr."),
+                    "Set" => unimplemented!("TODO: Implement Set type expr."),
+                    _ => unimplemented!("TODO: Implement generic type error."),
+                }
             }
         }
     }

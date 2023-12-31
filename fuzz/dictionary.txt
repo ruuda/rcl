@@ -65,3 +65,12 @@
 "std.range"
 "std.read_file_utf8"
 "values"
+
+# Builtin types.
+"Bool"
+"Dict"
+"Int"
+"List"
+"Null"
+"Set"
+"String"

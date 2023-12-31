@@ -312,6 +312,19 @@ impl Env {
     pub fn with_prelude() -> Env {
         let mut env = Env::new();
         env.push_value("std".into(), crate::stdlib::initialize());
+
+        // The primitive types are in scope by default.
+        env.push_type("Bool".into(), Rc::new(Type::Bool));
+        env.push_type("Int".into(), Rc::new(Type::Int));
+        env.push_type("Null".into(), Rc::new(Type::Null));
+        env.push_type("String".into(), Rc::new(Type::String));
+
+        // TODO: What to do about Dict, List, and Set? They are technically type
+        // constructors. Should those exist, at this level, if they can't be
+        // user-defined? It's easier to implement if we just hard-code those few,
+        // but then if you write `let xs: List = [1, 2, 3]`, it will lead to a
+        // confusing error.
+
         env
     }
 
