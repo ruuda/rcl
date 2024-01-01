@@ -32,6 +32,7 @@ pub enum Markup {
     Keyword,
     Number,
     String,
+    Type,
 }
 
 /// How to treat color and other markup hints.
@@ -87,6 +88,7 @@ pub fn switch_ansi(_from: Option<Markup>, to: Option<Markup>) -> &'static str {
     let red = "\x1b[31m";
     let green = "\x1b[32m";
     let blue = "\x1b[34m";
+    let magenta = "\x1b[35m";
     let cyan = "\x1b[36m";
     let white = "\x1b[37m";
 
@@ -105,5 +107,6 @@ pub fn switch_ansi(_from: Option<Markup>, to: Option<Markup>) -> &'static str {
         Markup::Keyword => green,
         Markup::Number => cyan,
         Markup::String => red,
+        Markup::Type => magenta,
     }
 }
