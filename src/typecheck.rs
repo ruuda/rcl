@@ -14,6 +14,7 @@
 
 use crate::error::{IntoError, Result};
 use crate::fmt_rcl::format_rcl;
+use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
@@ -70,17 +71,13 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
         _ => at
             .error("Type mismatch.")
             .with_body(concat! {
-                "Expected a value that fits the type (TODO: pprint-type):"
+                "Expected a value that fits this type:"
                 Doc::HardBreak Doc::HardBreak
-                indent! {
-                    format!("{type_:?}")
-                }
+                indent! { format_type(type_).into_owned() }
                 Doc::HardBreak Doc::HardBreak
-                "But got value:"
+                "But got this value:"
                 Doc::HardBreak Doc::HardBreak
-                indent! {
-                    format_rcl(value).into_owned()
-                }
+                indent! { format_rcl(value).into_owned() }
             })
             .err(),
     }
