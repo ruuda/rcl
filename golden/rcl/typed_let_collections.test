@@ -1,0 +1,13 @@
+// All of the following values fit the annotated collection types.
+let d0: Dict[String, Int] = { a = 1, b = 2 };
+let d1: Dict[Int, String] = { 1: "a", 2: "b" };
+let l0: List[Int] = [d0.len(), d1.len()];
+let l1: List[String] = ["hello", "world"];
+let l2: List[Dict[String, Int]] = [{a = 1}, {b = 2}];
+let s0: Set[Bool] = { true, false };
+let s1: Set[String] = d0.keys();
+let s2: Set[Int] = d1.keys();
+null
+
+# output:
+null
