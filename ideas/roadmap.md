@@ -12,6 +12,8 @@
  * Yaml output mode.
  * Preserve insertion order in dicts and sets, GC'd runtime.
  * Absorb the `highlight` command into `fmt` and make it use the same coloring?
+ * Evaluate whether to add a tuple type to describe heterogeneous lists of
+   statically known length.
 
 ## Long-term
 
