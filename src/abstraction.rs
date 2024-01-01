@@ -116,7 +116,7 @@ impl<'a> Abstractor<'a> {
                 ident: ident.resolve(self.input).into(),
                 type_: match type_ {
                     None => None,
-                    Some(t) => Some(Box::new(self.type_expr(&t.inner)?)),
+                    Some(t) => Some(Box::new(self.type_expr(t)?)),
                 },
                 value: Box::new(self.expr(value)?),
             },
