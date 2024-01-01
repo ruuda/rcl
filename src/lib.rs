@@ -23,6 +23,7 @@ pub mod fmt_cst;
 pub mod fmt_json;
 pub mod fmt_raw;
 pub mod fmt_rcl;
+pub mod fmt_type;
 pub mod highlight;
 pub mod lexer;
 pub mod loader;
