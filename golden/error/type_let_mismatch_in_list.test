@@ -6,10 +6,10 @@ stdin:1:5
   ╷
 1 │ let xs: List[Int] = ["not an int"];
   ╵     ^~
-Error: Type mismatch. Expected a value that fits the type (TODO: pprint-type):
+Error: Type mismatch. Expected a value that fits this type:
 
   Int
 
-But got value:
+But got this value:
 
   "not an int"
