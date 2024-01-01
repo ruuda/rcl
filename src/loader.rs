@@ -25,6 +25,8 @@ use crate::pprint::{self, concat};
 use crate::runtime::{Env, Value};
 use crate::source::{Doc, DocId, Span};
 use crate::tracer::Tracer;
+use crate::typecheck::TypeChecker;
+use crate::types::Type;
 
 /// An owned document.
 ///
@@ -402,10 +404,29 @@ impl Loader {
     }
 
     /// Parse the given document and return its Abstract Syntax Tree.
-    pub fn get_ast(&self, id: DocId) -> Result<ast::Expr> {
+    ///
+    /// This is the AST before typecheking.
+    pub fn get_unchecked_ast(&self, id: DocId) -> Result<ast::Expr> {
         let doc = self.get_doc(id);
         let cst = self.get_cst(id)?;
         let ast = abstraction::abstract_expr(doc.data, &cst)?;
+        Ok(ast)
+    }
+
+    /// Parse and typecheck the document, return the checked Abstract Syntax Tree.
+    pub fn get_typechecked_ast(&self, id: DocId) -> Result<ast::Expr> {
+        // TODO: Make this a global import once runtime::Env and env::Env are unified.
+        use crate::env::Env;
+        // The typechecker needs a span to blame type errors on, we put in the
+        // entire document. It is not going to blame any type errors on this
+        // span, because we check Type::Dynamic which any value satisfies. If we
+        // want to typecheck through imports, we would need an expected type and
+        // span from the import site.
+        let span = self.get_span(id);
+        let mut ast = self.get_unchecked_ast(id)?;
+        let mut checker = TypeChecker::new();
+        let mut env = Env::new();
+        checker.check_expr(&mut env, &Type::Dynamic, span, &mut ast)?;
         Ok(ast)
     }
 

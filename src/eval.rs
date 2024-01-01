@@ -177,7 +177,7 @@ impl<'a> Evaluator<'a> {
     /// Evaluate a document as the entry point of evaluation.
     pub fn eval_doc(&mut self, env: &mut Env, doc: DocId) -> Result<Value> {
         debug_assert!(self.import_stack.is_empty());
-        let expr = self.loader.get_ast(doc)?;
+        let expr = self.loader.get_typechecked_ast(doc)?;
         let ctx = EvalContext {
             doc,
             imported_from: None,
@@ -216,8 +216,7 @@ impl<'a> Evaluator<'a> {
             return Err(err.into());
         }
 
-        let expr = self.loader.get_ast(doc)?;
-
+        let expr = self.loader.get_typechecked_ast(doc)?;
         let ctx = EvalContext {
             doc,
             imported_from: Some(imported_from),

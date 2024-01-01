@@ -26,6 +26,20 @@ use crate::types::{self, Type};
 
 pub type Env = crate::env::Env<Type>;
 
+// Temporarily add a way to mark things as unfinished, without blocking the
+// fuzzer on it.
+#[cfg(not(fuzzing))]
+macro_rules! unfinished {
+    ($($arg:tt)*) => { unimplemented!($($arg)*) }
+}
+
+#[cfg(fuzzing)]
+macro_rules! unfinished {
+    ($($arg:tt)*) => {
+        Ok(())
+    };
+}
+
 /// Return the type prelude, all the types that are in scope by default.
 pub fn prelude() -> Env {
     let mut env = Env::new();
@@ -87,16 +101,10 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
             check_function_value(at, fn_type, fn_val)
         }
         (Type::Function { .. }, Value::BuiltinFunction { .. }) => {
-            #[cfg(fuzzing)]
-            return Ok(());
-            #[cfg(not(fuzzing))]
-            unimplemented!("TODO: Typecheck function for BuiltinFunction.")
+            unfinished!("TODO: Typecheck function for BuiltinFunction.")
         }
         (Type::Function { .. }, Value::BuiltinMethod { .. }) => {
-            #[cfg(fuzzing)]
-            return Ok(());
-            #[cfg(not(fuzzing))]
-            unimplemented!("TODO: Typecheck function for BuiltinMethod.")
+            unfinished!("TODO: Typecheck function for BuiltinMethod.")
         }
 
         _ => at
@@ -147,6 +155,7 @@ pub fn check_function_value(
 ///
 /// The `actual` message should be in the form of “Found «actual» instead”.
 fn type_error<T>(at: Span, expected: &Type, actual: &'static str) -> Result<T> {
+    // TODO: Generate a briefer error when the expected type is a primitive type.
     at.error("Type mismatch.")
         .with_body(concat! {
             "Expected a value that fits this type:"
@@ -180,7 +189,7 @@ impl TypeChecker {
     ) -> Result<()> {
         match expr {
             Expr::Stmt { stmt: _, body: _ } => {
-                unimplemented!("TODO: Typecheck statement.");
+                unfinished!("TODO: Typecheck statement.")
             }
 
             Expr::Import { path_span, path: _ } => {
@@ -227,7 +236,7 @@ impl TypeChecker {
             }
 
             Expr::BraceLit(_seq) => {
-                unimplemented!("TODO: Typecheck brace literal.");
+                unfinished!("TODO: Typecheck brace literal.")
             }
 
             Expr::BracketLit(seqs) => {
@@ -300,20 +309,20 @@ impl TypeChecker {
                 match env.lookup(ident) {
                     // TODO: We can remove this check from the evaluator and
                     // turn it into an assert.
-                    None => panic!("TODO: Report unknown variable."),
+                    None => unfinished!("TODO: Report unknown variable."),
                     Some(t) => self.check_subtype(expected, t),
                 }
             }
 
-            Expr::Field { .. } => unimplemented!("TODO: Implement typechecking fields."),
+            Expr::Field { .. } => unfinished!("TODO: Implement typechecking fields."),
 
-            Expr::Function { .. } => unimplemented!("TODO: Implement typechecking functions."),
+            Expr::Function { .. } => unfinished!("TODO: Implement typechecking functions."),
 
-            Expr::Call { .. } => unimplemented!("TODO: Implement typechecking calls."),
+            Expr::Call { .. } => unfinished!("TODO: Implement typechecking calls."),
 
-            Expr::Index { .. } => unimplemented!("TODO: Implement typechecking indexing."),
+            Expr::Index { .. } => unfinished!("TODO: Implement typechecking indexing."),
 
-            other => unimplemented!("TODO: Implement typechecking {other:?}."),
+            other => unfinished!("TODO: Implement typechecking {other:?}."),
         }
     }
 
@@ -323,7 +332,7 @@ impl TypeChecker {
         _expected: &Type,
         _seq: &mut Seq,
     ) -> Result<()> {
-        unimplemented!("TODO: Typecheck seq.")
+        unfinished!("TODO: Typecheck seq.")
     }
 
     /// Check that `actual` is a subtype of `expected`.
@@ -334,6 +343,6 @@ impl TypeChecker {
     /// record that only has `Int` fields would fit the type `Dict[String, Int]`,
     /// but not the other way around.
     pub fn check_subtype(&mut self, _expected: &Type, _actual: &Type) -> Result<()> {
-        unimplemented!("TODO: Check fits.")
+        unfinished!("TODO: Check fits.")
     }
 }

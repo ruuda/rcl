@@ -14,6 +14,7 @@ use rcl::tracer::VoidTracer;
 enum Mode {
     Lex,
     Parse,
+    Typecheck,
     Eval,
     Format { width: u32 },
     EvalJson { width: u32 },
@@ -64,7 +65,7 @@ impl<'a> Arbitrary<'a> for Input<'a> {
             b"A" => Mode::Lex,
             b"P" => Mode::Parse,
             b"Q" => Mode::Format { width },
-            // T is reserved for "Typecheck".
+            b"T" => Mode::Typecheck,
             b"a" => Mode::Eval,
             b"j" => Mode::EvalJson { width },
             b"t" => Mode::EvalToml { width },
@@ -168,6 +169,10 @@ fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
         Mode::Parse => {
             let doc = loader.load_string(input.data.to_string());
             let _ = loader.get_cst(doc)?;
+        }
+        Mode::Typecheck => {
+            let doc = loader.load_string(input.data.to_string());
+            let _ = loader.get_typechecked_ast(doc)?;
         }
         Mode::Eval => {
             let _ = fuzz_eval(loader, input.data);
