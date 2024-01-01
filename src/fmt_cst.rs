@@ -205,7 +205,7 @@ impl<'a> Formatter<'a> {
                 result.push(self.span(*ident));
                 if let Some(t) = type_ {
                     result.push(": ".into());
-                    result.push(self.prefixed_type(t));
+                    result.push(self.type_(t));
                 }
                 result.push(" = ".into());
                 result.push(self.expr(value));

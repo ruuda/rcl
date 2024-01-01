@@ -475,10 +475,11 @@ impl<'a> Parser<'a> {
 
         // Parse the optional type signature, and then the '='.
         self.skip_non_code()?;
-        let type_: Option<Box<Prefixed<Type>>> = match self.peek() {
+        let type_: Option<Box<Type>> = match self.peek() {
             Some(Token::Colon) => {
                 self.consume();
-                let type_ = self.parse_prefixed_type()?;
+                self.skip_non_code()?;
+                let type_ = self.parse_type_expr()?;
                 // After the type annotation, only `=` is valid, but if we see
                 // something that looks like it might be part of a function
                 // type, educate the user about how to do that.
@@ -1244,10 +1245,6 @@ impl<'a> Parser<'a> {
         };
 
         Ok(result)
-    }
-
-    pub fn parse_prefixed_type(&mut self) -> Result<Prefixed<Type>> {
-        self.parse_prefixed(|s| s.parse_type_expr())
     }
 
     /// Parse a type expression.
