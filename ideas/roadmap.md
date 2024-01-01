@@ -5,13 +5,14 @@
  * Accept an expression through `--expr` for `rcl evaluate`.
  * Actually implement the `--in-place` for `rcl fmt`.
  * Add a `--follow` for `rcl fmt` that follows imports.
- * Replace `if cond then t else f` syntax with `if cond: t else: f`.
 
 ## Mid-term
 
  * Yaml output mode.
  * Preserve insertion order in dicts and sets, GC'd runtime.
  * Absorb the `highlight` command into `fmt` and make it use the same coloring?
+ * Evaluate whether to add a tuple type to describe heterogeneous lists of
+   statically known length.
 
 ## Long-term
 
