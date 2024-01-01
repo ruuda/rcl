@@ -68,7 +68,7 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
         }
 
         _ => at
-            .error("Type error.")
+            .error("Type mismatch.")
             .with_body(concat! {
                 "Expected a value of type (TODO: pprint-type):"
                 Doc::HardBreak Doc::HardBreak

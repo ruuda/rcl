@@ -19,6 +19,7 @@ use crate::runtime::{CallArg, Env, Function, FunctionCall, MethodCall, Value};
 use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
+use crate::typecheck;
 use crate::types::Type;
 
 /// An entry on the evaluation stack.
@@ -776,6 +777,7 @@ impl<'a> Evaluator<'a> {
     fn eval_stmt(&mut self, env: &mut Env, stmt: &Stmt) -> Result<()> {
         match stmt {
             Stmt::Let {
+                ident_span,
                 ident,
                 type_,
                 value,
@@ -783,10 +785,14 @@ impl<'a> Evaluator<'a> {
                 // Note, this is not a recursive let, the variable is not bound when
                 // we evaluate the expression.
                 let v = self.eval_expr(env, value)?;
+
+                // If the let has a type annotation, then we verify that the
+                // value fits the specified type.
                 if let Some(type_expr) = type_ {
                     let type_ = self.eval_type_expr(env, type_expr)?;
-                    unimplemented!("TODO: Check that the value conforms to the type {type_:?}.");
+                    typecheck::check_value(*ident_span, type_.as_ref(), v.as_ref())?;
                 }
+
                 env.push_value(ident.clone(), v);
             }
             Stmt::Assert {

@@ -65,6 +65,7 @@ pub struct FormatFragment {
 pub enum Stmt {
     /// A let-binding.
     Let {
+        ident_span: Span,
         ident: Ident,
         type_: Option<Box<Type>>,
         value: Box<Expr>,
