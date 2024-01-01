@@ -257,7 +257,14 @@ pub enum Type {
     /// Instantiate a generic type; apply a type constructor.
     ///
     /// For example, `Dict[k, v]`.
-    Apply { name: Ident, args: Box<[Type]> },
+    Apply {
+        /// The span of the name.
+        span: Span,
+        /// The name, e.g. `Dict`.
+        name: Ident,
+        /// All the type arguments between `[]`.
+        args: Box<[Type]>,
+    },
 
     /// A function type with zero or more arguments, and one result type.
     Function {

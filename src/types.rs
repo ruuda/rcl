@@ -24,11 +24,14 @@ pub enum Type {
     /// The primitive type `String`.
     String,
 
+    /// A dict with the given key and value types.
+    Dict(Rc<Type>, Rc<Type>),
+
     /// A list with the given element type.
     List(Rc<Type>),
 
-    /// A dict with the given key and value types.
-    Dict(Rc<Type>, Rc<Type>),
+    /// A set with the given element type.
+    Set(Rc<Type>),
 
     /// A function.
     Function {

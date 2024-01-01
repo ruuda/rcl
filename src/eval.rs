@@ -998,18 +998,60 @@ impl<'a> Evaluator<'a> {
                 };
                 Ok(Rc::new(fn_type))
             }
-            AType::Apply { name, args } => {
-                let _args_types = args
+            AType::Apply { span, name, args } => {
+                let args_types = args
                     .iter()
                     .map(|t| self.eval_type_expr(env, t))
                     .collect::<Result<Vec<_>>>()?;
-                match name.as_ref() {
-                    "Dict" => unimplemented!("TODO: Implement Dict type expr."),
-                    "List" => unimplemented!("TODO: Implement List type expr."),
-                    "Set" => unimplemented!("TODO: Implement Set type expr."),
-                    _ => unimplemented!("TODO: Implement generic type error."),
-                }
+                self.eval_type_apply(*span, name.as_ref(), &args_types)
             }
+        }
+    }
+
+    /// Evaluate type constructor application (generic instantiation).
+    fn eval_type_apply(
+        &mut self,
+        name_span: Span,
+        name: &str,
+        args: &[Rc<Type>],
+    ) -> Result<Rc<Type>> {
+        match name {
+            "Dict" => match args {
+                [tk, tv] => Ok(Rc::new(Type::Dict(tk.clone(), tv.clone()))),
+                // TODO: We can point at the excess or missing arg for a
+                // friendlier error, but better to do that in a general way
+                // when we add type contructors to `types::Type`.
+                _ => name_span
+                    .error(concat! {
+                        "Type 'Dict' takes two type parameters (key and value), but got "
+                        args.len().to_string() "."
+                    })
+                    .err(),
+            },
+            "List" => match args {
+                [te] => Ok(Rc::new(Type::List(te.clone()))),
+                // TODO: As above for dict, we can do a better job of the error.
+                _ => name_span
+                    .error(concat! {
+                        "Type 'List' takes one type parameter (the element type), but got "
+                        args.len().to_string() "."
+                    })
+                    .err(),
+            },
+            "Set" => match args {
+                [te] => Ok(Rc::new(Type::Set(te.clone()))),
+                // TODO: As above for dict, we can do a better job of the error.
+                _ => name_span
+                    .error(concat! {
+                        "Type 'Set' takes one type parameter (the element type), but got "
+                        args.len().to_string() "."
+                    })
+                    .err(),
+            },
+            // TODO: We could report a nicer error if we knew the types in scope.
+            // Okay, I am convinced now that type constructors should live in
+            // the type namespace. But we can do that later.
+            _ => name_span.error("Unknown generic type.").err(),
         }
     }
 }

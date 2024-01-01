@@ -386,6 +386,7 @@ impl<'a> Abstractor<'a> {
                 name: span.resolve(self.input).into(),
             },
             CType::Apply { name, args } => AType::Apply {
+                span: *name,
                 name: name.resolve(self.input).into(),
                 args: args
                     .iter()
