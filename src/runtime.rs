@@ -210,6 +210,14 @@ impl Ord for Function {
 
 /// A value.
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+// TODO: Apply the same conversion as I did with Type. Value should be the size
+// of one Rc at most, and then put the body of the value in an Rc for complex
+// values. Then we can take and return &Value or Value everywhere, and we don't
+// have this awkward &Rc<Value> in some places. All the evaluator types become
+// nicer, and there is a lot less boxing going on. E.g. for a list of ints, we
+// store them inline, no Rc per element. Also in the BTreeMap, that should help
+// a lot. So both the Rust types become nicer, and performance should become
+// better, win-win!
 pub enum Value {
     Null,
 
@@ -287,9 +295,10 @@ impl<'a> From<&'a str> for Value {
 
 /// An environment binds names to values.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+// TODO: Replace this with `crate::env::Env`.
 pub struct Env {
     value_bindings: Vec<(Ident, Rc<Value>)>,
-    type_bindings: Vec<(Ident, Rc<Type>)>,
+    type_bindings: Vec<(Ident, Type)>,
 }
 
 /// References a version of an environment that we can later restore to.
@@ -314,10 +323,10 @@ impl Env {
         env.push_value("std".into(), crate::stdlib::initialize());
 
         // The primitive types are in scope by default.
-        env.push_type("Bool".into(), Rc::new(Type::Bool));
-        env.push_type("Int".into(), Rc::new(Type::Int));
-        env.push_type("Null".into(), Rc::new(Type::Null));
-        env.push_type("String".into(), Rc::new(Type::String));
+        env.push_type("Bool".into(), Type::Bool);
+        env.push_type("Int".into(), Type::Int);
+        env.push_type("Null".into(), Type::Null);
+        env.push_type("String".into(), Type::String);
 
         // TODO: What to do about Dict, List, and Set? They are technically type
         // constructors. Should those exist, at this level, if they can't be
@@ -336,7 +345,7 @@ impl Env {
             .map(|(_k, v)| v)
     }
 
-    pub fn lookup_type(&self, name: &Ident) -> Option<&Rc<Type>> {
+    pub fn lookup_type(&self, name: &Ident) -> Option<&Type> {
         self.type_bindings
             .iter()
             .rev()
@@ -373,7 +382,7 @@ impl Env {
     /// If the name already existed, the new push will shadow the old one.
     ///
     /// Returns a checkpoint of the environment before the push.
-    pub fn push_type(&mut self, name: Ident, type_: Rc<Type>) -> EnvCheckpoint {
+    pub fn push_type(&mut self, name: Ident, type_: Type) -> EnvCheckpoint {
         let checkpoint = self.checkpoint();
         self.type_bindings.push((name, type_));
         checkpoint
