@@ -345,9 +345,13 @@ impl<'a> Evaluator<'a> {
                 result
             }
 
-            Expr::Var { ident, span } => match env.lookup(ident) {
+            Expr::Var { ident, .. } => match env.lookup(ident) {
                 Some(value) => Ok(value.clone()),
-                None => Err(span.error("Unknown variable.").into()),
+                // TODO: The typechecker could replace all variable lookups with
+                // an index into the bindings stack, then we can skip the lookup,
+                // and we don't have to handle this case (except though implicit
+                // bounds checks).
+                None => unreachable!("If it passed the typechecker, the variable exists."),
             },
 
             Expr::Field {

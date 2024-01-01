@@ -305,14 +305,10 @@ impl TypeChecker {
                 Ok(())
             }
 
-            Expr::Var { span: _, ident } => {
-                match env.lookup(ident) {
-                    // TODO: We can remove this check from the evaluator and
-                    // turn it into an assert.
-                    None => unfinished!("TODO: Report unknown variable."),
-                    Some(t) => self.check_subtype(expected, t),
-                }
-            }
+            Expr::Var { span, ident } => match env.lookup(ident) {
+                None => span.error("Unknown variable.").err(),
+                Some(t) => self.check_subtype(expected, t),
+            },
 
             Expr::Field { .. } => unfinished!("TODO: Implement typechecking fields."),
 
