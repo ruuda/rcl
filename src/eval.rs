@@ -446,7 +446,7 @@ impl<'a> Evaluator<'a> {
                 }
             }
 
-            Expr::Stmt { stmt, body } => {
+            Expr::Stmt { stmt, body, .. } => {
                 let ck = env.checkpoint();
                 self.eval_stmt(env, stmt)?;
                 let result = self.eval_expr(env, body)?;
@@ -885,6 +885,7 @@ impl<'a> Evaluator<'a> {
                 condition_span,
                 condition,
                 message: message_expr,
+                ..
             } => {
                 match self.eval_expr(env, condition)? {
                     Value::Bool(true) => {

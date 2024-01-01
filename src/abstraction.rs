@@ -123,11 +123,12 @@ impl<'a> Abstractor<'a> {
             CStmt::Assert {
                 condition_span,
                 condition,
+                message_span,
                 message,
-                ..
             } => AStmt::Assert {
                 condition_span: *condition_span,
                 condition: Box::new(self.expr(condition)?),
+                message_span: *message_span,
                 message: Box::new(self.expr(message)?),
             },
             CStmt::Trace {
@@ -144,8 +145,13 @@ impl<'a> Abstractor<'a> {
     /// Abstract an expression.
     pub fn expr(&self, expr: &CExpr) -> Result<AExpr> {
         let result = match expr {
-            CExpr::Stmt { stmt, body, .. } => AExpr::Stmt {
+            CExpr::Stmt {
+                stmt,
+                body_span,
+                body,
+            } => AExpr::Stmt {
                 stmt: self.stmt(stmt)?,
+                body_span: *body_span,
                 body: Box::new(self.expr(&body.inner)?),
             },
 

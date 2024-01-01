@@ -73,6 +73,7 @@ pub enum Stmt {
         /// The span of the condition. Here we report the error from.
         condition_span: Span,
         condition: Box<Expr>,
+        message_span: Span,
         message: Box<Expr>,
     },
 
@@ -88,7 +89,11 @@ pub enum Stmt {
 #[derive(Clone, Debug)]
 pub enum Expr {
     /// A statement-like expression.
-    Stmt { stmt: Stmt, body: Box<Expr> },
+    Stmt {
+        stmt: Stmt,
+        body_span: Span,
+        body: Box<Expr>,
+    },
 
     /// Import an expression from a given file path.
     Import {
@@ -193,6 +198,7 @@ pub enum Expr {
     /// typecheck phase, the typechecker can decide to insert these nodes.
     CheckType {
         /// The span to highlight in case of a type error.
+        // TODO: There should also be a span for where the requirement came from.
         span: Span,
         /// The expected type that the expression has to fit.
         type_: types::Type,
