@@ -70,7 +70,7 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
         _ => at
             .error("Type mismatch.")
             .with_body(concat! {
-                "Expected a value of type (TODO: pprint-type):"
+                "Expected a value that fits the type (TODO: pprint-type):"
                 Doc::HardBreak Doc::HardBreak
                 indent! {
                     format!("{type_:?}")
