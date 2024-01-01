@@ -13,6 +13,7 @@ use std::rc::Rc;
 pub use crate::cst::{BinOp, UnOp};
 
 use crate::source::Span;
+use crate::types;
 
 /// An identifier.
 // TODO: Should we deduplicate idents, or even all strings, in a hash table?
@@ -183,6 +184,19 @@ pub enum Expr {
         op_span: Span,
         lhs: Box<Expr>,
         rhs: Box<Expr>,
+    },
+
+    /// Apply a dynamic type check.
+    ///
+    /// This node is not representable by the concrete syntax tree. After
+    /// parsing and abstracting, this node is not part of the AST. Only in the
+    /// typecheck phase, the typechecker can decide to insert these nodes.
+    CheckType {
+        /// The span to highlight in case of a type error.
+        span: Span,
+        /// The expected type that the expression has to fit.
+        type_: types::Type,
+        body: Box<Expr>,
     },
 }
 

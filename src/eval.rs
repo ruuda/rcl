@@ -130,7 +130,7 @@ pub struct Evaluator<'a> {
     /// The (static) environment for the types that are in scope.
     ///
     /// TODO: This will be removed with the static typechecker refactor.
-    pub type_env: crate::env::Env<Rc<Type>>,
+    pub type_env: crate::env::Env<Type>,
 }
 
 impl<'a> Evaluator<'a> {
@@ -529,6 +529,12 @@ impl<'a> Evaluator<'a> {
                 self.dec_eval_depth();
                 Ok(result)
             }
+
+            Expr::CheckType { span, type_, body } => {
+                let v = self.eval_expr(env, body)?;
+                typecheck::check_value(*span, &type_, &v)?;
+                Ok(v)
+            }
         }
     }
 
@@ -867,7 +873,7 @@ impl<'a> Evaluator<'a> {
                 // value fits the specified type.
                 if let Some(type_expr) = type_ {
                     let type_ = self.eval_type_expr(type_expr)?;
-                    typecheck::check_value(*ident_span, type_.as_ref(), &v)?;
+                    typecheck::check_value(*ident_span, &type_, &v)?;
                 }
 
                 env.push(ident.clone(), v);
@@ -1040,7 +1046,7 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    fn eval_type_expr(&mut self, type_: &AType) -> Result<Rc<Type>> {
+    fn eval_type_expr(&mut self, type_: &AType) -> Result<Type> {
         match type_ {
             AType::Term { span, name } => match self.type_env.lookup(name) {
                 Some(t) => Ok(t.clone()),
@@ -1078,7 +1084,7 @@ impl<'a> Evaluator<'a> {
                     args: args_types,
                     result: result_type,
                 };
-                Ok(Rc::new(Type::Function(fn_type)))
+                Ok(Type::Function(Rc::new(fn_type)))
             }
             AType::Apply { span, name, args } => {
                 let args_types = args
@@ -1091,15 +1097,16 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate type constructor application (generic instantiation).
-    fn eval_type_apply(
-        &mut self,
-        name_span: Span,
-        name: &str,
-        args: &[Rc<Type>],
-    ) -> Result<Rc<Type>> {
+    fn eval_type_apply(&mut self, name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
         match name {
             "Dict" => match args {
-                [tk, tv] => Ok(Rc::new(Type::Dict(tk.clone(), tv.clone()))),
+                [tk, tv] => {
+                    let dict = types::Dict {
+                        key: tk.clone(),
+                        value: tv.clone(),
+                    };
+                    Ok(Type::Dict(Rc::new(dict)))
+                }
                 // TODO: We can point at the excess or missing arg for a
                 // friendlier error, but better to do that in a general way
                 // when we add type contructors to `types::Type`.
@@ -1111,7 +1118,7 @@ impl<'a> Evaluator<'a> {
                     .err(),
             },
             "List" => match args {
-                [te] => Ok(Rc::new(Type::List(te.clone()))),
+                [te] => Ok(Type::List(Rc::new(te.clone()))),
                 // TODO: As above for dict, we can do a better job of the error.
                 _ => name_span
                     .error(concat! {
@@ -1121,7 +1128,7 @@ impl<'a> Evaluator<'a> {
                     .err(),
             },
             "Set" => match args {
-                [te] => Ok(Rc::new(Type::Set(te.clone()))),
+                [te] => Ok(Type::Set(Rc::new(te.clone()))),
                 // TODO: As above for dict, we can do a better job of the error.
                 _ => name_span
                     .error(concat! {
