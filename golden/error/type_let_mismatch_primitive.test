@@ -1,0 +1,15 @@
+let x: Int = "not an int";
+x
+
+# output:
+stdin:1:5
+  ╷
+1 │ let x: Int = "not an int";
+  ╵     ^
+Error: Type mismatch. Expected a value that fits the type (TODO: pprint-type):
+
+  Int
+
+But got value:
+
+  "not an int"
