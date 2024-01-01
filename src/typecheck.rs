@@ -16,9 +16,9 @@ use crate::error::{IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
-use crate::runtime::Value;
+use crate::runtime::{self, Value};
 use crate::source::Span;
-use crate::types::Type;
+use crate::types::{self, Type};
 
 /// Confirm that the value fits the given type.
 pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
@@ -58,8 +58,8 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
         }
 
         // The function type describes the different callable values.
-        (Type::Function { .. }, Value::Function { .. }) => {
-            unimplemented!("TODO: Typecheck function for Function.")
+        (Type::Function(fn_type), Value::Function(fn_val)) => {
+            check_function_value(at, fn_type, fn_val)
         }
         (Type::Function { .. }, Value::BuiltinFunction { .. }) => {
             unimplemented!("TODO: Typecheck function for BuiltinFunction.")
@@ -81,4 +81,30 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
             })
             .err(),
     }
+}
+
+pub fn check_function_value(
+    at: Span,
+    fn_type: &types::Function,
+    fn_value: &runtime::Function,
+) -> Result<()> {
+    if fn_type.args.len() != fn_value.args.len() {
+        return at
+            .error(concat! {
+                "Expected a function that takes "
+                fn_type.args.len().to_string()
+                " arguments, but got a function that takes "
+                fn_value.args.len().to_string()
+                " arguments."
+            })
+            .with_note(fn_value.span, "Function defined here.")
+            .err();
+    }
+
+    // TODO: Now that the arity is confirmed, we have to perform a static
+    // typecheck on the function body, with the arguments bound to the provided
+    // argument types, and then check that the resulting value fits the result
+    // type. So we have to implement the static typechecker ...
+    at.error("Typechecking function values is not yet supported.")
+        .err()
 }

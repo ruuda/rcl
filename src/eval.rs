@@ -20,7 +20,7 @@ use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
 use crate::typecheck;
-use crate::types::Type;
+use crate::types::{self, Type};
 
 /// An entry on the evaluation stack.
 pub struct EvalContext {
@@ -998,11 +998,11 @@ impl<'a> Evaluator<'a> {
                     .map(|t| self.eval_type_expr(env, t))
                     .collect::<Result<Vec<_>>>()?;
                 let result_type = self.eval_type_expr(env, result)?;
-                let fn_type = Type::Function {
+                let fn_type = types::Function {
                     args: args_types,
                     result: result_type,
                 };
-                Ok(Rc::new(fn_type))
+                Ok(Rc::new(Type::Function(fn_type)))
             }
             AType::Apply { span, name, args } => {
                 let args_types = args

@@ -39,10 +39,10 @@ pub fn format_type(type_: &Type) -> Doc {
         },
 
         // The function type.
-        Type::Function { args, result } => concat! {
-            format_types("(", args, ")")
+        Type::Function(func) => concat! {
+            format_types("(", func.args.iter(), ")")
             " -> "
-            format_type(result)
+            format_type(func.result.as_ref())
         },
     }
 }

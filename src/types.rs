@@ -34,8 +34,12 @@ pub enum Type {
     Set(Rc<Type>),
 
     /// A function.
-    Function {
-        args: Vec<Rc<Type>>,
-        result: Rc<Type>,
-    },
+    Function(Function),
+}
+
+/// A function type.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct Function {
+    pub args: Vec<Rc<Type>>,
+    pub result: Rc<Type>,
 }
