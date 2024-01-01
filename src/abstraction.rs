@@ -112,6 +112,7 @@ impl<'a> Abstractor<'a> {
                 value,
                 ..
             } => AStmt::Let {
+                ident_span: *ident,
                 ident: ident.resolve(self.input).into(),
                 type_: match type_ {
                     None => None,

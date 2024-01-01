@@ -304,3 +304,11 @@ everything be `dynamic`, and validate that values have the right type on let
 bindings at runtime. In this light, my planned initial approach that felt like
 an ad-hoc hack has some more solid theory behind it, now I am more confident
 about it.
+
+Although the dynamic approach considers the following fine:
+
+    let y: List[String] = [];
+    let x: List[Int] = y;
+    x
+
+and probably that should be a type error. But it's a good start.
