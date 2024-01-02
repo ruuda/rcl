@@ -335,11 +335,7 @@ impl<'a> Evaluator<'a> {
                 let result = match cond {
                     Value::Bool(true) => self.eval_expr(env, body_then),
                     Value::Bool(false) => self.eval_expr(env, body_else),
-                    _ => {
-                        // TODO: Make this a type error.
-                        let err = condition_span.error("Condition should be a boolean.");
-                        Err(err.into())
-                    }
+                    _ => unreachable!("The typechecker ensures the condition is a Bool."),
                 };
                 self.dec_eval_depth();
                 result
@@ -905,12 +901,7 @@ impl<'a> Evaluator<'a> {
                             .with_body(body.into_owned())
                             .err();
                     }
-                    _ => {
-                        // TODO: Report a proper type error.
-                        return condition_span
-                            .error("Assertion condition must evaluate to a boolean.")
-                            .err();
-                    }
+                    _ => unreachable!("The typechecker ensures the condition is a Bool."),
                 }
             }
             Stmt::Trace {
