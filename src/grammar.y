@@ -100,9 +100,14 @@ fstring
   ;
 
 stmt
-  : "let" IDENT '=' expr ';'
+  : "let" IDENT optional_type_hint '=' expr ';'
   | "assert" expr ',' expr ';'
   | "trace" expr ';'
+  ;
+
+optional_type_hint
+  : %empty
+  | ':' type_expr
   ;
 
 seqs
@@ -123,3 +128,23 @@ seq
   ;
 
 idents: IDENT | idents ',' IDENT;
+
+type_expr
+  // Note, we could allow single-argument function types without the parens as
+  // well, but let's keep it simple for now and require the parens on function
+  // types.
+  : '(' types ')' "->" type_expr
+  | type_term '[' types ']'
+  | type_term
+  ;
+
+types
+  : %empty
+  | type_expr
+  | type_expr ',' type_expr
+  ;
+
+type_term
+  : IDENT
+  | STRING
+  ;

@@ -122,6 +122,7 @@ pub enum Stmt {
     /// A let-binding that binds `value` to the name `ident` in `body`.
     Let {
         ident: Span,
+        type_: Option<Box<Type>>,
         value_span: Span,
         value: Box<Expr>,
     },
@@ -341,5 +342,27 @@ pub enum Seq {
         condition_span: Span,
         condition: Box<Expr>,
         body: Box<Prefixed<Seq>>,
+    },
+}
+
+#[derive(Debug)]
+pub enum Type {
+    /// A term is a named type, not necessarily primitive.
+    ///
+    /// For example, `Int` (primitive), or `Widget` (user-defined).
+    Term(Span),
+
+    /// Instantiate a generic type; apply a type constructor.
+    ///
+    /// For example, `Dict[k, v]`.
+    Apply {
+        name: Span,
+        args: Box<[Prefixed<Type>]>,
+    },
+
+    /// A function type with zero or more arguments, and one result type.
+    Function {
+        args: Box<[Prefixed<Type>]>,
+        result: Box<Type>,
     },
 }

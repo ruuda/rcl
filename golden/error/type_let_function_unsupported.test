@@ -1,0 +1,9 @@
+let f: (Int, String) -> Bool = (n, s) => false;
+null
+
+# output:
+stdin:1:5
+  ╷
+1 │ let f: (Int, String) -> Bool = (n, s) => false;
+  ╵     ^
+Error: Typechecking function values is not yet supported.

@@ -173,8 +173,11 @@ pub enum Token {
     /// `!=`
     Neq,
 
+    /// `->`
+    ThinArrow,
+
     /// `=>`
-    Arrow,
+    FatArrow,
 
     /// `=` (a single equals sign)
     Eq1,
@@ -629,7 +632,8 @@ impl<'a> Lexer<'a> {
             b">=" => Token::GtEq,
             b"==" => Token::Eq2,
             b"!=" => Token::Neq,
-            b"=>" => Token::Arrow,
+            b"->" => Token::ThinArrow,
+            b"=>" => Token::FatArrow,
             _ => return None,
         };
 

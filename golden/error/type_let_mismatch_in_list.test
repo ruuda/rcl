@@ -1,0 +1,15 @@
+let xs: List[Int] = ["not an int"];
+xs
+
+# output:
+stdin:1:5
+  ╷
+1 │ let xs: List[Int] = ["not an int"];
+  ╵     ^~
+Error: Type mismatch. Expected a value that fits this type:
+
+  Int
+
+But got this value:
+
+  "not an int"

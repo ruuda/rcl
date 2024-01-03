@@ -145,7 +145,7 @@ impl App {
                 // Then we bind that to the variable `input`, and in that context, we
                 // evaluate the query expression.
                 let mut env = Env::with_prelude();
-                env.push("input".into(), val_input);
+                env.push_value("input".into(), val_input);
                 let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
 
                 let full_span = self.loader.get_span(query);
