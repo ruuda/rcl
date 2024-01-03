@@ -12,6 +12,9 @@ use std::rc::Rc;
 /// A type.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Type {
+    /// Any value, the type is not statically known.
+    Dynamic,
+
     /// The primitive type `Bool`.
     Bool,
 
@@ -25,7 +28,7 @@ pub enum Type {
     String,
 
     /// A dict with the given key and value types.
-    Dict(Rc<Type>, Rc<Type>),
+    Dict(Rc<Dict>),
 
     /// A list with the given element type.
     List(Rc<Type>),
@@ -34,12 +37,19 @@ pub enum Type {
     Set(Rc<Type>),
 
     /// A function.
-    Function(Function),
+    Function(Rc<Function>),
+}
+
+/// The type parameters for the `Dict` type.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct Dict {
+    pub key: Type,
+    pub value: Type,
 }
 
 /// A function type.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Function {
-    pub args: Vec<Rc<Type>>,
-    pub result: Rc<Type>,
+    pub args: Vec<Type>,
+    pub result: Type,
 }

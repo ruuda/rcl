@@ -12,13 +12,29 @@
 //! but also for the type `List[String]`. Therefore we check whether a value
 //! _fits_ a particular type, and that same value may fit multiple types.
 
+use crate::ast::{Expr, Seq, Stmt};
 use crate::error::{IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
+use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{self, Value};
 use crate::source::Span;
 use crate::types::{self, Type};
+
+// Temporarily add a way to mark things as unfinished, without blocking the
+// fuzzer on it.
+#[cfg(not(fuzzing))]
+macro_rules! unfinished {
+    ($($arg:tt)*) => { unimplemented!($($arg)*) }
+}
+
+#[cfg(fuzzing)]
+macro_rules! unfinished {
+    ($($arg:tt)*) => {
+        Ok(())
+    };
+}
 
 /// Confirm that the value fits the given type.
 pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
@@ -47,12 +63,12 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
             }
             Ok(())
         }
-        (Type::Dict(key_type, value_type), Value::Dict(xs)) => {
+        (Type::Dict(kv), Value::Dict(xs)) => {
             for (k, v) in xs {
                 // TODO: Add typecheck context, otherwise it might look like we
                 // blame at top-level let.
-                check_value(at, key_type, k)?;
-                check_value(at, value_type, v)?;
+                check_value(at, &kv.key, k)?;
+                check_value(at, &kv.value, v)?;
             }
             Ok(())
         }
@@ -62,10 +78,10 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
             check_function_value(at, fn_type, fn_val)
         }
         (Type::Function { .. }, Value::BuiltinFunction { .. }) => {
-            unimplemented!("TODO: Typecheck function for BuiltinFunction.")
+            unfinished!("TODO: Typecheck function for BuiltinFunction.")
         }
         (Type::Function { .. }, Value::BuiltinMethod { .. }) => {
-            unimplemented!("TODO: Typecheck function for BuiltinMethod.")
+            unfinished!("TODO: Typecheck function for BuiltinMethod.")
         }
 
         _ => at
@@ -107,4 +123,290 @@ pub fn check_function_value(
     // type. So we have to implement the static typechecker ...
     at.error("Typechecking function values is not yet supported.")
         .err()
+}
+
+/// Report a static type error.
+///
+/// A static type error can be reported at typecheck time based on the AST, so
+/// the culprit is a syntactic construct, not a runtime value.
+///
+/// The `actual` message should be in the form of “Found «actual» instead”.
+fn type_error<T>(at: Span, expected: &Type, actual: &'static str) -> Result<T> {
+    // TODO: Generate a briefer error when the expected type is a primitive type.
+    at.error("Type mismatch.")
+        .with_body(concat! {
+            "Expected this type:"
+            Doc::HardBreak Doc::HardBreak
+            indent! { format_type(expected).into_owned() }
+            Doc::HardBreak Doc::HardBreak
+            "Found " Doc::from(actual).with_markup(Markup::Type) " instead."
+        })
+        .err()
+}
+
+/// Wrap the AST node in an `Expr::CheckType`.
+fn wrap_in_check_type(expr: &mut Expr, span: Span, expected: Type) {
+    // Wrap the existing expr in a `CheckType`. We have to
+    // sacrifice a temporary NullLit to the borrow checker.
+    let mut tmp = Expr::NullLit;
+    std::mem::swap(&mut tmp, expr);
+    *expr = Expr::CheckType {
+        span,
+        type_: expected,
+        body: Box::new(tmp),
+    };
+}
+
+pub type Env = crate::env::Env<Type>;
+
+pub struct TypeChecker {}
+
+impl TypeChecker {
+    pub fn new() -> TypeChecker {
+        TypeChecker {}
+    }
+
+    /// Check that an expression fits the expected type.
+    ///
+    /// This also updates the AST to replace statically known constructs.
+    /// For example, methods might be resolved at runtime, so `Expr::Field` can
+    /// be specialized. Typechecks that are statically removed can also be
+    /// removed from the evaluation phase.
+    pub fn check_expr(
+        &mut self,
+        env: &mut Env,
+        expected: &Type,
+        expr_span: Span,
+        expr: &mut Expr,
+    ) -> Result<()> {
+        match expr {
+            Expr::Stmt {
+                stmt,
+                body_span,
+                body,
+            } => {
+                let ck = env.checkpoint();
+                self.check_stmt(env, stmt)?;
+                self.check_expr(env, expected, *body_span, body)?;
+                env.pop(ck);
+                Ok(())
+            }
+
+            Expr::Import { path_span, path: _ } => {
+                // TODO: Confirm that the path is a string literal,
+                // we can do that here!
+
+                // The type of an import is always `Dynamic`. Though if that is
+                // the case, that removes one justification for having it be a
+                // keyword instead of a builtin method `std.import`. Because we
+                // can just type it: `std.import: (fname: String) -> Dynamic`.
+                // TODO: Re-evaluate that.
+                // TODO 2: Although ... I could feed the expected type all the
+                // way through the typecheck of the imported document. Then we
+                // can get way better type errors for e.g. importing json
+                // documents, because we can pinpoint violating *spans* instead
+                // of runtime values! We could even have both, a function in std,
+                // and the import construct. Then the function can import any
+                // dynamic path. But a function is maybe not needed.
+                // TODO 3: Also, import statements are good for multithreading,
+                // see also `ideas/multithreading.md` that I just wrote.
+                // ---
+                // If the expected type is also dynamic, that is fine; if the
+                // expected type is different, then we need to insert a runtime
+                // type check here.
+                if expected == &Type::Dynamic {
+                    Ok(())
+                } else {
+                    // TODO: The path span is the wrong span to blame the
+                    // type error on in case of a runtime type error; we
+                    // should get the obligation site (the annotation on the
+                    // let) from the caller.
+                    let blame_span = *path_span;
+                    // Wrap the existing expr in a `CheckType`. We have to
+                    // sacrifice a temporary NullLit to the borrow checker.
+                    wrap_in_check_type(expr, blame_span, expected.clone());
+                    Ok(())
+                }
+            }
+
+            Expr::BraceLit(_seq) => {
+                unfinished!("TODO: Typecheck brace literal.")
+            }
+
+            Expr::BracketLit(seqs) => {
+                let element_type = match expected {
+                    // If we don't have any requirements and we got a list,
+                    // then we don't have any requirements on the element type.
+                    Type::Dynamic => expected,
+                    // If we expected a list and got one, so far so good, but
+                    // now the elements have to match as well.
+                    Type::List(t) => t,
+                    _ => return type_error(expr_span, expected, "List"),
+                };
+                for seq in seqs {
+                    self.check_seq_scalar(env, element_type, seq)?;
+                }
+                Ok(())
+            }
+
+            Expr::NullLit => match expected {
+                Type::Dynamic => Ok(()),
+                Type::Null => Ok(()),
+                _ => type_error(expr_span, expected, "Null"),
+            },
+
+            Expr::BoolLit(..) => match expected {
+                Type::Dynamic => Ok(()),
+                Type::Bool => Ok(()),
+                _ => type_error(expr_span, expected, "Bool"),
+            },
+
+            Expr::StringLit(..) => match expected {
+                Type::Dynamic => Ok(()),
+                Type::String => Ok(()),
+                _ => type_error(expr_span, expected, "String"),
+            },
+
+            Expr::IntegerLit(..) => match expected {
+                Type::Dynamic => Ok(()),
+                Type::Int => Ok(()),
+                _ => type_error(expr_span, expected, "Int"),
+            },
+
+            // Format strings evaluate to string values, so they fit string types.
+            Expr::Format(..) => match expected {
+                Type::Dynamic => Ok(()),
+                Type::String => Ok(()),
+                _ => type_error(expr_span, expected, "String"),
+            },
+
+            Expr::IfThenElse {
+                condition_span,
+                condition,
+                body_then,
+                body_else,
+                ..
+            } => {
+                // The condition always has to be a boolean.
+                // TODO: Delete the runtime type check in the evaluator, this is
+                // now a static typecheck. See if we can make the error friendly.
+                self.check_expr(env, &Type::Bool, *condition_span, condition)?;
+                // TODO: Record the spans on then and else. For now I'll just
+                // put in the condition span as a temporary hack because I don't
+                // want to change everything all over the place.
+                self.check_expr(env, expected, *condition_span, body_then)?;
+                self.check_expr(env, expected, *condition_span, body_else)?;
+                Ok(())
+            }
+
+            Expr::Var { span, ident } => match (env.lookup(ident), expected) {
+                (None, _) => span.error("Unknown variable.").err(),
+
+                // If we don't expect a type statically, then anything is fine.
+                (_, Type::Dynamic) => Ok(()),
+
+                // If we do expect a type statically, but the type is not known
+                // statically, then we have to insert a runtime type check.
+                (Some(Type::Dynamic), _not_dynamic) => {
+                    let blame_span = *span;
+                    wrap_in_check_type(expr, blame_span, expected.clone());
+                    Ok(())
+                }
+
+                // If both types are known statically, we can confirm right now
+                // that the type fits.
+                (Some(t), _) => self.check_subtype(*span, expected, t),
+            },
+
+            Expr::Field { .. } => unfinished!("TODO: Implement typechecking fields."),
+
+            Expr::Function { .. } => unfinished!("TODO: Implement typechecking functions."),
+
+            Expr::Call { .. } => unfinished!("TODO: Implement typechecking calls."),
+
+            Expr::Index { .. } => unfinished!("TODO: Implement typechecking indexing."),
+
+            other => unfinished!("TODO: Implement typechecking {other:?}."),
+        }
+    }
+
+    fn check_seq_scalar(&mut self, _env: &mut Env, _expected: &Type, _seq: &mut Seq) -> Result<()> {
+        unfinished!("TODO: Typecheck seq.")
+    }
+
+    fn check_stmt(&mut self, env: &mut Env, stmt: &mut Stmt) -> Result<()> {
+        match stmt {
+            Stmt::Let {
+                ident_span,
+                ident,
+                type_,
+                value,
+            } => {
+                let expected = match type_ {
+                    None => Type::Dynamic,
+                    // TODO: Run the type expression evaluator here.
+                    Some(_type_expr) => Type::Dynamic,
+                };
+                // TODO: Should we gather the span for the expression, and blame
+                // the type error on the expression instead? Or is it nicer to
+                // blame it on the binding? Hmm...
+                // TODO: Check should also return an inferred type. In some cases
+                // it's easy to propagate types upwards, so we can store more
+                // accurate information in the let binding.
+                self.check_expr(env, &expected, *ident_span, value)?;
+                env.push(ident.clone(), expected);
+                Ok(())
+            }
+            Stmt::Assert {
+                condition_span,
+                condition,
+                message_span,
+                message,
+            } => {
+                // The condition has to be a boolean, the message can be any value.
+                self.check_expr(env, &Type::Bool, *condition_span, condition)?;
+                self.check_expr(env, &Type::Dynamic, *message_span, message)?;
+                Ok(())
+            }
+            Stmt::Trace {
+                message_span,
+                message,
+            } => self.check_expr(env, &Type::Dynamic, *message_span, message),
+        }
+    }
+
+    /// Check that `actual` is a subtype of `expected`.
+    ///
+    /// When a type is known for a particular variable, but we then try to use
+    /// that variable in a context where a particular type is expected, we have
+    /// to verify that the known type fits the expected type. For example, a
+    /// record that only has `Int` fields would fit the type `Dict[String, Int]`,
+    /// but not the other way around.
+    ///
+    /// Type errors will be attributed to the span `at`.
+    pub fn check_subtype(&mut self, at: Span, expected: &Type, actual: &Type) -> Result<()> {
+        match (expected, actual) {
+            // If we defer the typecheck to runtime, anything is allowed.
+            (Type::Dynamic, _) => Ok(()),
+
+            // Every type is a subtype of itself.
+            _ if expected == actual => Ok(()),
+
+            _ => {
+                // TODO: Generate a briefer error when the expected type is a primitive type,
+                // dedup between the `type_error` function.
+                at.error("Type mismatch.")
+                    .with_body(concat! {
+                        "Expected this type:"
+                        Doc::HardBreak Doc::HardBreak
+                        indent! { format_type(expected).into_owned() }
+                        Doc::HardBreak Doc::HardBreak
+                        "But got this type:"
+                        Doc::HardBreak Doc::HardBreak
+                        indent! { format_type(actual).into_owned() }
+                    })
+                    .err()
+            }
+        }
+    }
 }

@@ -88,7 +88,7 @@ impl<'a> Evaluator<'a> {
     /// Evaluate a document as the entry point of evaluation.
     pub fn eval_doc(&mut self, env: &mut Env, doc: DocId) -> Result<Rc<Value>> {
         debug_assert!(self.import_stack.is_empty());
-        let expr = self.loader.get_ast(doc)?;
+        let expr = self.loader.get_typechecked_ast(doc)?;
         let ctx = EvalContext {
             doc,
             imported_from: None,
@@ -125,7 +125,7 @@ impl<'a> Evaluator<'a> {
             return Err(err.into());
         }
 
-        let expr = self.loader.get_ast(doc)?;
+        let expr = self.loader.get_typechecked_ast(doc)?;
         let ctx = EvalContext {
             doc,
             imported_from: Some(imported_from),
@@ -242,19 +242,19 @@ impl<'a> Evaluator<'a> {
                 let result = match cond.as_ref() {
                     Value::Bool(true) => self.eval_expr(env, body_then),
                     Value::Bool(false) => self.eval_expr(env, body_else),
-                    _ => {
-                        // TODO: Make this a type error.
-                        let err = condition_span.error("Condition should be a boolean.");
-                        Err(err.into())
-                    }
+                    _ => unreachable!("The typechecker ensures the condition is a Bool."),
                 };
                 self.dec_eval_depth();
                 result
             }
 
-            Expr::Var { span, ident } => match env.lookup_value(ident) {
+            Expr::Var { ident, .. } => match env.lookup_value(ident) {
                 Some(value) => Ok(value.clone()),
-                None => Err(span.error("Unknown variable.").into()),
+                // TODO: The typechecker could replace all variable lookups with
+                // an index into the bindings stack, then we can skip the lookup,
+                // and we don't have to handle this case (except though implicit
+                // bounds checks).
+                None => unreachable!("If it passed the typechecker, the variable exists."),
             },
 
             Expr::Field {
@@ -343,7 +343,7 @@ impl<'a> Evaluator<'a> {
                 }
             }
 
-            Expr::Stmt { stmt, body } => {
+            Expr::Stmt { stmt, body, .. } => {
                 let ck = env.checkpoint();
                 self.eval_stmt(env, stmt)?;
                 let result = self.eval_expr(env, body)?;
@@ -428,6 +428,12 @@ impl<'a> Evaluator<'a> {
                 let result = self.eval_binop(*op, *op_span, lhs, rhs)?;
                 self.dec_eval_depth();
                 Ok(result)
+            }
+
+            Expr::CheckType { span, type_, body } => {
+                let v = self.eval_expr(env, body)?;
+                typecheck::check_value(*span, &type_, v.as_ref())?;
+                Ok(v)
             }
         }
     }
@@ -769,7 +775,7 @@ impl<'a> Evaluator<'a> {
                 // value fits the specified type.
                 if let Some(type_expr) = type_ {
                     let type_ = self.eval_type_expr(env, type_expr)?;
-                    typecheck::check_value(*ident_span, type_.as_ref(), v.as_ref())?;
+                    typecheck::check_value(*ident_span, &type_, v.as_ref())?;
                 }
 
                 env.push_value(ident.clone(), v);
@@ -778,6 +784,7 @@ impl<'a> Evaluator<'a> {
                 condition_span,
                 condition,
                 message: message_expr,
+                ..
             } => {
                 let v = self.eval_expr(env, condition)?;
                 match *v {
@@ -798,12 +805,7 @@ impl<'a> Evaluator<'a> {
                             .with_body(body.into_owned())
                             .err();
                     }
-                    _ => {
-                        // TODO: Report a proper type error.
-                        return condition_span
-                            .error("Assertion condition must evaluate to a boolean.")
-                            .err();
-                    }
+                    _ => unreachable!("The typechecker ensures the condition is a Bool."),
                 }
             }
             Stmt::Trace {
@@ -943,7 +945,7 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    fn eval_type_expr(&mut self, env: &mut Env, type_: &AType) -> Result<Rc<Type>> {
+    fn eval_type_expr(&mut self, env: &mut Env, type_: &AType) -> Result<Type> {
         match type_ {
             AType::Term { span, name } => match env.lookup_type(name) {
                 Some(t) => Ok(t.clone()),
@@ -981,7 +983,7 @@ impl<'a> Evaluator<'a> {
                     args: args_types,
                     result: result_type,
                 };
-                Ok(Rc::new(Type::Function(fn_type)))
+                Ok(Type::Function(Rc::new(fn_type)))
             }
             AType::Apply { span, name, args } => {
                 let args_types = args
@@ -994,15 +996,16 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate type constructor application (generic instantiation).
-    fn eval_type_apply(
-        &mut self,
-        name_span: Span,
-        name: &str,
-        args: &[Rc<Type>],
-    ) -> Result<Rc<Type>> {
+    fn eval_type_apply(&mut self, name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
         match name {
             "Dict" => match args {
-                [tk, tv] => Ok(Rc::new(Type::Dict(tk.clone(), tv.clone()))),
+                [tk, tv] => {
+                    let dict = types::Dict {
+                        key: tk.clone(),
+                        value: tv.clone(),
+                    };
+                    Ok(Type::Dict(Rc::new(dict)))
+                }
                 // TODO: We can point at the excess or missing arg for a
                 // friendlier error, but better to do that in a general way
                 // when we add type contructors to `types::Type`.
@@ -1014,7 +1017,7 @@ impl<'a> Evaluator<'a> {
                     .err(),
             },
             "List" => match args {
-                [te] => Ok(Rc::new(Type::List(te.clone()))),
+                [te] => Ok(Type::List(Rc::new(te.clone()))),
                 // TODO: As above for dict, we can do a better job of the error.
                 _ => name_span
                     .error(concat! {
@@ -1024,7 +1027,7 @@ impl<'a> Evaluator<'a> {
                     .err(),
             },
             "Set" => match args {
-                [te] => Ok(Rc::new(Type::Set(te.clone()))),
+                [te] => Ok(Type::Set(Rc::new(te.clone()))),
                 // TODO: As above for dict, we can do a better job of the error.
                 _ => name_span
                     .error(concat! {
