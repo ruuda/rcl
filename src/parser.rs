@@ -661,7 +661,8 @@ impl<'a> Parser<'a> {
         self.check_bad_unop()?;
 
         if self.peek().and_then(to_unop).is_some() {
-            return self.parse_expr_unop();
+            let (_span, result) = self.parse_expr_unop()?;
+            return Ok(result);
         }
 
         // Instead of an operator chain, it could still be an import or lambda,
@@ -673,7 +674,7 @@ impl<'a> Parser<'a> {
             return self.parse_expr_import();
         }
 
-        let mut result = self.parse_expr_not_op()?;
+        let (_span, mut result) = self.parse_expr_not_op()?;
 
         // We might have binary operators following. If we find one, then
         // all the other ones must be of the same type, to avoid unclear
@@ -687,7 +688,7 @@ impl<'a> Parser<'a> {
                 Some(op) if allowed_op.is_none() || allowed_op == Some(op) => {
                     let span = self.consume();
                     self.skip_non_code()?;
-                    let rhs = self.parse_expr_not_op()?;
+                    let (_span, rhs) = self.parse_expr_not_op()?;
                     allowed_span = Some(span);
                     allowed_op = Some(op);
                     result = Expr::BinOp {
@@ -710,7 +711,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expr_unop(&mut self) -> Result<Expr> {
+    fn parse_expr_unop(&mut self) -> Result<(Span, Expr)> {
         let op = self
             .peek()
             .and_then(to_unop)
@@ -720,15 +721,16 @@ impl<'a> Parser<'a> {
         self.check_bad_unop()?;
 
         // Nested unary expressions are okay.
-        let body = if self.peek().and_then(to_unop).is_some() {
+        let (body_span, body) = if self.peek().and_then(to_unop).is_some() {
             self.parse_expr_unop()?
         } else {
             self.parse_expr_not_op()?
         };
 
         let result = Expr::UnOp {
-            op,
             op_span: span,
+            op,
+            body_span,
             body: Box::new(body),
         };
 
@@ -749,10 +751,11 @@ impl<'a> Parser<'a> {
                 .err();
         }
 
-        Ok(result)
+        let result_span = span.until(body_span);
+        Ok((result_span, result))
     }
 
-    fn parse_expr_not_op(&mut self) -> Result<Expr> {
+    fn parse_expr_not_op(&mut self) -> Result<(Span, Expr)> {
         // TODO: check for operators before, and report a pretty error
         // to clarify that parens must be used to disambiguate.
         let before = self.peek_span();
@@ -802,7 +805,10 @@ impl<'a> Parser<'a> {
                         inner: Box::new(result),
                     };
                 }
-                _ => return Ok(result),
+                _ => {
+                    let result_span = before.until(self.peek_span());
+                    return Ok((result_span, result));
+                }
             }
         }
     }

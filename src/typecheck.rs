@@ -12,7 +12,9 @@
 //! but also for the type `List[String]`. Therefore we check whether a value
 //! _fits_ a particular type, and that same value may fit multiple types.
 
-use crate::ast::{Expr, Seq, Stmt};
+use std::rc::Rc;
+
+use crate::ast::{Expr, Seq, Stmt, UnOp};
 use crate::error::{IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
@@ -191,13 +193,16 @@ impl TypeChecker {
     /// For example, methods might be resolved at runtime, so `Expr::Field` can
     /// be specialized. Typechecks that are statically removed can also be
     /// removed from the evaluation phase.
+    ///
+    /// Returns the inferred type of the expression, which is a subtype of the
+    /// expected type.
     pub fn check_expr(
         &mut self,
         env: &mut Env,
         expected: &Type,
         expr_span: Span,
         expr: &mut Expr,
-    ) -> Result<()> {
+    ) -> Result<Type> {
         match expr {
             Expr::Stmt {
                 stmt,
@@ -206,9 +211,9 @@ impl TypeChecker {
             } => {
                 let ck = env.checkpoint();
                 self.check_stmt(env, stmt)?;
-                self.check_expr(env, expected, *body_span, body)?;
+                let t = self.check_expr(env, expected, *body_span, body)?;
                 env.pop(ck);
-                Ok(())
+                Ok(t)
             }
 
             Expr::Import { path_span, path: _ } => {
@@ -219,32 +224,19 @@ impl TypeChecker {
                 // the case, that removes one justification for having it be a
                 // keyword instead of a builtin method `std.import`. Because we
                 // can just type it: `std.import: (fname: String) -> Dynamic`.
-                // TODO: Re-evaluate that.
-                // TODO 2: Although ... I could feed the expected type all the
-                // way through the typecheck of the imported document. Then we
-                // can get way better type errors for e.g. importing json
-                // documents, because we can pinpoint violating *spans* instead
-                // of runtime values! We could even have both, a function in std,
-                // and the import construct. Then the function can import any
-                // dynamic path. But a function is maybe not needed.
-                // TODO 3: Also, import statements are good for multithreading,
-                // see also `ideas/multithreading.md` that I just wrote.
-                // ---
                 // If the expected type is also dynamic, that is fine; if the
                 // expected type is different, then we need to insert a runtime
                 // type check here.
                 if expected == &Type::Dynamic {
-                    Ok(())
+                    Ok(Type::Dynamic)
                 } else {
                     // TODO: The path span is the wrong span to blame the
                     // type error on in case of a runtime type error; we
                     // should get the obligation site (the annotation on the
                     // let) from the caller.
                     let blame_span = *path_span;
-                    // Wrap the existing expr in a `CheckType`. We have to
-                    // sacrifice a temporary NullLit to the borrow checker.
                     wrap_in_check_type(expr, blame_span, expected.clone());
-                    Ok(())
+                    Ok(expected.clone())
                 }
             }
 
@@ -256,46 +248,52 @@ impl TypeChecker {
                 let element_type = match expected {
                     // If we don't have any requirements and we got a list,
                     // then we don't have any requirements on the element type.
-                    Type::Dynamic => expected,
+                    Type::Dynamic => &Type::Dynamic,
                     // If we expected a list and got one, so far so good, but
                     // now the elements have to match as well.
                     Type::List(t) => t,
                     _ => return type_error(expr_span, expected, "List"),
                 };
+                let mut et = Type::Void;
                 for seq in seqs {
-                    self.check_seq_scalar(env, element_type, seq)?;
+                    let t = self.check_seq_scalar(env, element_type, seq)?;
+                    et = et.meet(&t);
+                    // A reasonable expectation is that because each of the
+                    // elements have an inferred type that is a subtype of the
+                    // expected element type, then their meet is also a subtype.
+                    // But that is only true if we return the _least_ upper
+                    // bound, and that is tricky to get right, so verify that here.
+                    debug_assert!(
+                        self.check_subtype(expr_span, element_type, &et).is_ok(),
+                        "Meet of all elements should be a subtype of the expected element type.",
+                    );
                 }
-                Ok(())
+                Ok(Type::List(Rc::new(et)))
             }
 
             Expr::NullLit => match expected {
-                Type::Dynamic => Ok(()),
-                Type::Null => Ok(()),
+                Type::Dynamic | Type::Null => Ok(Type::Null),
                 _ => type_error(expr_span, expected, "Null"),
             },
 
             Expr::BoolLit(..) => match expected {
-                Type::Dynamic => Ok(()),
-                Type::Bool => Ok(()),
+                Type::Dynamic | Type::Bool => Ok(Type::Bool),
                 _ => type_error(expr_span, expected, "Bool"),
             },
 
             Expr::StringLit(..) => match expected {
-                Type::Dynamic => Ok(()),
-                Type::String => Ok(()),
+                Type::Dynamic | Type::String => Ok(Type::String),
                 _ => type_error(expr_span, expected, "String"),
             },
 
             Expr::IntegerLit(..) => match expected {
-                Type::Dynamic => Ok(()),
-                Type::Int => Ok(()),
+                Type::Dynamic | Type::Int => Ok(Type::Int),
                 _ => type_error(expr_span, expected, "Int"),
             },
 
             // Format strings evaluate to string values, so they fit string types.
             Expr::Format(..) => match expected {
-                Type::Dynamic => Ok(()),
-                Type::String => Ok(()),
+                Type::Dynamic | Type::String => Ok(Type::String),
                 _ => type_error(expr_span, expected, "String"),
             },
 
@@ -313,28 +311,36 @@ impl TypeChecker {
                 // TODO: Record the spans on then and else. For now I'll just
                 // put in the condition span as a temporary hack because I don't
                 // want to change everything all over the place.
-                self.check_expr(env, expected, *condition_span, body_then)?;
-                self.check_expr(env, expected, *condition_span, body_else)?;
-                Ok(())
+                let tt = self.check_expr(env, expected, *condition_span, body_then)?;
+                let te = self.check_expr(env, expected, *condition_span, body_else)?;
+                let t = tt.meet(&te);
+                debug_assert!(
+                    self.check_subtype(expr_span, expected, &t).is_ok(),
+                    "Meet of the branches should be a subtype of the expected type.",
+                );
+                Ok(t)
             }
 
             Expr::Var { span, ident } => match (env.lookup(ident), expected) {
                 (None, _) => span.error("Unknown variable.").err(),
 
                 // If we don't expect a type statically, then anything is fine.
-                (_, Type::Dynamic) => Ok(()),
+                (Some(t), Type::Dynamic) => Ok(t.clone()),
 
                 // If we do expect a type statically, but the type is not known
                 // statically, then we have to insert a runtime type check.
                 (Some(Type::Dynamic), _not_dynamic) => {
                     let blame_span = *span;
                     wrap_in_check_type(expr, blame_span, expected.clone());
-                    Ok(())
+                    Ok(expected.clone())
                 }
 
                 // If both types are known statically, we can confirm right now
                 // that the type fits.
-                (Some(t), _) => self.check_subtype(*span, expected, t),
+                (Some(t), _) => {
+                    self.check_subtype(*span, expected, t)?;
+                    Ok(t.clone())
+                }
             },
 
             Expr::Field { .. } => unfinished!("TODO: Implement typechecking fields."),
@@ -345,11 +351,49 @@ impl TypeChecker {
 
             Expr::Index { .. } => unfinished!("TODO: Implement typechecking indexing."),
 
-            other => unfinished!("TODO: Implement typechecking {other:?}."),
+            Expr::UnOp { op, body_span, body, .. } => self.check_unop(env, expected, expr_span, *op, *body_span, body),
+
+            Expr::BinOp { .. } => unfinished!("TODO: Implement typechecking BinOp."),
+
+            Expr::CheckType { .. } => panic!(
+                "CheckType is inserted by the typechecker, it should not be present before checking."
+            ),
         }
     }
 
-    fn check_seq_scalar(&mut self, _env: &mut Env, _expected: &Type, _seq: &mut Seq) -> Result<()> {
+    fn check_unop(
+        &mut self,
+        env: &mut Env,
+        expected: &Type,
+        expr_span: Span,
+        op: UnOp,
+        body_span: Span,
+        body: &mut Expr,
+    ) -> Result<Type> {
+        match op {
+            UnOp::Neg => match expected {
+                Type::Dynamic | Type::Int => {
+                    self.check_expr(env, &Type::Int, body_span, body)?;
+                    Ok(Type::Int)
+                }
+                _ => type_error(expr_span, expected, "Int"),
+            },
+            UnOp::Not => match expected {
+                Type::Dynamic | Type::Bool => {
+                    self.check_expr(env, &Type::Bool, body_span, body)?;
+                    Ok(Type::Bool)
+                }
+                _ => type_error(expr_span, expected, "Bool"),
+            },
+        }
+    }
+
+    fn check_seq_scalar(
+        &mut self,
+        _env: &mut Env,
+        _expected: &Type,
+        _seq: &mut Seq,
+    ) -> Result<Type> {
         unfinished!("TODO: Typecheck seq.")
     }
 
@@ -369,11 +413,18 @@ impl TypeChecker {
                 // TODO: Should we gather the span for the expression, and blame
                 // the type error on the expression instead? Or is it nicer to
                 // blame it on the binding? Hmm...
-                // TODO: Check should also return an inferred type. In some cases
-                // it's easy to propagate types upwards, so we can store more
-                // accurate information in the let binding.
-                self.check_expr(env, &expected, *ident_span, value)?;
-                env.push(ident.clone(), expected);
+                let inferred = self.check_expr(env, &expected, *ident_span, value)?;
+
+                // The inferred type is at least as precise as the expected type,
+                // as it is a subtype. But when a user specifies a type for a
+                // variable, we should bind exactly that type, even if it means
+                // losing information.
+                let bound_type = match type_ {
+                    None => inferred,
+                    Some(_) => expected,
+                };
+                env.push(ident.clone(), bound_type);
+
                 Ok(())
             }
             Stmt::Assert {
@@ -390,7 +441,10 @@ impl TypeChecker {
             Stmt::Trace {
                 message_span,
                 message,
-            } => self.check_expr(env, &Type::Dynamic, *message_span, message),
+            } => {
+                self.check_expr(env, &Type::Dynamic, *message_span, message)?;
+                Ok(())
+            }
         }
     }
 

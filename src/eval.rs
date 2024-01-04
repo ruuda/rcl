@@ -507,6 +507,7 @@ impl<'a> Evaluator<'a> {
                 op,
                 op_span,
                 body: value_expr,
+                ..
             } => {
                 self.inc_eval_depth(*op_span)?;
                 let value = self.eval_expr(env, value_expr)?;

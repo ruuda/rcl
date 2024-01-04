@@ -292,9 +292,15 @@ impl<'a> Abstractor<'a> {
                 index: Box::new(self.expr(&index.inner)?),
             },
 
-            CExpr::UnOp { op, op_span, body } => AExpr::UnOp {
-                op: *op,
+            CExpr::UnOp {
+                op_span,
+                op,
+                body_span,
+                body,
+            } => AExpr::UnOp {
                 op_span: *op_span,
+                op: *op,
+                body_span: *body_span,
                 body: Box::new(self.expr(body)?),
             },
 

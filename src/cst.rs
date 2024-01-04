@@ -274,8 +274,9 @@ pub enum Expr {
 
     /// A unary operator.
     UnOp {
-        op: UnOp,
         op_span: Span,
+        op: UnOp,
+        body_span: Span,
         body: Box<Expr>,
     },
 

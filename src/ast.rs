@@ -178,8 +178,9 @@ pub enum Expr {
 
     /// Apply a unary operator.
     UnOp {
-        op: UnOp,
         op_span: Span,
+        op: UnOp,
+        body_span: Span,
         body: Box<Expr>,
     },
 

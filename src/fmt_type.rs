@@ -17,6 +17,7 @@ use crate::types::Type;
 pub fn format_type(type_: &Type) -> Doc {
     match type_ {
         Type::Dynamic => Doc::from("Dynamic").with_markup(Markup::Type),
+        Type::Void => Doc::from("Void").with_markup(Markup::Type),
 
         // Primitive types.
         Type::Bool => Doc::from("Bool").with_markup(Markup::Type),
