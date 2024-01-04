@@ -14,7 +14,7 @@
 
 use std::rc::Rc;
 
-use crate::ast::{Expr, Seq, Stmt, UnOp};
+use crate::ast::{Expr, Seq, Stmt, Type as AType, UnOp};
 use crate::error::{IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
@@ -146,6 +146,107 @@ pub fn check_function_value(
     // type. So we have to implement the static typechecker ...
     at.error("Typechecking function values is not yet supported.")
         .err()
+}
+
+/// Parse a type expression.
+fn eval_type_expr(expr: &AType) -> Result<Type> {
+    match expr {
+        AType::Term { span, name } => match name.as_ref() {
+            "Bool" => Ok(Type::Bool),
+            "Int" => Ok(Type::Int),
+            "Null" => Ok(Type::Null),
+            "String" => Ok(Type::String),
+            "Dict" => span
+                .error("Expected a concrete type, but found uninstantiated generic type.")
+                .with_help(concat! {
+                    "'" Doc::highlight("Dict") "' without type parameters cannot be used directly."
+                    Doc::SoftBreak
+                    "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Int]") "'."
+                })
+                .err(),
+            "List" => span
+                .error("Expected a concrete type, but found uninstantiated generic type.")
+                .with_help(concat! {
+                    "'" Doc::highlight("List") "' without type parameters cannot be used directly."
+                    Doc::SoftBreak
+                    "Specify an element type, e.g. '" Doc::highlight("List[String]") "'."
+                })
+                .err(),
+            "Set" => span
+                .error("Expected a concrete type, but found uninstantiated generic type.")
+                .with_help(concat! {
+                    "'" Doc::highlight("Set") "' without type parameters cannot be used directly."
+                    Doc::SoftBreak
+                    "Specify an element type, e.g. '" Doc::highlight("Set[String]") "'."
+                })
+                .err(),
+            _ => span.error("Unknown type.").err(),
+        },
+        AType::Function { args, result } => {
+            let args_types = args
+                .iter()
+                .map(|t| eval_type_expr(t))
+                .collect::<Result<Vec<_>>>()?;
+            let result_type = eval_type_expr(result)?;
+            let fn_type = types::Function {
+                args: args_types,
+                result: result_type,
+            };
+            Ok(Type::Function(Rc::new(fn_type)))
+        }
+        AType::Apply { span, name, args } => {
+            let args_types = args
+                .iter()
+                .map(|t| eval_type_expr(t))
+                .collect::<Result<Vec<_>>>()?;
+            eval_type_apply(*span, name.as_ref(), &args_types)
+        }
+    }
+}
+
+/// Evaluate type constructor application (generic instantiation).
+fn eval_type_apply(name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
+    match name {
+        "Dict" => match args {
+            [tk, tv] => {
+                let dict = types::Dict {
+                    key: tk.clone(),
+                    value: tv.clone(),
+                };
+                Ok(Type::Dict(Rc::new(dict)))
+            }
+            // TODO: We can point at the excess or missing arg for a
+            // friendlier error, but better to do that in a general way
+            // when we add arbitrary type contructors to `types::Type`.
+            _ => name_span
+                .error(concat! {
+                    "Type 'Dict' takes two type parameters (key and value), but got "
+                    args.len().to_string() "."
+                })
+                .err(),
+        },
+        "List" => match args {
+            [te] => Ok(Type::List(Rc::new(te.clone()))),
+            // TODO: As above for dict, we can do a better job of the error.
+            _ => name_span
+                .error(concat! {
+                    "Type 'List' takes one type parameter (the element type), but got "
+                    args.len().to_string() "."
+                })
+                .err(),
+        },
+        "Set" => match args {
+            [te] => Ok(Type::Set(Rc::new(te.clone()))),
+            // TODO: As above for dict, we can do a better job of the error.
+            _ => name_span
+                .error(concat! {
+                    "Type 'Set' takes one type parameter (the element type), but got "
+                    args.len().to_string() "."
+                })
+                .err(),
+        },
+        _ => name_span.error("Unknown generic type.").err(),
+    }
 }
 
 /// Report a static type error.
@@ -370,21 +471,31 @@ impl TypeChecker {
         body_span: Span,
         body: &mut Expr,
     ) -> Result<Type> {
+        // For the operators, they determine the type, so we could immediately
+        // return an error top-down. But as a user, bottom-up is more natural,
+        // so we check the body first. For example, in
+        //
+        //     let x: Int = not 42;
+        //
+        // Already at the `not`, we know the result is Bool but we need Int, so
+        // that's an error. But there *another* error, which is applying `not`
+        // to an int, and if we report only one type error, that seems like it
+        // should come first, as it comes first in the evaluation order too.
         match op {
-            UnOp::Neg => match expected {
-                Type::Dynamic | Type::Int => {
-                    self.check_expr(env, &Type::Int, body_span, body)?;
-                    Ok(Type::Int)
+            UnOp::Neg => {
+                self.check_expr(env, &Type::Int, body_span, body)?;
+                match expected {
+                    Type::Dynamic | Type::Int => Ok(Type::Int),
+                    _ => type_error(expr_span, expected, "Int"),
                 }
-                _ => type_error(expr_span, expected, "Int"),
-            },
-            UnOp::Not => match expected {
-                Type::Dynamic | Type::Bool => {
-                    self.check_expr(env, &Type::Bool, body_span, body)?;
-                    Ok(Type::Bool)
+            }
+            UnOp::Not => {
+                self.check_expr(env, &Type::Bool, body_span, body)?;
+                match expected {
+                    Type::Dynamic | Type::Bool => Ok(Type::Bool),
+                    _ => type_error(expr_span, expected, "Bool"),
                 }
-                _ => type_error(expr_span, expected, "Bool"),
-            },
+            }
         }
     }
 
@@ -407,12 +518,12 @@ impl TypeChecker {
             } => {
                 let expected = match type_ {
                     None => Type::Dynamic,
-                    // TODO: Run the type expression evaluator here.
-                    Some(_type_expr) => Type::Dynamic,
+                    Some(type_expr) => eval_type_expr(type_expr)?,
                 };
                 // TODO: Should we gather the span for the expression, and blame
                 // the type error on the expression instead? Or is it nicer to
                 // blame it on the binding? Hmm...
+                // TODO 2: I think it is nicer to use the body than the ident.
                 let inferred = self.check_expr(env, &expected, *ident_span, value)?;
 
                 // The inferred type is at least as precise as the expected type,
