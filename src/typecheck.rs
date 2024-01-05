@@ -489,9 +489,13 @@ impl TypeChecker {
 
             Expr::Index { .. } => unfinished!("TODO: Implement typechecking indexing."),
 
-            Expr::UnOp { op, body_span, body, .. } => self.check_unop(env, expected, expr_span, *op, *body_span, body),
+            Expr::UnOp { op, body_span, body, .. } => self.check_unop(
+                env, expected, expr_span, *op, *body_span, body
+            ),
 
-            Expr::BinOp { op, lhs_span, lhs, rhs_span, rhs, .. } => self.check_binop(env, expected, expr_span, *op, *lhs_span, lhs, *rhs_span, rhs),
+            Expr::BinOp { op, lhs_span, lhs, rhs_span, rhs, .. } => self.check_binop(
+                env, expected, expr_span, *op, *lhs_span, lhs, *rhs_span, rhs
+            ),
 
             Expr::CheckType { .. } => panic!(
                 "CheckType is inserted by the typechecker, it should not be present before checking."
@@ -576,8 +580,79 @@ impl TypeChecker {
                 env.pop(ck);
                 Ok(t)
             }
-            Seq::For { .. } => {
-                unfinished!("TODO: Typecheck seq-for.")
+            Seq::For {
+                idents_span,
+                idents,
+                collection_span,
+                collection,
+                body,
+                ..
+            } => {
+                let collection_type =
+                    self.check_expr(env, &Type::Dynamic, *collection_span, collection)?;
+                let ck = env.checkpoint();
+
+                match collection_type {
+                    // If we don't know the type, we can't verify the number of
+                    // loop variables, and we don't know their types.
+                    Type::Dynamic => {
+                        for ident in idents {
+                            env.push(ident.clone(), Type::Dynamic);
+                        }
+                    }
+                    Type::Dict(dict) => {
+                        if idents.len() != 2 {
+                            // TODO: Deduplicate runtime error.
+                            return idents_span
+                                .error("Expected two variables in dict iteration.")
+                                .with_note(
+                                    *collection_span,
+                                    "This is a dict, it yields a key and value per iteration.",
+                                )
+                                .err();
+                        }
+                        env.push(idents[0].clone(), dict.key.clone());
+                        env.push(idents[1].clone(), dict.value.clone());
+                    }
+                    Type::List(element_type) => {
+                        if idents.len() != 1 {
+                            return idents_span
+                                .error("Expected a single variable.")
+                                .with_note(
+                                    *collection_span,
+                                    "This is a list, it yields one element per iteration.",
+                                )
+                                .err();
+                        }
+                        env.push(idents[0].clone(), (*element_type).clone());
+                    }
+                    Type::Set(element_type) => {
+                        if idents.len() != 1 {
+                            return idents_span
+                                .error("Expected a single variable.")
+                                .with_note(
+                                    *collection_span,
+                                    "This is a set, it yields one element per iteration.",
+                                )
+                                .err();
+                        }
+                        env.push(idents[0].clone(), (*element_type).clone());
+                    }
+                    not_collection => {
+                        return collection_span
+                            .error("This is not iterable.")
+                            .with_body(concat! {
+                                "Expected a collection, but got:"
+                                Doc::HardBreak Doc::HardBreak
+                                indent! { format_type(&not_collection).into_owned() }
+                            })
+                            .err()
+                    }
+                }
+
+                let t = self.check_seq(env, body, seq_type)?;
+                env.pop(ck);
+                Ok(t)
             }
             Seq::If {
                 condition_span,
