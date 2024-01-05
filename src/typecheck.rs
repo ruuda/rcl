@@ -445,7 +445,37 @@ impl TypeChecker {
 
             Expr::Function { .. } => unfinished!("TODO: Implement typechecking functions."),
 
-            Expr::Call { .. } => unfinished!("TODO: Implement typechecking calls."),
+            Expr::Call { function_span, function, args, .. } => {
+                let t = self.check_expr(env, &Type::Dynamic, *function_span, function)?;
+                match t {
+                    Type::Dynamic => {
+                        for (arg_span, arg) in args {
+                            self.check_expr(env, &Type::Dynamic, *arg_span, arg)?;
+                        }
+                        wrap_in_check_type(expr, expr_span, expected.clone());
+                        Ok(Type::Dynamic)
+                    }
+                    Type::Function(..) => {
+                        unfinished!("TODO: Statically check function call.");
+                    }
+                    not_callable => {
+                        // Even though we already know the call is a type error,
+                        // still typecheck the arguments and report any errors
+                        // there first, so errors match evaluation order.
+                        for (arg_span, arg) in args {
+                            self.check_expr(env, &Type::Dynamic, *arg_span, arg)?;
+                        }
+                        function_span
+                            .error("This cannot be called.")
+                            .with_body(concat!{
+                                "Expected a function, but got:"
+                                Doc::HardBreak Doc::HardBreak
+                                indent! { format_type(&not_callable).into_owned() }
+                            })
+                            .err()
+                    }
+                }
+            }
 
             Expr::Index { .. } => unfinished!("TODO: Implement typechecking indexing."),
 
