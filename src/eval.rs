@@ -871,9 +871,12 @@ impl<'a> Evaluator<'a> {
 
                 // If the let has a type annotation, then we verify that the
                 // value fits the specified type.
+                // TODO: This is no longer needed now that we have the separate
+                // typecheck phase. But for now I will keep it around as a sanity check.
                 if let Some(type_expr) = type_ {
                     let type_ = self.eval_type_expr(type_expr)?;
-                    typecheck::check_value(*ident_span, &type_, &v)?;
+                    let r = typecheck::check_value(*ident_span, &type_, &v);
+                    debug_assert!(r.is_ok());
                 }
 
                 env.push(ident.clone(), v);
