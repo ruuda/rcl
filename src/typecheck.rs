@@ -441,18 +441,28 @@ impl TypeChecker {
                 }
             },
 
-            Expr::Field { .. } => unfinished!("TODO: Implement typechecking fields."),
+            Expr::Field { inner, inner_span, .. } => {
+                self.check_expr(env, &Type::Dynamic, *inner_span, inner)?;
+                // At this point, we defer all field lookups to runtime checks.
+                // a few methods we could resolve statically already, but we need
+                // record types to really make this useful.
+                if expected != &Type::Dynamic {
+                    wrap_in_check_type(expr, expr_span, expected.clone());
+                }
+                Ok(Type::Dynamic)
+            }
 
             Expr::Function { .. } => unfinished!("TODO: Implement typechecking functions."),
 
             Expr::Call { function_span, function, args, .. } => {
-                let t = self.check_expr(env, &Type::Dynamic, *function_span, function)?;
-                match t {
+                match self.check_expr(env, &Type::Dynamic, *function_span, function)? {
                     Type::Dynamic => {
                         for (arg_span, arg) in args {
                             self.check_expr(env, &Type::Dynamic, *arg_span, arg)?;
                         }
-                        wrap_in_check_type(expr, expr_span, expected.clone());
+                        if expected != &Type::Dynamic {
+                            wrap_in_check_type(expr, expr_span, expected.clone());
+                        }
                         Ok(Type::Dynamic)
                     }
                     Type::Function(..) => {
