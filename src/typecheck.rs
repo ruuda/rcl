@@ -487,7 +487,38 @@ impl TypeChecker {
                 }
             }
 
-            Expr::Index { .. } => unfinished!("TODO: Implement typechecking indexing."),
+            Expr::Index { open, collection_span, collection, index_span, index, .. } => {
+                let collection_type = self.check_expr(env, &Type::Dynamic, *collection_span, collection)?;
+                match collection_type {
+                    Type::Dynamic => {
+                        self.check_expr(env, &Type::Dynamic, *index_span, index)?;
+                        if expected != &Type::Dynamic {
+                            wrap_in_check_type(expr, expr_span, expected.clone());
+                        }
+                        Ok(expected.clone())
+                    }
+                    Type::List(element_type) => {
+                        self.check_expr(env, &Type::Int, *index_span, index)?;
+                        self.check_subtype(expr_span, expected, element_type.as_ref())?;
+                        Ok((*element_type).clone())
+                    }
+                    Type::Dict(dict) => {
+                        self.check_expr(env, &dict.key, *index_span, index)?;
+                        self.check_subtype(expr_span, expected, &dict.value)?;
+                        Ok(dict.value.clone())
+                    }
+                    not_indexable => {
+                        open
+                            .error("Indexing is not supported here.")
+                            .with_body(concat!{
+                                "Expected a dict or list, but got:"
+                                Doc::HardBreak Doc::HardBreak
+                                indent! { format_type(&not_indexable).into_owned() }
+                            })
+                            .err()
+                    }
+                }
+            }
 
             Expr::UnOp { op, body_span, body, .. } => self.check_unop(
                 env, expected, expr_span, *op, *body_span, body
