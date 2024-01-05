@@ -108,4 +108,12 @@ impl Type {
             _ => Type::Dynamic,
         }
     }
+
+    /// Return whether the type is not composite, i.e. is not composed of other types.
+    pub fn is_atom(&self) -> bool {
+        matches!(
+            self,
+            Type::Bool | Type::Int | Type::Null | Type::String | Type::Void | Type::Dynamic,
+        )
+    }
 }

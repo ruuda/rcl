@@ -256,16 +256,29 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
 ///
 /// The `actual` message should be in the form of “Found «actual» instead”.
 fn type_error<T>(at: Span, expected: &Type, actual: &'static str) -> Result<T> {
-    // TODO: Generate a briefer error when the expected type is a primitive type.
-    at.error("Type mismatch.")
-        .with_body(concat! {
-            "Expected this type:"
-            Doc::HardBreak Doc::HardBreak
-            indent! { format_type(expected).into_owned() }
-            Doc::HardBreak Doc::HardBreak
-            "Found " Doc::from(actual).with_markup(Markup::Type) " instead."
-        })
-        .err()
+    if expected.is_atom() {
+        // If the expected type is an atom, it is short, so we can format
+        // everything in a message that fits on one line.
+        at.error("Type mismatch.")
+            .with_body(concat! {
+                "Expected "
+                format_type(expected).into_owned()
+                " but found " Doc::from(actual).with_markup(Markup::Type) "."
+            })
+            .err()
+    } else {
+        // If one of the types is composite, then it may format as something big,
+        // so then we put the types on their own lines, indented.
+        at.error("Type mismatch.")
+            .with_body(concat! {
+                "Expected this type:"
+                Doc::HardBreak Doc::HardBreak
+                indent! { format_type(expected).into_owned() }
+                Doc::HardBreak Doc::HardBreak
+                "Found " Doc::from(actual).with_markup(Markup::Type) " instead."
+            })
+            .err()
+    }
 }
 
 /// Wrap the AST node in an `Expr::CheckType`.
