@@ -521,6 +521,7 @@ impl<'a> Evaluator<'a> {
                 op_span,
                 lhs: lhs_expr,
                 rhs: rhs_expr,
+                ..
             } => {
                 self.inc_eval_depth(*op_span)?;
                 let lhs = self.eval_expr(env, lhs_expr)?;

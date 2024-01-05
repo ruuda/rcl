@@ -164,9 +164,9 @@ impl<'a> Parser<'a> {
         self.span_stack.push(self.peek_span().start());
     }
 
-    /// Pop off the span stack and return the span that covers the source since the matching push.
-    fn end_span(&mut self) -> Span {
-        let start = self.span_stack.pop().expect("Span stack underflow.");
+    /// Peek the span stack and return the span that covers the source since the matching push.
+    fn peek_end_span(&mut self) -> Span {
+        let start = self.span_stack.last().expect("Span stack underflow.");
         let end = self.tokens[..self.cursor]
             .iter()
             .rev()
@@ -174,7 +174,14 @@ impl<'a> Parser<'a> {
             .map(|t| t.1.end())
             .next()
             .expect("If we pushed a start, we should find at least that.");
-        Span::new(self.doc, start, end)
+        Span::new(self.doc, *start, end)
+    }
+
+    /// Pop off the span stack and return the span that covers the source since the matching push.
+    fn end_span(&mut self) -> Span {
+        let result = self.peek_end_span();
+        self.span_stack.pop();
+        result
     }
 
     /// Push an opening bracket onto the stack of brackets when inside a query.
@@ -674,7 +681,7 @@ impl<'a> Parser<'a> {
             return self.parse_expr_import();
         }
 
-        let (_span, mut result) = self.parse_expr_not_op()?;
+        let (mut lhs_span, mut result) = self.parse_expr_not_op()?;
 
         // We might have binary operators following. If we find one, then
         // all the other ones must be of the same type, to avoid unclear
@@ -688,15 +695,18 @@ impl<'a> Parser<'a> {
                 Some(op) if allowed_op.is_none() || allowed_op == Some(op) => {
                     let span = self.consume();
                     self.skip_non_code()?;
-                    let (_span, rhs) = self.parse_expr_not_op()?;
+                    let (rhs_span, rhs) = self.parse_expr_not_op()?;
                     allowed_span = Some(span);
                     allowed_op = Some(op);
                     result = Expr::BinOp {
                         op,
                         op_span: span,
+                        lhs_span,
                         lhs: Box::new(result),
+                        rhs_span,
                         rhs: Box::new(rhs),
                     };
+                    lhs_span = lhs_span.union(rhs_span);
                 }
                 Some(_op) => {
                     return self.error(
@@ -758,16 +768,16 @@ impl<'a> Parser<'a> {
     fn parse_expr_not_op(&mut self) -> Result<(Span, Expr)> {
         // TODO: check for operators before, and report a pretty error
         // to clarify that parens must be used to disambiguate.
-        let before = self.peek_span();
-
+        self.begin_span();
         let mut result = self.parse_expr_term()?;
 
-        // TODO: This span is not necessarily minimal, it may include whitespace.
         loop {
+            // TODO: Could simplify with until though ...?
+            // before = self.peek_span();
+            let result_span = self.peek_end_span();
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::LParen) => {
-                    let result_span = before.until(self.peek_span());
                     let open = self.push_bracket()?;
                     let (args, suffix) = self.parse_call_args()?;
                     let close = self.pop_bracket()?;
@@ -781,7 +791,6 @@ impl<'a> Parser<'a> {
                     };
                 }
                 Some(Token::LBracket) => {
-                    let result_span = before.until(self.peek_span());
                     let open = self.push_bracket()?;
                     let (index_span, index) = self.parse_prefixed_expr()?;
                     let close = self.pop_bracket()?;
@@ -795,7 +804,6 @@ impl<'a> Parser<'a> {
                     };
                 }
                 Some(Token::Dot) => {
-                    let result_span = before.until(self.peek_span());
                     self.consume();
                     self.skip_non_code()?;
                     let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
@@ -806,7 +814,7 @@ impl<'a> Parser<'a> {
                     };
                 }
                 _ => {
-                    let result_span = before.until(self.peek_span());
+                    self.end_span();
                     return Ok((result_span, result));
                 }
             }

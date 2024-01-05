@@ -451,8 +451,7 @@ impl TypeChecker {
 
             Expr::UnOp { op, body_span, body, .. } => self.check_unop(env, expected, expr_span, *op, *body_span, body),
 
-            // TODO: Add the right spans to binop.
-            Expr::BinOp { op, lhs, rhs, .. } => self.check_binop(env, expected, expr_span, *op, expr_span, lhs, expr_span, rhs),
+            Expr::BinOp { op, lhs_span, lhs, rhs_span, rhs, .. } => self.check_binop(env, expected, expr_span, *op, *lhs_span, lhs, *rhs_span, rhs),
 
             Expr::CheckType { .. } => panic!(
                 "CheckType is inserted by the typechecker, it should not be present before checking."

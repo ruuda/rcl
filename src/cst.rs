@@ -295,9 +295,11 @@ pub enum Expr {
         // first form and reformat it to the second. We could store one NonCode
         // with the operator, but then we need to concatenate the noncode from
         // before and after, strip duplicate blanks, etc ... it would be messy.
-        op: BinOp,
         op_span: Span,
+        op: BinOp,
+        lhs_span: Span,
         lhs: Box<Expr>,
+        rhs_span: Span,
         rhs: Box<Expr>,
     },
 }

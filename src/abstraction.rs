@@ -305,14 +305,18 @@ impl<'a> Abstractor<'a> {
             },
 
             CExpr::BinOp {
-                op,
                 op_span,
+                op,
+                lhs_span,
                 lhs,
+                rhs_span,
                 rhs,
             } => AExpr::BinOp {
-                op: *op,
                 op_span: *op_span,
+                op: *op,
+                lhs_span: *lhs_span,
                 lhs: Box::new(self.expr(lhs)?),
+                rhs_span: *rhs_span,
                 rhs: Box::new(self.expr(rhs)?),
             },
         };

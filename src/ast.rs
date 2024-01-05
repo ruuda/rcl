@@ -186,9 +186,11 @@ pub enum Expr {
 
     /// Apply a binary operator.
     BinOp {
-        op: BinOp,
         op_span: Span,
+        op: BinOp,
+        lhs_span: Span,
         lhs: Box<Expr>,
+        rhs_span: Span,
         rhs: Box<Expr>,
     },
 
