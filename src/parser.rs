@@ -76,14 +76,6 @@ struct Parser<'a> {
     /// The depth of parsing expressions and sequences, to prevent stack
     /// overflow.
     depth: u32,
-
-    /// A stack of the starting points of the spans that we are currently parsing.
-    ///
-    /// This is used to provide full enclosing spans of parts of expressions.
-    /// For example, the condition of an if-else may itself be a complex
-    /// expression, and the CST nodes of the condition don't expose a single
-    /// span that covers it entirely, so we track this separately.
-    span_stack: Vec<usize>,
 }
 
 impl<'a> Parser<'a> {
@@ -96,7 +88,6 @@ impl<'a> Parser<'a> {
             bracket_stack: Vec::new(),
             comment_anchor: Span::new(doc, 0, 0),
             depth: 0,
-            span_stack: Vec::new(),
         }
     }
 
@@ -159,14 +150,8 @@ impl<'a> Parser<'a> {
         self.depth -= 1;
     }
 
-    /// Record the starting position of some span that we will later pop.
-    fn begin_span(&mut self) {
-        self.span_stack.push(self.peek_span().start());
-    }
-
-    /// Peek the span stack and return the span that covers the source since the matching push.
-    fn peek_end_span(&mut self) -> Span {
-        let start = self.span_stack.last().expect("Span stack underflow.");
+    /// Return the span from start until (but not including) the cursor, stripping trailing noncode.
+    fn span_from(&self, start: Span) -> Span {
         let end = self.tokens[..self.cursor]
             .iter()
             .rev()
@@ -174,14 +159,7 @@ impl<'a> Parser<'a> {
             .map(|t| t.1.end())
             .next()
             .expect("If we pushed a start, we should find at least that.");
-        Span::new(self.doc, *start, end)
-    }
-
-    /// Pop off the span stack and return the span that covers the source since the matching push.
-    fn end_span(&mut self) -> Span {
-        let result = self.peek_end_span();
-        self.span_stack.pop();
-        result
+        Span::new(self.doc, start.start(), end)
     }
 
     /// Push an opening bracket onto the stack of brackets when inside a query.
@@ -343,7 +321,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> Result<(Span, Expr)> {
-        self.begin_span();
+        let begin = self.peek_span();
         // TODO: This depth limit is not sustainable if my lets are recursive.
         // We need tail calls or loops to handle them in the parser ...
         self.increase_depth()?;
@@ -362,7 +340,7 @@ impl<'a> Parser<'a> {
         };
         self.decrease_depth();
 
-        Ok((self.end_span(), result))
+        Ok((self.span_from(begin), result))
     }
 
     fn parse_expr_if(&mut self) -> Result<Expr> {
@@ -768,13 +746,12 @@ impl<'a> Parser<'a> {
     fn parse_expr_not_op(&mut self) -> Result<(Span, Expr)> {
         // TODO: check for operators before, and report a pretty error
         // to clarify that parens must be used to disambiguate.
-        self.begin_span();
+
+        let begin = self.peek_span();
         let mut result = self.parse_expr_term()?;
 
         loop {
-            // TODO: Could simplify with until though ...?
-            // before = self.peek_span();
-            let result_span = self.peek_end_span();
+            let result_span = self.span_from(begin);
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::LParen) => {
@@ -813,10 +790,7 @@ impl<'a> Parser<'a> {
                         inner: Box::new(result),
                     };
                 }
-                _ => {
-                    self.end_span();
-                    return Ok((result_span, result));
-                }
+                _ => return Ok((result_span, result)),
             }
         }
     }
@@ -1120,7 +1094,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_seq(&mut self) -> Result<(Span, Seq)> {
-        self.begin_span();
+        let begin = self.peek_span();
 
         // Here we have a lookahead of two tokens ... not great if we want to
         // keep the grammar simple, but for making the syntax prettier it is
@@ -1171,7 +1145,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok((self.end_span(), result))
+        Ok((self.span_from(begin), result))
     }
 
     fn parse_seq_assoc_ident(&mut self) -> Result<Seq> {
