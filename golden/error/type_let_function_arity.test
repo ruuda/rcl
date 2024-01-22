@@ -2,14 +2,14 @@ let f: (Int, String) -> Bool = (x, y, z) => false;
 null
 
 # output:
-stdin:1:5
+stdin:1:32
   ╷
 1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
-  ╵     ^
-Error: Expected a function that takes 2 arguments, but got a function that takes 3 arguments.
+  ╵                                ^~~~~~~~~~~~~~~~~~
+Error: Arity mismatch. Expected a function that takes 2 arguments:
 
-stdin:1:42
-  ╷
-1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
-  ╵                                          ^~
-Note: Function defined here.
+  (Int, String) -> Bool
+
+But got a function that takes 3:
+
+  (Dynamic, Dynamic, Dynamic) -> Bool

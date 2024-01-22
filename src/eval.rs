@@ -504,13 +504,14 @@ impl<'a> Evaluator<'a> {
             ),
 
             Expr::TypedFunction {
-                span,
+                arrow_span,
                 args,
+                body_span: _,
                 body,
                 type_,
             } => {
                 let result = Function {
-                    span: *span,
+                    span: *arrow_span,
                     env: env.clone(),
                     args: args.clone(),
                     body: Rc::new((**body).clone()),
@@ -880,6 +881,7 @@ impl<'a> Evaluator<'a> {
                 ident_span,
                 ident,
                 type_,
+                value_span: _,
                 value,
             } => {
                 // Note, this is not a recursive let, the variable is not bound when

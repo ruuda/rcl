@@ -483,10 +483,7 @@ impl TypeChecker {
                 Ok(Type::Dynamic)
             }
 
-            Expr::Function { span, args, body } => {
-                // TODO: Collect the body span on function values.
-                let body_span = *span;
-
+            Expr::Function { arrow_span, args, body_span, body } => {
                 // Typecheck the body with no expectations, and no information
                 // about the argument type. If we do have an expected type, then
                 // we could push this information down, but it is simpler to infer
@@ -495,7 +492,7 @@ impl TypeChecker {
                 for arg in args.iter() {
                     env.push(arg.clone(), Type::Dynamic);
                 }
-                let result_type = self.check_expr(env, &Type::Dynamic, body_span, body)?;
+                let result_type = self.check_expr(env, &Type::Dynamic, *body_span, body)?;
                 env.pop(checkpoint);
 
                 let fn_type_inner = Rc::new(types::Function {
@@ -503,8 +500,7 @@ impl TypeChecker {
                     result: result_type,
                 });
                 let fn_type = Type::Function(fn_type_inner.clone());
-                // TODO: Get span of entire function.
-                fn_type.check_subtype_of(*span, expected)?;
+                fn_type.check_subtype_of(expr_span, expected)?;
 
                 // Now that we know the type of the function, preserve it in the
                 // AST, because we need it in the runtime value. We need to
@@ -515,8 +511,9 @@ impl TypeChecker {
                 std::mem::swap(&mut args_tmp, args);
                 std::mem::swap(&mut body_tmp, body);
                 *expr = Expr::TypedFunction {
-                    span: *span,
+                    arrow_span: *arrow_span,
                     args: args_tmp,
+                    body_span: *body_span,
                     body: body_tmp,
                     type_: fn_type_inner,
                 };
@@ -942,20 +939,17 @@ impl TypeChecker {
     fn check_stmt(&mut self, env: &mut Env, stmt: &mut Stmt) -> Result<()> {
         match stmt {
             Stmt::Let {
-                ident_span,
+                ident_span: _,
                 ident,
                 type_,
+                value_span,
                 value,
             } => {
                 let expected = match type_ {
                     None => Type::Dynamic,
                     Some(type_expr) => eval_type_expr(type_expr)?,
                 };
-                // TODO: Should we gather the span for the expression, and blame
-                // the type error on the expression instead? Or is it nicer to
-                // blame it on the binding? Hmm...
-                // TODO 2: I think it is nicer to use the body than the ident.
-                let inferred = self.check_expr(env, &expected, *ident_span, value)?;
+                let inferred = self.check_expr(env, &expected, *value_span, value)?;
 
                 // The inferred type is at least as precise as the expected type,
                 // as it is a subtype. But when a user specifies a type for a

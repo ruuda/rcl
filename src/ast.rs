@@ -65,6 +65,7 @@ pub enum Stmt {
         ident_span: Span,
         ident: Ident,
         type_: Option<Box<Type>>,
+        value_span: Span,
         value: Box<Expr>,
     },
 
@@ -151,8 +152,9 @@ pub enum Expr {
     /// [`Expr::Function`] nodes to [`Expr::TypedFunction`].
     Function {
         /// The span of the `=>`.
-        span: Span,
+        arrow_span: Span,
         args: Vec<Ident>,
+        body_span: Span,
         body: Box<Expr>,
     },
 
@@ -217,8 +219,9 @@ pub enum Expr {
     /// [`Expr::Function`] nodes to [`Expr::TypedFunction`].
     TypedFunction {
         /// The span of the `=>`.
-        span: Span,
+        arrow_span: Span,
         args: Vec<Ident>,
+        body_span: Span,
         body: Box<Expr>,
         // The statically inferred type of this function.
         type_: Rc<types::Function>,

@@ -109,6 +109,7 @@ impl<'a> Abstractor<'a> {
             CStmt::Let {
                 ident,
                 type_,
+                value_span,
                 value,
                 ..
             } => AStmt::Let {
@@ -118,6 +119,7 @@ impl<'a> Abstractor<'a> {
                     None => None,
                     Some(t) => Some(Box::new(self.type_expr(t)?)),
                 },
+                value_span: *value_span,
                 value: Box::new(self.expr(value)?),
             },
             CStmt::Assert {
@@ -248,13 +250,18 @@ impl<'a> Abstractor<'a> {
             },
 
             CExpr::Function {
-                span, args, body, ..
+                arrow_span,
+                args,
+                body_span,
+                body,
+                ..
             } => AExpr::Function {
-                span: *span,
+                arrow_span: *arrow_span,
                 args: args
                     .iter()
                     .map(|arg| arg.inner.resolve(self.input).into())
                     .collect(),
+                body_span: *body_span,
                 body: Box::new(self.expr(body)?),
             },
 
