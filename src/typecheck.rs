@@ -527,7 +527,7 @@ impl TypeChecker {
                 Ok(fn_type)
             }
 
-            Expr::Call { function_span, function, args, .. } => {
+            Expr::Call { function_span, function, args, open, close } => {
                 match self.check_expr(env, &Type::Dynamic, *function_span, function)? {
                     Type::Dynamic => {
                         for (arg_span, arg) in args {
@@ -536,10 +536,59 @@ impl TypeChecker {
                         if expected != &Type::Dynamic {
                             wrap_in_check_type(expr, expr_span, expected.clone());
                         }
-                        Ok(Type::Dynamic)
+                        Ok(expected.clone())
                     }
-                    Type::Function(..) => {
-                        unfinished!("TODO: Statically check function call.");
+                    Type::Function(fn_type) => {
+                        // When the function type is statically known, first we
+                        // need to confirm that the arity matches.
+                        if fn_type.args.len() != args.len() {
+                            let mut msg: Vec<Doc> = vec!["Function takes ".into()];
+                            match fn_type.args.len() {
+                                0 => msg.push("no arguments:".into()),
+                                1 => msg.push("1 argument".into()),
+                                n => {
+                                    msg.push(n.to_string().into());
+                                    msg.push(" arguments".into());
+                                }
+                            }
+                            msg.push(concat! {
+                                ", it has type:"
+                                Doc::HardBreak Doc::HardBreak
+                                indent! { format_type(&Type::Function(fn_type.clone())).into_owned() }
+                            });
+                            if fn_type.args.len() < args.len() {
+                                let (err_span, _) = args[fn_type.args.len()];
+                                return err_span
+                                    .error("Unexpected argument.")
+                                    .with_note(*function_span, Doc::Concat(msg))
+                                    .err();
+                            }
+                            if fn_type.args.len() > args.len() {
+                                return close
+                                    .error("Expected more arguments in call.")
+                                    .with_note(*function_span, Doc::Concat(msg))
+                                    .err();
+                            }
+                        }
+
+                        // Then we can typecheck all arguments.
+                        for ((arg_span, arg), expected_type) in args.iter_mut().zip(fn_type.args.iter()) {
+                            // TODO: Wrap errors in a message with the full function type?
+                            self.check_expr(env, expected_type, *arg_span, arg)?;
+                        }
+
+                        // Finally, the return type must match the expected value.
+                        match (expected, &fn_type.result) {
+                            (Type::Dynamic, res_type) => Ok(res_type.clone()),
+                            (t, Type::Dynamic) => {
+                                wrap_in_check_type(expr, expr_span, expected.clone());
+                                Ok(t.clone())
+                            }
+                            (t, u) => {
+                                u.check_subtype_of(*open, t)?;
+                                Ok(u.clone())
+                            }
+                        }
                     }
                     not_callable => {
                         // Even though we already know the call is a type error,
