@@ -525,13 +525,28 @@ impl TypeChecker {
                 let result_type = self.check_expr(env, &Type::Dynamic, body_span, body)?;
                 env.pop(checkpoint);
 
-                let fn_type_inner = types::Function {
+                let fn_type_inner = Rc::new(types::Function {
                     args: args.iter().map(|_| Type::Dynamic).collect(),
                     result: result_type,
-                };
-                let fn_type = Type::Function(Rc::new(fn_type_inner));
+                });
+                let fn_type = Type::Function(fn_type_inner.clone());
                 // TODO: Get span of entire function.
                 self.check_subtype(*span, expected, &fn_type)?;
+
+                // Now that we know the type of the function, preserve it in the
+                // AST, because we need it in the runtime value. We need to
+                // juggle some temporaries to move values out of the old node
+                // into the new one.
+                let mut args_tmp = Vec::new();
+                let mut body_tmp = Box::new(Expr::NullLit);
+                std::mem::swap(&mut args_tmp, args);
+                std::mem::swap(&mut body_tmp, body);
+                *expr = Expr::TypedFunction {
+                    span: *span,
+                    args: args_tmp,
+                    body: body_tmp,
+                    type_: fn_type_inner,
+                };
 
                 Ok(fn_type)
             }
@@ -610,8 +625,8 @@ impl TypeChecker {
                 env, expected, expr_span, *op_span, *op, *lhs_span, lhs, *rhs_span, rhs
             ),
 
-            Expr::CheckType { .. } => panic!(
-                "CheckType is inserted by the typechecker, it should not be present before checking."
+            Expr::CheckType { .. } | Expr::TypedFunction { .. } => panic!(
+                "Node {expr:?} is inserted by the typechecker, it should not be present before checking."
             ),
         }
     }

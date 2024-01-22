@@ -146,6 +146,9 @@ pub enum Expr {
     },
 
     /// Define a lambda function.
+    ///
+    /// This node only exists before typechecking. The typechecker converts all
+    /// [`Expr::Function`] nodes to [`Expr::TypedFunction`].
     Function {
         /// The span of the `=>`.
         span: Span,
@@ -206,6 +209,19 @@ pub enum Expr {
         /// The expected type that the expression has to fit.
         type_: types::Type,
         body: Box<Expr>,
+    },
+
+    /// Define a lambda function.
+    ///
+    /// This node only exists after typechecking. The typechecker converts all
+    /// [`Expr::Function`] nodes to [`Expr::TypedFunction`].
+    TypedFunction {
+        /// The span of the `=>`.
+        span: Span,
+        args: Vec<Ident>,
+        body: Box<Expr>,
+        // The statically inferred type of this function.
+        type_: Rc<types::Function>,
     },
 }
 

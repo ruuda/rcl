@@ -493,7 +493,16 @@ impl<'a> Evaluator<'a> {
                 self.eval_index(*open, collection, *collection_span, index, *index_span)
             }
 
-            Expr::Function { span, args, body } => {
+            Expr::Function { .. } => unreachable!(
+                "The typechecker replaces all Expr::Function with Expr::TypedFunction."
+            ),
+
+            Expr::TypedFunction {
+                span,
+                args,
+                body,
+                type_: _,
+            } => {
                 let result = Function {
                     span: *span,
                     env: env.clone(),
