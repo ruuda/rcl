@@ -175,15 +175,20 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate a document as the entry point of evaluation.
-    pub fn eval_doc(&mut self, env: &mut Env, doc: DocId) -> Result<Value> {
+    pub fn eval_doc(
+        &mut self,
+        type_env: &mut crate::env::Env<Type>,
+        value_env: &mut Env,
+        doc: DocId,
+    ) -> Result<Value> {
         debug_assert!(self.import_stack.is_empty());
-        let expr = self.loader.get_typechecked_ast(doc)?;
+        let expr = self.loader.get_typechecked_ast(type_env, doc)?;
         let ctx = EvalContext {
             doc,
             imported_from: None,
         };
         self.import_stack.push(ctx);
-        let result = self.eval_expr(env, &expr)?;
+        let result = self.eval_expr(value_env, &expr)?;
         self.import_stack.pop().expect("Push/pop are balanced.");
         Ok(result)
     }
@@ -216,18 +221,19 @@ impl<'a> Evaluator<'a> {
             return Err(err.into());
         }
 
-        let expr = self.loader.get_typechecked_ast(doc)?;
+        // Evaluate the import in its own clean environment, it should not be
+        // affected by the surrounding environment of the import statement.
+        let mut type_env = typecheck::prelude();
+        let mut value_env = runtime::prelude();
+
+        let expr = self.loader.get_typechecked_ast(&mut type_env, doc)?;
         let ctx = EvalContext {
             doc,
             imported_from: Some(imported_from),
         };
 
-        // Evaluate the import in its own clean environment, it should not be
-        // affected by the surrounding environment of the import statement.
-        let mut env = runtime::prelude();
-
         self.import_stack.push(ctx);
-        let result = self.eval_expr(&mut env, &expr)?;
+        let result = self.eval_expr(&mut value_env, &expr)?;
         self.import_stack.pop().expect("Push/pop are balanced.");
 
         Ok(result)

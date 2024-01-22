@@ -17,6 +17,8 @@ use rcl::pprint::{self, Doc};
 use rcl::runtime::{self, Value};
 use rcl::source::{DocId, Span};
 use rcl::tracer::StderrTracer;
+use rcl::typecheck;
+use rcl::types::Type;
 
 struct App {
     loader: Loader,
@@ -155,14 +157,16 @@ impl App {
                     .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
 
                 let mut tracer = self.get_tracer();
-                let mut env = runtime::prelude();
+                let mut type_env = typecheck::prelude();
+                let mut value_env = runtime::prelude();
                 let doc = self.loader.load_cli_target(fname)?;
-                let val = self.loader.evaluate(doc, &mut env, &mut tracer)?;
+                let val = self
+                    .loader
+                    .evaluate(&mut type_env, &mut value_env, doc, &mut tracer)?;
 
                 if let Some(depfile_path) = eval_opts.output_depfile.as_ref() {
                     self.loader.write_depfile(&output, depfile_path)?;
                 }
-
                 // TODO: Need to get last inner span.
                 let full_span = self.loader.get_span(doc);
                 self.print_value(&eval_opts, &style_opts, output, full_span, &val)
@@ -183,14 +187,20 @@ impl App {
 
                 // First we evaluate the input document.
                 let mut tracer = self.get_tracer();
-                let mut env = runtime::prelude();
-                let val_input = self.loader.evaluate(input, &mut env, &mut tracer)?;
+                let mut type_env = typecheck::prelude();
+                let mut value_env = runtime::prelude();
+                let val_input =
+                    self.loader
+                        .evaluate(&mut type_env, &mut value_env, input, &mut tracer)?;
 
-                // Then we bind that to the variable `input`, and in that context, we
-                // evaluate the query expression. The environment should be
-                // clean at this point, so we can reuse it.
-                env.push("input".into(), val_input);
-                let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
+                // Then we bind that to the variable `input`, and in that context,
+                // we evaluate the query expression. The environments should be
+                // clean at this point, so we can reuse them.
+                type_env.push("input".into(), Type::Dynamic);
+                value_env.push("input".into(), val_input);
+                let val_result =
+                    self.loader
+                        .evaluate(&mut type_env, &mut value_env, query, &mut tracer)?;
 
                 if let Some(depfile_path) = eval_opts.output_depfile.as_ref() {
                     self.loader.write_depfile(&output, depfile_path)?;

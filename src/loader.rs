@@ -25,7 +25,7 @@ use crate::pprint::{self, concat};
 use crate::runtime::{Env, Value};
 use crate::source::{Doc, DocId, Span};
 use crate::tracer::Tracer;
-use crate::typecheck::TypeChecker;
+use crate::typecheck::{self, TypeChecker};
 use crate::types::Type;
 
 /// An owned document.
@@ -414,9 +414,7 @@ impl Loader {
     }
 
     /// Parse and typecheck the document, return the checked Abstract Syntax Tree.
-    pub fn get_typechecked_ast(&self, id: DocId) -> Result<ast::Expr> {
-        // TODO: Make this a global import once runtime::Env and env::Env are unified.
-        use crate::env::Env;
+    pub fn get_typechecked_ast(&self, env: &mut typecheck::Env, id: DocId) -> Result<ast::Expr> {
         // The typechecker needs a span to blame type errors on, we put in the
         // entire document. It is not going to blame any type errors on this
         // span, because we check Type::Dynamic which any value satisfies. If we
@@ -425,15 +423,20 @@ impl Loader {
         let span = self.get_span(id);
         let mut ast = self.get_unchecked_ast(id)?;
         let mut checker = TypeChecker::new();
-        let mut env = Env::new();
-        checker.check_expr(&mut env, &Type::Dynamic, span, &mut ast)?;
+        checker.check_expr(env, &Type::Dynamic, span, &mut ast)?;
         Ok(ast)
     }
 
     /// Evaluate the given document and return the resulting value.
-    pub fn evaluate(&mut self, id: DocId, env: &mut Env, tracer: &mut dyn Tracer) -> Result<Value> {
+    pub fn evaluate(
+        &mut self,
+        type_env: &mut typecheck::Env,
+        value_env: &mut Env,
+        id: DocId,
+        tracer: &mut dyn Tracer,
+    ) -> Result<Value> {
         let mut evaluator = Evaluator::new(self, tracer);
-        evaluator.eval_doc(env, id)
+        evaluator.eval_doc(type_env, value_env, id)
     }
 
     fn push(&mut self, document: Document) -> DocId {

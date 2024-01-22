@@ -40,22 +40,11 @@ macro_rules! unfinished {
     };
 }
 
-/// Return the type prelude, all the types that are in scope by default.
+/// Return the default environment with prelude in scope.
 pub fn prelude() -> Env {
     let mut env = Env::new();
-
-    // The primitive types are in scope by default.
-    env.push("Bool".into(), Type::Bool);
-    env.push("Int".into(), Type::Int);
-    env.push("Null".into(), Type::Null);
-    env.push("String".into(), Type::String);
-
-    // TODO: What to do about Dict, List, and Set? They are technically type
-    // constructors. Should those exist, at this level, if they can't be
-    // user-defined? It's easier to implement if we just hard-code those few,
-    // but then if you write `let xs: List = [1, 2, 3]`, it will lead to a
-    // confusing error.
-
+    // TODO: Type std correctly once we have record types.
+    env.push("std".into(), Type::Dynamic);
     env
 }
 
