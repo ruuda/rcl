@@ -15,7 +15,7 @@
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, Seq, Stmt, Type as AType, UnOp, Yield};
-use crate::error::{IntoError, Result};
+use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
 use crate::markup::Markup;
@@ -244,50 +244,34 @@ impl AsTypeName for Type {
 /// the culprit is a syntactic construct, not a runtime value.
 ///
 /// The `actual` message should be in the form of “Found «actual» instead”.
-fn type_error<T, T1: AsTypeName, T2: AsTypeName>(
-    at: Span,
-    expected: &T1,
-    actual: &T2,
-) -> Result<T> {
+fn type_error<T1: AsTypeName, T2: AsTypeName>(at: Span, expected: &T1, actual: &T2) -> Error {
     // If types are atoms, they are short to format, so we can put the message
     // on one line. If they are composite, we put them in an indented block.
     match (expected.is_atom(), actual.is_atom()) {
-        (true, true) => at
-            .error("Type mismatch.")
-            .with_body(concat! {
-                "Expected " expected.format_type()
-                " but found " actual.format_type() "."
-            })
-            .err(),
-        (true, false) => at
-            .error("Type mismatch.")
-            .with_body(concat! {
-                "Expected " expected.format_type() " but found this:"
-                Doc::HardBreak Doc::HardBreak
-                indent! { actual.format_type() }
-            })
-            .err(),
-        (false, true) => at
-            .error("Type mismatch.")
-            .with_body(concat! {
-                "Expected this type:"
-                Doc::HardBreak Doc::HardBreak
-                indent! { expected.format_type() }
-                Doc::HardBreak Doc::HardBreak
-                "But found " actual.format_type() "."
-            })
-            .err(),
-        (false, false) => at
-            .error("Type mismatch.")
-            .with_body(concat! {
-                "Expected this type:"
-                Doc::HardBreak Doc::HardBreak
-                indent! { expected.format_type() }
-                Doc::HardBreak Doc::HardBreak
-                "But found this type: "
-                indent! { expected.format_type() }
-            })
-            .err(),
+        (true, true) => at.error("Type mismatch.").with_body(concat! {
+            "Expected " expected.format_type()
+            " but found " actual.format_type() "."
+        }),
+        (true, false) => at.error("Type mismatch.").with_body(concat! {
+            "Expected " expected.format_type() " but found this:"
+            Doc::HardBreak Doc::HardBreak
+            indent! { actual.format_type() }
+        }),
+        (false, true) => at.error("Type mismatch.").with_body(concat! {
+            "Expected this type:"
+            Doc::HardBreak Doc::HardBreak
+            indent! { expected.format_type() }
+            Doc::HardBreak Doc::HardBreak
+            "But found " actual.format_type() "."
+        }),
+        (false, false) => at.error("Type mismatch.").with_body(concat! {
+            "Expected this type:"
+            Doc::HardBreak Doc::HardBreak
+            indent! { expected.format_type() }
+            Doc::HardBreak Doc::HardBreak
+            "But found this type: "
+            indent! { expected.format_type() }
+        }),
     }
 }
 
@@ -372,7 +356,7 @@ impl TypeChecker {
                     // TODO: This error is misleading, we might find a dict or set,
                     // not only a dict. We need to typecheck the seqs first, then
                     // report the error later.
-                    _ => return type_error(expr_span, expected, &"Dict"),
+                    _ => return type_error(expr_span, expected, &"Dict").err(),
                 };
                 for seq in seqs {
                     seq_type = self.check_seq(env, seq, seq_type)?;
@@ -384,7 +368,7 @@ impl TypeChecker {
                 let mut seq_type = match expected {
                     Type::Dynamic => SeqType::UntypedList(Type::Void),
                     Type::List(t) => SeqType::TypedList((**t).clone()),
-                    _ => return type_error(expr_span, expected, &"List"),
+                    _ => return type_error(expr_span, expected, &"List").err(),
                 };
                 for seq in seqs {
                     seq_type = self.check_seq(env, seq, seq_type)?;
@@ -394,22 +378,22 @@ impl TypeChecker {
 
             Expr::NullLit => match expected {
                 Type::Dynamic | Type::Null => Ok(Type::Null),
-                _ => type_error(expr_span, expected, &Type::Null),
+                _ => type_error(expr_span, expected, &Type::Null).err(),
             },
 
             Expr::BoolLit(..) => match expected {
                 Type::Dynamic | Type::Bool => Ok(Type::Bool),
-                _ => type_error(expr_span, expected, &Type::Bool),
+                _ => type_error(expr_span, expected, &Type::Bool).err(),
             },
 
             Expr::StringLit(..) => match expected {
                 Type::Dynamic | Type::String => Ok(Type::String),
-                _ => type_error(expr_span, expected, &Type::String),
+                _ => type_error(expr_span, expected, &Type::String).err(),
             },
 
             Expr::IntegerLit(..) => match expected {
                 Type::Dynamic | Type::Int => Ok(Type::Int),
-                _ => type_error(expr_span, expected, &Type::Int),
+                _ => type_error(expr_span, expected, &Type::Int).err(),
             },
 
             Expr::Format(fragments) => {
@@ -422,7 +406,7 @@ impl TypeChecker {
                 // Format strings evaluate to string values, so they fit string types.
                 match expected {
                     Type::Dynamic | Type::String => Ok(Type::String),
-                    _ => type_error(expr_span, expected, &Type::String),
+                    _ => type_error(expr_span, expected, &Type::String).err(),
                 }
             },
 
@@ -591,13 +575,8 @@ impl TypeChecker {
                         for (arg_span, arg) in args {
                             self.check_expr(env, &Type::Dynamic, *arg_span, arg)?;
                         }
-                        function_span
-                            .error("This cannot be called.")
-                            .with_body(concat!{
-                                "Expected a function, but got:"
-                                Doc::HardBreak Doc::HardBreak
-                                indent! { format_type(&not_callable).into_owned() }
-                            })
+                        type_error(*function_span, &"function", &not_callable)
+                            .with_message("This cannot be called.")
                             .err()
                     }
                 }
@@ -674,14 +653,14 @@ impl TypeChecker {
                 self.check_expr(env, &Type::Int, body_span, body)?;
                 match expected {
                     Type::Dynamic | Type::Int => Ok(Type::Int),
-                    _ => type_error(expr_span, expected, &Type::Int),
+                    _ => type_error(expr_span, expected, &Type::Int).err(),
                 }
             }
             UnOp::Not => {
                 self.check_expr(env, &Type::Bool, body_span, body)?;
                 match expected {
                     Type::Dynamic | Type::Bool => Ok(Type::Bool),
-                    _ => type_error(expr_span, expected, &Type::Bool),
+                    _ => type_error(expr_span, expected, &Type::Bool).err(),
                 }
             }
         }
@@ -719,7 +698,7 @@ impl TypeChecker {
         match expected {
             Type::Dynamic => Ok(result_type),
             t if t == &result_type => Ok(result_type),
-            _ => type_error(expr_span, expected, &result_type),
+            _ => type_error(expr_span, expected, &result_type).err(),
         }
     }
 
@@ -874,7 +853,7 @@ impl TypeChecker {
                 SeqType::TypedDict(..) => {
                     // TODO: We could make a nicer error here, but for now this will do.
                     // See also the calls to `type_error` in the assoc case below.
-                    type_error(*span, &seq_type.into_type(), &"Dict")
+                    type_error(*span, &seq_type.into_type(), &"Dict").err()
                 }
                 SeqType::UntypedList(et) | SeqType::UntypedSet(.., et) => {
                     let t = self.check_expr(env, &Type::Dynamic, *span, value)?;
@@ -900,11 +879,11 @@ impl TypeChecker {
                 }
                 SeqType::TypedList(..) => {
                     // TODO: We could make a nicer error here, but for now this will do.
-                    type_error(*op_span, &seq_type.into_type(), &"List")
+                    type_error(*op_span, &seq_type.into_type(), &"List").err()
                 }
                 SeqType::TypedSet(..) => {
                     // TODO: We could make a nicer error here, but for now this will do.
-                    type_error(*op_span, &seq_type.into_type(), &"Set")
+                    type_error(*op_span, &seq_type.into_type(), &"Set").err()
                 }
                 SeqType::TypedDict(key_type, value_type) => {
                     // TODO: Again, spans.

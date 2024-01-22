@@ -5,10 +5,4 @@ stdin:1:1
   ╷
 1 │ "frobnicator"()
   ╵ ^~~~~~~~~~~~~
-Error: This is not a function, it cannot be called.
-
-stdin:1:14
-  ╷
-1 │ "frobnicator"()
-  ╵              ^
-In call.
+Error: This cannot be called. Expected function but found String.

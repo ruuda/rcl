@@ -98,6 +98,15 @@ impl Error {
         }
     }
 
+    /// Replace the message of the error with the given content.
+    pub fn with_message<M>(mut self, message: M) -> Error
+    where
+        Doc<'static>: From<M>,
+    {
+        self.message = message.into();
+        self
+    }
+
     /// Replace the origin of the error with the given span.
     pub fn with_origin(mut self, origin: Span) -> Error {
         self.origin = Some(origin);
