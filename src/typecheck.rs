@@ -510,7 +510,31 @@ impl TypeChecker {
                 Ok(Type::Dynamic)
             }
 
-            Expr::Function { .. } => unfinished!("TODO: Implement typechecking functions."),
+            Expr::Function { span, args, body } => {
+                // TODO: Collect the body span on function values.
+                let body_span = *span;
+
+                // Typecheck the body with no expectations, and no information
+                // about the argument type. If we do have an expected type, then
+                // we could push this information down, but it is simpler to infer
+                // a function type and then check that it is compatible.
+                let checkpoint = env.checkpoint();
+                for arg in args.iter() {
+                    env.push(arg.clone(), Type::Dynamic);
+                }
+                let result_type = self.check_expr(env, &Type::Dynamic, body_span, body)?;
+                env.pop(checkpoint);
+
+                let fn_type_inner = types::Function {
+                    args: args.iter().map(|_| Type::Dynamic).collect(),
+                    result: result_type,
+                };
+                let fn_type = Type::Function(Rc::new(fn_type_inner));
+                // TODO: Get span of entire function.
+                self.check_subtype(*span, expected, &fn_type)?;
+
+                Ok(fn_type)
+            }
 
             Expr::Call { function_span, function, args, .. } => {
                 match self.check_expr(env, &Type::Dynamic, *function_span, function)? {
@@ -942,6 +966,52 @@ impl TypeChecker {
         match (expected, actual) {
             // If we defer the typecheck to runtime, anything is allowed.
             (Type::Dynamic, _) => Ok(()),
+
+            (Type::Function(expected_fn), Type::Function(actual_fn)) => {
+                if expected_fn.args.len() != actual_fn.args.len() {
+                    let mut msg: Vec<Doc> = vec!["Expected a function that takes ".into()];
+                    match expected_fn.args.len() {
+                        0 => msg.push("no arguments:".into()),
+                        1 => msg.push("1 argument:".into()),
+                        n => {
+                            msg.push(n.to_string().into());
+                            msg.push(" arguments:".into());
+                        }
+                    }
+                    msg.push(concat! {
+                        Doc::HardBreak Doc::HardBreak
+                        indent! { format_type(expected).into_owned() }
+                        Doc::HardBreak Doc::HardBreak
+                        "But got a function that takes "
+                    });
+                    msg.push(actual_fn.args.len().to_string().into());
+                    msg.push(concat! {
+                        ":"
+                        indent! { format_type(actual).into_owned() }
+                    });
+                    return at
+                        .error("Arity mismatch.")
+                        .with_body(Doc::Concat(msg))
+                        .err();
+                }
+
+                self.check_subtype(at, &expected_fn.result, &actual_fn.result)
+                    .map_err(|err|
+                    // TODO: Include full function type in message.
+                    err.with_note(at, "While checking that function types match."))?;
+                for (arg_expected, arg_actual) in expected_fn.args.iter().zip(actual_fn.args.iter())
+                {
+                    // Note, the roles of expected and actual are reversed for
+                    // function arguments.
+                    // TODO: Report error at the argument span?
+                    self.check_subtype(at, arg_actual, arg_expected)
+                        .map_err(|err| {
+                            err.with_note(at, "While checking that function types match.")
+                        })?;
+                }
+
+                Ok(())
+            }
 
             // Every type is a subtype of itself.
             _ if expected == actual => Ok(()),
