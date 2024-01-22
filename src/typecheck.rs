@@ -412,10 +412,18 @@ impl TypeChecker {
                 _ => type_error(expr_span, expected, &Type::Int),
             },
 
-            // Format strings evaluate to string values, so they fit string types.
-            Expr::Format(..) => match expected {
-                Type::Dynamic | Type::String => Ok(Type::String),
-                _ => type_error(expr_span, expected, &Type::String),
+            Expr::Format(fragments) => {
+                // Typecheck the fragments. For now we don't demand statically
+                // that they can be formatted, but we do descend into them to
+                // catch other type errors. TODO: check formatability statically.
+                for fragment in fragments {
+                    self.check_expr(env, &Type::Dynamic, fragment.span, &mut fragment.body)?;
+                }
+                // Format strings evaluate to string values, so they fit string types.
+                match expected {
+                    Type::Dynamic | Type::String => Ok(Type::String),
+                    _ => type_error(expr_span, expected, &Type::String),
+                }
             },
 
             Expr::IfThenElse {

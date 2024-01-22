@@ -1,0 +1,9 @@
+// This is a regression test for a bug introduced while writing the typechecker.
+f"{does_not_exist}"
+
+# output:
+stdin:2:4
+  ╷
+2 │ f"{does_not_exist}"
+  ╵    ^~~~~~~~~~~~~~
+Error: Unknown variable.
