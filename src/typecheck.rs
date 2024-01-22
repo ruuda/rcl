@@ -274,7 +274,7 @@ fn type_error<T, T1: AsTypeName, T2: AsTypeName>(
                 Doc::HardBreak Doc::HardBreak
                 indent! { expected.format_type() }
                 Doc::HardBreak Doc::HardBreak
-                "Found " actual.format_type() "."
+                "But found " actual.format_type() "."
             })
             .err(),
         (false, false) => at
@@ -284,7 +284,7 @@ fn type_error<T, T1: AsTypeName, T2: AsTypeName>(
                 Doc::HardBreak Doc::HardBreak
                 indent! { expected.format_type() }
                 Doc::HardBreak Doc::HardBreak
-                "Found this type: "
+                "But found this type: "
                 indent! { expected.format_type() }
             })
             .err(),
