@@ -20,7 +20,7 @@ use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
 use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
-use crate::runtime::{self, Value};
+use crate::runtime::Value;
 use crate::source::Span;
 use crate::types::{self, Type};
 
@@ -98,7 +98,9 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
 
         // The function type describes the different callable values.
         (Type::Function(fn_type), Value::Function(fn_val)) => {
-            check_function_value(at, fn_type, fn_val)
+            Type::Function(fn_val.type_.clone())
+                .check_subtype_of(at, &Type::Function(fn_type.clone()))?;
+            Ok(())
         }
         (Type::Function { .. }, Value::BuiltinFunction { .. }) => {
             unfinished!("TODO: Typecheck function for BuiltinFunction.")
@@ -120,32 +122,6 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
             })
             .err(),
     }
-}
-
-pub fn check_function_value(
-    at: Span,
-    fn_type: &types::Function,
-    fn_value: &runtime::Function,
-) -> Result<()> {
-    if fn_type.args.len() != fn_value.args.len() {
-        return at
-            .error(concat! {
-                "Expected a function that takes "
-                fn_type.args.len().to_string()
-                " arguments, but got a function that takes "
-                fn_value.args.len().to_string()
-                " arguments."
-            })
-            .with_note(fn_value.span, "Function defined here.")
-            .err();
-    }
-
-    // TODO: Now that the arity is confirmed, we have to perform a static
-    // typecheck on the function body, with the arguments bound to the provided
-    // argument types, and then check that the resulting value fits the result
-    // type. So we have to implement the static typechecker ...
-    at.error("Typechecking function values is not yet supported.")
-        .err()
 }
 
 /// Parse a type expression.
@@ -471,7 +447,7 @@ impl TypeChecker {
                 let te = self.check_expr(env, expected, *condition_span, body_else)?;
                 let t = tt.meet(&te);
                 debug_assert!(
-                    self.check_subtype(expr_span, expected, &t).is_ok(),
+                    t.check_subtype_of(expr_span, expected).is_ok(),
                     "Meet of the branches should be a subtype of the expected type.",
                 );
                 Ok(t)
@@ -494,7 +470,7 @@ impl TypeChecker {
                 // If both types are known statically, we can confirm right now
                 // that the type fits.
                 (Some(t), _) => {
-                    self.check_subtype(*span, expected, t)?;
+                    t.check_subtype_of(*span, expected)?;
                     Ok(t.clone())
                 }
             },
@@ -531,7 +507,7 @@ impl TypeChecker {
                 });
                 let fn_type = Type::Function(fn_type_inner.clone());
                 // TODO: Get span of entire function.
-                self.check_subtype(*span, expected, &fn_type)?;
+                fn_type.check_subtype_of(*span, expected)?;
 
                 // Now that we know the type of the function, preserve it in the
                 // AST, because we need it in the runtime value. We need to
@@ -596,12 +572,12 @@ impl TypeChecker {
                     }
                     Type::List(element_type) => {
                         self.check_expr(env, &Type::Int, *index_span, index)?;
-                        self.check_subtype(expr_span, expected, element_type.as_ref())?;
+                        element_type.check_subtype_of(expr_span, expected)?;
                         Ok((*element_type).clone())
                     }
                     Type::Dict(dict) => {
                         self.check_expr(env, &dict.key, *index_span, index)?;
-                        self.check_subtype(expr_span, expected, &dict.value)?;
+                        dict.value.check_subtype_of(expr_span, expected)?;
                         Ok(dict.value.clone())
                     }
                     not_indexable => {
@@ -735,7 +711,7 @@ impl TypeChecker {
                 return err.err();
             }
         };
-        self.check_subtype(expr_span, expected, &result_type)?;
+        result_type.check_subtype_of(expr_span, expected)?;
 
         Ok(result_type)
     }
@@ -964,88 +940,6 @@ impl TypeChecker {
             } => {
                 self.check_expr(env, &Type::Dynamic, *message_span, message)?;
                 Ok(())
-            }
-        }
-    }
-
-    /// Check that `actual` is a subtype of `expected`.
-    ///
-    /// When a type is known for a particular variable, but we then try to use
-    /// that variable in a context where a particular type is expected, we have
-    /// to verify that the known type fits the expected type. For example, a
-    /// record that only has `Int` fields would fit the type `Dict[String, Int]`,
-    /// but not the other way around.
-    ///
-    /// Type errors will be attributed to the span `at`.
-    pub fn check_subtype(&mut self, at: Span, expected: &Type, actual: &Type) -> Result<()> {
-        match (expected, actual) {
-            // If we defer the typecheck to runtime, anything is allowed.
-            (Type::Dynamic, _) => Ok(()),
-
-            (Type::Function(expected_fn), Type::Function(actual_fn)) => {
-                if expected_fn.args.len() != actual_fn.args.len() {
-                    let mut msg: Vec<Doc> = vec!["Expected a function that takes ".into()];
-                    match expected_fn.args.len() {
-                        0 => msg.push("no arguments:".into()),
-                        1 => msg.push("1 argument:".into()),
-                        n => {
-                            msg.push(n.to_string().into());
-                            msg.push(" arguments:".into());
-                        }
-                    }
-                    msg.push(concat! {
-                        Doc::HardBreak Doc::HardBreak
-                        indent! { format_type(expected).into_owned() }
-                        Doc::HardBreak Doc::HardBreak
-                        "But got a function that takes "
-                    });
-                    msg.push(actual_fn.args.len().to_string().into());
-                    msg.push(concat! {
-                        ":"
-                        indent! { format_type(actual).into_owned() }
-                    });
-                    return at
-                        .error("Arity mismatch.")
-                        .with_body(Doc::Concat(msg))
-                        .err();
-                }
-
-                self.check_subtype(at, &expected_fn.result, &actual_fn.result)
-                    .map_err(|err|
-                    // TODO: Include full function type in message.
-                    err.with_note(at, "While checking that function types match."))?;
-                for (arg_expected, arg_actual) in expected_fn.args.iter().zip(actual_fn.args.iter())
-                {
-                    // Note, the roles of expected and actual are reversed for
-                    // function arguments.
-                    // TODO: Report error at the argument span?
-                    self.check_subtype(at, arg_actual, arg_expected)
-                        .map_err(|err| {
-                            err.with_note(at, "While checking that function types match.")
-                        })?;
-                }
-
-                Ok(())
-            }
-
-            // Every type is a subtype of itself.
-            _ if expected == actual => Ok(()),
-
-            // TODO: Check inside collections, functions.
-            _ => {
-                // TODO: Generate a briefer error when the expected type is a primitive type,
-                // dedup between the `type_error` function.
-                at.error("Type mismatch.")
-                    .with_body(concat! {
-                        "Expected this type:"
-                        Doc::HardBreak Doc::HardBreak
-                        indent! { format_type(expected).into_owned() }
-                        Doc::HardBreak Doc::HardBreak
-                        "But got this type:"
-                        Doc::HardBreak Doc::HardBreak
-                        indent! { format_type(actual).into_owned() }
-                    })
-                    .err()
             }
         }
     }

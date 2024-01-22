@@ -501,13 +501,14 @@ impl<'a> Evaluator<'a> {
                 span,
                 args,
                 body,
-                type_: _,
+                type_,
             } => {
                 let result = Function {
                     span: *span,
                     env: env.clone(),
                     args: args.clone(),
                     body: Rc::new((**body).clone()),
+                    type_: type_.clone(),
                 };
                 Ok(Value::Function(Rc::new(result)))
             }

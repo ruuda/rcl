@@ -16,6 +16,7 @@ use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
 use crate::pprint::{concat, Doc};
 use crate::source::Span;
+use crate::types;
 
 /// A value provided as argument to a function call.
 pub struct CallArg {
@@ -196,6 +197,7 @@ pub struct Function {
     pub env: Env,
     pub args: Vec<Ident>,
     pub body: Rc<Expr>,
+    pub type_: Rc<types::Function>,
 }
 
 impl PartialEq for Function {
