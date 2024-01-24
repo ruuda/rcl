@@ -348,7 +348,7 @@ impl TypeChecker {
                 }
             }
 
-            Expr::BraceLit(seqs) => {
+            Expr::BraceLit { elements: seqs, .. } => {
                 let mut seq_type = match expected {
                     Type::Dynamic => SeqType::SetOrDict,
                     Type::Set(t) => SeqType::TypedSet((**t).clone()),
@@ -364,7 +364,7 @@ impl TypeChecker {
                 Ok(seq_type.into_type())
             }
 
-            Expr::BracketLit(seqs) => {
+            Expr::BracketLit { elements: seqs, .. } => {
                 let mut seq_type = match expected {
                     Type::Dynamic => SeqType::UntypedList(Type::Void),
                     Type::List(t) => SeqType::TypedList((**t).clone()),

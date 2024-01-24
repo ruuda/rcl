@@ -278,14 +278,13 @@ impl<'a> Evaluator<'a> {
                 self.eval_import(doc, *path_span)
             }
 
-            Expr::BraceLit(seqs) => {
+            Expr::BraceLit { open, elements } => {
                 let mut out = SeqOut::SetOrDict;
-                // TODO: Record opening span, then set the depth limit.
-                // TODO: self.inc_eval_depth()?;
-                for seq in seqs {
+                self.inc_eval_depth(*open)?;
+                for seq in elements {
                     self.eval_seq(env, seq, &mut out)?;
                 }
-                // TODO: self.dec_eval_depth();
+                self.dec_eval_depth();
                 match out {
                     // If we have no keys, it’s a dict, because json has no sets,
                     // and `{}` is a json value that should evaluate to itself.
@@ -312,11 +311,14 @@ impl<'a> Evaluator<'a> {
                     SeqOut::List(_) => unreachable!("Did not start out as list."),
                 }
             }
-            Expr::BracketLit(seqs) => {
+
+            Expr::BracketLit { open, elements } => {
                 let mut out = SeqOut::List(Vec::new());
-                for seq in seqs {
+                self.inc_eval_depth(*open)?;
+                for seq in elements {
                     self.eval_seq(env, seq, &mut out)?;
                 }
+                self.dec_eval_depth();
                 match out {
                     SeqOut::List(values) => Ok(Value::List(Rc::new(values))),
                     _ => unreachable!("SeqOut::List type is preserved."),

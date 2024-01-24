@@ -162,19 +162,21 @@ impl<'a> Abstractor<'a> {
                 path: Box::new(self.expr(&path.inner)?),
             },
 
-            CExpr::BraceLit { elements, .. } => AExpr::BraceLit(
-                elements
+            CExpr::BraceLit { open, elements, .. } => AExpr::BraceLit {
+                open: *open,
+                elements: elements
                     .iter()
                     .map(|elem| self.seq(&elem.inner))
                     .collect::<Result<Vec<_>>>()?,
-            ),
+            },
 
-            CExpr::BracketLit { elements, .. } => AExpr::BracketLit(
-                elements
+            CExpr::BracketLit { open, elements, .. } => AExpr::BracketLit {
+                open: *open,
+                elements: elements
                     .iter()
                     .map(|elem| self.seq(&elem.inner))
                     .collect::<Result<Vec<_>>>()?,
-            ),
+            },
 
             CExpr::Parens { body, .. } => self.expr(&body.inner)?,
 

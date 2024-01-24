@@ -106,10 +106,10 @@ pub enum Expr {
     },
 
     /// A dict or set literal (depending on the element types) enclosed in `{}`.
-    BraceLit(Vec<Seq>),
+    BraceLit { open: Span, elements: Vec<Seq> },
 
     /// A list literal enclosed in `[]`.
-    BracketLit(Vec<Seq>),
+    BracketLit { open: Span, elements: Vec<Seq> },
 
     /// A null literal.
     NullLit,
