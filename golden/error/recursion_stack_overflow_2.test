@@ -1,0 +1,9 @@
+// This is a regression test for an input discovered by the fuzzer.
+// It managed to escape the previous evaluation depth limit because sequence
+// literals were not limited. It is minimal: both the brackets and four calls
+// are needed to escape the evaluation depth limit of 150.
+let f = f=> {{f(f)()()()}};
+f(f)
+
+# output:
+TODO

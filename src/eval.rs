@@ -280,9 +280,12 @@ impl<'a> Evaluator<'a> {
 
             Expr::BraceLit(seqs) => {
                 let mut out = SeqOut::SetOrDict;
+                // TODO: Record opening span, then set the depth limit.
+                // TODO: self.inc_eval_depth()?;
                 for seq in seqs {
                     self.eval_seq(env, seq, &mut out)?;
                 }
+                // TODO: self.dec_eval_depth();
                 match out {
                     // If we have no keys, it’s a dict, because json has no sets,
                     // and `{}` is a json value that should evaluate to itself.
