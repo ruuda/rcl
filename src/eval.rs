@@ -30,6 +30,60 @@ pub struct EvalContext {
     pub imported_from: Option<Span>,
 }
 
+/// A limiter to catch infinite loops.
+///
+/// Some programs diverge, and instead of hanging, we want to report an error.
+/// But some inputs are just very large, and we don't want to put an arbitrary
+/// low limit on the number of evaluation steps. To get around this, we also
+/// track the span where we are evaluating. As long as it keeps increasing, we
+/// make progress. But when we keep visiting the same span, then the limit kicks
+/// in.
+///
+/// An example divergent program:
+/// ```text
+/// let f = g => g(g(h => k => g(g(h)))); f(f)
+/// ```
+pub struct EvalCount {
+    /// The maximum visited location.
+    pub span: Span,
+    /// The number of times the evaluation depth was incremented at that location.
+    pub count: u32,
+}
+
+impl EvalCount {
+    pub fn new() -> EvalCount {
+        EvalCount {
+            span: Span::new(DocId(0), 0, 0),
+            count: 0,
+        }
+    }
+
+    /// Increment the count, return an error if the budget is exceeded.
+    #[inline]
+    pub fn inc(&mut self, at: Span) -> Result<()> {
+        if at > self.span {
+            self.span = at;
+            self.count = 0;
+        }
+
+        let max_steps = 10_000;
+        self.count += 1;
+
+        if self.count >= max_steps {
+            return at
+                .error(concat! {
+                    "Evaluation budget exceeded. "
+                    "This expression exceeds the maximum of "
+                    max_steps.to_string()
+                    " steps."
+                })
+                .err();
+        }
+
+        Ok(())
+    }
+}
+
 pub struct Evaluator<'a> {
     pub loader: &'a mut Loader,
     pub tracer: &'a mut dyn Tracer,
@@ -44,6 +98,11 @@ pub struct Evaluator<'a> {
     ///
     /// Used to error before we overflow the native stack.
     pub eval_depth: u32,
+
+    /// The number of times the evaluation depth was incremented.
+    ///
+    /// This is used to break infinite loops.
+    pub eval_count: EvalCount,
 }
 
 impl<'a> Evaluator<'a> {
@@ -54,6 +113,7 @@ impl<'a> Evaluator<'a> {
             import_stack: Vec::new(),
             stdlib: stdlib::initialize(),
             eval_depth: 0,
+            eval_count: EvalCount::new(),
         }
     }
 
@@ -77,7 +137,7 @@ impl<'a> Evaluator<'a> {
                 .err();
         }
 
-        Ok(())
+        self.eval_count.inc(at)
     }
 
     #[inline]
