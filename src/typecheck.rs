@@ -420,6 +420,8 @@ impl TypeChecker {
                 // The condition always has to be a boolean.
                 // TODO: Delete the runtime type check in the evaluator, this is
                 // now a static typecheck. See if we can make the error friendly.
+                // TODO: We should add a reason to the error, or maybe a help message,
+                // that explains *why* a bool is expected (because it's a conditional).
                 self.check_expr(env, &Type::Bool, *condition_span, condition)?;
                 // TODO: Record the spans on then and else. For now I'll just
                 // put in the condition span as a temporary hack because I don't

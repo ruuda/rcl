@@ -127,7 +127,7 @@ pub enum Expr {
     /// A format string, with string literals and hole contents interleaved.
     Format(Vec<FormatFragment>),
 
-    /// An conditional choice (if, then, else).
+    /// A conditional choice (if, then, else).
     IfThenElse {
         condition_span: Span,
         condition: Box<Expr>,
