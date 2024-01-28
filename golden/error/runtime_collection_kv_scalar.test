@@ -14,4 +14,4 @@ stdin:2:8
   ╷
 2 │   "key": "value",
   ╵        ^
-Note: The collection is a dict and not a set, because of this key-value.
+Note: The collection is a dict and not a set, because it starts with a key-value.

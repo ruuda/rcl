@@ -14,4 +14,4 @@ stdin:2:3
   ╷
 2 │   "single",
   ╵   ^~~~~~~~
-Note: The collection is a set and not a dict, because of this scalar value.
+Note: The collection is a set and not a dict, because it starts with a scalar value.
