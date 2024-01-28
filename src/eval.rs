@@ -555,7 +555,7 @@ impl<'a> Evaluator<'a> {
 
             Expr::CheckType { span, type_, body } => {
                 let v = self.eval_expr(env, body)?;
-                typecheck::check_value(*span, &type_, &v)?;
+                typecheck::check_value(*span, type_, &v)?;
                 Ok(v)
             }
         }

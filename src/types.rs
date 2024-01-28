@@ -177,7 +177,7 @@ impl Type {
                     // function arguments.
                     // TODO: Report error at the argument span?
                     arg_expected
-                        .check_subtype_of(at, &arg_actual)
+                        .check_subtype_of(at, arg_actual)
                         .map_err(|err| {
                             err.with_note(at, "While checking that function types match.")
                         })?;

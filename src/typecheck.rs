@@ -150,7 +150,7 @@ fn eval_type_expr(expr: &AType) -> Result<Type> {
         AType::Function { args, result } => {
             let args_types = args
                 .iter()
-                .map(|t| eval_type_expr(t))
+                .map(eval_type_expr)
                 .collect::<Result<Vec<_>>>()?;
             let result_type = eval_type_expr(result)?;
             let fn_type = types::Function {
@@ -162,7 +162,7 @@ fn eval_type_expr(expr: &AType) -> Result<Type> {
         AType::Apply { span, name, args } => {
             let args_types = args
                 .iter()
-                .map(|t| eval_type_expr(t))
+                .map(eval_type_expr)
                 .collect::<Result<Vec<_>>>()?;
             eval_type_apply(*span, name.as_ref(), &args_types)
         }
@@ -626,7 +626,7 @@ impl TypeChecker {
             ),
 
             Expr::BinOp { op_span, op, lhs_span, lhs, rhs_span, rhs, .. } => self.check_binop(
-                env, expected, expr_span, *op_span, *op, *lhs_span, lhs, *rhs_span, rhs
+                env, expected, expr_span, (*op_span, *op), (*lhs_span, lhs), (*rhs_span, rhs),
             ),
 
             Expr::CheckType { .. } | Expr::TypedFunction { .. } => panic!(
@@ -677,13 +677,13 @@ impl TypeChecker {
         env: &mut Env,
         expected: &Type,
         expr_span: Span,
-        op_span: Span,
-        op: BinOp,
-        lhs_span: Span,
-        lhs: &mut Expr,
-        rhs_span: Span,
-        rhs: &mut Expr,
+        op: (Span, BinOp),
+        lhs: (Span, &mut Expr),
+        rhs: (Span, &mut Expr),
     ) -> Result<Type> {
+        let (op_span, op) = op;
+        let (lhs_span, lhs) = lhs;
+        let (rhs_span, rhs) = rhs;
         // As with unop, we typecheck the sides even when we already know that
         // the result cannot be valid, to get more natural bottom-up errors in
         // case the bodies contain errors.
@@ -695,7 +695,12 @@ impl TypeChecker {
             // For overloaded operators, we have dedicated checks.
             BinOp::Union => {
                 return self.check_binop_union(
-                    env, expected, expr_span, op_span, lhs_span, lhs, rhs_span, rhs,
+                    env,
+                    expected,
+                    expr_span,
+                    op_span,
+                    (lhs_span, lhs),
+                    (rhs_span, rhs),
                 )
             }
         };
@@ -714,11 +719,11 @@ impl TypeChecker {
         expected: &Type,
         expr_span: Span,
         op_span: Span,
-        lhs_span: Span,
-        lhs: &mut Expr,
-        rhs_span: Span,
-        rhs: &mut Expr,
+        lhs: (Span, &mut Expr),
+        rhs: (Span, &mut Expr),
     ) -> Result<Type> {
+        let (lhs_span, lhs) = lhs;
+        let (rhs_span, rhs) = rhs;
         let lhs_type = self.check_expr(env, &Type::Dynamic, lhs_span, lhs)?;
         let rhs_type = self.check_expr(env, &Type::Dynamic, rhs_span, rhs)?;
         let result_type = match (&lhs_type, &rhs_type) {
@@ -734,7 +739,7 @@ impl TypeChecker {
                     Doc::highlight("|")
                     " operator, but found this:"
                     Doc::HardBreak Doc::HardBreak
-                    indent! { format_type(&not_collection).into_owned() }
+                    indent! { format_type(not_collection).into_owned() }
                 });
                 return err.err();
             }
