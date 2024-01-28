@@ -6,4 +6,4 @@ stdin:1:8
   ╷
 1 │ assert 0, "The condition should be a boolean.";
   ╵        ^
-Error: Assertion condition must evaluate to a boolean.
+Error: Type mismatch. Expected Bool but found Int.

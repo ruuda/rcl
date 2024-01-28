@@ -955,6 +955,7 @@ impl TypeChecker {
                 message,
             } => {
                 // The condition has to be a boolean, the message can be any value.
+                // TODO: Include a specialized message in the type error.
                 self.check_expr(env, &Type::Bool, *condition_span, condition)?;
                 self.check_expr(env, &Type::Dynamic, *message_span, message)?;
                 Ok(())

@@ -1,8 +1,8 @@
 "0" + 1
 
 # output:
-stdin:1:5
+stdin:1:1
   ╷
 1 │ "0" + 1
-  ╵     ^
-Error: This operator is not supported for these values.
+  ╵ ^~~
+Error: Type mismatch. Expected Int but found String.
