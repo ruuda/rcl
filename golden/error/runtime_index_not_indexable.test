@@ -5,10 +5,6 @@ stdin:1:5
   ╷
 1 │ true[0]
   ╵     ^
-Error: Indexing is not supported here.
+Error: Indexing is not supported here. Expected a dict or list, but got:
 
-stdin:1:1
-  ╷
-1 │ true[0]
-  ╵ ^~~~
-Note: Expected a dict or list, but found: true.
+  Bool

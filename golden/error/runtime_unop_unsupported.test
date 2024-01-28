@@ -1,8 +1,8 @@
 not "true"
 
 # output:
-stdin:1:1
+stdin:1:5
   ╷
 1 │ not "true"
-  ╵ ^~~
-Error: This operator is not supported for this value.
+  ╵     ^~~~~~
+Error: Type mismatch. Expected Bool but found String.

@@ -5,4 +5,4 @@ stdin:1:5
   ╷
 1 │ [if 0: "false"]
   ╵     ^
-Error: Condition should be a boolean.
+Error: Type mismatch. Expected Bool but found Int.
