@@ -26,20 +26,6 @@ use crate::types::{self, Type};
 
 pub type Env = crate::env::Env<Type>;
 
-// Temporarily add a way to mark things as unfinished, without blocking the
-// fuzzer on it.
-#[cfg(not(fuzzing))]
-macro_rules! unfinished {
-    ($($arg:tt)*) => { unimplemented!($($arg)*) }
-}
-
-#[cfg(fuzzing)]
-macro_rules! unfinished {
-    ($($arg:tt)*) => {
-        Ok(())
-    };
-}
-
 /// Return the default environment with prelude in scope.
 pub fn prelude() -> Env {
     let mut env = Env::new();
@@ -87,15 +73,16 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
 
         // The function type describes the different callable values.
         (Type::Function(fn_type), Value::Function(fn_val)) => {
-            Type::Function(fn_val.type_.clone())
-                .check_subtype_of(at, &Type::Function(fn_type.clone()))?;
+            let type_val = Type::Function(fn_val.type_.clone());
+            let type_fun = Type::Function(fn_type.clone());
+            type_val.check_subtype_of(at, &type_fun)?;
             Ok(())
         }
         (Type::Function { .. }, Value::BuiltinFunction { .. }) => {
-            unfinished!("TODO: Typecheck function for BuiltinFunction.")
+            unimplemented!("TODO: Typecheck function for BuiltinFunction.")
         }
         (Type::Function { .. }, Value::BuiltinMethod { .. }) => {
-            unfinished!("TODO: Typecheck function for BuiltinMethod.")
+            unimplemented!("TODO: Typecheck function for BuiltinMethod.")
         }
 
         _ => at
