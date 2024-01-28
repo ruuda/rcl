@@ -522,31 +522,35 @@ impl TypeChecker {
                         // When the function type is statically known, first we
                         // need to confirm that the arity matches.
                         if fn_type.args.len() != args.len() {
-                            let mut msg: Vec<Doc> = vec!["Function takes ".into()];
+                            let mut msg: Vec<Doc> = vec!["The function takes ".into()];
                             match fn_type.args.len() {
-                                0 => msg.push("no arguments:".into()),
+                                0 => msg.push("no arguments".into()),
                                 1 => msg.push("1 argument".into()),
                                 n => {
                                     msg.push(n.to_string().into());
                                     msg.push(" arguments".into());
                                 }
                             }
-                            msg.push(concat! {
-                                ", it has type:"
+                            msg.push(", but got ".into());
+                            msg.push(args.len().to_string().into());
+                            msg.push(".".into());
+                            let note = concat! {
+                                "Function has this type:"
                                 Doc::HardBreak Doc::HardBreak
                                 indent! { format_type(&Type::Function(fn_type.clone())).into_owned() }
-                            });
+                            };
                             if fn_type.args.len() < args.len() {
                                 let (err_span, _) = args[fn_type.args.len()];
                                 return err_span
-                                    .error("Unexpected argument.")
-                                    .with_note(*function_span, Doc::Concat(msg))
+                                    .error(concat! { "Unexpected argument. " Doc::Concat(msg) })
+                                    .with_note(*function_span, note)
                                     .err();
                             }
                             if fn_type.args.len() > args.len() {
                                 return close
-                                    .error("Expected more arguments in call.")
-                                    .with_note(*function_span, Doc::Concat(msg))
+                                    // TODO: Include the name of the argument, if it is known.
+                                    .error(concat! { "Missing argument. " Doc::Concat(msg) })
+                                    .with_note(*function_span, note)
                                     .err();
                             }
                         }

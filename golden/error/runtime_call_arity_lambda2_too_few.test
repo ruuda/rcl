@@ -6,16 +6,12 @@ stdin:2:12
   ╷
 2 │ f("too few")
   ╵            ^
-Error: Missing argument 'y'. The function takes 2 arguments, but got 1.
+Error: Missing argument. The function takes 2 arguments, but got 1.
 
-stdin:1:16
-  ╷
-1 │ let f = (x, y) => x;
-  ╵                ^~
-Note: Function defined here.
-
-stdin:2:2
+stdin:2:1
   ╷
 2 │ f("too few")
-  ╵  ^
-In call to function.
+  ╵ ^
+Note: Function has this type:
+
+  (Dynamic, Dynamic) -> Dynamic
