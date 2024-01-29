@@ -1,0 +1,16 @@
+// This test formatting of the Bool type in the error message.
+let x: Bool = 0;
+null
+
+# output:
+stdin:2:5
+  ╷
+2 │ let x: Bool = 0;
+  ╵     ^
+Error: Type mismatch. Expected a value that fits this type:
+
+  Bool
+
+But got this value:
+
+  0

@@ -1,0 +1,16 @@
+// This test formatting of the Set type in the error message.
+let x: Set[Int] = [];
+null
+
+# output:
+stdin:2:5
+  ╷
+2 │ let x: Set[Int] = [];
+  ╵     ^
+Error: Type mismatch. Expected a value that fits this type:
+
+  Set[Int]
+
+But got this value:
+
+  []
