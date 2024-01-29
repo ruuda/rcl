@@ -154,6 +154,12 @@ let flavor = "sweet";
 A let-binding is an _expression_, not an assignment statement. The expression
 evaluates to the expression after `;`.
 
+Let bindings can optionally contain [a type annotation](types.md):
+
+```rcl
+let answer: Int = 42;
+```
+
 ## List indexing
 
 Brackets are used to index into lists. Indices must be integers and are 0-based.

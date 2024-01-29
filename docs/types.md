@@ -1,5 +1,8 @@
 # Types
 
+***Warning**: The type system is a work in progress. In particular, record types
+are missing, and the implementation of the typechecker is too ad-hoc.*
+
 RCL has a type system that can help to prevent bugs and make configuration more
 self-documenting.
 
