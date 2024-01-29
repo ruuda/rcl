@@ -1,0 +1,4 @@
+let d: Dict[String, Int] = { a = 0 }; d
+
+# output:
+{ a = 0 }

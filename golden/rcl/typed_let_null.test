@@ -1,0 +1,4 @@
+let n: Null = null; n
+
+# output:
+null
