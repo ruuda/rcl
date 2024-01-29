@@ -398,12 +398,6 @@ impl Env {
     }
 }
 
-impl Default for Env {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 macro_rules! builtin_function {
     (
         $rcl_name:expr,
