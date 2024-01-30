@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 use rcl::cli::Target;
 use rcl::error::Result;
 use rcl::loader::{Loader, SandboxMode};
-use rcl::runtime::{Env, Value};
+use rcl::runtime::{self, Value};
 use rcl::source::DocId;
 use rcl::tracer::StderrTracer;
 
@@ -18,7 +18,7 @@ fn evaluate<F: FnOnce(&mut Loader) -> Result<DocId>>(load: F) -> Result<Value> {
     loader.initialize_filesystem(SandboxMode::Workdir, None)?;
     let doc = load(&mut loader)?;
     let mut tracer = StderrTracer::new(None);
-    let mut env = Env::with_prelude();
+    let mut env = runtime::prelude();
     loader.evaluate(doc, &mut env, &mut tracer)
 }
 

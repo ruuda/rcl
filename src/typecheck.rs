@@ -12,6 +12,9 @@
 //! but also for the type `List[String]`. Therefore we check whether a value
 //! _fits_ a particular type, and that same value may fit multiple types.
 
+use std::rc::Rc;
+
+use crate::env::Env;
 use crate::error::{IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
@@ -19,6 +22,25 @@ use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{self, Value};
 use crate::source::Span;
 use crate::types::{self, Type};
+
+/// Return the type prelude, all the types that are in scope by default.
+pub fn prelude() -> Env<Rc<Type>> {
+    let mut env = Env::new();
+
+    // The primitive types are in scope by default.
+    env.push("Bool".into(), Rc::new(Type::Bool));
+    env.push("Int".into(), Rc::new(Type::Int));
+    env.push("Null".into(), Rc::new(Type::Null));
+    env.push("String".into(), Rc::new(Type::String));
+
+    // TODO: What to do about Dict, List, and Set? They are technically type
+    // constructors. Should those exist, at this level, if they can't be
+    // user-defined? It's easier to implement if we just hard-code those few,
+    // but then if you write `let xs: List = [1, 2, 3]`, it will lead to a
+    // confusing error.
+
+    env
+}
 
 /// Confirm that the value fits the given type.
 pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {

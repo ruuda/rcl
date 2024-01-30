@@ -32,7 +32,7 @@ fuzz_target!(|input: &str| {
     let mut loader = Loader::new();
     let id = loader.load_string(expr_str);
     let mut evaluator = Evaluator::new(&mut loader, &mut tracer);
-    let mut env = rcl::runtime::Env::with_prelude();
+    let mut env = rcl::runtime::prelude();
     let v = evaluator.eval_doc(&mut env, id).expect("Expression is valid.");
 
     assert_eq!(v, Value::Bool(true));

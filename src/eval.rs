@@ -15,7 +15,9 @@ use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
 use crate::pprint::{concat, indent, Doc};
-use crate::runtime::{CallArg, Env, Function, FunctionCall, MethodCall, MethodInstance, Value};
+use crate::runtime::{
+    self, CallArg, Env, Function, FunctionCall, MethodCall, MethodInstance, Value,
+};
 use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
@@ -124,6 +126,11 @@ pub struct Evaluator<'a> {
     ///
     /// This is used to break infinite loops.
     pub eval_count: EvalCount,
+
+    /// The (static) environment for the types that are in scope.
+    ///
+    /// TODO: This will be removed with the static typechecker refactor.
+    pub type_env: crate::env::Env<Rc<Type>>,
 }
 
 impl<'a> Evaluator<'a> {
@@ -135,6 +142,7 @@ impl<'a> Evaluator<'a> {
             stdlib: stdlib::initialize(),
             eval_depth: 0,
             eval_count: EvalCount::new(),
+            type_env: typecheck::prelude(),
         }
     }
 
@@ -207,6 +215,7 @@ impl<'a> Evaluator<'a> {
         }
 
         let expr = self.loader.get_ast(doc)?;
+
         let ctx = EvalContext {
             doc,
             imported_from: Some(imported_from),
@@ -214,7 +223,7 @@ impl<'a> Evaluator<'a> {
 
         // Evaluate the import in its own clean environment, it should not be
         // affected by the surrounding environment of the import statement.
-        let mut env = Env::with_prelude();
+        let mut env = runtime::prelude();
 
         self.import_stack.push(ctx);
         let result = self.eval_expr(&mut env, &expr)?;
@@ -333,7 +342,7 @@ impl<'a> Evaluator<'a> {
                 result
             }
 
-            Expr::Var { span, ident } => match env.lookup_value(ident) {
+            Expr::Var { ident, span } => match env.lookup(ident) {
                 Some(value) => Ok(value.clone()),
                 None => Err(span.error("Unknown variable.").into()),
             },
@@ -592,7 +601,7 @@ impl<'a> Evaluator<'a> {
         // have to clone the full thing.
         let mut env = fun.env.clone();
         for (arg_name, CallArg { value, .. }) in fun.args.iter().zip(call.args) {
-            env.push_value(arg_name.clone(), value.clone());
+            env.push(arg_name.clone(), value.clone());
         }
 
         self.eval_expr(&mut env, fun.body.as_ref())
@@ -857,7 +866,7 @@ impl<'a> Evaluator<'a> {
                     typecheck::check_value(*ident_span, type_.as_ref(), &v)?;
                 }
 
-                env.push_value(ident.clone(), v);
+                env.push(ident.clone(), v);
             }
             Stmt::Assert {
                 condition_span,
@@ -950,7 +959,7 @@ impl<'a> Evaluator<'a> {
                 match (&idents[..], collection_value) {
                     ([name], Value::List(xs)) => {
                         for x in xs.iter() {
-                            let ck = env.push_value(name.clone(), x.clone());
+                            let ck = env.push(name.clone(), x.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
                         }
@@ -965,7 +974,7 @@ impl<'a> Evaluator<'a> {
                     }
                     ([name], Value::Set(xs)) => {
                         for x in xs.iter() {
-                            let ck = env.push_value(name.clone(), x.clone());
+                            let ck = env.push(name.clone(), x.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
                         }
@@ -981,8 +990,8 @@ impl<'a> Evaluator<'a> {
                     ([k_name, v_name], Value::Dict(xs)) => {
                         for (k, v) in xs.iter() {
                             let ck = env.checkpoint();
-                            env.push_value(k_name.clone(), k.clone());
-                            env.push_value(v_name.clone(), v.clone());
+                            env.push(k_name.clone(), k.clone());
+                            env.push(v_name.clone(), v.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
                         }
@@ -1029,7 +1038,7 @@ impl<'a> Evaluator<'a> {
 
     fn eval_type_expr(&mut self, env: &mut Env, type_: &AType) -> Result<Rc<Type>> {
         match type_ {
-            AType::Term { span, name } => match env.lookup_type(name) {
+            AType::Term { span, name } => match self.type_env.lookup(name) {
                 Some(t) => Ok(t.clone()),
                 None => {
                     let err = span.error("Unknown type.");

@@ -12,8 +12,7 @@ use rcl::error::{Error, Result};
 use rcl::loader::{Loader, SandboxMode};
 use rcl::markup::MarkupMode;
 use rcl::pprint;
-use rcl::runtime::Env;
-use rcl::runtime::Value;
+use rcl::runtime::{self, Value};
 use rcl::source::{DocId, Span};
 use rcl::tracer::StderrTracer;
 
@@ -116,7 +115,7 @@ impl App {
                     .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
 
                 let mut tracer = self.get_tracer();
-                let mut env = Env::with_prelude();
+                let mut env = runtime::prelude();
                 let doc = self.loader.load_cli_target(fname)?;
                 let val = self.loader.evaluate(doc, &mut env, &mut tracer)?;
                 // TODO: Need to get last inner span.
@@ -138,13 +137,13 @@ impl App {
 
                 // First we evaluate the input document.
                 let mut tracer = self.get_tracer();
-                let mut env = Env::with_prelude();
+                let mut env = runtime::prelude();
                 let val_input = self.loader.evaluate(input, &mut env, &mut tracer)?;
 
                 // Then we bind that to the variable `input`, and in that context, we
-                // evaluate the query expression.
-                let mut env = Env::with_prelude();
-                env.push_value("input".into(), val_input);
+                // evaluate the query expression. The environment should be
+                // clean at this point, so we can reuse it.
+                env.push("input".into(), val_input);
                 let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
 
                 let full_span = self.loader.get_span(query);
