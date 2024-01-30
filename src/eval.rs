@@ -519,9 +519,10 @@ impl<'a> Evaluator<'a> {
     /// This powers both format strings as well as `List.join`.
     pub fn push_format_fragment(out: &mut Vec<Rc<str>>, span: Span, value: &Value) -> Result<()> {
         match value {
-            Value::String(s) => out.push(s.clone()),
-            Value::Int(i) => out.push(i.to_string().into()),
             Value::Bool(b) => out.push((if *b { "true" } else { "false" }).into()),
+            Value::Int(i) => out.push(i.to_string().into()),
+            Value::Null => out.push("null".into()),
+            Value::String(s) => out.push(s.clone()),
             _ => {
                 // TODO: We could include the value itself into the message.
                 return span
