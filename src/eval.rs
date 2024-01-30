@@ -272,6 +272,7 @@ impl<'a> Evaluator<'a> {
                     (Value::String(_), "ends_with") => Some(stdlib::STRING_ENDS_WITH),
                     (Value::String(_), "len") => Some(stdlib::STRING_LEN),
                     (Value::String(_), "parse_int") => Some(stdlib::STRING_PARSE_INT),
+                    (Value::String(_), "replace") => Some(stdlib::STRING_REPLACE),
                     (Value::String(_), "split") => Some(stdlib::STRING_SPLIT),
                     (Value::String(_), "split_lines") => Some(stdlib::STRING_SPLIT_LINES),
                     (Value::String(_), "starts_with") => Some(stdlib::STRING_STARTS_WITH),

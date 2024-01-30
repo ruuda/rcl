@@ -69,6 +69,7 @@ _root_base = [
                 "keys",
                 "len",
                 "parse_int",
+                "replace",
                 "reverse",
                 "split",
                 "split_lines",

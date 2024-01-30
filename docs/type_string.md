@@ -91,6 +91,17 @@ evaluation aborts with an error.
 "-42".parse_int()
 ```
 
+## replace
+
+    String.replace (self: String, needle: String, replacement: String) -> String
+
+Replace all occurrences of `needle` with `replacement`.
+
+```rcl
+// Evaluates to "I saw the microphone through the microscope".
+"I saw the telephone through the telescope".replace("tele", "micro")
+```
+
 ## split
 
     String.split: (self: String, separator: String) -> List[String]
