@@ -50,6 +50,14 @@ Return whether the string ends in `suffix`.
 "racecar".ends_with("ace")
 ```
 
+## join
+
+To concatenate list elements with a separator in between,
+use [`List.join`](type_list.md#join).
+(This entry is here to point people who are used to Python’s
+[`str.join`](https://docs.python.org/3/library/stdtypes.html#str.join)
+in the right direction.)
+
 ## len
 
     String.len: (self: String) -> Int
@@ -81,6 +89,17 @@ evaluation aborts with an error.
 ```rcl
 // Evaluates to -42.
 "-42".parse_int()
+```
+
+## replace
+
+    String.replace (self: String, needle: String, replacement: String) -> String
+
+Replace all occurrences of `needle` with `replacement`.
+
+```rcl
+// Evaluates to "I saw the microphone through the microscope".
+"I saw the telephone through the telescope".replace("tele", "micro")
 ```
 
 ## split

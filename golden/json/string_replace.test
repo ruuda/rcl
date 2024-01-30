@@ -1,0 +1,4 @@
+"abacab".replace("ab", "ac")
+
+# output:
+"acacac"

@@ -62,6 +62,24 @@ foods.group_by(food => food.category)
 }
 ```
 
+## join
+
+    List.join: (self: List[T], separator: String) -> String
+
+Concatenate the elements with the separator in between. This is equivalent to
+using a format string, therefore the list elements must be string formattable.
+
+```rcl
+// Evaluates to "foo-bar".
+["foo", "bar"].join("-")
+
+// Evaluates to "2,3,5".
+[2, 3, 5].join(",")
+
+// Error, dicts are not string formattable.
+[{}, {}].join("")
+```
+
 ## key_by
 
     List.key_by: (self: List[T], get_key: T -> U) -> Dict[U, T]

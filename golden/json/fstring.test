@@ -5,13 +5,13 @@
   // Three parts, one inner fragment.
   f"Begin {"hole1"} inner {"hole2"} end.",
 
-  // With integers and booleans inside.
-  f"Bool: {not false}, integer: {21 + 21}",
+  // With integers, booleans, and null inside.
+  f"Bool: {not false}, integer: {21 + 21}, null: {null}",
 ]
 
 # output:
 [
   "Interpolated string: hello, world",
   "Begin hole1 inner hole2 end.",
-  "Bool: true, integer: 42"
+  "Bool: true, integer: 42, null: null"
 ]

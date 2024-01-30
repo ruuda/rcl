@@ -437,6 +437,31 @@ fn builtin_string_chars(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Va
     Ok(Rc::new(Value::List(result)))
 }
 
+builtin_method!("String.replace", const STRING_REPLACE, builtin_string_replace);
+fn builtin_string_replace(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call
+        .check_arity_static("String.replace", &["needle", "replacement"])?;
+    let string = call.receiver.expect_string();
+    let needle_arg = &call.call.args[0];
+    let needle = match needle_arg.value.as_ref() {
+        Value::String(s) => s.as_ref(),
+        _ => return needle_arg.span.error("Needle must be a string.").err(),
+    };
+    let replacement_arg = &call.call.args[1];
+    let replacement = match replacement_arg.value.as_ref() {
+        Value::String(s) => s.as_ref(),
+        _ => {
+            return replacement_arg
+                .span
+                .error("Replacement must be a string.")
+                .err()
+        }
+    };
+    Ok(Rc::new(Value::String(
+        string.replace(needle, replacement).into(),
+    )))
+}
+
 builtin_method!("List.fold", const LIST_FOLD, builtin_list_fold);
 fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     // TODO: Add static type checks. Right now you could provide a bogus
@@ -478,6 +503,31 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>
     }
 
     Ok(acc)
+}
+
+builtin_method!("List.join", const LIST_JOIN, builtin_list_join);
+fn builtin_list_join(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("List.join", &["separator"])?;
+    let list = call.receiver.expect_list();
+    let separator = &call.call.args[0];
+
+    // The join method behaves the same as a format string, and in fact we
+    // implement it that way. Build a list of fragments first.
+    let mut fragments = Vec::new();
+
+    for (i, elem) in list.iter().enumerate() {
+        Evaluator::push_format_fragment(&mut fragments, call.receiver_span, elem.as_ref())?;
+
+        if i + 1 < list.len() {
+            Evaluator::push_format_fragment(
+                &mut fragments,
+                separator.span,
+                separator.value.as_ref(),
+            )?;
+        }
+    }
+
+    Ok(Rc::new(Evaluator::join_format_fragments(fragments)))
 }
 
 builtin_method!("List.reverse", const LIST_REVERSE, builtin_list_reverse);

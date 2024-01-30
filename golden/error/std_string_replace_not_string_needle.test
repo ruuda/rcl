@@ -1,0 +1,14 @@
+"".replace(1, "")
+
+# output:
+stdin:1:12
+  ╷
+1 │ "".replace(1, "")
+  ╵            ^
+Error: Needle must be a string.
+
+stdin:1:11
+  ╷
+1 │ "".replace(1, "")
+  ╵           ^
+In call to method 'String.replace'.
