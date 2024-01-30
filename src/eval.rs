@@ -10,7 +10,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, Type as AType, UnOp, Yield};
+use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
@@ -22,7 +22,7 @@ use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
 use crate::typecheck;
-use crate::types::{self, Type};
+use crate::types::Type;
 
 /// An entry on the evaluation stack.
 pub struct EvalContext {
@@ -126,11 +126,6 @@ pub struct Evaluator<'a> {
     ///
     /// This is used to break infinite loops.
     pub eval_count: EvalCount,
-
-    /// The (static) environment for the types that are in scope.
-    ///
-    /// TODO: This will be removed with the static typechecker refactor.
-    pub type_env: crate::env::Env<Type>,
 }
 
 impl<'a> Evaluator<'a> {
@@ -142,7 +137,6 @@ impl<'a> Evaluator<'a> {
             stdlib: stdlib::initialize(),
             eval_depth: 0,
             eval_count: EvalCount::new(),
-            type_env: typecheck::prelude(),
         }
     }
 
@@ -883,26 +877,16 @@ impl<'a> Evaluator<'a> {
     fn eval_stmt(&mut self, env: &mut Env, stmt: &Stmt) -> Result<()> {
         match stmt {
             Stmt::Let {
-                ident_span,
                 ident,
-                type_,
                 value_span: _,
                 value,
+                ..
             } => {
-                // Note, this is not a recursive let, the variable is not bound when
-                // we evaluate the expression.
+                // Note, this is not a recursive let, the variable is not bound
+                // when we evaluate the expression. Even if the let binding has
+                // a type annotation, we don't check it here; the typechecker
+                // inserts a dedicated `CheckType` node when needed.
                 let v = self.eval_expr(env, value)?;
-
-                // If the let has a type annotation, then we verify that the
-                // value fits the specified type.
-                // TODO: This is no longer needed now that we have the separate
-                // typecheck phase. But for now I will keep it around as a sanity check.
-                if let Some(type_expr) = type_ {
-                    let type_ = self.eval_type_expr(type_expr)?;
-                    let r = typecheck::check_value(*ident_span, &type_, &v);
-                    debug_assert!(r.is_ok());
-                }
-
                 env.push(ident.clone(), v);
             }
             Stmt::Assert {
@@ -1066,104 +1050,6 @@ impl<'a> Evaluator<'a> {
                 env.pop(ck);
                 Ok(())
             }
-        }
-    }
-
-    fn eval_type_expr(&mut self, type_: &AType) -> Result<Type> {
-        match type_ {
-            AType::Term { span, name } => match self.type_env.lookup(name) {
-                Some(t) => Ok(t.clone()),
-                None => {
-                    let err = span.error("Unknown type.");
-                    // TODO: Handle type constructors more first-class after all?
-                    let err = match name.as_ref() {
-                        "Dict" => err.with_help(concat!{
-                            "'" Doc::highlight("Dict") "' without type parameters cannot be used directly."
-                            Doc::SoftBreak
-                            "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Int]") "'."
-                        }),
-                        "List" => err.with_help(concat!{
-                            "'" Doc::highlight("List") "' without type parameters cannot be used directly."
-                            Doc::SoftBreak
-                            "Specify an element type, e.g. '" Doc::highlight("List[String]") "'."
-                        }),
-                        "Set" => err.with_help(concat!{
-                            "'" Doc::highlight("Set") "' without type parameters cannot be used directly."
-                            Doc::SoftBreak
-                            "Specify an element type, e.g. '" Doc::highlight("Set[String]") "'."
-                        }),
-                        _ => err,
-                    };
-                    err.err()
-                }
-            },
-            AType::Function { args, result } => {
-                let args_types = args
-                    .iter()
-                    .map(|t| self.eval_type_expr(t))
-                    .collect::<Result<Vec<_>>>()?;
-                let result_type = self.eval_type_expr(result)?;
-                let fn_type = types::Function {
-                    args: args_types,
-                    result: result_type,
-                };
-                Ok(Type::Function(Rc::new(fn_type)))
-            }
-            AType::Apply { span, name, args } => {
-                let args_types = args
-                    .iter()
-                    .map(|t| self.eval_type_expr(t))
-                    .collect::<Result<Vec<_>>>()?;
-                self.eval_type_apply(*span, name.as_ref(), &args_types)
-            }
-        }
-    }
-
-    /// Evaluate type constructor application (generic instantiation).
-    fn eval_type_apply(&mut self, name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
-        match name {
-            "Dict" => match args {
-                [tk, tv] => {
-                    let dict = types::Dict {
-                        key: tk.clone(),
-                        value: tv.clone(),
-                    };
-                    Ok(Type::Dict(Rc::new(dict)))
-                }
-                // TODO: We can point at the excess or missing arg for a
-                // friendlier error, but better to do that in a general way
-                // when we add type contructors to `types::Type`.
-                _ => name_span
-                    .error(concat! {
-                        "Type 'Dict' takes two type parameters (key and value), but got "
-                        args.len().to_string() "."
-                    })
-                    .err(),
-            },
-            "List" => match args {
-                [te] => Ok(Type::List(Rc::new(te.clone()))),
-                // TODO: As above for dict, we can do a better job of the error.
-                _ => name_span
-                    .error(concat! {
-                        "Type 'List' takes one type parameter (the element type), but got "
-                        args.len().to_string() "."
-                    })
-                    .err(),
-            },
-            "Set" => match args {
-                [te] => Ok(Type::Set(Rc::new(te.clone()))),
-                // TODO: As above for dict, we can do a better job of the error.
-                _ => name_span
-                    .error(concat! {
-                        "Type 'Set' takes one type parameter (the element type), but got "
-                        args.len().to_string() "."
-                    })
-                    .err(),
-            },
-            // TODO: We could report a nicer error if we knew the types in scope.
-            // Okay, I am convinced now that type constructors should live in
-            // the type namespace. But we can do that later.
-            _ => name_span.error("Unknown generic type.").err(),
         }
     }
 }
