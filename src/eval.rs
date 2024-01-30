@@ -14,7 +14,7 @@ use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
-use crate::pprint::{concat, Doc};
+use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{CallArg, Env, Function, FunctionCall, MethodCall, Value};
 use crate::source::{DocId, Span};
 use crate::stdlib;
@@ -523,10 +523,14 @@ impl<'a> Evaluator<'a> {
             Value::Int(i) => out.push(i.to_string().into()),
             Value::Null => out.push("null".into()),
             Value::String(s) => out.push(s.clone()),
-            _ => {
-                // TODO: We could include the value itself into the message.
+            not_formattable => {
                 return span
-                    .error("This value cannot be interpolated into a string.")
+                    .error(concat! {
+                        "This value cannot be interpolated into a string:"
+                        Doc::HardBreak
+                        Doc::HardBreak
+                        indent! { format_rcl(not_formattable).into_owned() }
+                    })
                     .err();
             }
         }
