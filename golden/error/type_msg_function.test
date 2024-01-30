@@ -1,0 +1,16 @@
+// This test formatting of a function type in the error message.
+let f: (Int, String) -> Bool = "not a function";
+null
+
+# output:
+stdin:2:5
+  ╷
+2 │ let f: (Int, String) -> Bool = "not a function";
+  ╵     ^
+Error: Type mismatch. Expected a value that fits this type:
+
+  (Int, String) -> Bool
+
+But got this value:
+
+  "not a function"

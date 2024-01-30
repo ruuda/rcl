@@ -16,6 +16,7 @@ use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
 use crate::pprint::{concat, Doc};
 use crate::source::Span;
+use crate::types::Type;
 
 /// A value provided as argument to a function call.
 pub struct CallArg {
@@ -287,30 +288,56 @@ impl<'a> From<&'a str> for Value {
 /// An environment binds names to values.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Env {
-    bindings: Vec<(Ident, Rc<Value>)>,
+    value_bindings: Vec<(Ident, Rc<Value>)>,
+    type_bindings: Vec<(Ident, Rc<Type>)>,
 }
 
 /// References a version of an environment that we can later restore to.
 #[derive(Copy, Clone)]
-pub struct EnvCheckpoint(usize);
+pub struct EnvCheckpoint {
+    values_len: usize,
+    types_len: usize,
+}
 
 impl Env {
     /// Create a new empty environment.
     pub fn new() -> Env {
         Env {
-            bindings: Vec::new(),
+            value_bindings: Vec::new(),
+            type_bindings: Vec::new(),
         }
     }
 
     /// Create a new environment with an initialized standard library.
     pub fn with_prelude() -> Env {
         let mut env = Env::new();
-        env.push("std".into(), crate::stdlib::initialize());
+        env.push_value("std".into(), crate::stdlib::initialize());
+
+        // The primitive types are in scope by default.
+        env.push_type("Bool".into(), Rc::new(Type::Bool));
+        env.push_type("Int".into(), Rc::new(Type::Int));
+        env.push_type("Null".into(), Rc::new(Type::Null));
+        env.push_type("String".into(), Rc::new(Type::String));
+
+        // TODO: What to do about Dict, List, and Set? They are technically type
+        // constructors. Should those exist, at this level, if they can't be
+        // user-defined? It's easier to implement if we just hard-code those few,
+        // but then if you write `let xs: List = [1, 2, 3]`, it will lead to a
+        // confusing error.
+
         env
     }
 
-    pub fn lookup(&self, name: &Ident) -> Option<&Rc<Value>> {
-        self.bindings
+    pub fn lookup_value(&self, name: &Ident) -> Option<&Rc<Value>> {
+        self.value_bindings
+            .iter()
+            .rev()
+            .find(|(k, _v)| k == name)
+            .map(|(_k, v)| v)
+    }
+
+    pub fn lookup_type(&self, name: &Ident) -> Option<&Rc<Type>> {
+        self.type_bindings
             .iter()
             .rev()
             .find(|(k, _v)| k == name)
@@ -324,34 +351,50 @@ impl Env {
     /// it does not _restore_ the environment to that state, like something
     /// transactional would, or a persistent data structure.
     pub fn checkpoint(&self) -> EnvCheckpoint {
-        EnvCheckpoint(self.bindings.len())
+        EnvCheckpoint {
+            values_len: self.value_bindings.len(),
+            types_len: self.type_bindings.len(),
+        }
     }
 
-    /// Push a binding into the environment.
+    /// Push a value binding into the environment.
     ///
     /// If the name already existed, the new push will shadow the old one.
     ///
     /// Returns a checkpoint of the environment before the push.
-    pub fn push(&mut self, name: Ident, value: Rc<Value>) -> EnvCheckpoint {
+    pub fn push_value(&mut self, name: Ident, value: Rc<Value>) -> EnvCheckpoint {
         let checkpoint = self.checkpoint();
-        self.bindings.push((name, value));
+        self.value_bindings.push((name, value));
+        checkpoint
+    }
+
+    /// Push a type binding into the environment.
+    ///
+    /// If the name already existed, the new push will shadow the old one.
+    ///
+    /// Returns a checkpoint of the environment before the push.
+    pub fn push_type(&mut self, name: Ident, type_: Rc<Type>) -> EnvCheckpoint {
+        let checkpoint = self.checkpoint();
+        self.type_bindings.push((name, type_));
         checkpoint
     }
 
     /// Pop bindings to get back to a previous version of the environment.
     pub fn pop(&mut self, to: EnvCheckpoint) {
-        let EnvCheckpoint(n) = to;
+        let EnvCheckpoint {
+            values_len,
+            types_len,
+        } = to;
         debug_assert!(
-            self.bindings.len() >= n,
+            self.value_bindings.len() >= values_len,
             "Cannot restore to checkpoint, more got popped already.",
         );
-        self.bindings.truncate(n);
-    }
-}
-
-impl Default for Env {
-    fn default() -> Self {
-        Self::new()
+        debug_assert!(
+            self.type_bindings.len() >= types_len,
+            "Cannot restore to checkpoint, more got popped already.",
+        );
+        self.value_bindings.truncate(values_len);
+        self.type_bindings.truncate(types_len);
     }
 }
 

@@ -6,6 +6,6 @@ a
 
 # output:
 let a = import "some_file.rcl";
-let very_long_variable_name =
-  import "and_a_very_long_file_name_that_overflows_the_width.rcl";
+let very_long_variable_name = import
+  "and_a_very_long_file_name_that_overflows_the_width.rcl";
 a

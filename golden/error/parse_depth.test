@@ -1,0 +1,12 @@
+// This expression is nested too deep, and triggers a defense against stack
+// overflow in the parser. Every line contains 50 parens.
+((((((((((((((((((((((((((((((((((((((((((((((((((
+0
+))))))))))))))))))))))))))))))))))))))))))))))))))
+
+# output:
+stdin:3:50
+  ╷
+3 │ ((((((((((((((((((((((((((((((((((((((((((((((((((
+  ╵                                                  ^
+Error: Parser recursion limit reached, please reduce nesting.

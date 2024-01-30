@@ -10,7 +10,7 @@
 //! The formatter converts the CST into a [`Doc`], which can subsequently be
 //! pretty-printed for formatting.
 
-use crate::cst::{Expr, NonCode, Prefixed, Seq, Stmt, StringPart};
+use crate::cst::{Expr, NonCode, Prefixed, Seq, Stmt, StringPart, Type};
 use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
 use crate::source::Span;
@@ -183,14 +183,34 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    pub fn prefixed_type(&self, type_: &Prefixed<Type>) -> Doc<'a> {
+        concat! {
+            self.non_code(&type_.prefix)
+            self.type_(&type_.inner)
+        }
+    }
+
     pub fn stmt(&self, stmt: &Stmt) -> Doc<'a> {
         // TODO: Make statement chains a first class construct, so we can format
         // them either wide or tall.
         match stmt {
-            Stmt::Let { ident, value, .. } => {
-                concat! {
-                    "let " self.span(*ident) " = " self.expr(value) ";"
+            Stmt::Let {
+                ident,
+                value,
+                type_,
+                ..
+            } => {
+                let mut result: Vec<Doc<'a>> = Vec::new();
+                result.push("let ".into());
+                result.push(self.span(*ident));
+                if let Some(t) = type_ {
+                    result.push(": ".into());
+                    result.push(self.type_(t));
                 }
+                result.push(" = ".into());
+                result.push(self.expr(value));
+                result.push(";".into());
+                Doc::Concat(result)
             }
             Stmt::Assert {
                 condition, message, ..
@@ -529,6 +549,43 @@ impl<'a> Formatter<'a> {
                 };
                 (result, sep)
             }
+        }
+    }
+
+    pub fn type_(&self, type_: &Type) -> Doc<'a> {
+        match type_ {
+            Type::Term(span) => self.span(*span),
+            Type::Apply { name, args } => concat! {
+                self.span(*name)
+                self.types("[", args, "]")
+            },
+            Type::Function { args, result } => concat! {
+                self.types("(", args, ")")
+                " -> "
+                self.type_(result)
+            },
+        }
+    }
+
+    /// A list of types enclosed by opening and closing delimiters.
+    pub fn types(
+        &self,
+        open: &'static str,
+        types: &[Prefixed<Type>],
+        close: &'static str,
+    ) -> Doc<'a> {
+        group! {
+            open
+            Doc::SoftBreak
+            indent! {
+                Doc::join(
+                    types.iter().map(|t| self.prefixed_type(t)),
+                    concat!{ "," Doc::Sep },
+                )
+                Doc::tall(",")
+            }
+            Doc::SoftBreak
+            close
         }
     }
 }

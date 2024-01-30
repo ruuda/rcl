@@ -1,0 +1,9 @@
+let number: Int;
+number
+
+# output:
+stdin:1:16
+  ╷
+1 │ let number: Int;
+  ╵                ^
+Error: Expected '=' after type annotation.

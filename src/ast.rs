@@ -64,7 +64,12 @@ pub struct FormatFragment {
 #[derive(Clone, Debug)]
 pub enum Stmt {
     /// A let-binding.
-    Let { ident: Ident, value: Box<Expr> },
+    Let {
+        ident_span: Span,
+        ident: Ident,
+        type_: Option<Box<Type>>,
+        value: Box<Expr>,
+    },
 
     /// Evaluate to the body if true, fail with the message if false.
     Assert {
@@ -241,4 +246,30 @@ impl Seq {
             Seq::If { body, .. } => body.innermost(),
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub enum Type {
+    /// A term is a named type, not necessarily primitive.
+    ///
+    /// For example, `Int` (primitive), or `Widget` (user-defined).
+    Term { span: Span, name: Ident },
+
+    /// Instantiate a generic type; apply a type constructor.
+    ///
+    /// For example, `Dict[k, v]`.
+    Apply {
+        /// The span of the name.
+        span: Span,
+        /// The name, e.g. `Dict`.
+        name: Ident,
+        /// All the type arguments between `[]`.
+        args: Box<[Type]>,
+    },
+
+    /// A function type with zero or more arguments, and one result type.
+    Function {
+        args: Box<[Type]>,
+        result: Box<Type>,
+    },
 }

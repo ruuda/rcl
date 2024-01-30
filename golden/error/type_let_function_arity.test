@@ -1,0 +1,15 @@
+let f: (Int, String) -> Bool = (x, y, z) => false;
+null
+
+# output:
+stdin:1:5
+  ╷
+1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
+  ╵     ^
+Error: Expected a function that takes 2 arguments, but got a function that takes 3 arguments.
+
+stdin:1:42
+  ╷
+1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
+  ╵                                          ^~
+Note: Function defined here.

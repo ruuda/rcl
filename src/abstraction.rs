@@ -13,9 +13,11 @@
 //! * Converting literals in the source code into values in the runtime.
 //! * Removing syntactical differences (e.g. converting `k = v;` into `"k": v`).
 
-use crate::ast::{Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Yield};
+use crate::ast::{
+    Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
+};
 use crate::cst::Prefixed;
-use crate::cst::{Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart};
+use crate::cst::{Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart, Type as CType};
 use crate::error::{IntoError, Result};
 use crate::lexer::QuoteStyle;
 use crate::string;
@@ -104,8 +106,18 @@ impl<'a> Abstractor<'a> {
     /// Abstract a statement.
     pub fn stmt(&self, stmt: &CStmt) -> Result<AStmt> {
         let result = match stmt {
-            CStmt::Let { ident, value, .. } => AStmt::Let {
+            CStmt::Let {
+                ident,
+                type_,
+                value,
+                ..
+            } => AStmt::Let {
+                ident_span: *ident,
                 ident: ident.resolve(self.input).into(),
+                type_: match type_ {
+                    None => None,
+                    Some(t) => Some(Box::new(self.type_expr(t)?)),
+                },
                 value: Box::new(self.expr(value)?),
             },
             CStmt::Assert {
@@ -362,6 +374,32 @@ impl<'a> Abstractor<'a> {
                 condition_span: *condition_span,
                 condition: Box::new(self.expr(condition)?),
                 body: Box::new(self.seq(&body.inner)?),
+            },
+        };
+        Ok(result)
+    }
+
+    /// Abstract a type expression.
+    pub fn type_expr(&self, type_: &CType) -> Result<AType> {
+        let result = match type_ {
+            CType::Term(span) => AType::Term {
+                span: *span,
+                name: span.resolve(self.input).into(),
+            },
+            CType::Apply { name, args } => AType::Apply {
+                span: *name,
+                name: name.resolve(self.input).into(),
+                args: args
+                    .iter()
+                    .map(|arg| self.type_expr(&arg.inner))
+                    .collect::<Result<Box<_>>>()?,
+            },
+            CType::Function { args, result } => AType::Function {
+                args: args
+                    .iter()
+                    .map(|arg| self.type_expr(&arg.inner))
+                    .collect::<Result<Box<_>>>()?,
+                result: Box::new(self.type_expr(result)?),
             },
         };
         Ok(result)

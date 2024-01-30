@@ -5,4 +5,4 @@ stdin:1:7
   ╷
 1 │ let x be 32; x
   ╵       ^~
-Error: Expected '=' here.
+Error: Expected '=' or ':' here.

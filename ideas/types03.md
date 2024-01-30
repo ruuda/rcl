@@ -283,3 +283,32 @@ type lattice that may be even nicer.
 
 But we don't need the `Void` type if we don't infer a type for the empty list in
 the first place.
+
+## Runtime vs. static type checking
+
+What I wrote above about `Untyped` is pretty much a fuzzy re-discovery of what
+C# does with `dynamic`. I think I want exactly the typing rules and behavior
+that C# has.
+
+ * Expressions with statically known types are typechecked.
+ * Operations on `dynamic` (e.g. a method call, field lookup) are deferred until
+   runtime, but the compiler (in my case the typecheck phase) can know where to
+   insert these checks.
+ * An expression of any type can be assigned to a variable of type `dynamic`.
+ * Assigning an expression of type `dynamic` to a variable that has a static
+   type inserts a runtime type check.
+
+It is the last point that I'll implement first. One valid (but silly)
+implementation is to immediately forget any static type information, make
+everything be `dynamic`, and validate that values have the right type on let
+bindings at runtime. In this light, my planned initial approach that felt like
+an ad-hoc hack has some more solid theory behind it, now I am more confident
+about it.
+
+Although the dynamic approach considers the following fine:
+
+    let y: List[String] = [];
+    let x: List[Int] = y;
+    x
+
+and probably that should be a type error. But it's a good start.

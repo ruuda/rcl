@@ -57,8 +57,11 @@ Why another config language?
 
 ## Classification
 
- * Purely functional: RCL consists of expressions and has no statements.
+ * **Purely functional:** RCL consists of expressions and has no statements.
    It has immutable values and no mutable objects. Functions are values.
+
+ * **Gradually typed:** Optional type annotations can be used to prevent bugs
+   and to make code more self-documenting. All type annotations are enforced.
 
  * **Vaporware, not fully implemented:** RCL is a superset of json.
 

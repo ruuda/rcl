@@ -1,0 +1,15 @@
+let x: Int = "not an int";
+x
+
+# output:
+stdin:1:5
+  ╷
+1 │ let x: Int = "not an int";
+  ╵     ^
+Error: Type mismatch. Expected a value that fits this type:
+
+  Int
+
+But got this value:
+
+  "not an int"

@@ -1,0 +1,13 @@
+// This is a regression test for a non-idempotency discovered by the fuzzer.
+// The blank line should be removed entirely, but previously it turned into a
+// single newline, which then got removed on a second fmt iteration.
+let x:
+
+T = q;
+0
+
+# output:
+// This is a regression test for a non-idempotency discovered by the fuzzer.
+// The blank line should be removed entirely, but previously it turned into a
+// single newline, which then got removed on a second fmt iteration.
+let x: T = q; 0

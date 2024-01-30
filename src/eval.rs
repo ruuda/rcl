@@ -10,7 +10,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
+use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, Type as AType, UnOp, Yield};
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
@@ -19,6 +19,8 @@ use crate::runtime::{CallArg, Env, Function, FunctionCall, MethodCall, Value};
 use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
+use crate::typecheck;
+use crate::types::{self, Type};
 
 /// An entry on the evaluation stack.
 pub struct EvalContext {
@@ -250,7 +252,7 @@ impl<'a> Evaluator<'a> {
                 result
             }
 
-            Expr::Var { span, ident } => match env.lookup(ident) {
+            Expr::Var { span, ident } => match env.lookup_value(ident) {
                 Some(value) => Ok(value.clone()),
                 None => Err(span.error("Unknown variable.").into()),
             },
@@ -509,7 +511,7 @@ impl<'a> Evaluator<'a> {
         // have to clone the full thing.
         let mut env = fun.env.clone();
         for (arg_name, CallArg { value, .. }) in fun.args.iter().zip(call.args) {
-            env.push(arg_name.clone(), value.clone());
+            env.push_value(arg_name.clone(), value.clone());
         }
 
         self.eval_expr(&mut env, fun.body.as_ref())
@@ -774,11 +776,24 @@ impl<'a> Evaluator<'a> {
 
     fn eval_stmt(&mut self, env: &mut Env, stmt: &Stmt) -> Result<()> {
         match stmt {
-            Stmt::Let { ident, value } => {
+            Stmt::Let {
+                ident_span,
+                ident,
+                type_,
+                value,
+            } => {
                 // Note, this is not a recursive let, the variable is not bound when
                 // we evaluate the expression.
                 let v = self.eval_expr(env, value)?;
-                env.push(ident.clone(), v);
+
+                // If the let has a type annotation, then we verify that the
+                // value fits the specified type.
+                if let Some(type_expr) = type_ {
+                    let type_ = self.eval_type_expr(env, type_expr)?;
+                    typecheck::check_value(*ident_span, type_.as_ref(), v.as_ref())?;
+                }
+
+                env.push_value(ident.clone(), v);
             }
             Stmt::Assert {
                 condition_span,
@@ -872,7 +887,7 @@ impl<'a> Evaluator<'a> {
                 match (&idents[..], collection_value.as_ref()) {
                     ([name], Value::List(xs)) => {
                         for x in xs {
-                            let ck = env.push(name.clone(), x.clone());
+                            let ck = env.push_value(name.clone(), x.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
                         }
@@ -887,7 +902,7 @@ impl<'a> Evaluator<'a> {
                     }
                     ([name], Value::Set(xs)) => {
                         for x in xs {
-                            let ck = env.push(name.clone(), x.clone());
+                            let ck = env.push_value(name.clone(), x.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
                         }
@@ -903,8 +918,8 @@ impl<'a> Evaluator<'a> {
                     ([k_name, v_name], Value::Dict(xs)) => {
                         for (k, v) in xs {
                             let ck = env.checkpoint();
-                            env.push(k_name.clone(), k.clone());
-                            env.push(v_name.clone(), v.clone());
+                            env.push_value(k_name.clone(), k.clone());
+                            env.push_value(v_name.clone(), v.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
                         }
@@ -946,6 +961,103 @@ impl<'a> Evaluator<'a> {
                 env.pop(ck);
                 Ok(())
             }
+        }
+    }
+
+    fn eval_type_expr(&mut self, env: &mut Env, type_: &AType) -> Result<Rc<Type>> {
+        match type_ {
+            AType::Term { span, name } => match env.lookup_type(name) {
+                Some(t) => Ok(t.clone()),
+                None => {
+                    let err = span.error("Unknown type.");
+                    // TODO: Handle type constructors more first-class after all?
+                    let err = match name.as_ref() {
+                        "Dict" => err.with_help(concat!{
+                            "'" Doc::highlight("Dict") "' without type parameters cannot be used directly."
+                            Doc::SoftBreak
+                            "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Int]") "'."
+                        }),
+                        "List" => err.with_help(concat!{
+                            "'" Doc::highlight("List") "' without type parameters cannot be used directly."
+                            Doc::SoftBreak
+                            "Specify an element type, e.g. '" Doc::highlight("List[String]") "'."
+                        }),
+                        "Set" => err.with_help(concat!{
+                            "'" Doc::highlight("Set") "' without type parameters cannot be used directly."
+                            Doc::SoftBreak
+                            "Specify an element type, e.g. '" Doc::highlight("Set[String]") "'."
+                        }),
+                        _ => err,
+                    };
+                    err.err()
+                }
+            },
+            AType::Function { args, result } => {
+                let args_types = args
+                    .iter()
+                    .map(|t| self.eval_type_expr(env, t))
+                    .collect::<Result<Vec<_>>>()?;
+                let result_type = self.eval_type_expr(env, result)?;
+                let fn_type = types::Function {
+                    args: args_types,
+                    result: result_type,
+                };
+                Ok(Rc::new(Type::Function(fn_type)))
+            }
+            AType::Apply { span, name, args } => {
+                let args_types = args
+                    .iter()
+                    .map(|t| self.eval_type_expr(env, t))
+                    .collect::<Result<Vec<_>>>()?;
+                self.eval_type_apply(*span, name.as_ref(), &args_types)
+            }
+        }
+    }
+
+    /// Evaluate type constructor application (generic instantiation).
+    fn eval_type_apply(
+        &mut self,
+        name_span: Span,
+        name: &str,
+        args: &[Rc<Type>],
+    ) -> Result<Rc<Type>> {
+        match name {
+            "Dict" => match args {
+                [tk, tv] => Ok(Rc::new(Type::Dict(tk.clone(), tv.clone()))),
+                // TODO: We can point at the excess or missing arg for a
+                // friendlier error, but better to do that in a general way
+                // when we add type contructors to `types::Type`.
+                _ => name_span
+                    .error(concat! {
+                        "Type 'Dict' takes two type parameters (key and value), but got "
+                        args.len().to_string() "."
+                    })
+                    .err(),
+            },
+            "List" => match args {
+                [te] => Ok(Rc::new(Type::List(te.clone()))),
+                // TODO: As above for dict, we can do a better job of the error.
+                _ => name_span
+                    .error(concat! {
+                        "Type 'List' takes one type parameter (the element type), but got "
+                        args.len().to_string() "."
+                    })
+                    .err(),
+            },
+            "Set" => match args {
+                [te] => Ok(Rc::new(Type::Set(te.clone()))),
+                // TODO: As above for dict, we can do a better job of the error.
+                _ => name_span
+                    .error(concat! {
+                        "Type 'Set' takes one type parameter (the element type), but got "
+                        args.len().to_string() "."
+                    })
+                    .err(),
+            },
+            // TODO: We could report a nicer error if we knew the types in scope.
+            // Okay, I am convinced now that type constructors should live in
+            // the type namespace. But we can do that later.
+            _ => name_span.error("Unknown generic type.").err(),
         }
     }
 }
