@@ -93,13 +93,14 @@ evaluation aborts with an error.
 
 ## replace
 
-    String.replace (self: String, needle: String, replacement: String) -> String
+    String.replace: (self: String, needle: String, replacement: String) -> String
 
 Replace all occurrences of `needle` with `replacement`.
 
 ```rcl
-// Evaluates to "I saw the microphone through the microscope".
 "I saw the telephone through the telescope".replace("tele", "micro")
+// Evaluates to:
+"I saw the microphone through the microscope".
 ```
 
 ## split
