@@ -306,6 +306,7 @@ impl<'a> Evaluator<'a> {
                     (Value::List(_), "contains") => Some(stdlib::LIST_CONTAINS),
                     (Value::List(_), "fold") => Some(stdlib::LIST_FOLD),
                     (Value::List(_), "group_by") => Some(stdlib::LIST_GROUP_BY),
+                    (Value::List(_), "join") => Some(stdlib::LIST_JOIN),
                     (Value::List(_), "key_by") => Some(stdlib::LIST_KEY_BY),
                     (Value::List(_), "len") => Some(stdlib::LIST_LEN),
                     (Value::List(_), "reverse") => Some(stdlib::LIST_REVERSE),
@@ -513,35 +514,49 @@ impl<'a> Evaluator<'a> {
         self.eval_expr(&mut env, fun.body.as_ref())
     }
 
+    /// While joining values for string formatting, push one fragment.
+    ///
+    /// This powers both format strings as well as `List.join`.
+    pub fn push_format_fragment(out: &mut Vec<Rc<str>>, span: Span, value: &Value) -> Result<()> {
+        match value {
+            Value::String(s) => out.push(s.clone()),
+            Value::Int(i) => out.push(i.to_string().into()),
+            Value::Bool(b) => out.push((if *b { "true" } else { "false" }).into()),
+            _ => {
+                // TODO: We could include the value itself into the message.
+                return span
+                    .error("This value cannot be interpolated into a string.")
+                    .err();
+            }
+        }
+        Ok(())
+    }
+
+    /// Join fragments pushed by [`push_format_fragment`] into one string.
+    pub fn join_format_fragments(fragments: Vec<Rc<str>>) -> Value {
+        let mut result = String::with_capacity(fragments.iter().map(|s| s.len()).sum());
+
+        for s in fragments {
+            result.push_str(s.as_ref());
+        }
+
+        Value::String(result.into())
+    }
+
     /// Evaluate a format string.
     pub fn eval_format(
         &mut self,
         env: &mut Env,
         fragments: &[FormatFragment],
     ) -> Result<Rc<Value>> {
-        let mut results: Vec<Rc<str>> = Vec::new();
+        let mut results = Vec::new();
 
         for fragment in fragments {
-            let result = self.eval_expr(env, &fragment.body)?;
-            match result.as_ref() {
-                Value::String(s) => results.push(s.clone()),
-                Value::Int(i) => results.push(i.to_string().into()),
-                Value::Bool(b) => results.push((if *b { "true" } else { "false" }).into()),
-                _ => {
-                    return Err(fragment
-                        .span
-                        .error("This value cannot be interpolated into a string.")
-                        .into())
-                }
-            }
+            let value = self.eval_expr(env, &fragment.body)?;
+            Evaluator::push_format_fragment(&mut results, fragment.span, value.as_ref())?;
         }
 
-        let mut result = String::with_capacity(results.iter().map(|s| s.len()).sum());
-        for s in results {
-            result.push_str(s.as_ref());
-        }
-
-        Ok(Rc::new(Value::String(result.into())))
+        Ok(Rc::new(Evaluator::join_format_fragments(results)))
     }
 
     fn eval_index(

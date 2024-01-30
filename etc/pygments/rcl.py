@@ -64,6 +64,7 @@ _root_base = [
                 "fold",
                 "get",
                 "group_by",
+                "join",
                 "key_by",
                 "keys",
                 "len",

@@ -480,6 +480,31 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>
     Ok(acc)
 }
 
+builtin_method!("List.join", const LIST_JOIN, builtin_list_join);
+fn builtin_list_join(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
+    call.call.check_arity_static("List.join", &["separator"])?;
+    let list = call.receiver.expect_list();
+    let separator = &call.call.args[0];
+
+    // The join method behaves the same as a format string, and in fact we
+    // implement it that way. Build a list of fragments first.
+    let mut fragments = Vec::new();
+
+    for (i, elem) in list.iter().enumerate() {
+        Evaluator::push_format_fragment(&mut fragments, call.receiver_span, elem.as_ref())?;
+
+        if i + 1 < list.len() {
+            Evaluator::push_format_fragment(
+                &mut fragments,
+                separator.span,
+                separator.value.as_ref(),
+            )?;
+        }
+    }
+
+    Ok(Rc::new(Evaluator::join_format_fragments(fragments)))
+}
+
 builtin_method!("List.reverse", const LIST_REVERSE, builtin_list_reverse);
 fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Rc<Value>> {
     call.call.check_arity_static("List.reverse", &[])?;

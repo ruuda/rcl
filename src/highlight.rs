@@ -28,7 +28,7 @@ fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
             // Give the builtins a different color.
             // TODO: Only when preceded by a dot, when they are methods.
             b"chars" | b"contains" | b"ends_with" | b"except" | b"fold" | b"get" | b"group_by"
-            | b"key_by" | b"keys" | b"len" | b"parse_int" | b"reverse" | b"split"
+            | b"join" | b"key_by" | b"keys" | b"len" | b"parse_int" | b"reverse" | b"split"
             | b"split_lines" | b"starts_with" | b"std" | b"values" => red,
             _ => blue,
         },
