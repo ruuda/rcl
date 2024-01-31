@@ -100,7 +100,7 @@ Replace all occurrences of `needle` with `replacement`.
 ```rcl
 "I saw the telephone through the telescope".replace("tele", "micro")
 // Evaluates to:
-"I saw the microphone through the microscope".
+"I saw the microphone through the microscope"
 ```
 
 ## split
