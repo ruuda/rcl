@@ -9,7 +9,6 @@
 
 use std::rc::Rc;
 
-use crate::cli::GlobalOptions;
 use crate::error::highlight_span;
 use crate::fmt_rcl::format_rcl;
 use crate::markup::{Markup, MarkupMode};
@@ -38,12 +37,10 @@ pub struct StderrTracer {
 }
 
 impl StderrTracer {
-    pub fn new(opts: &GlobalOptions) -> StderrTracer {
+    pub fn new(markup: Option<MarkupMode>) -> StderrTracer {
         let stderr = std::io::stderr();
         let config = pprint::Config {
-            markup: opts
-                .markup
-                .unwrap_or_else(|| MarkupMode::default_for_fd(&stderr)),
+            markup: markup.unwrap_or_else(|| MarkupMode::default_for_fd(&stderr)),
             width: 80,
         };
         StderrTracer { config }
