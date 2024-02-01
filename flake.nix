@@ -106,6 +106,19 @@
                 -print0 | xargs -0 cp --target-directory=$out/bin
               '';
           });
+
+          pyrcl = pkgs.rustPlatform.buildRustPackage rec {
+            inherit name version;
+            src = rustSources;
+            nativeBuildInputs = [pkgs.python3];
+            cargoLock.lockFile = ./Cargo.lock;
+            buildAndTestSubdir = "pyrcl";
+            postInstall =
+              ''
+              mv $out/lib/libpyrcl.so $out/lib/rcl.so
+              cp ${./pyrcl/rcl.pyi} $out/lib
+              '';
+          };
         in
           rec {
             devShells.default = pkgs.mkShell {
@@ -189,7 +202,7 @@
             };
 
             packages = {
-              inherit rcl;
+              inherit rcl pyrcl;
 
               default = rcl;
 
