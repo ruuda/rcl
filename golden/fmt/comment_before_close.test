@@ -1,0 +1,20 @@
+// Comments before closing delimiters should not be dropped.
+let xs = [
+  0,
+  // This is one example.
+];
+
+let ys = foobar(
+  0,
+  // This is another such example.
+);
+
+null
+
+# output:
+// Comments before closing delimiters should not be dropped.
+let xs = [0];
+
+let ys = foobar(0);
+
+null
