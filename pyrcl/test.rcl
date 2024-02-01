@@ -1,0 +1,4 @@
+{
+  name = "Import Test Data",
+  description = "This is only here to test `rcl.load_file` in Python.",
+}

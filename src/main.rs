@@ -87,7 +87,7 @@ impl App {
     }
 
     fn get_tracer(&self) -> StderrTracer {
-        StderrTracer::new(&self.opts)
+        StderrTracer::new(self.opts.markup)
     }
 
     fn main_fmt(&self, format_opts: &FormatOptions, doc: DocId) -> Result<()> {

@@ -1,0 +1,18 @@
+[package]
+name = "pyrcl"
+version = "0.0.0"
+authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
+edition = "2021"
+license = "Apache-2.0"
+description = "Python bindings to the RCL interpreter."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies.rcl]
+path = ".."
+
+[dependencies.pyo3]
+version = "0.20.2"
+features = ["macros", "extension-module"]
+default-features = false

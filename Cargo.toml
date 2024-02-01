@@ -12,3 +12,6 @@ unicode-width = "0.1.10"
 lto = "thin"
 panic = "abort"
 strip = true
+
+[workspace]
+members = ["pyrcl"]
