@@ -8,17 +8,19 @@
 use std::rc::Rc;
 
 use pyo3::prelude::*;
+use rcl::cli::Target;
 use rcl::error::Result;
 use rcl::loader::{Loader, SandboxMode};
 use rcl::runtime::{Env, Value};
+use rcl::source::DocId;
 use rcl::tracer::StderrTracer;
 
-fn evaluate(src: String) -> Result<Rc<Value>> {
+fn evaluate<F: FnOnce(&mut Loader) -> Result<DocId>>(load: F) -> Result<Rc<Value>> {
     let mut loader = Loader::new();
-    let mut tracer = StderrTracer::new(None);
     loader.initialize_filesystem(SandboxMode::Workdir, None)?;
+    let doc = load(&mut loader)?;
+    let mut tracer = StderrTracer::new(None);
     let mut env = Env::with_prelude();
-    let doc = loader.load_string(src);
     loader.evaluate(doc, &mut env, &mut tracer)
 }
 
@@ -61,9 +63,21 @@ fn build_python_value(py: Python, v: &Value) -> PyResult<PyObject> {
     Ok(result)
 }
 
+/// Load an RCL expression from the file at the given path.
+#[pyfunction]
+fn load_file(py: Python, path: String) -> PyResult<PyObject> {
+    // Behavior of the file paths for this function is the same as on the
+    // command line; it's *not* the same as for import expressions.
+    match evaluate(|loader| loader.load_cli_target(Target::File(path))) {
+        Ok(v) => build_python_value(py, v.as_ref()),
+        Err(..) => Err(runtime_error("Evaluation failed.")),
+    }
+}
+
+/// Evaluate an RCL expression.
 #[pyfunction]
 fn loads(py: Python, src: String) -> PyResult<PyObject> {
-    match evaluate(src) {
+    match evaluate(|loader| Ok(loader.load_string(src))) {
         Ok(v) => build_python_value(py, v.as_ref()),
         Err(..) => Err(runtime_error("Evaluation failed.")),
     }
@@ -74,6 +88,7 @@ fn loads(py: Python, src: String) -> PyResult<PyObject> {
 #[pymodule]
 #[pyo3(name = "rcl")]
 fn pyrcl(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(load_file, m)?)?;
     m.add_function(wrap_pyfunction!(loads, m)?)?;
     Ok(())
 }

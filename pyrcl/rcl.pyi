@@ -5,7 +5,8 @@
 # you may not use this file except in compliance with the License.
 # A copy of the License has been included in the root of the repository.
 
-from typing import Any
+from typing import Any, Union
 
 
+def load_file(path: str) -> Any: ...
 def loads(src: str) -> Any: ...

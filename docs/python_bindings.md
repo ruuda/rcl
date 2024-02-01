@@ -11,12 +11,11 @@ there are a few reasons for using the module:
 
 The name of the module is `rcl`.
 
-## load
+## load_file
 
-    rcl.load(fp) -> Any
+    rcl.load_file(path: str | pathlib.Path) -> Any
 
-Evaluate the <abbr>RCL</abbr> expression in the file-like object `fp`. This is
-analogous to `json.load`. TODO: This function does not yet exist!
+Evaluate the <abbr>RCL</abbr> expression in the file at the given file path.
 
 ## loads
 
