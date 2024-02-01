@@ -13,7 +13,7 @@ The name of the module is `rcl`.
 
 ## load_file
 
-    rcl.load_file(path: str | pathlib.Path) -> Any
+    rcl.load_file(path: str) -> Any
 
 Evaluate the <abbr>RCL</abbr> expression in the file at the given file path.
 

@@ -20,6 +20,28 @@ Put the binary on your `PATH` to be able to use it system-wide, e.g.:
 [cargo]:  https://doc.rust-lang.org/cargo/guide/
 [rustup]: https://rust-lang.github.io/rustup/index.html
 
+## Python module from source
+
+To build the Python module, follow the steps as before, but build the `pyrcl`
+directory:
+
+    cargo build --release --manifest-path pyrcl/Cargo.toml
+
+Then rename `libpyrcl.so` to `rcl.so` so that Python can discover it, and copy
+it to a location on the `PYTHONPATH`, e.g.:
+
+    cp target/release/libpyrcl.so ./rcl.so
+
+Now you can use the module as any regular one:
+
+    $ python3
+    >>> import rcl
+    >>> rcl.loads("10 + 32")
+    42
+
+It is also possible to build a wheel that can be installed into a virtualenv
+using [Maturin](https://www.maturin.rs/).
+
 ## As a Nix flake
 
 The repository includes a Nix flake. It is mainly used to provide a suitable
@@ -31,3 +53,7 @@ such as Nix 2.18:
 
 [flakes]: https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake
 [nix]:    https://nixos.org/download
+
+The Nix flake also includes the Python module:
+
+    PYTHONPATH=$(nix build github:ruuda/rcl#pyrcl --print-out-paths)/lib python3
