@@ -62,6 +62,20 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
+    /// A soft break if the collection is not empty.
+    ///
+    /// This is used in collection literals. If there are elements, then we have
+    /// a soft break between the opening delimiter and content, and between the
+    /// content and closing delimiter. But if we have no content, then we need
+    /// only one soft break.
+    pub fn soft_break_if_not_empty<T>(&self, elems: &[T]) -> Doc<'a> {
+        if elems.is_empty() {
+            Doc::empty()
+        } else {
+            Doc::SoftBreak
+        }
+    }
+
     pub fn non_code(&self, nc: &[NonCode]) -> Doc<'a> {
         let mut result = Vec::new();
 
@@ -261,29 +275,31 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::BraceLit { elements, .. } => {
-                if elements.is_empty() {
+            Expr::BraceLit {
+                elements, suffix, ..
+            } => {
+                if elements.is_empty() && suffix.is_empty() {
                     Doc::str("{}")
                 } else {
                     group! {
                         "{"
-                        Doc::SoftBreak
-                        indent! { self.seqs(elements) }
-                        Doc::SoftBreak
+                        self.soft_break_if_not_empty(elements)
+                        indent! { self.seqs(elements, suffix) }
                         "}"
                     }
                 }
             }
 
-            Expr::BracketLit { elements, .. } => {
-                if elements.is_empty() {
+            Expr::BracketLit {
+                elements, suffix, ..
+            } => {
+                if elements.is_empty() && suffix.is_empty() {
                     Doc::str("[]")
                 } else {
                     group! {
                         "["
-                        Doc::SoftBreak
-                        indent! { self.seqs(elements) }
-                        Doc::SoftBreak
+                        self.soft_break_if_not_empty(elements)
+                        indent! { self.seqs(elements, suffix) }
                         "]"
                     }
                 }
@@ -364,14 +380,16 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::Function { args, body, .. } => {
+            Expr::Function {
+                args, suffix, body, ..
+            } => {
                 let args_doc: Doc = match args.len() {
                     0 => Doc::str("()"),
                     // Don't put parens around the argument if there is a single
                     // argument that has no comments on it. If it has comments,
                     // then we need the parens, because otherwise we might
                     // produce a syntax error in the output.
-                    1 if args[0].prefix.is_empty() => self.span(args[0].inner),
+                    1 if args[0].prefix.is_empty() && suffix.is_empty() => self.span(args[0].inner),
                     _ => group! {
                         "("
                         Doc::SoftBreak
@@ -384,8 +402,9 @@ impl<'a> Formatter<'a> {
                                 concat!{ "," Doc::Sep },
                             )
                             Doc::tall(",")
+                            Doc::SoftBreak
+                            self.non_code(suffix)
                         }
-                        Doc::SoftBreak
                         ")"
                     },
                 };
@@ -394,7 +413,12 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::Call { function, args, .. } => {
+            Expr::Call {
+                function,
+                args,
+                suffix,
+                ..
+            } => {
                 concat! {
                     self.expr(function)
                     group! {
@@ -406,8 +430,9 @@ impl<'a> Formatter<'a> {
                                 concat!{ "," Doc::Sep },
                             )
                             Doc::tall(",")
+                            Doc::SoftBreak
+                            self.non_code(suffix)
                         }
-                        Doc::SoftBreak
                         ")"
                     }
                 }
@@ -454,7 +479,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    pub fn seqs(&self, elements: &[Prefixed<Seq>]) -> Doc<'a> {
+    pub fn seqs(&self, elements: &[Prefixed<Seq>], suffix: &[NonCode]) -> Doc<'a> {
         let mut result = Vec::new();
         for (i, elem) in elements.iter().enumerate() {
             let (elem_doc, sep_str) = self.seq(&elem.inner);
@@ -470,9 +495,11 @@ impl<'a> Formatter<'a> {
             let sep_doc = match i {
                 // For collections that contain a single seq, do not add a
                 // separator, even when they are multi-line. It makes
-                // comprehensions look weird, which are regularly multi-line but
-                // only rarely are there multiple seqs in the collection.
-                _ if elements.len() == 1 => Doc::empty(),
+                // comprehensions look weird, which are regularly multi-line
+                // but only rarely are there multiple seqs in the collection.
+                // If there is suffix noncode, then we need the separator before
+                // it, otherwise we would output a syntax error.
+                _ if elements.len() == 1 && suffix.is_empty() => Doc::empty(),
                 _ if is_last => Doc::tall(sep_str),
                 _ => Doc::str(sep_str),
             };
@@ -482,6 +509,15 @@ impl<'a> Formatter<'a> {
                 result.push(Doc::Sep)
             }
         }
+
+        result.push(Doc::SoftBreak);
+
+        // We could do it non-conditionally and push an empty doc, but seq is
+        // a very common thing and suffixes are not, so efficiency matters here.
+        if !suffix.is_empty() {
+            result.push(self.non_code(suffix));
+        }
+
         Doc::Concat(result)
     }
 

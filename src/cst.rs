@@ -165,6 +165,8 @@ pub enum Expr {
         open: Span,
         close: Span,
         elements: Box<[Prefixed<Seq>]>,
+        /// Any content before the closing brace.
+        suffix: Box<[NonCode]>,
     },
 
     /// A `[]`-enclosed collection literal.
@@ -172,6 +174,8 @@ pub enum Expr {
         open: Span,
         close: Span,
         elements: Box<[Prefixed<Seq>]>,
+        /// Any content before the closing bracket.
+        suffix: Box<[NonCode]>,
     },
 
     /// An expression enclosed in `()`.
@@ -236,6 +240,8 @@ pub enum Expr {
         /// The source location of the `=>`.
         span: Span,
         args: Box<[Prefixed<Span>]>,
+        /// Any non-code between the final arg and the closing paren.
+        suffix: Box<[NonCode]>,
         body: Box<Expr>,
     },
 
@@ -245,9 +251,13 @@ pub enum Expr {
         open: Span,
         /// The closing parenthesis.
         close: Span,
+        /// The span of the callee.
         function_span: Span,
+        /// The callee expression.
         function: Box<Expr>,
         args: Box<[SpanPrefixedExpr]>,
+        /// Any non-code between the final argument and the closing paren.
+        suffix: Box<[NonCode]>,
     },
 
     /// Index into a collection with `[]`.

@@ -241,7 +241,9 @@ impl<'a> Abstractor<'a> {
                 field_span: *field,
             },
 
-            CExpr::Function { span, args, body } => AExpr::Function {
+            CExpr::Function {
+                span, args, body, ..
+            } => AExpr::Function {
                 span: *span,
                 args: args
                     .iter()

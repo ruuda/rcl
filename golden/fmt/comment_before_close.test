@@ -1,0 +1,50 @@
+// Comments before closing delimiters should not be dropped.
+let xs = [
+  0,
+  // This is one example.
+];
+
+let xs2 = [
+  // Even with empty collections, the comment should stay.
+];
+let xs3 = {
+  // And that is true of brace literals as well as bracket literals.
+};
+
+let ys = foobar(
+  0,
+  // In a call, the comment should not be eaten either.
+);
+
+let f = (
+  x,
+  // And in an argument list, it should be preserved.
+) => x;
+
+null
+
+# output:
+// Comments before closing delimiters should not be dropped.
+let xs = [
+  0,
+  // This is one example.
+];
+
+let xs2 = [
+  // Even with empty collections, the comment should stay.
+];
+let xs3 = {
+  // And that is true of brace literals as well as bracket literals.
+};
+
+let ys = foobar(
+  0,
+  // In a call, the comment should not be eaten either.
+);
+
+let f = (
+  x,
+  // And in an argument list, it should be preserved.
+) => x;
+
+null

@@ -15,6 +15,9 @@ use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
 use crate::pprint::{concat, Doc};
 use crate::source::{DocId, Span};
 
+/// A collection of `T`s, and a non-code suffix.
+type SuffixedElems<T> = (Box<[T]>, Box<[NonCode]>);
+
 /// Parse an input document into a concrete syntax tree.
 pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<SpanPrefixedExpr> {
     let mut parser = Parser::new(doc, input, tokens);
@@ -620,19 +623,19 @@ impl<'a> Parser<'a> {
 
     /// Try parsing a lambda function expression.
     fn parse_expr_function(&mut self) -> Result<Expr> {
-        let args = match self.peek() {
+        let (args, suffix) = match self.peek() {
             Some(Token::Ident) => {
                 let prefixed = Prefixed {
                     prefix: [].into(),
                     inner: self.consume(),
                 };
-                [prefixed].into()
+                ([prefixed].into(), [].into())
             }
             Some(Token::LParen) => {
                 self.push_bracket()?;
-                let args = self.parse_function_args()?;
+                let (args, suffix) = self.parse_function_args()?;
                 self.pop_bracket()?;
-                args
+                (args, suffix)
             }
             _ => panic!("Should only call `parse_expr_function` on a lambda."),
         };
@@ -645,6 +648,7 @@ impl<'a> Parser<'a> {
         let result = Expr::Function {
             span: arrow_span,
             args,
+            suffix,
             body: Box::new(body),
         };
         Ok(result)
@@ -760,12 +764,13 @@ impl<'a> Parser<'a> {
                 Some(Token::LParen) => {
                     let result_span = before.until(self.peek_span());
                     let open = self.push_bracket()?;
-                    let args = self.parse_call_args()?;
+                    let (args, suffix) = self.parse_call_args()?;
                     let close = self.pop_bracket()?;
                     result = Expr::Call {
                         open,
                         close,
                         args,
+                        suffix,
                         function_span: result_span,
                         function: Box::new(result),
                     };
@@ -804,23 +809,25 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some(Token::LBrace) => {
                 let open = self.push_bracket()?;
-                let elements = self.parse_seqs()?;
+                let (elements, suffix) = self.parse_seqs()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::BraceLit {
                     open,
                     close,
                     elements,
+                    suffix,
                 };
                 Ok(result)
             }
             Some(Token::LBracket) => {
                 let open = self.push_bracket()?;
-                let elements = self.parse_seqs()?;
+                let (elements, suffix) = self.parse_seqs()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::BracketLit {
                     open,
                     close,
                     elements,
+                    suffix,
                 };
                 Ok(result)
             }
@@ -944,15 +951,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse arguments in a lambda function definition.
-    fn parse_function_args(&mut self) -> Result<Box<[Prefixed<Span>]>> {
+    fn parse_function_args(&mut self) -> Result<SuffixedElems<Prefixed<Span>>> {
         let mut result = Vec::new();
 
         loop {
             let prefix = self.parse_non_code();
             if self.peek() == Some(Token::RParen) {
-                // TODO: In this case we lose the prefix that we parsed.
-                // See also the comment in `parse_call_args` below.
-                return Ok(result.into_boxed_slice());
+                return Ok((result.into_boxed_slice(), prefix));
             }
 
             let ident = self.parse_ident()?;
@@ -981,22 +986,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse arguments in a function call.
-    fn parse_call_args(&mut self) -> Result<Box<[SpanPrefixedExpr]>> {
+    fn parse_call_args(&mut self) -> Result<SuffixedElems<SpanPrefixedExpr>> {
         let mut result = Vec::new();
 
         loop {
             let prefix = self.parse_non_code();
             if self.peek() == Some(Token::RParen) {
-                // TODO: In this case we lose the prefix that we parsed.
-                // See also the comment in `parse_seqs` below.
-                // TODO: One idea to remediate this, is to make peeking mutable,
-                // and to have anything that asks for the next token skip over
-                // noncode, but store it internally. Then we have another method
-                // to take all the noncode up to that point. It would make
-                // looking a head a bit easier, but it might also cause cases
-                // where we accidentally move comments over items if we are not
-                // careful.
-                return Ok(result.into_boxed_slice());
+                return Ok((result.into_boxed_slice(), prefix));
             }
 
             let (span, expr) = self.parse_expr()?;
@@ -1028,18 +1024,13 @@ impl<'a> Parser<'a> {
     ///
     /// This corresponds to `seqs` in the grammar, but it is slightly different
     /// from the rule there to be able to incorporate noncode.
-    fn parse_seqs(&mut self) -> Result<Box<[Prefixed<Seq>]>> {
+    fn parse_seqs(&mut self) -> Result<SuffixedElems<Prefixed<Seq>>> {
         let mut result = Vec::new();
 
         loop {
             let prefix = self.parse_non_code();
             if matches!(self.peek(), Some(Token::RBrace | Token::RBracket)) {
-                // TODO: In this case we lose the prefix that we parsed. So
-                // comments in an empty collection literal do not survive,
-                // need to find a way to disallow this in the first place.
-                // Maybe we could validate that the prefix does not contain
-                // comments, and error out if it does?
-                return Ok(result.into_boxed_slice());
+                return Ok((result.into_boxed_slice(), prefix));
             }
 
             let (_span, seq) = self.parse_seq()?;
