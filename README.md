@@ -151,6 +151,7 @@ Tell Python where to find the shared object, run the interpreter:
     PYTHONPATH=target/debug python3
     >>> import rcl
     >>> help(rcl.loads)
+    >>> rcl.load_file("examples/buckets.rcl")
 
 ## License
 
