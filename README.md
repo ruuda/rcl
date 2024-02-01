@@ -130,6 +130,23 @@ Run the fuzzer:
 
     cargo +nightly-2023-06-03 fuzz run main -- -dict=fuzz/dictionary.txt
 
+## Building the Python module
+
+Build the shared object:
+
+    cargo build --manifest-path pyrcl/Cargo.toml
+
+Give the shared object the appropriate name for the Python interpreter to
+discover it:
+
+    mv target/debug/{libpyrcl,rcl}.so
+
+Tell Python where to find the shared object, run the interpreter:
+
+    PYTHONPATH=target/debug python3
+    >>> import rcl
+    >>> help(rcl.loads)
+
 ## License
 
 RCL is licensed under the [Apache 2.0][apache2] license. It may be used in

@@ -6,7 +6,6 @@ edition = "2021"
 license = "Apache-2.0"
 
 [lib]
-name = "rcl"
 crate-type = ["cdylib"]
 
 [dependencies.rcl]
