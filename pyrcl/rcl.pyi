@@ -7,6 +7,5 @@
 
 from typing import Any, Union
 
-
 def load_file(path: str) -> Any: ...
 def loads(src: str) -> Any: ...

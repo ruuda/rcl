@@ -74,7 +74,7 @@
             "Cargo.toml"
           ];
 
-          pythonSources = pkgs.lib.sourceFilesBySuffices ./. [ ".py" ];
+          pythonSources = pkgs.lib.sourceFilesBySuffices ./. [ ".py" ".pyi" ];
 
           goldenSources = ./golden;
 
@@ -108,7 +108,8 @@
           });
 
           pyrcl = pkgs.rustPlatform.buildRustPackage rec {
-            inherit name version;
+            inherit version;
+            name = "pyrcl";
             src = rustSources;
             nativeBuildInputs = [pkgs.python3];
             cargoLock.lockFile = ./Cargo.lock;
@@ -116,7 +117,7 @@
             postInstall =
               ''
               mv $out/lib/libpyrcl.so $out/lib/rcl.so
-              cp ${./pyrcl/rcl.pyi} $out/lib
+              cp ${./pyrcl}/rcl.pyi $out/lib/rcl.pyi
               '';
           };
         in
@@ -196,7 +197,19 @@
                 "check-typecheck-python"
                 { buildInputs = [ pythonEnv ]; }
                 ''
-                mypy --strict ${pythonSources}
+                # We split this check in two because there are multiple modules
+                # named `rcl`, and they conflict if we typecheck in one go.
+                mypy --strict --exclude pyrcl ${pythonSources}
+                mypy --strict ${pythonSources}/pyrcl
+                touch $out
+                '';
+
+              pyrclTest = pkgs.runCommand
+                "check-pyrcl-test"
+                { buildInputs = [ pkgs.python3 ]; }
+                ''
+                cd ${./pyrcl}
+                PYTHONPATH=${pyrcl}/lib python3 ./test.py
                 touch $out
                 '';
             };
