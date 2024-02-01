@@ -13,6 +13,10 @@ simple functional programming language that resembles [Python][python] and
    that can be referenced from a single consistent entry point, in the same way
    that Nix enables this for [Nixpkgs][nixpkgs].
 
+RCL can be used through the `rcl` command-line tool that can export documents
+to JSON and [other formats][output]. It can also be used through a native Python
+module, with an interface similar to the json module.
+
 > [!WARNING]
 > While RCL is usable, it is still in an early exploratory stage with frequent
 > breaking changes. This is a hobby project without stability promise.
@@ -21,6 +25,7 @@ simple functional programming language that resembles [Python][python] and
 [nix]:     https://nixos.org/manual/nix/stable/language/
 [jq]:      https://jqlang.github.io/jq/manual/
 [nixpkgs]: https://github.com/nixos/nixpkgs
+[output]:  https://docs.ruuda.nl/rcl/rcl_evaluate/#-o-output-format
 
 ## Getting started
 

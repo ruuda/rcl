@@ -1,7 +1,7 @@
 # RCL
 
-Ruud’s Configuration Language, RCL for short, is a domain-specific language
-optimized for specifying human-written data with just enough abstraction
+Ruud’s Configuration Language, <abbr>RCL</abbr> for short, is a domain-specific
+language optimized for specifying human-written data with just enough abstraction
 features to avoid repetition. It is a superset of json that extends it into a
 simple functional programming language that resembles [Python][python] and
 [Nix][nix]. Use cases include:
@@ -13,10 +13,15 @@ simple functional programming language that resembles [Python][python] and
    that can be referenced from a single consistent entry point, in the same way
    that Nix enables this for [Nixpkgs][nixpkgs].
 
+RCL can be used through the `rcl` command-line tool that can export documents
+to <abbr>JSON</abbr> and [other formats][output]. It can also be used through
+a native Python module, with an interface similar to the `json` module.
+
 [python]:  https://www.python.org/
 [nix]:     https://nixos.org/manual/nix/stable/language/
 [jq]:      https://jqlang.github.io/jq/manual/
 [nixpkgs]: https://github.com/nixos/nixpkgs
+[output]:  rcl_evaluate.md#-o-output-format
 
 _**Warning:** While RCL is usable, it is still in an early exploratory stage
 with frequent breaking changes. This is a hobby project without stability
