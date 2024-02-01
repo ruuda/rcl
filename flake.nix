@@ -111,6 +111,7 @@
             devShells.default = pkgs.mkShell {
               nativeBuildInputs = [
                 pkgs.black
+                pkgs.maturin
                 pkgs.rustup
                 pythonEnv
               ];
@@ -122,6 +123,12 @@
                 ''
                 mkdir -p .venv/bin
                 ln -sf ${pythonEnv}/bin/python .venv/bin/python
+                cat <<EOF > .venv/pyvenv.cfg
+                home = ${pythonEnv}/bin
+                executable = ${pythonEnv}/bin/python
+                version = ${pythonEnv.python.version}
+                include-system-site-packages = false
+                EOF
                 '';
             };
 
