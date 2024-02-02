@@ -78,11 +78,18 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
             type_val.check_subtype_of(at, &type_fun)?;
             Ok(())
         }
-        (Type::Function { .. }, Value::BuiltinFunction { .. }) => {
-            unimplemented!("TODO: Typecheck function for BuiltinFunction.")
+        (Type::Function(fn_type), Value::BuiltinFunction(fn_val)) => {
+            let type_val = Type::Function(Rc::new((fn_val.type_)()));
+            let type_fun = Type::Function(fn_type.clone());
+            type_val.check_subtype_of(at, &type_fun)?;
+            Ok(())
         }
-        (Type::Function { .. }, Value::BuiltinMethod { .. }) => {
-            unimplemented!("TODO: Typecheck function for BuiltinMethod.")
+        (Type::Function(fn_type), Value::BuiltinMethod(instance)) => {
+            let method = instance.method;
+            let type_val = Type::Function(Rc::new((method.type_)()));
+            let type_fun = Type::Function(fn_type.clone());
+            type_val.check_subtype_of(at, &type_fun)?;
+            Ok(())
         }
 
         _ => at
