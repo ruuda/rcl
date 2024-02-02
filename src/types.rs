@@ -208,3 +208,48 @@ impl Type {
         }
     }
 }
+
+/// Rust eDSL for writing RCL types.
+///
+/// The syntax is similar to RCL, except for the generic and function types, to
+/// make them fit Rust grammar.
+///
+/// * `List[T]` is written `[T]`.
+/// * `Set[T]` is written `{T}`.
+/// * `Dict[K, V]` is written `{K: V}`.
+/// * `(P, Q) -> R` is written `(fn (P, Q) -> R)`
+macro_rules! make_type {
+    (Int) => { Type::Int };
+    (Bool) => { Type::Bool };
+    (Dynamic) => { Type::Dynamic };
+    (String) => { Type::String };
+    ([$elem:tt]) => { Type::List(Rc::new(crate::types::make_type!($elem))) };
+    ({$elem:tt}) => { Type::Set(Rc::new(crate::types::make_type!($elem))) };
+    ({$k:tt: $v:tt}) => {
+        Type::Dict(Rc::new(crate::types::Dict {
+            key: crate::types::make_type!($k),
+            value: crate::types::make_type!($v),
+        }))
+    };
+    ((fn ($( $arg_name:ident: $arg_type:tt ),*) -> $result:tt)) => {
+        Type::Function(Rc::new(
+            crate::types::make_function!(($( $arg_name:$arg_type ),*) -> $result)
+        ))
+    };
+}
+pub(crate) use make_type;
+
+/// Rust eDSL for writing RCL function types.
+///
+/// See also [`make_type!`] for the syntax. This does not include the enclosing
+/// `(fn ...)`, parens and `fn`, only the `...` is input to this macro.
+macro_rules! make_function {
+    (($( $arg_name:ident: $arg_type:tt ),*) -> $result:tt) => {
+        crate::types::Function {
+            // TODO: Include the argument names in types? Or at least elsewhere?
+            args: vec![ $( crate::types::make_type!($arg_type) ),* ],
+            result: crate::types::make_type!($result),
+        }
+    };
+}
+pub(crate) use make_function;

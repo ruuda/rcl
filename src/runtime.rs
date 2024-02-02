@@ -143,6 +143,7 @@ pub struct MethodCall<'a> {
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct BuiltinFunction {
     pub name: &'static str,
+    pub type_: fn() -> types::Function,
     pub f: for<'a> fn(&'a mut Evaluator, FunctionCall<'a>) -> Result<Value>,
 }
 
@@ -150,6 +151,7 @@ pub struct BuiltinFunction {
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct BuiltinMethod {
     pub name: &'static str,
+    pub type_: fn() -> types::Function,
     pub f: for<'a> fn(&'a mut Evaluator, MethodCall<'a>) -> Result<Value>,
 }
 
@@ -311,11 +313,13 @@ pub fn prelude() -> Env {
 macro_rules! builtin_function {
     (
         $rcl_name:expr,
+        ( $( $arg_name:ident: $arg_type:tt ),* ) -> $result:tt,
         const $rust_const:ident,
         $rust_name:ident
     ) => {
         pub const $rust_const: crate::runtime::BuiltinFunction = crate::runtime::BuiltinFunction {
             name: $rcl_name,
+            type_: || crate::types::make_function!( ($( $arg_name: $arg_type ),*) -> $result),
             f: $rust_name,
         };
     };
@@ -325,11 +329,13 @@ pub(crate) use builtin_function;
 macro_rules! builtin_method {
     (
         $rcl_name:expr,
+        ( $( $arg_name:ident: $arg_type:tt ),* ) -> $result:tt,
         const $rust_const:ident,
         $rust_name:ident
     ) => {
         pub const $rust_const: crate::runtime::BuiltinMethod = crate::runtime::BuiltinMethod {
             name: $rcl_name,
+            type_: || crate::types::make_function!( ($( $arg_name: $arg_type ),*) -> $result),
             f: $rust_name,
         };
     };

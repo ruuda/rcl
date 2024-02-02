@@ -16,9 +16,11 @@ use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{builtin_function, builtin_method, CallArg, FunctionCall, MethodCall, Value};
+use crate::types::Type;
 
 builtin_function!(
     "std.read_file_utf8",
+    (path: String) -> String,
     const STD_READ_FILE_UTF8,
     builtin_std_read_file_utf8
 );
@@ -44,6 +46,7 @@ fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Resul
 
 builtin_function!(
     "std.range",
+    (lower: Int, upper: Int) -> [Int],
     const STD_RANGE,
     builtin_std_range
 );
@@ -115,35 +118,40 @@ pub fn initialize() -> Value {
     Value::Dict(Rc::new(builtins))
 }
 
-builtin_method!("Dict.len", const DICT_LEN, builtin_dict_len);
+builtin_method!("Dict.len", () -> Int, const DICT_LEN, builtin_dict_len);
 fn builtin_dict_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("Dict.len", &[])?;
     let dict = call.receiver.expect_dict();
     Ok(Value::Int(dict.len() as _))
 }
 
-builtin_method!("List.len", const LIST_LEN, builtin_list_len);
+builtin_method!("List.len", () -> Int, const LIST_LEN, builtin_list_len);
 fn builtin_list_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("List.len", &[])?;
     let list = call.receiver.expect_list();
     Ok(Value::Int(list.len() as _))
 }
 
-builtin_method!("Set.len", const SET_LEN, builtin_set_len);
+builtin_method!("Set.len", () -> Int, const SET_LEN, builtin_set_len);
 fn builtin_set_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("Set.len", &[])?;
     let set = call.receiver.expect_set();
     Ok(Value::Int(set.len() as _))
 }
 
-builtin_method!("String.len", const STRING_LEN, builtin_string_len);
+builtin_method!("String.len", () -> Int, const STRING_LEN, builtin_string_len);
 fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("String.len", &[])?;
     let string = call.receiver.expect_string();
     Ok(Value::Int(string.chars().count() as _))
 }
 
-builtin_method!("Dict.contains", const DICT_CONTAINS, builtin_dict_contains);
+builtin_method!(
+    "Dict.contains",
+    (element: Dynamic) -> Bool,
+    const DICT_CONTAINS,
+    builtin_dict_contains
+);
 fn builtin_dict_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("Dict.contains", &["key"])?;
     let dict = call.receiver.expect_dict();
@@ -151,7 +159,12 @@ fn builtin_dict_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Valu
     Ok(Value::Bool(dict.contains_key(needle)))
 }
 
-builtin_method!("List.contains", const LIST_CONTAINS, builtin_list_contains);
+builtin_method!(
+    "List.contains",
+    (element: Dynamic) -> Bool,
+    const LIST_CONTAINS,
+    builtin_list_contains
+);
 fn builtin_list_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call
         .check_arity_static("List.contains", &["element"])?;
@@ -160,7 +173,12 @@ fn builtin_list_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Valu
     Ok(Value::Bool(list.contains(needle)))
 }
 
-builtin_method!("Set.contains", const SET_CONTAINS, builtin_set_contains);
+builtin_method!(
+    "Set.contains",
+    (element: Dynamic) -> Bool,
+    const SET_CONTAINS,
+    builtin_set_contains
+);
 fn builtin_set_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("Set.contains", &["element"])?;
     let set = call.receiver.expect_set();
@@ -168,7 +186,12 @@ fn builtin_set_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
     Ok(Value::Bool(set.contains(needle)))
 }
 
-builtin_method!("Dict.get", const DICT_GET, builtin_dict_get);
+builtin_method!(
+    "Dict.get",
+    (key: Dynamic, default: Dynamic) -> Dynamic,
+    const DICT_GET,
+    builtin_dict_get
+);
 fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call
         .check_arity_static("Dict.get", &["key", "default"])?;
@@ -181,21 +204,36 @@ fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     }
 }
 
-builtin_method!("Dict.keys", const DICT_KEYS, builtin_dict_keys);
+builtin_method!(
+    "Dict.keys",
+    () -> {Dynamic},
+    const DICT_KEYS,
+    builtin_dict_keys
+);
 fn builtin_dict_keys(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("Dict.keys", &[])?;
     let result = call.receiver.expect_dict().keys().cloned().collect();
     Ok(Value::Set(Rc::new(result)))
 }
 
-builtin_method!("Dict.values", const DICT_VALUES, builtin_dict_values);
+builtin_method!(
+    "Dict.values",
+    () -> [Dynamic],
+    const DICT_VALUES,
+    builtin_dict_values
+);
 fn builtin_dict_values(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("Dict.values", &[])?;
     let result = call.receiver.expect_dict().values().cloned().collect();
     Ok(Value::List(Rc::new(result)))
 }
 
-builtin_method!("Dict.except", const DICT_EXCEPT, builtin_dict_except);
+builtin_method!(
+    "Dict.except",
+    (key: Dynamic) -> {Dynamic: Dynamic},
+    const DICT_EXCEPT,
+    builtin_dict_except
+);
 fn builtin_dict_except(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("Dict.except", &["key"])?;
     let mut result = call.receiver.expect_dict().clone();
@@ -204,7 +242,12 @@ fn builtin_dict_except(_eval: &mut Evaluator, call: MethodCall) -> Result<Value>
     Ok(Value::Dict(Rc::new(result)))
 }
 
-builtin_method!("Set.except", const SET_EXCEPT, builtin_set_except);
+builtin_method!(
+    "Set.except",
+    (element: Dynamic) -> {Dynamic},
+    const SET_EXCEPT,
+    builtin_set_except
+);
 fn builtin_set_except(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("Set.except", &["element"])?;
     let mut result = call.receiver.expect_set().clone();
@@ -254,7 +297,12 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
     Ok(groups)
 }
 
-builtin_method!("List.group_by", const LIST_GROUP_BY, builtin_list_group_by);
+builtin_method!(
+    "List.group_by",
+    (get_key: (fn (element: Dynamic) -> Dynamic)) -> {Dynamic: [Dynamic]},
+    const LIST_GROUP_BY,
+    builtin_list_group_by
+);
 fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let list = call.receiver.expect_list();
     let result = builtin_group_by_impl(eval, call, "List.group_by", list)?
@@ -264,7 +312,12 @@ fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value
     Ok(Value::Dict(Rc::new(result)))
 }
 
-builtin_method!("Set.group_by", const SET_GROUP_BY, builtin_set_group_by);
+builtin_method!(
+    "Set.group_by",
+    (get_key: (fn (element: Dynamic) -> Dynamic)) -> {Dynamic: {Dynamic}},
+    const SET_GROUP_BY,
+    builtin_set_group_by
+);
 fn builtin_set_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     let result = builtin_group_by_impl(eval, call, "Set.group_by", set)?
@@ -308,19 +361,34 @@ fn builtin_key_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
     Ok(Value::Dict(Rc::new(result)))
 }
 
-builtin_method!("List.key_by", const LIST_KEY_BY, builtin_list_key_by);
+builtin_method!(
+    "List.key_by",
+    (get_key: (fn (element: Dynamic) -> Dynamic)) -> {Dynamic: [Dynamic]},
+    const LIST_KEY_BY,
+    builtin_list_key_by
+);
 fn builtin_list_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let list = call.receiver.expect_list();
     builtin_key_by_impl(eval, call, "List.key_by", list)
 }
 
-builtin_method!("Set.key_by", const SET_KEY_BY, builtin_set_key_by);
+builtin_method!(
+    "Set.key_by",
+    (get_key: (fn (element: Dynamic) -> Dynamic)) -> {Dynamic: {Dynamic}},
+    const SET_KEY_BY,
+    builtin_set_key_by
+);
 fn builtin_set_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     builtin_key_by_impl(eval, call, "Set.key_by", set)
 }
 
-builtin_method!("String.split", const STRING_SPLIT, builtin_string_split);
+builtin_method!(
+    "String.split",
+    (separator: String) -> [String],
+    const STRING_SPLIT,
+    builtin_string_split
+);
 fn builtin_string_split(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call
         .check_arity_static("String.split", &["separator"])?;
@@ -341,7 +409,12 @@ fn builtin_string_split(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
     Ok(Value::List(Rc::new(result)))
 }
 
-builtin_method!("String.split_lines", const STRING_SPLIT_LINES, builtin_string_split_lines);
+builtin_method!(
+    "String.split_lines",
+    () -> [String],
+    const STRING_SPLIT_LINES,
+    builtin_string_split_lines
+);
 fn builtin_string_split_lines(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("String.split_lines", &[])?;
     let string = call.receiver.expect_string();
@@ -351,7 +424,12 @@ fn builtin_string_split_lines(_eval: &mut Evaluator, call: MethodCall) -> Result
     Ok(Value::List(Rc::new(result)))
 }
 
-builtin_method!("String.parse_int", const STRING_PARSE_INT, builtin_string_parse_int);
+builtin_method!(
+    "String.parse_int",
+    () -> Int,
+    const STRING_PARSE_INT,
+    builtin_string_parse_int
+);
 fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     use std::str::FromStr;
 
@@ -368,7 +446,12 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<V
     }
 }
 
-builtin_method!("String.starts_with", const STRING_STARTS_WITH, builtin_string_starts_with);
+builtin_method!(
+    "String.starts_with",
+    (prefix: String) -> Bool,
+    const STRING_STARTS_WITH,
+    builtin_string_starts_with
+);
 fn builtin_string_starts_with(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call
         .check_arity_static("String.starts_with", &["prefix"])?;
@@ -381,7 +464,12 @@ fn builtin_string_starts_with(_eval: &mut Evaluator, call: MethodCall) -> Result
     Ok(Value::Bool(string.starts_with(prefix)))
 }
 
-builtin_method!("String.ends_with", const STRING_ENDS_WITH, builtin_string_ends_with);
+builtin_method!(
+    "String.ends_with",
+    (suffix: String) -> Bool,
+    const STRING_ENDS_WITH,
+    builtin_string_ends_with
+);
 fn builtin_string_ends_with(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call
         .check_arity_static("String.ends_with", &["suffix"])?;
@@ -394,7 +482,12 @@ fn builtin_string_ends_with(_eval: &mut Evaluator, call: MethodCall) -> Result<V
     Ok(Value::Bool(string.ends_with(suffix)))
 }
 
-builtin_method!("String.contains", const STRING_CONTAINS, builtin_string_contains);
+builtin_method!(
+    "String.contains",
+    (needle: String) -> Bool,
+    const STRING_CONTAINS,
+    builtin_string_contains
+);
 fn builtin_string_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call
         .check_arity_static("String.contains", &["needle"])?;
@@ -407,7 +500,12 @@ fn builtin_string_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Va
     Ok(Value::Bool(string.contains(needle)))
 }
 
-builtin_method!("String.chars", const STRING_CHARS, builtin_string_chars);
+builtin_method!(
+    "String.chars",
+    () -> [String],
+    const STRING_CHARS,
+    builtin_string_chars
+);
 fn builtin_string_chars(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("String.chars", &[])?;
     let string = call.receiver.expect_string();
@@ -428,7 +526,12 @@ fn builtin_string_chars(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
     Ok(Value::List(Rc::new(result)))
 }
 
-builtin_method!("String.replace", const STRING_REPLACE, builtin_string_replace);
+builtin_method!(
+    "String.replace",
+    (needle: String, replacement: String) -> String,
+    const STRING_REPLACE,
+    builtin_string_replace
+);
 fn builtin_string_replace(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call
         .check_arity_static("String.replace", &["needle", "replacement"])?;
@@ -451,7 +554,15 @@ fn builtin_string_replace(_eval: &mut Evaluator, call: MethodCall) -> Result<Val
     Ok(Value::String(string.replace(needle, replacement).into()))
 }
 
-builtin_method!("List.fold", const LIST_FOLD, builtin_list_fold);
+builtin_method!(
+    "List.fold",
+    (
+        seed: Dynamic,
+        reduce: (fn (accumulator: Dynamic, element: Dynamic) -> Dynamic)
+    ) -> Dynamic,
+    const LIST_FOLD,
+    builtin_list_fold
+);
 fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     // TODO: Add static type checks. Right now you could provide a bogus
     // function to fold over an empty list and that doesn't fail.
@@ -494,7 +605,12 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     Ok(acc)
 }
 
-builtin_method!("List.join", const LIST_JOIN, builtin_list_join);
+builtin_method!(
+    "List.join",
+    (separator: Dynamic) -> String,
+    const LIST_JOIN,
+    builtin_list_join
+);
 fn builtin_list_join(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("List.join", &["separator"])?;
     let list = call.receiver.expect_list();
@@ -515,7 +631,12 @@ fn builtin_list_join(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     Ok(Evaluator::join_format_fragments(fragments))
 }
 
-builtin_method!("List.reverse", const LIST_REVERSE, builtin_list_reverse);
+builtin_method!(
+    "List.reverse",
+    () -> [Dynamic],
+    const LIST_REVERSE,
+    builtin_list_reverse
+);
 fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("List.reverse", &[])?;
     let list = call.receiver.expect_list();
@@ -523,7 +644,12 @@ fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
     Ok(Value::List(Rc::new(reversed)))
 }
 
-builtin_method!("List.enumerate", const LIST_ENUMERATE, builtin_list_enumerate);
+builtin_method!(
+    "List.enumerate",
+    () -> {Int: Dynamic},
+    const LIST_ENUMERATE,
+    builtin_list_enumerate
+);
 fn builtin_list_enumerate(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     call.call.check_arity_static("List.enumerate", &[])?;
     let list = call.receiver.expect_list();
