@@ -70,6 +70,7 @@
 # Builtin types.
 "Bool"
 "Dict"
+"Dynamic"
 "Int"
 "List"
 "Null"

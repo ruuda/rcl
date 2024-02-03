@@ -95,5 +95,3 @@ let widgets: Dict[String, Dynamic] = {
   turbo-encabulator = { prefabulated = true, bearings = "spurving" },
 };
 ```
-
-TODO: Currently the `Dynamic` type cannot be written directly.

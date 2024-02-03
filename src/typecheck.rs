@@ -37,6 +37,9 @@ pub fn prelude() -> Env {
 /// Confirm that the value fits the given type.
 pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
     match (type_, value) {
+        // For dynamic, any value is fine.
+        (Type::Dynamic, _) => Ok(()),
+
         // The primitive types.
         (Type::Bool, Value::Bool(..)) => Ok(()),
         (Type::Int, Value::Int(..)) => Ok(()),
@@ -115,6 +118,7 @@ fn eval_type_expr(expr: &AType) -> Result<Type> {
             "Int" => Ok(Type::Int),
             "Null" => Ok(Type::Null),
             "String" => Ok(Type::String),
+            "Dynamic" => Ok(Type::Dynamic),
             "Dict" => span
                 .error("Expected a concrete type, but found uninstantiated generic type.")
                 .with_help(concat! {
