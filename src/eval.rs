@@ -66,7 +66,28 @@ impl EvalCount {
             self.count = 0;
         }
 
+        // The maximum number of evaluation steps is a bit of a difficult limit.
+        // If we set it too low, it becomes impossible to evaluate legitimate
+        // programs that are large. This also applies to trying to do too much
+        // general-purpose programming in RCL, it is possible, but not the
+        // intended use case. So for release builds, we set a reasonably
+        // generous limit.
+        //
+        // For debug builds, because we do need to test this error, and we don't
+        // want the tests to be super slow, set a more aggressive limit. And for
+        // fuzzing, set a more aggressive limit still, because doing 2000 more
+        // iterations of whatever it can do in 200 iterations is very unlikely
+        // to discover new code paths, but it does make the fuzzer less
+        // effective.
+        #[cfg(fuzzing)]
+        let max_steps = 250;
+
+        #[cfg(all(not(fuzzing), debug_assertions))]
         let max_steps = 10_000;
+
+        #[cfg(all(not(fuzzing), not(debug_assertions)))]
+        let max_steps = 10_000_000;
+
         self.count += 1;
 
         if self.count >= max_steps {

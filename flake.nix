@@ -150,6 +150,7 @@
               debugBuild = packages.default.overrideAttrs (old: {
                 name = "check-test";
                 buildType = "debug";
+                RUSTFLAGS = "-C debug-assertions";
               });
 
               golden = pkgs.runCommand
