@@ -60,6 +60,11 @@ Why another config language?
 
  * CUE and Nickel were not invented here.
 
+ * For more background, see the blog post:
+   [_A reasonable configuration language_][blog].
+
+[blog]: https://ruudvanasseldonk.com/2024/a-reasonable-configuration-language
+
 ## Classification
 
  * **Purely functional:** RCL documents are expressions that evaluate to values,
