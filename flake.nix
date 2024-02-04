@@ -175,9 +175,11 @@
                 # cached version that does not depend on our patched pygments.
                 pkgs.python311Packages.black
                 pkgs.binaryen
-                pkgs.wasm-bindgen-cli
                 pkgs.maturin
+                pkgs.nodejs  # Required for tree-sitter.
                 pkgs.rustup
+                pkgs.tree-sitter
+                pkgs.wasm-bindgen-cli
                 pythonEnv
               ];
 

@@ -1,0 +1,10 @@
+# Projects files that `tree-sitter generate` generates, but I really don't care
+# about, because I want to minimize the amount of javascript that executes
+# outside of a browser please.
+/binding.gyp
+/bindings/node/
+/package.json
+
+# Generated files that are intermediate build artifacts, and not needed to use
+# the grammar.
+/src/
