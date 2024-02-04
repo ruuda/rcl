@@ -1,7 +1,7 @@
 # Types
 
-***Warning**: The type system is a work in progress. In particular, record types
-are missing, and the implementation of the typechecker is too ad-hoc.*
+_**Warning**: The type system is a work in progress. In particular, record types
+are missing, and the implementation of the typechecker is too ad-hoc._
 
 RCL has a type system that can help to prevent bugs and make configuration more
 self-documenting.
@@ -54,6 +54,35 @@ let port_names: Dict[Int, String] = {
   80: "http",
   443: "https",
 };
+```
+
+## Record types
+
+The intention is to support record types and type aliases, but this is not yet
+implemented. They would look roughly like this:
+
+```rcl
+type User = {
+  full_name: String,
+  email: String,
+  uid: Int,
+  groups: Set[String],
+};
+
+let users: List[User] = [
+  {
+    full_name = "Eldon Tyrell",
+    email = "etyrell@tyrell.com",
+    uid = 1,
+    groups = {"executive"},
+  },
+  {
+    full_name = "Rachael Tyrell",
+    email = "rachael@tyrell.com",
+    uid = 7,
+    groups = {"research"},
+  },
+];
 ```
 
 ## Function types
