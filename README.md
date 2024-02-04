@@ -14,8 +14,8 @@ simple functional programming language that resembles [Python][python] and
    that Nix enables this for [Nixpkgs][nixpkgs].
 
 RCL can be used through the `rcl` command-line tool that can export documents
-to JSON and [other formats][output]. It can also be used through a native Python
-module, with an interface similar to the json module.
+to json and [other formats][output]. It can also be used through a native Python
+module, with an interface similar to the `json` module.
 
 > [!WARNING]
 > While RCL is usable, it is still in an early exploratory stage with frequent
@@ -62,13 +62,15 @@ Why another config language?
 
 ## Classification
 
- * **Purely functional:** RCL consists of expressions and has no statements.
-   It has immutable values and no mutable objects. Functions are values.
+ * **Purely functional:** RCL documents are expressions that evaluate to values,
+   rather than sequences of statements that have side effects. Values are
+   immutable, there are no mutable objects. Functions are values.
 
  * **Gradually typed:** Optional type annotations can be used to prevent bugs
    and to make code more self-documenting. All type annotations are enforced.
 
- * **Vaporware, not fully implemented:** RCL is a superset of json.
+ * **Json superset:** Vaporware, this is not fully implemented; floats are
+   not yet supported.
 
 ## Usage
 
