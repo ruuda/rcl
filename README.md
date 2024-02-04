@@ -121,7 +121,8 @@ Run unit tests and lints:
 
 Typecheck Python sources
 
-    mypy --strict .
+    mypy --strict --exclude pyrcl .
+    mypy --strict pyrcl
 
 Check formatting:
 
@@ -135,7 +136,7 @@ View coverage of the golden tests:
 
 Run the fuzzer:
 
-    cargo +nightly-2023-06-03 fuzz run main -- -dict=fuzz/dictionary.txt
+    cargo +nightly-2023-06-03 fuzz run main -- -dict=fuzz/dictionary.txt -timout=5
 
 ## Building the Python module
 
