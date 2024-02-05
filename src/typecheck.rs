@@ -15,14 +15,13 @@
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, Seq, Stmt, Type as AType, UnOp, Yield};
-use crate::error::{Error, IntoError, Result};
+use crate::error::{IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
-use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
-use crate::types::{self, Type};
+use crate::types::{self, type_error, Type};
 
 pub type Env = crate::env::Env<Type>;
 
@@ -209,67 +208,6 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
                 .err(),
         },
         _ => name_span.error("Unknown generic type.").err(),
-    }
-}
-
-/// Helper to enable using short names in types.
-trait AsTypeName {
-    fn format_type(&self) -> Doc<'static>;
-    fn is_atom(&self) -> bool;
-}
-
-impl AsTypeName for &'static str {
-    fn format_type(&self) -> Doc<'static> {
-        Doc::from(*self).with_markup(Markup::Type)
-    }
-    fn is_atom(&self) -> bool {
-        true
-    }
-}
-
-impl AsTypeName for Type {
-    fn format_type(&self) -> Doc<'static> {
-        format_type(self).into_owned()
-    }
-    fn is_atom(&self) -> bool {
-        self.is_atom()
-    }
-}
-
-/// Report a static type error.
-///
-/// A static type error can be reported at typecheck time based on the AST, so
-/// the culprit is a syntactic construct, not a runtime value.
-///
-/// The `actual` message should be in the form of “Found «actual» instead”.
-fn type_error<T1: AsTypeName, T2: AsTypeName>(at: Span, expected: &T1, actual: &T2) -> Error {
-    // If types are atoms, they are short to format, so we can put the message
-    // on one line. If they are composite, we put them in an indented block.
-    match (expected.is_atom(), actual.is_atom()) {
-        (true, true) => at.error("Type mismatch.").with_body(concat! {
-            "Expected " expected.format_type()
-            " but found " actual.format_type() "."
-        }),
-        (true, false) => at.error("Type mismatch.").with_body(concat! {
-            "Expected " expected.format_type() " but found this:"
-            Doc::HardBreak Doc::HardBreak
-            indent! { actual.format_type() }
-        }),
-        (false, true) => at.error("Type mismatch.").with_body(concat! {
-            "Expected this type:"
-            Doc::HardBreak Doc::HardBreak
-            indent! { expected.format_type() }
-            Doc::HardBreak Doc::HardBreak
-            "But found " actual.format_type() "."
-        }),
-        (false, false) => at.error("Type mismatch.").with_body(concat! {
-            "Expected this type:"
-            Doc::HardBreak Doc::HardBreak
-            indent! { expected.format_type() }
-            Doc::HardBreak Doc::HardBreak
-            "But found this type: "
-            indent! { expected.format_type() }
-        }),
     }
 }
 

@@ -9,8 +9,9 @@
 
 use std::rc::Rc;
 
-use crate::error::{IntoError, Result};
+use crate::error::{Error, IntoError, Result};
 use crate::fmt_type::format_type;
+use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 
@@ -190,22 +191,78 @@ impl Type {
             _ if expected == self => Ok(()),
 
             // TODO: Check inside collections.
-            _ => {
-                // TODO: Generate a briefer error when the expected type is a primitive type,
-                // dedup between the `typecheck::type_error` function.
-                at.error("Type mismatch.")
-                    .with_body(concat! {
-                        "Expected this type:"
-                        Doc::HardBreak Doc::HardBreak
-                        indent! { format_type(expected).into_owned() }
-                        Doc::HardBreak Doc::HardBreak
-                        "But got this type:"
-                        Doc::HardBreak Doc::HardBreak
-                        indent! { format_type(self).into_owned() }
-                    })
-                    .err()
-            }
+            _ => type_error(at, expected, self).err(),
         }
+    }
+}
+
+/// Helper to enable using short names in type errors.
+pub trait AsTypeName {
+    fn format_type(&self) -> Doc<'static>;
+    fn is_atom(&self) -> bool;
+}
+
+impl AsTypeName for &'static str {
+    fn format_type(&self) -> Doc<'static> {
+        Doc::from(*self).with_markup(Markup::Type)
+    }
+    fn is_atom(&self) -> bool {
+        true
+    }
+}
+
+impl AsTypeName for Type {
+    fn format_type(&self) -> Doc<'static> {
+        // If we are generating a type error, and it has Dynamic in there as
+        // the top-level type that we format, then that's a bug in the
+        // typechecker, because Dynamic is just a way to say "I don't know what
+        // the type is yet", you can't violate a type expectation this way.
+        debug_assert_ne!(
+            self,
+            &Type::Dynamic,
+            "The Dynamic type should never be a direct cause of a type error.",
+        );
+        format_type(self).into_owned()
+    }
+    fn is_atom(&self) -> bool {
+        self.is_atom()
+    }
+}
+
+/// Report a static type error.
+///
+/// A static type error can be reported at typecheck time based on the AST, so
+/// the culprit is a syntactic construct, not a runtime value.
+///
+/// The `actual` message should be in the form of “Found «actual» instead”.
+pub fn type_error<T1: AsTypeName, T2: AsTypeName>(at: Span, expected: &T1, actual: &T2) -> Error {
+    // If types are atoms, they are short to format, so we can put the message
+    // on one line. If they are composite, we put them in an indented block.
+    match (expected.is_atom(), actual.is_atom()) {
+        (true, true) => at.error("Type mismatch.").with_body(concat! {
+            "Expected " expected.format_type()
+            " but found " actual.format_type() "."
+        }),
+        (true, false) => at.error("Type mismatch.").with_body(concat! {
+            "Expected " expected.format_type() " but found this type:"
+            Doc::HardBreak Doc::HardBreak
+            indent! { actual.format_type() }
+        }),
+        (false, true) => at.error("Type mismatch.").with_body(concat! {
+            "Expected this type:"
+            Doc::HardBreak Doc::HardBreak
+            indent! { expected.format_type() }
+            Doc::HardBreak Doc::HardBreak
+            "But found " actual.format_type() "."
+        }),
+        (false, false) => at.error("Type mismatch.").with_body(concat! {
+            "Expected this type:"
+            Doc::HardBreak Doc::HardBreak
+            indent! { expected.format_type() }
+            Doc::HardBreak Doc::HardBreak
+            "But found this type: "
+            indent! { expected.format_type() }
+        }),
     }
 }
 
