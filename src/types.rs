@@ -134,6 +134,18 @@ impl Type {
     /// Type errors will be attributed to the span `at`.
     pub fn check_subtype_of(&self, at: Span, expected: &Type) -> Result<()> {
         match (expected, self) {
+            // If we expect void -- there exist no values of type void, it's
+            // dead code. Even `Dynamic` is no good, because expressions of type
+            // `Dynamic` at least have *some* value at runtime.
+            (Type::Void, Type::Void) => Ok(()),
+            (Type::Void, _) => at
+                .error(concat! {
+                    "Expected a value of type "
+                    format_type(&Type::Void).into_owned()
+                    ", but such values do not exist."
+                })
+                .err(),
+
             // If we defer the typecheck to runtime, anything is allowed.
             (Type::Dynamic, _) => Ok(()),
 

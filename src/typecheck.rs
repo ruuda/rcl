@@ -212,7 +212,21 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
 }
 
 /// Wrap the AST node in an `Expr::CheckType`.
-fn wrap_in_check_type(expr: &mut Expr, span: Span, expected: Type) {
+fn wrap_in_check_type(expr: &mut Expr, span: Span, expected: Type) -> Result<()> {
+    // Values of type Void do not exist, so we don't have to wait until
+    // runtime to report an error. TODO: Deduplicate between
+    // Type::check_subtype_of, but probably there exists a way more elegant
+    // way of doing this.
+    if expected == Type::Void {
+        return span
+            .error(concat! {
+                "Expected a value of type "
+                format_type(&Type::Void).into_owned()
+                ", but such values do not exist."
+            })
+            .err();
+    }
+
     // Wrap the existing expr in a `CheckType`. We have to
     // sacrifice a temporary NullLit to the borrow checker.
     let mut tmp = Expr::NullLit;
@@ -222,6 +236,8 @@ fn wrap_in_check_type(expr: &mut Expr, span: Span, expected: Type) {
         type_: expected,
         body: Box::new(tmp),
     };
+
+    Ok(())
 }
 
 pub struct TypeChecker {}
@@ -279,7 +295,7 @@ impl TypeChecker {
                     // should get the obligation site (the annotation on the
                     // let) from the caller.
                     let blame_span = *path_span;
-                    wrap_in_check_type(expr, blame_span, expected.clone());
+                    wrap_in_check_type(expr, blame_span, expected.clone())?;
                     Ok(expected.clone())
                 }
             }
@@ -382,7 +398,7 @@ impl TypeChecker {
                 // statically, then we have to insert a runtime type check.
                 (Some(Type::Dynamic), _not_dynamic) => {
                     let blame_span = *span;
-                    wrap_in_check_type(expr, blame_span, expected.clone());
+                    wrap_in_check_type(expr, blame_span, expected.clone())?;
                     Ok(expected.clone())
                 }
 
@@ -400,7 +416,7 @@ impl TypeChecker {
                 // a few methods we could resolve statically already, but we need
                 // record types to really make this useful.
                 if expected != &Type::Dynamic {
-                    wrap_in_check_type(expr, expr_span, expected.clone());
+                    wrap_in_check_type(expr, expr_span, expected.clone())?;
                 }
                 Ok(Type::Dynamic)
             }
@@ -450,7 +466,7 @@ impl TypeChecker {
                             self.check_expr(env, &Type::Dynamic, *arg_span, arg)?;
                         }
                         if expected != &Type::Dynamic {
-                            wrap_in_check_type(expr, expr_span, expected.clone());
+                            wrap_in_check_type(expr, expr_span, expected.clone())?;
                         }
                         Ok(expected.clone())
                     }
@@ -501,7 +517,7 @@ impl TypeChecker {
                         match (expected, &fn_type.result) {
                             (Type::Dynamic, res_type) => Ok(res_type.clone()),
                             (t, Type::Dynamic) => {
-                                wrap_in_check_type(expr, expr_span, expected.clone());
+                                wrap_in_check_type(expr, expr_span, expected.clone())?;
                                 Ok(t.clone())
                             }
                             (t, u) => {
@@ -530,7 +546,7 @@ impl TypeChecker {
                     Type::Dynamic => {
                         self.check_expr(env, &Type::Dynamic, *index_span, index)?;
                         if expected != &Type::Dynamic {
-                            wrap_in_check_type(expr, expr_span, expected.clone());
+                            wrap_in_check_type(expr, expr_span, expected.clone())?;
                         }
                         Ok(expected.clone())
                     }
@@ -545,7 +561,7 @@ impl TypeChecker {
                             Type::Dynamic => {
                                 // If we don't know what it is, but we do care,
                                 // we need to insert a runtime check.
-                                wrap_in_check_type(expr, expr_span, expected.clone());
+                                wrap_in_check_type(expr, expr_span, expected.clone())?;
                                 Ok(expected.clone())
                             }
                             _ => {
@@ -564,7 +580,7 @@ impl TypeChecker {
                                 Ok(Type::Dynamic)
                             }
                             Type::Dynamic => {
-                                wrap_in_check_type(expr, expr_span, expected.clone());
+                                wrap_in_check_type(expr, expr_span, expected.clone())?;
                                 Ok(expected.clone())
                             }
                             _ => {
