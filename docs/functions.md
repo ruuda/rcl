@@ -88,11 +88,11 @@ let replicants = [
 replicants.group_by(r => r.activation_year)
 // Evaluates to:
 {
-  2016 = [
+  2016: [
     { activation_year = 2016, name = "Pris Stratton" },
     { activation_year = 2016, name = "Roy Batty" },
   ],
-  2017 = [
+  2017: [
     { activation_year = 2017, name = "Leon Kowalski" },
   ],
 }
