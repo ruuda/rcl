@@ -536,13 +536,42 @@ impl TypeChecker {
                     }
                     Type::List(element_type) => {
                         self.check_expr(env, &Type::Int, *index_span, index)?;
-                        element_type.check_subtype_of(expr_span, expected)?;
-                        Ok((*element_type).clone())
+                        match element_type.as_ref() {
+                            Type::Dynamic if *expected == Type::Dynamic => {
+                                // If we don't know what it is, and we don't
+                                // care, everything is fine.
+                                Ok(Type::Dynamic)
+                            }
+                            Type::Dynamic => {
+                                // If we don't know what it is, but we do care,
+                                // we need to insert a runtime check.
+                                wrap_in_check_type(expr, expr_span, expected.clone());
+                                Ok(expected.clone())
+                            }
+                            _ => {
+                                // If we know what it is, then we can typecheck
+                                // right now.
+                                element_type.check_subtype_of(expr_span, expected)?;
+                                Ok((*element_type).clone())
+                            }
+                        }
                     }
                     Type::Dict(dict) => {
                         self.check_expr(env, &dict.key, *index_span, index)?;
-                        dict.value.check_subtype_of(expr_span, expected)?;
-                        Ok(dict.value.clone())
+                        // Same cases as above for list, see comments there.
+                        match dict.value {
+                            Type::Dynamic if *expected == Type::Dynamic => {
+                                Ok(Type::Dynamic)
+                            }
+                            Type::Dynamic => {
+                                wrap_in_check_type(expr, expr_span, expected.clone());
+                                Ok(expected.clone())
+                            }
+                            _ => {
+                                dict.value.check_subtype_of(expr_span, expected)?;
+                                Ok(dict.value.clone())
+                            }
+                        }
                     }
                     not_indexable => {
                         open
