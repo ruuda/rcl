@@ -1,0 +1,10 @@
+// This is a regression test for the typechecker.
+let xs = [20];
+let ys: List[Dynamic] = [20];
+[
+  xs[0] + 22,
+  ys[0] + 22,
+]
+
+# output:
+[42, 42]
