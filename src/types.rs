@@ -133,6 +133,8 @@ impl Type {
     ///
     /// Type errors will be attributed to the span `at`.
     pub fn check_subtype_of(&self, at: Span, expected: &Type) -> Result<()> {
+        // Uncomment to debug the typecheck, this one gets hit quite often.
+        // println!("Check {self:?} <:? {expected:?}");
         match (expected, self) {
             // If we expect void -- there exist no values of type void, it's
             // dead code. Even `Dynamic` is no good, because expressions of type
@@ -148,6 +150,14 @@ impl Type {
 
             // If we defer the typecheck to runtime, anything is allowed.
             (Type::Dynamic, _) => Ok(()),
+
+            // If we only know our own type at runtime, then we cannot prove at
+            // typecheck time that something is definitely a subtype. Though we
+            // also can't say it's definitely not ... This case is what needs to
+            // to insert a runtime check. But it should happen outside.
+            // TODO: Maybe here we should return a signal that causes a dynamic
+            // check to be inserted?
+            (_, Type::Dynamic) => Ok(()),
 
             (Type::Function(expected_fn), Type::Function(actual_fn)) => {
                 if expected_fn.args.len() != actual_fn.args.len() {
