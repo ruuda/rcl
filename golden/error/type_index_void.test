@@ -1,0 +1,21 @@
+// This is a regression test, the typechecker tried to blame an error on Dynamic here.
+// TODO: The type error that complained about Void was maybe nicer, at least for
+// a type system geek, but for a regular user, maybe the key error is actually
+// better.
+{}[{} | std]
+
+# output:
+stdin:5:4
+  ╷
+5 │ {}[{} | std]
+  ╵    ^~~~~~~~
+Error: Dict does not have a key {
+  range = std.range,
+  read_file_utf8 = std.read_file_utf8,
+}.
+
+stdin:5:1
+  ╷
+5 │ {}[{} | std]
+  ╵ ^~
+Note: On value: {}

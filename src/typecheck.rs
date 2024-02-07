@@ -725,7 +725,14 @@ impl TypeChecker {
                 return err.err();
             }
         };
-        result_type.check_subtype_of(expr_span, expected)?;
+
+        if result_type == Type::Dynamic {
+            // TODO: If the expected type is not dynamic, we need to insert a
+            // runtime check here, but we can't because we don't have access to
+            // the node, only the caller does.
+        } else {
+            result_type.check_subtype_of(expr_span, expected)?;
+        }
 
         Ok(result_type)
     }

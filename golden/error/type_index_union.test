@@ -1,9 +1,0 @@
-// This is a regression test, the typechecker tried to blame an error on Dynamic here.
-{}[{} | std]
-
-# output:
-stdin:2:4
-  ╷
-2 │ {}[{} | std]
-  ╵    ^~~~~~~~
-Error: Expected a value of type Void, but such values do not exist.
