@@ -114,3 +114,35 @@ And although these constraints are very powerful, they can also lead to spooky
 action at a distance. Maybe forward-only analysis is more user-friendly afte all
 because it has clearer errors, even if it is less powerful? And then it does
 mean that putting things in let bindings can change the error?
+
+## Push down, take II
+
+What if we have two type representations internally?
+
+ 1. `Type`, as we already have, created only by inference, and it forms a
+    lattice too.
+ 2. `Expectation`, the type returned by the type expression evaluator, and also
+    what is constructed by static requirements such as that the condition of an
+    `if`-expression must be a boolean. An expected type carries a _reason_ that
+    explains why that type is expected. That reason might point at a span when
+    a type annotation was written by the user, or it might be a static message,
+    such as one that says that `if` conditions must be bools.
+
+Then for our typecheck, we have the following tools:
+
+ * Syntax-directed bottom-up inference. For any expression, we can infer its
+   type, and that returns `Type`.
+ * Expectation check: given a span and its inferred type, we can verify the
+   inferred type against the expectation. We can also push the expectation
+   inwards when needed.
+
+The expectation check returns:
+
+ * A static type error if we can prove that there is one.
+ * `Defer` if we can't know statically whether the type is okay. If we hit this,
+   then we need to wrap the AST node in a dynamic type check, and for that check
+   we'll have the `Expectation` available to blame errors on at runtime.
+ * The inferred type, when we can prove statically that there are no type
+   errors. The inferred type is a subtype of the expected type, so it can be
+   more specific. Except in the case of a let-binding, then we should take the
+   user's word for it.
