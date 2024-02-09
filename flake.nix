@@ -169,6 +169,7 @@
         in
           rec {
             devShells.default = pkgs.mkShell {
+              name = "rcl";
               nativeBuildInputs = [
                 # For consistency we could take `python.pkgs.black`, but it
                 # rebuilds half the Python universe, so instead we take the
