@@ -31,7 +31,7 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
 
         // Collection types.
         (Type::List(element_type), Value::List(xs)) => {
-            for v in xs {
+            for v in xs.iter() {
                 // TODO: Extend the error with the list index, possibly with
                 // context, otherwise it might look like we blame a top-level
                 // let.
@@ -40,7 +40,7 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
             Ok(())
         }
         (Type::Set(element_type), Value::Set(xs)) => {
-            for v in xs {
+            for v in xs.iter() {
                 // TODO: Add typecheck context, otherwise it might look like we
                 // blame a top-level let.
                 check_value(at, element_type, v)?;
@@ -48,7 +48,7 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
             Ok(())
         }
         (Type::Dict(key_type, value_type), Value::Dict(xs)) => {
-            for (k, v) in xs {
+            for (k, v) in xs.iter() {
                 // TODO: Add typecheck context, otherwise it might look like we
                 // blame at top-level let.
                 check_value(at, key_type, k)?;

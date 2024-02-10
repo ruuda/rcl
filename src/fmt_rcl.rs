@@ -9,8 +9,6 @@
 //!
 //! This formatter is very similar to the one in [`fmt_json`].
 
-use std::rc::Rc;
-
 use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};
 use crate::runtime::Value;
@@ -29,7 +27,7 @@ fn string<'a>(s: &str) -> Doc<'a> {
     concat! { "\"" into "\"" }
 }
 
-fn list<'a>(open: &'a str, close: &'a str, vs: impl Iterator<Item = &'a Rc<Value>>) -> Doc<'a> {
+fn list<'a>(open: &'a str, close: &'a str, vs: impl Iterator<Item = &'a Value>) -> Doc<'a> {
     let mut elements = Vec::new();
     for v in vs {
         if !elements.is_empty() {
@@ -51,7 +49,7 @@ fn list<'a>(open: &'a str, close: &'a str, vs: impl Iterator<Item = &'a Rc<Value
     }
 }
 
-pub fn dict<'a>(vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>) -> Doc<'a> {
+pub fn dict<'a>(vs: impl Iterator<Item = (&'a Value, &'a Value)>) -> Doc<'a> {
     let mut elements = Vec::new();
 
     for (k, v) in vs {
@@ -59,7 +57,7 @@ pub fn dict<'a>(vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>) -> Doc
             elements.push(",".into());
         }
         elements.push(Doc::Sep);
-        match k.as_ref() {
+        match k {
             // Format as identifier if we can, or as string if we have to.
             Value::String(k_str) if is_identifier(k_str) => {
                 elements.push(Doc::from(k_str.as_ref()).with_markup(Markup::Identifier));
@@ -106,6 +104,6 @@ fn value(v: &Value) -> Doc {
         // TODO: Add a more proper printer for functions/builtins. For now this will do.
         Value::Function(..) => Doc::from("«function»").with_markup(Markup::Keyword),
         Value::BuiltinFunction(b) => Doc::from(b.name).with_markup(Markup::Builtin),
-        Value::BuiltinMethod { method, .. } => Doc::from(method.name).with_markup(Markup::Builtin),
+        Value::BuiltinMethod(m) => Doc::from(m.method.name).with_markup(Markup::Builtin),
     }
 }

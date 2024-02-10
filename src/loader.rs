@@ -11,7 +11,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::{env, path};
 
 use crate::abstraction;
@@ -368,12 +367,7 @@ impl Loader {
     }
 
     /// Evaluate the given document and return the resulting value.
-    pub fn evaluate(
-        &mut self,
-        id: DocId,
-        env: &mut Env,
-        tracer: &mut dyn Tracer,
-    ) -> Result<Rc<Value>> {
+    pub fn evaluate(&mut self, id: DocId, env: &mut Env, tracer: &mut dyn Tracer) -> Result<Value> {
         let mut evaluator = Evaluator::new(self, tracer);
         evaluator.eval_doc(env, id)
     }

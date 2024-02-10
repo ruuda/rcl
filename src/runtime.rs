@@ -21,7 +21,7 @@ use crate::types::Type;
 /// A value provided as argument to a function call.
 pub struct CallArg {
     pub span: Span,
-    pub value: Rc<Value>,
+    pub value: Value,
 }
 
 /// The arguments to a function call at runtime.
@@ -143,14 +143,27 @@ pub struct MethodCall<'a> {
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct BuiltinFunction {
     pub name: &'static str,
-    pub f: for<'a> fn(&'a mut Evaluator, FunctionCall<'a>) -> Result<Rc<Value>>,
+    pub f: for<'a> fn(&'a mut Evaluator, FunctionCall<'a>) -> Result<Value>,
 }
 
 /// A built-in method.
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct BuiltinMethod {
     pub name: &'static str,
-    pub f: for<'a> fn(&'a mut Evaluator, MethodCall<'a>) -> Result<Rc<Value>>,
+    pub f: for<'a> fn(&'a mut Evaluator, MethodCall<'a>) -> Result<Value>,
+}
+
+/// A method and its receiver.
+#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct MethodInstance {
+    /// The span where we refer to the method, e.g. the `keys` in `{}.keys()`.
+    pub method_span: Span,
+    /// The method to be called.
+    pub method: &'static BuiltinMethod,
+    /// The span of the receiving expression, e.g. the `{}` in `{}.keys()`.
+    pub receiver_span: Span,
+    /// The receiver of the call.
+    pub receiver: Value,
 }
 
 impl std::fmt::Debug for BuiltinFunction {
@@ -209,7 +222,7 @@ impl Ord for Function {
 }
 
 /// A value.
-#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Value {
     Null,
 
@@ -220,30 +233,25 @@ pub enum Value {
 
     String(Rc<str>),
 
-    List(Vec<Rc<Value>>),
+    List(Rc<Vec<Value>>),
 
     // TODO: Should preserve insertion order.
-    Set(BTreeSet<Rc<Value>>),
+    Set(Rc<BTreeSet<Value>>),
 
     // TODO: Should preserve insertion order.
-    Dict(BTreeMap<Rc<Value>, Rc<Value>>),
+    Dict(Rc<BTreeMap<Value, Value>>),
 
-    Function(Function),
+    Function(Rc<Function>),
 
-    BuiltinFunction(BuiltinFunction),
+    BuiltinFunction(&'static BuiltinFunction),
 
-    BuiltinMethod {
-        method_span: Span,
-        method: BuiltinMethod,
-        receiver_span: Span,
-        receiver: Rc<Value>,
-    },
+    BuiltinMethod(Rc<MethodInstance>),
 }
 
 impl Value {
     /// Extract the dict if it is one, panic otherwise.
     #[inline]
-    pub fn expect_dict(&self) -> &BTreeMap<Rc<Value>, Rc<Value>> {
+    pub fn expect_dict(&self) -> &BTreeMap<Value, Value> {
         match self {
             Value::Dict(inner) => inner,
             other => panic!("Expected Dict but got {other:?}."),
@@ -252,7 +260,7 @@ impl Value {
 
     /// Extract the list if it is one, panic otherwise.
     #[inline]
-    pub fn expect_list(&self) -> &[Rc<Value>] {
+    pub fn expect_list(&self) -> &[Value] {
         match self {
             Value::List(inner) => inner.as_ref(),
             other => panic!("Expected List but got {other:?}."),
@@ -261,7 +269,7 @@ impl Value {
 
     /// Extract the list if it is one, panic otherwise.
     #[inline]
-    pub fn expect_set(&self) -> &BTreeSet<Rc<Value>> {
+    pub fn expect_set(&self) -> &BTreeSet<Value> {
         match self {
             Value::Set(inner) => inner,
             other => panic!("Expected Set but got {other:?}."),
@@ -288,7 +296,7 @@ impl<'a> From<&'a str> for Value {
 /// An environment binds names to values.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Env {
-    value_bindings: Vec<(Ident, Rc<Value>)>,
+    value_bindings: Vec<(Ident, Value)>,
     type_bindings: Vec<(Ident, Rc<Type>)>,
 }
 
@@ -328,7 +336,7 @@ impl Env {
         env
     }
 
-    pub fn lookup_value(&self, name: &Ident) -> Option<&Rc<Value>> {
+    pub fn lookup_value(&self, name: &Ident) -> Option<&Value> {
         self.value_bindings
             .iter()
             .rev()
@@ -362,7 +370,7 @@ impl Env {
     /// If the name already existed, the new push will shadow the old one.
     ///
     /// Returns a checkpoint of the environment before the push.
-    pub fn push_value(&mut self, name: Ident, value: Rc<Value>) -> EnvCheckpoint {
+    pub fn push_value(&mut self, name: Ident, value: Value) -> EnvCheckpoint {
         let checkpoint = self.checkpoint();
         self.value_bindings.push((name, value));
         checkpoint

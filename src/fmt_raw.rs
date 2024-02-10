@@ -7,8 +7,6 @@
 
 //! Formatter that prints supported values as one value per line.
 
-use std::rc::Rc;
-
 use crate::error::{Error, IntoError, PathElement, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::pprint::{concat, Doc};
@@ -43,10 +41,10 @@ impl Formatter {
         })
     }
 
-    fn list<'a>(&mut self, vs: impl Iterator<Item = &'a Rc<Value>>) -> Result<Doc<'a>> {
+    fn list<'a>(&mut self, vs: impl Iterator<Item = &'a Value>) -> Result<Doc<'a>> {
         let mut elements = Vec::with_capacity(vs.size_hint().0 * 2);
         for (i, v) in vs.enumerate() {
-            match v.as_ref() {
+            match v {
                 Value::String(s) => elements.push(Doc::lines(s)),
                 _not_str => {
                     return self

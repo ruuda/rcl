@@ -6,7 +6,6 @@
 // A copy of the License has been included in the root of the repository.
 
 use std::io::Write;
-use std::rc::Rc;
 
 use rcl::cli::{self, Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat};
 use rcl::error::{Error, Result};
@@ -66,12 +65,12 @@ impl App {
         eval_opts: &EvalOptions,
         format_opts: &FormatOptions,
         value_span: Span,
-        value: Rc<Value>,
+        value: &Value,
     ) -> Result<()> {
         let out_doc = match eval_opts.format {
-            OutputFormat::Raw => rcl::fmt_raw::format_raw(value_span, value.as_ref())?,
-            OutputFormat::Rcl => rcl::fmt_rcl::format_rcl(value.as_ref()),
-            OutputFormat::Json => rcl::fmt_json::format_json(value_span, value.as_ref())?,
+            OutputFormat::Raw => rcl::fmt_raw::format_raw(value_span, value)?,
+            OutputFormat::Rcl => rcl::fmt_rcl::format_rcl(value),
+            OutputFormat::Json => rcl::fmt_json::format_json(value_span, value)?,
         };
         self.print_doc_stdout(format_opts, out_doc);
         Ok(())
@@ -122,7 +121,7 @@ impl App {
                 let val = self.loader.evaluate(doc, &mut env, &mut tracer)?;
                 // TODO: Need to get last inner span.
                 let full_span = self.loader.get_span(doc);
-                self.print_value(&eval_opts, &format_opts, full_span, val)
+                self.print_value(&eval_opts, &format_opts, full_span, &val)
             }
 
             Cmd::Query {
@@ -149,7 +148,7 @@ impl App {
                 let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
 
                 let full_span = self.loader.get_span(query);
-                self.print_value(&eval_opts, &format_opts, full_span, val_result)
+                self.print_value(&eval_opts, &format_opts, full_span, &val_result)
             }
 
             Cmd::Format {

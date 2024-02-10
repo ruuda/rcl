@@ -5,8 +5,6 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use std::rc::Rc;
-
 use pyo3::prelude::*;
 use rcl::cli::Target;
 use rcl::error::Result;
@@ -15,7 +13,7 @@ use rcl::runtime::{Env, Value};
 use rcl::source::DocId;
 use rcl::tracer::StderrTracer;
 
-fn evaluate<F: FnOnce(&mut Loader) -> Result<DocId>>(load: F) -> Result<Rc<Value>> {
+fn evaluate<F: FnOnce(&mut Loader) -> Result<DocId>>(load: F) -> Result<Value> {
     let mut loader = Loader::new();
     loader.initialize_filesystem(SandboxMode::Workdir, None)?;
     let doc = load(&mut loader)?;
@@ -44,14 +42,14 @@ fn build_python_value(py: Python, v: &Value) -> PyResult<PyObject> {
         }
         Value::Set(xs) => {
             let set = PySet::empty(py)?;
-            for x in xs {
+            for x in xs.iter() {
                 set.add(build_python_value(py, x)?)?;
             }
             set.into()
         }
         Value::Dict(xs) => {
             let dict = PyDict::new(py);
-            for (k, v) in xs {
+            for (k, v) in xs.iter() {
                 dict.set_item(build_python_value(py, k)?, build_python_value(py, v)?)?;
             }
             dict.into()
@@ -69,7 +67,7 @@ fn load_file(py: Python, path: String) -> PyResult<PyObject> {
     // Behavior of the file paths for this function is the same as on the
     // command line; it's *not* the same as for import expressions.
     match evaluate(|loader| loader.load_cli_target(Target::File(path))) {
-        Ok(v) => build_python_value(py, v.as_ref()),
+        Ok(v) => build_python_value(py, &v),
         Err(..) => Err(runtime_error("Evaluation failed.")),
     }
 }
@@ -78,7 +76,7 @@ fn load_file(py: Python, path: String) -> PyResult<PyObject> {
 #[pyfunction]
 fn loads(py: Python, src: String) -> PyResult<PyObject> {
     match evaluate(|loader| Ok(loader.load_string(src))) {
-        Ok(v) => build_python_value(py, v.as_ref()),
+        Ok(v) => build_python_value(py, &v),
         Err(..) => Err(runtime_error("Evaluation failed.")),
     }
 }

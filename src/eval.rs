@@ -15,7 +15,7 @@ use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
 use crate::pprint::{concat, indent, Doc};
-use crate::runtime::{CallArg, Env, Function, FunctionCall, MethodCall, Value};
+use crate::runtime::{CallArg, Env, Function, FunctionCall, MethodCall, MethodInstance, Value};
 use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
@@ -38,7 +38,7 @@ pub struct Evaluator<'a> {
     /// The single instance of the standard library.
     ///
     /// Because it is immutable, it can be reused across evaluations.
-    pub stdlib: Rc<Value>,
+    pub stdlib: Value,
 
     /// The depth of the evaluation stack.
     ///
@@ -86,7 +86,7 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate a document as the entry point of evaluation.
-    pub fn eval_doc(&mut self, env: &mut Env, doc: DocId) -> Result<Rc<Value>> {
+    pub fn eval_doc(&mut self, env: &mut Env, doc: DocId) -> Result<Value> {
         debug_assert!(self.import_stack.is_empty());
         let expr = self.loader.get_ast(doc)?;
         let ctx = EvalContext {
@@ -100,7 +100,7 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate a document for an import.
-    fn eval_import(&mut self, doc: DocId, imported_from: Span) -> Result<Rc<Value>> {
+    fn eval_import(&mut self, doc: DocId, imported_from: Span) -> Result<Value> {
         // Before we allow the import, check that this would not create a cycle.
         let mut error: Option<Error> = None;
         for ctx in &self.import_stack {
@@ -142,7 +142,7 @@ impl<'a> Evaluator<'a> {
         Ok(result)
     }
 
-    fn eval_expr(&mut self, env: &mut Env, expr: &Expr) -> Result<Rc<Value>> {
+    fn eval_expr(&mut self, env: &mut Env, expr: &Expr) -> Result<Value> {
         match expr {
             Expr::Import {
                 path_span,
@@ -189,10 +189,10 @@ impl<'a> Evaluator<'a> {
                 match out {
                     // If we have no keys, it’s a dict, because json has no sets,
                     // and `{}` is a json value that should evaluate to itself.
-                    SeqOut::SetOrDict => Ok(Rc::new(Value::Dict(BTreeMap::new()))),
+                    SeqOut::SetOrDict => Ok(Value::Dict(Rc::new(BTreeMap::new()))),
                     SeqOut::Set(_, values) => {
                         let result = values.into_iter().collect();
-                        Ok(Rc::new(Value::Set(result)))
+                        Ok(Value::Set(Rc::new(result)))
                     }
                     SeqOut::Dict(_, keys, values) => {
                         assert_eq!(
@@ -205,7 +205,7 @@ impl<'a> Evaluator<'a> {
                         for (k, v) in keys.into_iter().zip(values) {
                             result.insert(k, v);
                         }
-                        Ok(Rc::new(Value::Dict(result)))
+                        Ok(Value::Dict(Rc::new(result)))
                     }
                     SeqOut::List(_) => unreachable!("Did not start out as list."),
                 }
@@ -216,18 +216,18 @@ impl<'a> Evaluator<'a> {
                     self.eval_seq(env, seq, &mut out)?;
                 }
                 match out {
-                    SeqOut::List(values) => Ok(Rc::new(Value::List(values))),
+                    SeqOut::List(values) => Ok(Value::List(Rc::new(values))),
                     _ => unreachable!("SeqOut::List type is preserved."),
                 }
             }
 
-            Expr::NullLit => Ok(Rc::new(Value::Null)),
+            Expr::NullLit => Ok(Value::Null),
 
-            Expr::BoolLit(b) => Ok(Rc::new(Value::Bool(*b))),
+            Expr::BoolLit(b) => Ok(Value::Bool(*b)),
 
-            Expr::IntegerLit(i) => Ok(Rc::new(Value::Int(*i))),
+            Expr::IntegerLit(i) => Ok(Value::Int(*i)),
 
-            Expr::StringLit(s) => Ok(Rc::new(Value::String(s.clone()))),
+            Expr::StringLit(s) => Ok(Value::String(s.clone())),
 
             Expr::Format(fragments) => self.eval_format(env, fragments),
 
@@ -239,7 +239,7 @@ impl<'a> Evaluator<'a> {
             } => {
                 self.inc_eval_depth(*condition_span)?;
                 let cond = self.eval_expr(env, condition)?;
-                let result = match cond.as_ref() {
+                let result = match cond {
                     Value::Bool(true) => self.eval_expr(env, body_then),
                     Value::Bool(false) => self.eval_expr(env, body_else),
                     _ => {
@@ -268,23 +268,23 @@ impl<'a> Evaluator<'a> {
                 self.dec_eval_depth();
                 let field_name_value = Value::String(field_name.0.clone());
 
-                let builtin = match (inner.as_ref(), field_name.as_ref()) {
-                    (Value::String(_), "chars") => Some(stdlib::STRING_CHARS),
-                    (Value::String(_), "contains") => Some(stdlib::STRING_CONTAINS),
-                    (Value::String(_), "ends_with") => Some(stdlib::STRING_ENDS_WITH),
-                    (Value::String(_), "len") => Some(stdlib::STRING_LEN),
-                    (Value::String(_), "parse_int") => Some(stdlib::STRING_PARSE_INT),
-                    (Value::String(_), "replace") => Some(stdlib::STRING_REPLACE),
-                    (Value::String(_), "split") => Some(stdlib::STRING_SPLIT),
-                    (Value::String(_), "split_lines") => Some(stdlib::STRING_SPLIT_LINES),
-                    (Value::String(_), "starts_with") => Some(stdlib::STRING_STARTS_WITH),
+                let builtin = match (&inner, field_name.as_ref()) {
+                    (Value::String(_), "chars") => Some(&stdlib::STRING_CHARS),
+                    (Value::String(_), "contains") => Some(&stdlib::STRING_CONTAINS),
+                    (Value::String(_), "ends_with") => Some(&stdlib::STRING_ENDS_WITH),
+                    (Value::String(_), "len") => Some(&stdlib::STRING_LEN),
+                    (Value::String(_), "parse_int") => Some(&stdlib::STRING_PARSE_INT),
+                    (Value::String(_), "replace") => Some(&stdlib::STRING_REPLACE),
+                    (Value::String(_), "split") => Some(&stdlib::STRING_SPLIT),
+                    (Value::String(_), "split_lines") => Some(&stdlib::STRING_SPLIT_LINES),
+                    (Value::String(_), "starts_with") => Some(&stdlib::STRING_STARTS_WITH),
 
-                    (Value::Dict(_), "contains") => Some(stdlib::DICT_CONTAINS),
-                    (Value::Dict(_), "except") => Some(stdlib::DICT_EXCEPT),
-                    (Value::Dict(_), "get") => Some(stdlib::DICT_GET),
-                    (Value::Dict(_), "keys") => Some(stdlib::DICT_KEYS),
-                    (Value::Dict(_), "len") => Some(stdlib::DICT_LEN),
-                    (Value::Dict(_), "values") => Some(stdlib::DICT_VALUES),
+                    (Value::Dict(_), "contains") => Some(&stdlib::DICT_CONTAINS),
+                    (Value::Dict(_), "except") => Some(&stdlib::DICT_EXCEPT),
+                    (Value::Dict(_), "get") => Some(&stdlib::DICT_GET),
+                    (Value::Dict(_), "keys") => Some(&stdlib::DICT_KEYS),
+                    (Value::Dict(_), "len") => Some(&stdlib::DICT_LEN),
+                    (Value::Dict(_), "values") => Some(&stdlib::DICT_VALUES),
                     (Value::Dict(fields), _field_name) => {
                         // If it wasn't a builtin, look for a key in the dict.
                         return match fields.get(&field_name_value) {
@@ -298,7 +298,7 @@ impl<'a> Evaluator<'a> {
                                             // TODO: Printing the full value may be overkill,
                                             // the full value could be very large. We
                                             // could print the dict keys here.
-                                            "On value: " format_rcl(inner.as_ref()).into_owned()
+                                            "On value: " format_rcl(&inner).into_owned()
                                         },
                                     )
                                     .err();
@@ -306,29 +306,32 @@ impl<'a> Evaluator<'a> {
                         };
                     }
 
-                    (Value::List(_), "contains") => Some(stdlib::LIST_CONTAINS),
-                    (Value::List(_), "fold") => Some(stdlib::LIST_FOLD),
-                    (Value::List(_), "group_by") => Some(stdlib::LIST_GROUP_BY),
-                    (Value::List(_), "join") => Some(stdlib::LIST_JOIN),
-                    (Value::List(_), "key_by") => Some(stdlib::LIST_KEY_BY),
-                    (Value::List(_), "len") => Some(stdlib::LIST_LEN),
-                    (Value::List(_), "reverse") => Some(stdlib::LIST_REVERSE),
+                    (Value::List(_), "contains") => Some(&stdlib::LIST_CONTAINS),
+                    (Value::List(_), "fold") => Some(&stdlib::LIST_FOLD),
+                    (Value::List(_), "group_by") => Some(&stdlib::LIST_GROUP_BY),
+                    (Value::List(_), "join") => Some(&stdlib::LIST_JOIN),
+                    (Value::List(_), "key_by") => Some(&stdlib::LIST_KEY_BY),
+                    (Value::List(_), "len") => Some(&stdlib::LIST_LEN),
+                    (Value::List(_), "reverse") => Some(&stdlib::LIST_REVERSE),
 
-                    (Value::Set(_), "contains") => Some(stdlib::SET_CONTAINS),
-                    (Value::Set(_), "except") => Some(stdlib::SET_EXCEPT),
-                    (Value::Set(_), "group_by") => Some(stdlib::SET_GROUP_BY),
-                    (Value::Set(_), "key_by") => Some(stdlib::SET_KEY_BY),
-                    (Value::Set(_), "len") => Some(stdlib::SET_LEN),
+                    (Value::Set(_), "contains") => Some(&stdlib::SET_CONTAINS),
+                    (Value::Set(_), "except") => Some(&stdlib::SET_EXCEPT),
+                    (Value::Set(_), "group_by") => Some(&stdlib::SET_GROUP_BY),
+                    (Value::Set(_), "key_by") => Some(&stdlib::SET_KEY_BY),
+                    (Value::Set(_), "len") => Some(&stdlib::SET_LEN),
 
                     _other => None,
                 };
                 match builtin {
-                    Some(b) => Ok(Rc::new(Value::BuiltinMethod {
-                        receiver_span: *inner_span,
-                        receiver: inner,
-                        method_span: *field_span,
-                        method: b,
-                    })),
+                    Some(b) => {
+                        let instance = MethodInstance {
+                            receiver_span: *inner_span,
+                            receiver: inner,
+                            method_span: *field_span,
+                            method: b,
+                        };
+                        Ok(Value::BuiltinMethod(Rc::new(instance)))
+                    }
                     None => {
                         field_span
                             .error("Unknown field.")
@@ -337,7 +340,7 @@ impl<'a> Evaluator<'a> {
                                 concat! {
                                     // TODO: Printing the full value may be overkill,
                                     // the full value could be very large.
-                                    "On value: " format_rcl(inner.as_ref()).into_owned()
+                                    "On value: " format_rcl(&inner).into_owned()
                                 },
                             )
                             .err()
@@ -380,7 +383,7 @@ impl<'a> Evaluator<'a> {
                 };
                 let error_context = || None;
 
-                self.eval_call(*function_span, fun.as_ref(), call, error_context)
+                self.eval_call(*function_span, &fun, call, error_context)
             }
 
             Expr::Index {
@@ -403,7 +406,7 @@ impl<'a> Evaluator<'a> {
                     args: args.clone(),
                     body: Rc::new((**body).clone()),
                 };
-                Ok(Rc::new(Value::Function(result)))
+                Ok(Value::Function(Rc::new(result)))
             }
 
             Expr::UnOp {
@@ -440,7 +443,7 @@ impl<'a> Evaluator<'a> {
         callee: &Value,
         call: FunctionCall,
         error_context: MkErr,
-    ) -> Result<Rc<Value>>
+    ) -> Result<Value>
     where
         MkErr: FnOnce() -> Option<Doc<'static>>,
     {
@@ -448,18 +451,14 @@ impl<'a> Evaluator<'a> {
         self.inc_eval_depth(call_open)?;
 
         let result = match callee {
-            Value::BuiltinMethod {
-                method_span,
-                method,
-                receiver_span,
-                receiver,
-            } => {
+            Value::BuiltinMethod(instance) => {
                 let method_call = MethodCall {
                     call,
-                    method_span: *method_span,
-                    receiver_span: *receiver_span,
-                    receiver: receiver.as_ref(),
+                    method_span: instance.method_span,
+                    receiver_span: instance.receiver_span,
+                    receiver: &instance.receiver,
                 };
+                let method = instance.method;
                 (method.f)(self, method_call).map_err(|err| {
                     let msg = match error_context() {
                         None => concat! { "In call to method '" Doc::highlight(method.name) "'." },
@@ -501,7 +500,7 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate a call to a lambda function.
-    pub fn eval_function_call(&mut self, fun: &Function, call: FunctionCall) -> Result<Rc<Value>> {
+    pub fn eval_function_call(&mut self, fun: &Function, call: FunctionCall) -> Result<Value> {
         // TODO: Add a better name, possibly also report the source span where
         // the argument is defined, not just the span of the lambda.
         call.check_arity_dynamic(&fun.args)
@@ -552,34 +551,28 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate a format string.
-    pub fn eval_format(
-        &mut self,
-        env: &mut Env,
-        fragments: &[FormatFragment],
-    ) -> Result<Rc<Value>> {
+    pub fn eval_format(&mut self, env: &mut Env, fragments: &[FormatFragment]) -> Result<Value> {
         let mut results = Vec::new();
 
         for fragment in fragments {
             let value = self.eval_expr(env, &fragment.body)?;
-            Evaluator::push_format_fragment(&mut results, fragment.span, value.as_ref())?;
+            Evaluator::push_format_fragment(&mut results, fragment.span, &value)?;
         }
 
-        Ok(Rc::new(Evaluator::join_format_fragments(results)))
+        Ok(Evaluator::join_format_fragments(results))
     }
 
     fn eval_index(
         &mut self,
         open_span: Span,
-        collection: Rc<Value>,
+        collection: Value,
         collection_span: Span,
-        index: Rc<Value>,
+        index: Value,
         index_span: Span,
-    ) -> Result<Rc<Value>> {
-        match collection.as_ref() {
-            Value::List(xs) => self.eval_index_list(xs, index.as_ref(), index_span),
-            Value::Dict(dict) => {
-                self.eval_index_dict(dict, collection_span, index.as_ref(), index_span)
-            }
+    ) -> Result<Value> {
+        match collection {
+            Value::List(xs) => self.eval_index_list(&xs, index, index_span),
+            Value::Dict(dict) => self.eval_index_dict(&dict, collection_span, index, index_span),
             // TODO: Implement indexing into strings.
             Value::String(..) => open_span
                 .error("Indexing into a string is not yet supported.")
@@ -588,7 +581,7 @@ impl<'a> Evaluator<'a> {
             not_indexable => {
                 let note = concat! {
                     "Expected a dict or list, but found: "
-                    format_rcl(not_indexable).into_owned()
+                    format_rcl(&not_indexable).into_owned()
                     "."
                 };
                 open_span
@@ -599,14 +592,9 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    fn eval_index_list(
-        &mut self,
-        list: &[Rc<Value>],
-        index: &Value,
-        index_span: Span,
-    ) -> Result<Rc<Value>> {
+    fn eval_index_list(&mut self, list: &[Value], index: Value, index_span: Span) -> Result<Value> {
         let i_signed = match index {
-            Value::Int(i) => *i,
+            Value::Int(i) => i,
             _ => return index_span.error("Index must be an integer.").err(),
         };
 
@@ -632,16 +620,16 @@ impl<'a> Evaluator<'a> {
 
     fn eval_index_dict(
         &mut self,
-        dict: &BTreeMap<Rc<Value>, Rc<Value>>,
+        dict: &BTreeMap<Value, Value>,
         dict_span: Span,
-        index: &Value,
+        index: Value,
         index_span: Span,
-    ) -> Result<Rc<Value>> {
-        match dict.get(index) {
+    ) -> Result<Value> {
+        match dict.get(&index) {
             None => index_span
                 .error(concat! {
                     "Dict does not have a key "
-                    format_rcl(index).into_owned()
+                    format_rcl(&index).into_owned()
                     "."
                 })
                 .with_note(
@@ -656,11 +644,11 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Rc<Value>) -> Result<Rc<Value>> {
-        match (op, v.as_ref()) {
-            (UnOp::Not, Value::Bool(x)) => Ok(Rc::new(Value::Bool(!x))),
+    fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Value) -> Result<Value> {
+        match (op, v) {
+            (UnOp::Not, Value::Bool(x)) => Ok(Value::Bool(!x)),
             (UnOp::Neg, Value::Int(x)) => match x.checked_neg() {
-                Some(nx) => Ok(Rc::new(Value::Int(nx))),
+                Some(nx) => Ok(Value::Int(nx)),
                 None => {
                     let err = concat! {
                         "Negation of " x.to_string() " would overflow."
@@ -677,37 +665,31 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    fn eval_binop(
-        &mut self,
-        op: BinOp,
-        op_span: Span,
-        lhs: Rc<Value>,
-        rhs: Rc<Value>,
-    ) -> Result<Rc<Value>> {
-        match (op, lhs.as_ref(), rhs.as_ref()) {
+    fn eval_binop(&mut self, op: BinOp, op_span: Span, lhs: Value, rhs: Value) -> Result<Value> {
+        match (op, lhs, rhs) {
             (BinOp::Union, Value::Dict(xs), Value::Dict(ys)) => {
-                let mut result = xs.clone();
+                let mut result = (*xs).clone();
                 for (k, v) in ys.iter() {
                     result.insert(k.clone(), v.clone());
                 }
-                Ok(Rc::new(Value::Dict(result)))
+                Ok(Value::Dict(Rc::new(result)))
             }
             (BinOp::Union, Value::Set(xs), Value::Set(ys)) => {
-                let result = xs.union(ys).cloned().collect();
-                Ok(Rc::new(Value::Set(result)))
+                let result = xs.union(ys.as_ref()).cloned().collect();
+                Ok(Value::Set(Rc::new(result)))
             }
             (BinOp::Union, Value::Set(xs), Value::List(ys)) => {
-                let mut result = xs.clone();
+                let mut result = (*xs).clone();
                 result.extend(ys.iter().cloned());
-                Ok(Rc::new(Value::Set(result)))
+                Ok(Value::Set(Rc::new(result)))
             }
             // TODO: Could evaluate these boolean expressions lazily, if the
             // language is really pure. But if I enable external side effects like
             // running a program to read its input, that would be questionable to do.
-            (BinOp::And, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x && *y))),
-            (BinOp::Or, Value::Bool(x), Value::Bool(y)) => Ok(Rc::new(Value::Bool(*x || *y))),
-            (BinOp::Add, Value::Int(x), Value::Int(y)) => match x.checked_add(*y) {
-                Some(z) => Ok(Rc::new(Value::Int(z))),
+            (BinOp::And, Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x && y)),
+            (BinOp::Or, Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x || y)),
+            (BinOp::Add, Value::Int(x), Value::Int(y)) => match x.checked_add(y) {
+                Some(z) => Ok(Value::Int(z)),
                 None => {
                     let err = concat! {
                         "Addition " x.to_string() " + " y.to_string() " would overflow."
@@ -715,8 +697,8 @@ impl<'a> Evaluator<'a> {
                     op_span.error(err).err()
                 }
             },
-            (BinOp::Sub, Value::Int(x), Value::Int(y)) => match x.checked_sub(*y) {
-                Some(z) => Ok(Rc::new(Value::Int(z))),
+            (BinOp::Sub, Value::Int(x), Value::Int(y)) => match x.checked_sub(y) {
+                Some(z) => Ok(Value::Int(z)),
                 None => {
                     let err = concat! {
                         "Subtraction " x.to_string() " - " y.to_string() " would overflow."
@@ -724,8 +706,8 @@ impl<'a> Evaluator<'a> {
                     op_span.error(err).err()
                 }
             },
-            (BinOp::Mul, Value::Int(x), Value::Int(y)) => match x.checked_mul(*y) {
-                Some(z) => Ok(Rc::new(Value::Int(z))),
+            (BinOp::Mul, Value::Int(x), Value::Int(y)) => match x.checked_mul(y) {
+                Some(z) => Ok(Value::Int(z)),
                 None => {
                     let err = concat! {
                         "Multiplication " x.to_string() " * " y.to_string() " would overflow."
@@ -734,7 +716,7 @@ impl<'a> Evaluator<'a> {
                 }
             },
             (BinOp::Div, Value::Int(x), Value::Int(y)) => {
-                if *y == 0 {
+                if y == 0 {
                     op_span.error("Division by zero.").err()
                 } else {
                     // For division, the result may not be an integer. In that case,
@@ -745,8 +727,8 @@ impl<'a> Evaluator<'a> {
                     // If we'd choose integer division now, it would be a subtle
                     // change of behavior later.
                     let q = x / y;
-                    if q * y == *x {
-                        Ok(Rc::new(Value::Int(q)))
+                    if q * y == x {
+                        Ok(Value::Int(q))
                     } else {
                         let err = concat! {
                             "Non-integer division: "
@@ -757,14 +739,14 @@ impl<'a> Evaluator<'a> {
                     }
                 }
             }
-            (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x < *y))),
-            (BinOp::Gt, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x > *y))),
-            (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x <= *y))),
-            (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Rc::new(Value::Bool(*x >= *y))),
+            (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x < y)),
+            (BinOp::Gt, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x > y)),
+            (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x <= y)),
+            (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x >= y)),
             // TODO: Throw a type error when the types are not the same, instead of
             // enabling comparing values of different types.
-            (BinOp::Eq, x, y) => Ok(Rc::new(Value::Bool(*x == *y))),
-            (BinOp::Neq, x, y) => Ok(Rc::new(Value::Bool(*x != *y))),
+            (BinOp::Eq, x, y) => Ok(Value::Bool(x == y)),
+            (BinOp::Neq, x, y) => Ok(Value::Bool(x != y)),
             _ => {
                 // TODO: Add a proper type error.
                 Err(op_span
@@ -790,7 +772,7 @@ impl<'a> Evaluator<'a> {
                 // value fits the specified type.
                 if let Some(type_expr) = type_ {
                     let type_ = self.eval_type_expr(env, type_expr)?;
-                    typecheck::check_value(*ident_span, type_.as_ref(), v.as_ref())?;
+                    typecheck::check_value(*ident_span, type_.as_ref(), &v)?;
                 }
 
                 env.push_value(ident.clone(), v);
@@ -800,14 +782,13 @@ impl<'a> Evaluator<'a> {
                 condition,
                 message: message_expr,
             } => {
-                let v = self.eval_expr(env, condition)?;
-                match *v {
+                match self.eval_expr(env, condition)? {
                     Value::Bool(true) => {
                         // Ok, the assertion passed, nothing else to do.
                     }
                     Value::Bool(false) => {
                         let message = self.eval_expr(env, message_expr)?;
-                        let body: Doc = match message.as_ref() {
+                        let body: Doc = match &message {
                             // If the message is a string, then we include it directly,
                             // not pretty-printed as a value.
                             Value::String(msg) => Doc::lines(msg),
@@ -833,7 +814,7 @@ impl<'a> Evaluator<'a> {
             } => {
                 let message = self.eval_expr(env, message_expr)?;
                 self.tracer
-                    .trace(&self.loader.as_inputs(), *message_span, message);
+                    .trace(&self.loader.as_inputs(), *message_span, &message);
             }
         }
         Ok(())
@@ -884,9 +865,9 @@ impl<'a> Evaluator<'a> {
                 body,
             } => {
                 let collection_value = self.eval_expr(env, collection)?;
-                match (&idents[..], collection_value.as_ref()) {
+                match (&idents[..], collection_value) {
                     ([name], Value::List(xs)) => {
-                        for x in xs {
+                        for x in xs.iter() {
                             let ck = env.push_value(name.clone(), x.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
@@ -901,7 +882,7 @@ impl<'a> Evaluator<'a> {
                         Err(err.into())
                     }
                     ([name], Value::Set(xs)) => {
-                        for x in xs {
+                        for x in xs.iter() {
                             let ck = env.push_value(name.clone(), x.clone());
                             self.eval_seq(env, body, out)?;
                             env.pop(ck);
@@ -916,7 +897,7 @@ impl<'a> Evaluator<'a> {
                         Err(err.into())
                     }
                     ([k_name, v_name], Value::Dict(xs)) => {
-                        for (k, v) in xs {
+                        for (k, v) in xs.iter() {
                             let ck = env.checkpoint();
                             env.push_value(k_name.clone(), k.clone());
                             env.push_value(v_name.clone(), v.clone());
@@ -944,7 +925,7 @@ impl<'a> Evaluator<'a> {
                 body,
             } => {
                 let cond = self.eval_expr(env, condition)?;
-                match cond.as_ref() {
+                match cond {
                     Value::Bool(true) => self.eval_seq(env, body, out),
                     Value::Bool(false) => Ok(()),
                     _ => {
@@ -1062,29 +1043,27 @@ impl<'a> Evaluator<'a> {
     }
 }
 
-type Values = Vec<Rc<Value>>;
-
 /// Helper to hold evaluation output for sequences.
 enum SeqOut {
     /// Only allow scalar values because we are in a list literal.
-    List(Values),
+    List(Vec<Value>),
 
     /// The sequence is definitely a set, because the first element is scalar.
     ///
     /// The span contains the previous scalar as evidence.
-    Set(Span, Values),
+    Set(Span, Vec<Value>),
 
     /// The sequence is definitely a dict, because the first element is kv.
     ///
     /// The span contains the previous key-value as evidence.
-    Dict(Span, Values, Values),
+    Dict(Span, Vec<Value>, Vec<Value>),
 
     /// It's still unclear whether this is a set or a dict.
     SetOrDict,
 }
 
 impl SeqOut {
-    fn values(&mut self, scalar: Span) -> Result<&mut Values> {
+    fn values(&mut self, scalar: Span) -> Result<&mut Vec<Value>> {
         match self {
             SeqOut::List(values) => Ok(values),
             SeqOut::Set(_first, values) => Ok(values),
@@ -1101,7 +1080,7 @@ impl SeqOut {
         }
     }
 
-    fn keys_values(&mut self, kv: Span) -> Result<(&mut Values, &mut Values)> {
+    fn keys_values(&mut self, kv: Span) -> Result<(&mut Vec<Value>, &mut Vec<Value>)> {
         match self {
             SeqOut::List(_values) => {
                 let err = kv

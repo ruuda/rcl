@@ -7,8 +7,6 @@
 
 //! Runtime configurable behavior for trace messages.
 
-use std::rc::Rc;
-
 use crate::error::highlight_span;
 use crate::fmt_rcl::format_rcl;
 use crate::markup::{Markup, MarkupMode};
@@ -28,7 +26,7 @@ use crate::source::{Inputs, Span};
 /// The main implementation is [`StderrTracer`]. The fuzzer uses its own void
 /// tracer that ignores trace messages.
 pub trait Tracer {
-    fn trace(&mut self, inputs: &Inputs, span: Span, message: Rc<Value>);
+    fn trace(&mut self, inputs: &Inputs, span: Span, message: &Value);
 }
 
 /// Tracer that writes messages to stderr.
@@ -48,14 +46,14 @@ impl StderrTracer {
 }
 
 impl Tracer for StderrTracer {
-    fn trace(&mut self, inputs: &Inputs, span: Span, message: Rc<Value>) {
+    fn trace(&mut self, inputs: &Inputs, span: Span, message: &Value) {
         use std::io::Write;
 
         let doc = concat! {
             highlight_span(inputs, span, Markup::Trace)
             Doc::from("Trace:").with_markup(Markup::Trace)
             " "
-            format_rcl(&message)
+            format_rcl(message)
             Doc::HardBreak
             Doc::HardBreak
         };
@@ -76,5 +74,5 @@ pub struct VoidTracer;
 
 #[cfg(fuzzing)]
 impl Tracer for VoidTracer {
-    fn trace(&mut self, _inputs: &Inputs, _span: Span, _message: Rc<Value>) {}
+    fn trace(&mut self, _inputs: &Inputs, _span: Span, _message: &Value) {}
 }

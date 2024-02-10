@@ -35,5 +35,5 @@ fuzz_target!(|input: &str| {
     let mut env = rcl::runtime::Env::with_prelude();
     let v = evaluator.eval_doc(&mut env, id).expect("Expression is valid.");
 
-    assert_eq!(v.as_ref(), &Value::Bool(true));
+    assert_eq!(v, Value::Bool(true));
 });

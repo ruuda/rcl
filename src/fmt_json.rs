@@ -7,8 +7,6 @@
 
 //! Formatter that prints values as json.
 
-use std::rc::Rc;
-
 use crate::error::{IntoError, PathElement, Result};
 use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};
@@ -58,7 +56,7 @@ impl Formatter {
         concat! { "\"" into "\"" }
     }
 
-    fn list<'a>(&mut self, vs: impl Iterator<Item = &'a Rc<Value>>) -> Result<Doc<'a>> {
+    fn list<'a>(&mut self, vs: impl Iterator<Item = &'a Value>) -> Result<Doc<'a>> {
         let mut elements = Vec::new();
         for (i, v) in vs.enumerate() {
             if !elements.is_empty() {
@@ -79,17 +77,14 @@ impl Formatter {
         Ok(result)
     }
 
-    fn dict<'a>(
-        &mut self,
-        vs: impl Iterator<Item = (&'a Rc<Value>, &'a Rc<Value>)>,
-    ) -> Result<Doc<'a>> {
+    fn dict<'a>(&mut self, vs: impl Iterator<Item = (&'a Value, &'a Value)>) -> Result<Doc<'a>> {
         let mut elements = Vec::new();
         for (k, v) in vs {
             if !elements.is_empty() {
                 elements.push(",".into());
                 elements.push(Doc::Sep);
             }
-            match k.as_ref() {
+            match k {
                 Value::String(k_str) => {
                     self.path.push(PathElement::Key(k_str.clone()));
                     elements.push(self.string(k_str).with_markup(Markup::Identifier))

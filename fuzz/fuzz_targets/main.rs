@@ -124,14 +124,14 @@ fn fuzz_eval_json(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Resu
     let val_1 = loader.evaluate(doc_1, &mut env, &mut tracer)?;
 
     let full_span = loader.get_span(doc_1);
-    let json = rcl::fmt_json::format_json(full_span, val_1.as_ref())?;
+    let json = rcl::fmt_json::format_json(full_span, &val_1)?;
 
     let out_1 = json.println(&cfg);
     let doc_2 = loader.load_string(out_1);
     let val_2 = loader.evaluate(doc_2, &mut env, &mut tracer)?;
 
     let full_span = loader.get_span(doc_2);
-    let json = rcl::fmt_json::format_json(full_span, val_2.as_ref())?;
+    let json = rcl::fmt_json::format_json(full_span, &val_2)?;
     let out_2 = json.println(&cfg);
 
     assert_eq!(
