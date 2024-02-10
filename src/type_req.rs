@@ -14,61 +14,6 @@ use crate::runtime::Value;
 use crate::source::Span;
 use crate::types::Type;
 
-/// The result of a static typecheck.
-///
-/// A diff can represent type errors, nested type errors, no error, or a signal
-/// that the check could not be performed statically and needs to be deferred to
-/// runtime.
-pub enum TypeDiff {
-    /// No error. The actual type matches the expected type.
-    Ok(Type),
-
-    /// The check could not be performed statically, a runtime check is needed.
-    Defer,
-
-    /// A static type mismatch that cannot be broken down further.
-    Error {
-        /// The type that was expected here.
-        expected: ReqType,
-        /// The reason the type was expected.
-        reason: Reason,
-        /// The type that we encountered instead.
-        actual: Type,
-    },
-
-    /// There is a type mismatch in the element type of a list.
-    List(Box<TypeDiff>),
-
-    /// There is a type mismatch in the element type of a set.
-    Set(Box<TypeDiff>),
-
-    /// There is a type mismatch somewhere in the dict type.
-    Dict {
-        key: Box<TypeDiff>,
-        value: Box<TypeDiff>,
-    },
-    // TODO: Define function type errors,
-}
-
-/// Context for a type requirement ([`TypeReq`]).
-///
-/// The context explains why the particular requirement is there. In a type
-/// error, it controls how the error manifests.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum Reason {
-    /// The type was required due to a type annotation.
-    Annotation(Span),
-
-    /// A boolean was required because it's used as a condition.
-    ///
-    /// The span points at the syntactic element that expects a condition (an
-    /// `if` or an `assert`).
-    Condition(Span),
-
-    /// The type was required due to an operator.
-    Operator(Span),
-}
-
 /// A type requirement.
 ///
 /// A [`Type`] is a type that the typechecker inferred. A [`TypeReq`] is a
@@ -79,11 +24,17 @@ pub enum Reason {
 /// Requirements can be fulfilled by subtypes of the required type.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum TypeReq {
-    /// No constraints are made on the type, any value will suffice.
-    None,
+    /// The type was required due to a type annotation.
+    Annotation(Span, Option<ReqType>),
 
-    /// The type has to be a subtype of the required type for the given reason.
-    Type(ReqType, Reason),
+    /// A boolean was required because it's used as a condition.
+    ///
+    /// The span points at the syntactic element that expects a condition (an
+    /// `if` or an `assert`).
+    Condition(Span),
+
+    /// The type was required due to an operator.
+    Operator(Span, ReqType),
 }
 
 /// The types that can occur in type requirements.
@@ -128,15 +79,42 @@ pub struct FunctionReq {
     pub result: TypeReq,
 }
 
-impl TypeReq {
-    /// Statically check that the given type is a subtype of the required type.
-    pub fn check_type(&self, type_: &Type) -> TypeDiff {
-        let (req_type, reason) = match self {
-            // If there was no requirement, any type is acceptable.
-            TypeReq::None => return TypeDiff::Ok(type_.clone()),
-            TypeReq::Type(req_type, reason) => (req_type, reason),
-        };
-        match (req_type, type_) {
+/// The result of a static typecheck.
+///
+/// A diff can represent type errors, nested type errors, no error, or a signal
+/// that the check could not be performed statically and needs to be deferred to
+/// runtime.
+#[derive(Debug)]
+pub enum TypeDiff {
+    /// No error. The actual type matches the expected type.
+    Ok(Type),
+
+    /// The check could not be performed statically, a runtime check is needed.
+    Defer,
+
+    /// A static type mismatch that cannot be broken down further.
+    ///
+    /// The requirement specifies the expected type and the reason for expecting
+    /// it, the other type is the actual type that we encountered.
+    Error(TypeReq, Type),
+
+    /// There is a type mismatch in the element type of a list.
+    List(Box<TypeDiff>),
+
+    /// There is a type mismatch in the element type of a set.
+    Set(Box<TypeDiff>),
+
+    /// There is a type mismatch somewhere in the dict type.
+    Dict(Box<TypeDiff>, Box<TypeDiff>),
+    // TODO: Define function type errors,
+}
+
+impl ReqType {
+    // TODO: Having to feed in the `TypeReq`, while the `ReqType` is derived
+    // from it, feels wrong. There *has* to be an elegant way to express this,
+    // but I haven't discovered it yet.
+    pub fn check_type(&self, req: &TypeReq, type_: &Type) -> TypeDiff {
+        match (self, type_) {
             // If there was some requirement, but we don't know the type,
             // then we have to defer the typecheck to runtime.
             (_, Type::Dynamic) => TypeDiff::Defer,
@@ -149,47 +127,93 @@ impl TypeReq {
 
             // For compound types, we need to do the inner inspection.
             (ReqType::List(elem_req), Type::List(elem_type)) => {
-                match elem_req.check_type(elem_type) {
+                match elem_req.check_type_impl(elem_type) {
                     TypeDiff::Ok(..) => TypeDiff::Ok(type_.clone()),
                     TypeDiff::Defer => TypeDiff::Defer,
                     error => TypeDiff::List(error.into()),
                 }
             }
             (ReqType::Set(elem_req), Type::Set(elem_type)) => {
-                match elem_req.check_type(elem_type) {
+                match elem_req.check_type_impl(elem_type) {
                     TypeDiff::Ok(..) => TypeDiff::Ok(type_.clone()),
                     TypeDiff::Defer => TypeDiff::Defer,
                     error => TypeDiff::Set(error.into()),
                 }
             }
             (ReqType::Dict(kv_req), Type::Dict(kv_type)) => {
-                let k_diff = kv_req.key.check_type(&kv_type.key);
-                let v_diff = kv_req.value.check_type(&kv_type.value);
+                let k_diff = kv_req.key.check_type_impl(&kv_type.key);
+                let v_diff = kv_req.value.check_type_impl(&kv_type.value);
                 match (k_diff, v_diff) {
                     (TypeDiff::Ok(..), TypeDiff::Ok(..)) => TypeDiff::Ok(type_.clone()),
                     (TypeDiff::Defer, _) => TypeDiff::Defer,
                     (_, TypeDiff::Defer) => TypeDiff::Defer,
-                    (k_diff, v_diff) => TypeDiff::Dict {
-                        key: k_diff.into(),
-                        value: v_diff.into(),
-                    },
+                    (k_diff, v_diff) => TypeDiff::Dict(k_diff.into(), v_diff.into()),
                 }
             }
 
+            // TODO: Check function types.
+
             // If we did not match anything, then this is a type error.
-            _ => TypeDiff::Error {
-                expected: req_type.clone(),
-                reason: reason.clone(),
-                actual: type_.clone(),
-            },
+            _ => TypeDiff::Error(req.clone(), type_.clone()),
+        }
+    }
+}
+
+/// The result of a static typecheck.
+pub enum Typed {
+    /// The type is known statically, and this is the most specific type we infer.
+    Type(Type),
+
+    /// We can't check this statically, a runtime check is needed.
+    Defer(Span, TypeReq),
+}
+
+impl TypeReq {
+    /// Return the type required by this requirement.
+    fn req_type(&self) -> Option<&ReqType> {
+        match self {
+            TypeReq::Annotation(.., t) => t.as_ref(),
+            TypeReq::Condition(..) => Some(&ReqType::Bool),
+            TypeReq::Operator(.., t) => Some(t),
+        }
+    }
+
+    /// Statically check that the given type is a subtype of the required type.
+    pub fn check_type_impl(&self, type_: &Type) -> TypeDiff {
+        match self.req_type() {
+            None => TypeDiff::Ok(type_.clone()),
+            Some(t) => t.check_type(self, type_),
+        }
+    }
+
+    /// Statically check that the given type is a subtype of the required type.
+    pub fn check_type(&self, at: Span, type_: &Type) -> Result<Typed> {
+        match self.check_type_impl(type_) {
+            TypeDiff::Ok(t) => Ok(Typed::Type(t)),
+            TypeDiff::Defer => Ok(Typed::Defer(at, self.clone())),
+            TypeDiff::Error(expected, actual) => {
+                // A top-level type error, we can report with a simple message.
+                at.error("Type mismatch.")
+                    .with_body(format!("TODO: Pretty-print: {expected:?} {actual:?}"))
+                    .err()
+            }
+            diff => {
+                // If the error is nested somewhere inside a type, then we
+                // resort to a more complex format where we first print the
+                // type itself, with the error part replaced with a placeholder,
+                // and then we add a secondary error to explain the placeholder.
+                at.error("Type mismatch in type.")
+                    .with_body(format!("TODO: Pretty-print: {diff:?}"))
+                    .err()
+            }
         }
     }
 
     /// Dynamically check that the given value fits the required type.
     pub fn check_value(&self, at: Span, value: &Value) -> Result<()> {
-        let (req_type, reason) = match self {
-            TypeReq::None => unreachable!("TypeReq::None should not be checked at runtime."),
-            TypeReq::Type(req_type, reason) => (req_type, reason),
+        let req_type = match self.req_type() {
+            None => return Ok(()),
+            Some(t) => t,
         };
         match (req_type, value) {
             // For the primitive types, we just check for matching values.
@@ -230,11 +254,9 @@ impl TypeReq {
             }
 
             // TODO: Typecheck functions.
-            _ => {
-                let _ = reason;
-                at.error("Type mismatch in value. TODO: Pretty-print.")
-                    .err()
-            }
+            _ => at
+                .error("Type mismatch in value. TODO: Pretty-print.")
+                .err(),
         }
     }
 }
