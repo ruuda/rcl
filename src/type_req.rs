@@ -9,10 +9,12 @@
 
 use std::rc::Rc;
 
-use crate::error::{IntoError, PathElement, Result};
+use crate::error::{Error, IntoError, PathElement, Result};
+use crate::fmt_type::format_type;
+use crate::pprint::concat;
 use crate::runtime::Value;
 use crate::source::Span;
-use crate::types::{Dict, Type};
+use crate::types::{type_error, Dict, Type};
 
 /// A type requirement.
 ///
@@ -28,10 +30,7 @@ pub enum TypeReq {
     Annotation(Span, Option<ReqType>),
 
     /// A boolean was required because it's used as a condition.
-    ///
-    /// The span points at the syntactic element that expects a condition (an
-    /// `if` or an `assert`).
-    Condition(Span),
+    Condition,
 
     /// The type was required due to an operator.
     Operator(Span, ReqType),
@@ -200,7 +199,7 @@ impl TypeReq {
     fn req_type(&self) -> Option<&ReqType> {
         match self {
             TypeReq::Annotation(.., t) => t.as_ref(),
-            TypeReq::Condition(..) => Some(&ReqType::Bool),
+            TypeReq::Condition => Some(&ReqType::Bool),
             TypeReq::Operator(.., t) => Some(t),
         }
     }
@@ -221,6 +220,28 @@ impl TypeReq {
         }
     }
 
+    /// Explain why the type error is caused.
+    fn add_context(&self, error: Error) -> Error {
+        match self {
+            TypeReq::Annotation(at, Some(_)) => {
+                error.with_note(*at, "The expected type is specified here.")
+            }
+            TypeReq::Annotation(..) => {
+                unreachable!("If no type was expected, it wouldn't cause an error.")
+            }
+            TypeReq::Condition => {
+                error.with_help("There is no implicit conversion, conditions must be boolean.")
+            }
+            TypeReq::Operator(at, t) if t.to_type().is_atom() => error.with_note(
+                *at,
+                concat! {
+                    "Expected " format_type(&t.to_type()).into_owned() " due to this operator."
+                },
+            ),
+            TypeReq::Operator(..) => unreachable!("We don't have operators with non-atomic types."),
+        }
+    }
+
     /// Statically check that the given type is a subtype of the required type.
     pub fn check_type(&self, at: Span, type_: &Type) -> Result<Typed> {
         match self.check_type_impl(type_) {
@@ -228,9 +249,8 @@ impl TypeReq {
             TypeDiff::Defer(t) => Ok(Typed::Defer(t)),
             TypeDiff::Error(expected, actual) => {
                 // A top-level type error, we can report with a simple message.
-                at.error("Type mismatch.")
-                    .with_body(format!("TODO: Pretty-print: {expected:?} {actual:?}"))
-                    .err()
+                let err = type_error(at, &expected.to_type(), &actual);
+                self.add_context(err).err()
             }
             diff => {
                 // If the error is nested somewhere inside a type, then we

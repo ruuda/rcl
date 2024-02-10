@@ -407,7 +407,7 @@ impl<'a> TypeChecker<'a> {
                 ..
             } => {
                 // TODO: Should I point the span at the `if` instead?
-                let req_cond = TypeReq::Condition(*condition_span);
+                let req_cond = TypeReq::Condition;
                 self.check_expr_2(&req_cond, *condition_span, condition)?;
 
                 // The condition always has to be a boolean.

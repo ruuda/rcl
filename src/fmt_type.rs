@@ -13,7 +13,7 @@ use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};
 use crate::types::Type;
 
-/// Render a value as RCL.
+/// Render a type.
 pub fn format_type(type_: &Type) -> Doc {
     match type_ {
         Type::Dynamic => Doc::from("Dynamic").with_markup(Markup::Type),
