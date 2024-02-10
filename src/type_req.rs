@@ -12,7 +12,7 @@ use std::rc::Rc;
 use crate::error::{IntoError, PathElement, Result};
 use crate::runtime::Value;
 use crate::source::Span;
-use crate::types::Type;
+use crate::types::{Dict, Type};
 
 /// A type requirement.
 ///
@@ -90,7 +90,7 @@ pub enum TypeDiff {
     Ok(Type),
 
     /// The check could not be performed statically, a runtime check is needed.
-    Defer,
+    Defer(Type),
 
     /// A static type mismatch that cannot be broken down further.
     ///
@@ -110,14 +110,34 @@ pub enum TypeDiff {
 }
 
 impl ReqType {
+    /// Return the `Type` of a value when this requirement is satisfied.
+    fn to_type(&self) -> Type {
+        match self {
+            ReqType::Null => Type::Null,
+            ReqType::Bool => Type::Bool,
+            ReqType::Int => Type::Int,
+            ReqType::String => Type::String,
+            ReqType::List(t) => Type::List(t.to_type().into()),
+            ReqType::Set(t) => Type::Set(t.to_type().into()),
+            ReqType::Dict(kv) => {
+                let dict = Dict {
+                    key: kv.key.to_type(),
+                    value: kv.value.to_type(),
+                };
+                Type::Dict(dict.into())
+            }
+            ReqType::Function(_f) => unimplemented!(),
+        }
+    }
+
     // TODO: Having to feed in the `TypeReq`, while the `ReqType` is derived
     // from it, feels wrong. There *has* to be an elegant way to express this,
     // but I haven't discovered it yet.
-    pub fn check_type(&self, req: &TypeReq, type_: &Type) -> TypeDiff {
+    fn check_type(&self, req: &TypeReq, type_: &Type) -> TypeDiff {
         match (self, type_) {
             // If there was some requirement, but we don't know the type,
             // then we have to defer the typecheck to runtime.
-            (_, Type::Dynamic) => TypeDiff::Defer,
+            (_, Type::Dynamic) => TypeDiff::Defer(self.to_type()),
 
             // For the primitive types, we just check for matching values.
             (ReqType::Null, Type::Null) => TypeDiff::Ok(type_.clone()),
@@ -129,14 +149,14 @@ impl ReqType {
             (ReqType::List(elem_req), Type::List(elem_type)) => {
                 match elem_req.check_type_impl(elem_type) {
                     TypeDiff::Ok(..) => TypeDiff::Ok(type_.clone()),
-                    TypeDiff::Defer => TypeDiff::Defer,
+                    TypeDiff::Defer(t) => TypeDiff::Defer(Type::List(t.into())),
                     error => TypeDiff::List(error.into()),
                 }
             }
             (ReqType::Set(elem_req), Type::Set(elem_type)) => {
                 match elem_req.check_type_impl(elem_type) {
                     TypeDiff::Ok(..) => TypeDiff::Ok(type_.clone()),
-                    TypeDiff::Defer => TypeDiff::Defer,
+                    TypeDiff::Defer(t) => TypeDiff::Defer(Type::Set(t.into())),
                     error => TypeDiff::Set(error.into()),
                 }
             }
@@ -145,8 +165,13 @@ impl ReqType {
                 let v_diff = kv_req.value.check_type_impl(&kv_type.value);
                 match (k_diff, v_diff) {
                     (TypeDiff::Ok(..), TypeDiff::Ok(..)) => TypeDiff::Ok(type_.clone()),
-                    (TypeDiff::Defer, _) => TypeDiff::Defer,
-                    (_, TypeDiff::Defer) => TypeDiff::Defer,
+                    (
+                        TypeDiff::Ok(tk) | TypeDiff::Defer(tk),
+                        TypeDiff::Ok(tv) | TypeDiff::Defer(tv),
+                    ) => {
+                        let dict = Dict { key: tk, value: tv };
+                        TypeDiff::Defer(Type::Dict(dict.into()))
+                    }
                     (k_diff, v_diff) => TypeDiff::Dict(k_diff.into(), v_diff.into()),
                 }
             }
@@ -165,7 +190,9 @@ pub enum Typed {
     Type(Type),
 
     /// We can't check this statically, a runtime check is needed.
-    Defer(Span, TypeReq),
+    ///
+    /// If the runtime check passes, then the value fits the returned type.
+    Defer(Type),
 }
 
 impl TypeReq {
@@ -178,8 +205,16 @@ impl TypeReq {
         }
     }
 
+    /// Return the most precise type that describes a value that satisfies this requirement.
+    fn to_type(&self) -> Type {
+        match self.req_type() {
+            None => Type::Dynamic,
+            Some(t) => t.to_type(),
+        }
+    }
+
     /// Statically check that the given type is a subtype of the required type.
-    pub fn check_type_impl(&self, type_: &Type) -> TypeDiff {
+    fn check_type_impl(&self, type_: &Type) -> TypeDiff {
         match self.req_type() {
             None => TypeDiff::Ok(type_.clone()),
             Some(t) => t.check_type(self, type_),
@@ -190,7 +225,7 @@ impl TypeReq {
     pub fn check_type(&self, at: Span, type_: &Type) -> Result<Typed> {
         match self.check_type_impl(type_) {
             TypeDiff::Ok(t) => Ok(Typed::Type(t)),
-            TypeDiff::Defer => Ok(Typed::Defer(at, self.clone())),
+            TypeDiff::Defer(t) => Ok(Typed::Defer(t)),
             TypeDiff::Error(expected, actual) => {
                 // A top-level type error, we can report with a simple message.
                 at.error("Type mismatch.")

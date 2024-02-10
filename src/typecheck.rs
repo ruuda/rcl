@@ -21,6 +21,8 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
+use crate::type_req::TypeReq;
+use crate::type_req::Typed;
 use crate::types::{self, type_error, Type};
 
 pub type Env = crate::env::Env<Type>;
@@ -251,6 +253,38 @@ impl<'a> TypeChecker<'a> {
         TypeChecker { env }
     }
 
+    // TODO: Document this, make this the new default method.
+    pub fn check_expr_2(
+        &mut self,
+        req: &TypeReq,
+        expr_span: Span,
+        expr: &mut Expr,
+    ) -> Result<Type> {
+        let expr_type = match expr {
+            Expr::NullLit => req.check_type(expr_span, &Type::Null)?,
+            Expr::BoolLit(..) => req.check_type(expr_span, &Type::Bool)?,
+            Expr::IntegerLit(..) => req.check_type(expr_span, &Type::Int)?,
+            Expr::StringLit(..) => req.check_type(expr_span, &Type::String)?,
+            _ => unimplemented!("TODO: New-style typechecks."),
+        };
+        match expr_type {
+            Typed::Type(t) => Ok(t),
+            Typed::Defer(t) => {
+                // Wrap the existing expr in a `CheckType`. We have to
+                // sacrifice a temporary NullLit to the borrow checker.
+                let mut tmp = Expr::NullLit;
+                std::mem::swap(&mut tmp, expr);
+                *expr = Expr::CheckType {
+                    span: expr_span,
+                    // TODO: Put the requirement in CheckType.
+                    type_: Type::Null,
+                    body: Box::new(tmp),
+                };
+                Ok(t)
+            }
+        }
+    }
+
     /// Check that an expression fits the expected type.
     ///
     /// This also updates the AST to replace statically known constructs.
@@ -372,6 +406,10 @@ impl<'a> TypeChecker<'a> {
                 body_else,
                 ..
             } => {
+                // TODO: Should I point the span at the `if` instead?
+                let req_cond = TypeReq::Condition(*condition_span);
+                self.check_expr_2(&req_cond, *condition_span, condition)?;
+
                 // The condition always has to be a boolean.
                 // TODO: Delete the runtime type check in the evaluator, this is
                 // now a static typecheck. See if we can make the error friendly.
