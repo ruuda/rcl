@@ -522,3 +522,15 @@ fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
     let reversed = list.iter().rev().cloned().collect();
     Ok(Value::List(Rc::new(reversed)))
 }
+
+builtin_method!("List.enumerate", const LIST_ENUMERATE, builtin_list_enumerate);
+fn builtin_list_enumerate(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    call.call.check_arity_static("List.enumerate", &[])?;
+    let list = call.receiver.expect_list();
+    let kv: BTreeMap<_, _> = list
+        .iter()
+        .zip(0..)
+        .map(|(v, i)| (Value::Int(i), v.clone()))
+        .collect();
+    Ok(Value::Dict(Rc::new(kv)))
+}

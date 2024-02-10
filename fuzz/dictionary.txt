@@ -48,6 +48,7 @@
 "chars"
 "contains"
 "ends_with"
+"enumerate"
 "except"
 "fold"
 "get"

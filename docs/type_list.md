@@ -14,6 +14,33 @@ Return whether the list contains a given element. For example:
 [true, false]
 ```
 
+## enumerate
+
+    List.enumerate: (self: List[T]) -> Dict[Int, T]
+
+Return a mapping from index to list element. The index is zero-based.
+
+```rcl
+["x", "y", "z"].enumerate()
+// Evaluates to:
+{ 0: "x", 1: "y", 2: "z" }
+```
+
+This is mostly useful for iterating:
+
+```rcl
+let pieces = ["pawn", "queen", "bisshop"];
+let unordered_pairs = [
+  for i, piece_i in pieces.enumerate():
+  for j in std.range(i + 1, pieces.len()):
+  let piece_j = pieces[j];
+  [piece_i, piece_j]
+];
+unordered_pairs
+// Evaluates to:
+[["pawn", "queen"], ["pawn", "bisshop"], ["queen", "bisshop"]]
+```
+
 ## fold
 
     List.fold: (self: List[T], seed: U, reduce: (U, T) -> U) -> U

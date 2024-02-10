@@ -307,6 +307,7 @@ impl<'a> Evaluator<'a> {
                     }
 
                     (Value::List(_), "contains") => Some(&stdlib::LIST_CONTAINS),
+                    (Value::List(_), "enumerate") => Some(&stdlib::LIST_ENUMERATE),
                     (Value::List(_), "fold") => Some(&stdlib::LIST_FOLD),
                     (Value::List(_), "group_by") => Some(&stdlib::LIST_GROUP_BY),
                     (Value::List(_), "join") => Some(&stdlib::LIST_JOIN),
