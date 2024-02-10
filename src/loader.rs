@@ -422,8 +422,8 @@ impl Loader {
         // span from the import site.
         let span = self.get_span(id);
         let mut ast = self.get_unchecked_ast(id)?;
-        let mut checker = TypeChecker::new();
-        checker.check_expr(env, &Type::Dynamic, span, &mut ast)?;
+        let mut checker = TypeChecker::new(env);
+        checker.check_expr(&Type::Dynamic, span, &mut ast)?;
         Ok(ast)
     }
 
