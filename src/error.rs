@@ -179,6 +179,12 @@ impl Error {
         self
     }
 
+    /// Append the path element to the value path.
+    pub fn with_path_element(mut self, element: PathElement) -> Error {
+        self.path.push(element);
+        self
+    }
+
     /// Wrap the error in a `Result::Err`.
     pub fn err<T>(self) -> Result<T> {
         Err(Box::new(self))
@@ -194,7 +200,6 @@ impl Error {
         for elem in self.path.iter().rev() {
             match elem {
                 PathElement::Key(k) => {
-                    // TODO: Use the json pretty printer to report this.
                     let mut v = "\"".to_string();
                     crate::string::escape_json(k, &mut v);
                     v.push('"');
