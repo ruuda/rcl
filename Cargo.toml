@@ -14,4 +14,4 @@ panic = "abort"
 strip = true
 
 [workspace]
-members = ["pyrcl"]
+members = ["fuzz", "pyrcl"]

@@ -18,9 +18,9 @@
 use libfuzzer_sys::fuzz_target;
 
 use rcl::eval::Evaluator;
-use rcl::loader::{Loader};
+use rcl::loader::Loader;
 use rcl::runtime::Value;
-use rcl::string::{escape_json};
+use rcl::string::escape_json;
 use rcl::tracer::VoidTracer;
 
 fuzz_target!(|input: &str| {
@@ -33,7 +33,9 @@ fuzz_target!(|input: &str| {
     let id = loader.load_string(expr_str);
     let mut evaluator = Evaluator::new(&mut loader, &mut tracer);
     let mut env = rcl::runtime::prelude();
-    let v = evaluator.eval_doc(&mut env, id).expect("Expression is valid.");
+    let v = evaluator
+        .eval_doc(&mut env, id)
+        .expect("Expression is valid.");
 
     assert_eq!(v, Value::Bool(true));
 });

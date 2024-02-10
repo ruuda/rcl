@@ -105,10 +105,10 @@ impl Filesystem for PanicFilesystem {
 }
 
 /// Filesystem that fails to load anything.
-#[cfg(fuzzing)]
+///
+/// Intended for use by the fuzzer.
 pub struct VoidFilesystem;
 
-#[cfg(fuzzing)]
 impl Filesystem for VoidFilesystem {
     fn resolve(&self, _: &str, _: &str) -> Result<PathLookup> {
         Error::new("Void filesystem does not load files.").err()

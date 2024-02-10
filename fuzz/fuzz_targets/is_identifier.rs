@@ -5,7 +5,7 @@
 use libfuzzer_sys::fuzz_target;
 
 use rcl::error::Result;
-use rcl::lexer::{Token, lex};
+use rcl::lexer::{lex, Token};
 use rcl::source::DocId;
 use rcl::string::is_identifier;
 
