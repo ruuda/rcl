@@ -4,7 +4,7 @@
   # Pin to a Nixpkgs version that has the same rustc as in rust-toolchain.toml.
   inputs.nixpkgs.url = "nixpkgs/dfcffbd74fd6f0419370d8240e445252a39f4d10";
 
-  outputs = { self, nixpkgs }: 
+  outputs = { self, nixpkgs }:
     let
       supportedSystems = [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
       # Ridiculous boilerplate required to make flakes somewhat usable.
@@ -152,6 +152,14 @@
                 buildType = "debug";
                 RUSTFLAGS = "-C debug-assertions";
               });
+
+              fuzzers = pkgs.rustPlatform.buildRustPackage rec {
+                name = "rcl-fuzzers";
+                inherit version;
+                src = rustSources;
+                cargoLock.lockFile = ./Cargo.lock;
+                buildAndTestSubdir = "fuzz";
+              };
 
               golden = pkgs.runCommand
                 "check-golden"

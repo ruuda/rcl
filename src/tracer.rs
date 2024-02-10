@@ -69,10 +69,10 @@ impl Tracer for StderrTracer {
 }
 
 /// Tracer that ignores its messages.
-#[cfg(fuzzing)]
+///
+/// Intended for use by the fuzzer.
 pub struct VoidTracer;
 
-#[cfg(fuzzing)]
 impl Tracer for VoidTracer {
     fn trace(&mut self, _inputs: &Inputs, _span: Span, _message: &Value) {}
 }

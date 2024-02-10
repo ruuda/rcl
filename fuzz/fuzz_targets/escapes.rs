@@ -18,7 +18,9 @@ fuzz_target!(|input: &str| {
     let mut tracer = VoidTracer;
     let mut env = rcl::runtime::prelude();
     let doc = loader.load_string(escaped);
-    let result = loader.evaluate(doc, &mut env, &mut tracer).expect("Escaped string should be valid RCL.");
+    let result = loader
+        .evaluate(doc, &mut env, &mut tracer)
+        .expect("Escaped string should be valid RCL.");
     match result {
         Value::String(unescaped) => assert_eq!(input, unescaped.as_ref()),
         _not_string => panic!("Should have evaluated to a string."),
