@@ -1,0 +1,46 @@
+// This is a regression test. This input used to hang indefinitely.
+// The outer g on the gg is required, without it we terminate to a function.
+// The inner g on the gg is required as well, otherwise we also terminate.
+// The k in "h => k => ..." is also needed, without it we do hit stack error.
+// In the inner call gg(h), if we use gg(k) instead, we also hit stack error.
+let f = g => g(g(h => k => g(g(h))));
+f(f)
+
+# output:
+stdin:6:31
+  ╷
+6 │ let f = g => g(g(h => k => g(g(h))));
+  ╵                               ^
+Error: Evaluation budget exceeded. This expression exceeds the maximum of 10000 steps.
+
+stdin:6:17
+  ╷
+6 │ let f = g => g(g(h => k => g(g(h))));
+  ╵                 ^
+In call to function.
+
+stdin:6:29
+  ╷
+6 │ let f = g => g(g(h => k => g(g(h))));
+  ╵                             ^
+In call to function.
+
+stdin:6:15
+  ╷
+6 │ let f = g => g(g(h => k => g(g(h))));
+  ╵               ^
+In call to function.
+
+stdin:6:29
+  ╷
+6 │ let f = g => g(g(h => k => g(g(h))));
+  ╵                             ^
+In call to function.
+
+stdin:6:17
+  ╷
+6 │ let f = g => g(g(h => k => g(g(h))));
+  ╵                 ^
+In call to function.
+
+Note: The call stack is too deep to display in full. Only the innermost calls are shown above.

@@ -62,9 +62,15 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
             check_function_value(at, fn_type, fn_val)
         }
         (Type::Function { .. }, Value::BuiltinFunction { .. }) => {
+            #[cfg(fuzzing)]
+            return Ok(());
+            #[cfg(not(fuzzing))]
             unimplemented!("TODO: Typecheck function for BuiltinFunction.")
         }
         (Type::Function { .. }, Value::BuiltinMethod { .. }) => {
+            #[cfg(fuzzing)]
+            return Ok(());
+            #[cfg(not(fuzzing))]
             unimplemented!("TODO: Typecheck function for BuiltinMethod.")
         }
 
