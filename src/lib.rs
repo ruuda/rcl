@@ -17,6 +17,7 @@ pub mod abstraction;
 pub mod ast;
 pub mod cli;
 pub mod cst;
+pub mod env;
 pub mod error;
 pub mod eval;
 pub mod fmt_cst;

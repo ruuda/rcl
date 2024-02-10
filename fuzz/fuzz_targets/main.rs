@@ -87,7 +87,7 @@ fn fuzz_eval(loader: &mut Loader, input: &str) -> Result<()> {
     let id = loader.load_string(input.to_string());
     let mut tracer = VoidTracer;
     let mut evaluator = Evaluator::new(loader, &mut tracer);
-    let mut env = rcl::runtime::Env::with_prelude();
+    let mut env = rcl::runtime::prelude();
     let _ = evaluator.eval_doc(&mut env, id)?;
     Ok(())
 }
@@ -119,7 +119,7 @@ fn fuzz_fmt(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()>
 ///   expression, which should evaluate to `x`.
 fn fuzz_eval_json(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
     let mut tracer = VoidTracer;
-    let mut env = rcl::runtime::Env::with_prelude();
+    let mut env = rcl::runtime::prelude();
     let doc_1 = loader.load_string(input.to_string());
     let val_1 = loader.evaluate(doc_1, &mut env, &mut tracer)?;
 
