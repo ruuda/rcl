@@ -9,7 +9,7 @@
 
 use std::rc::Rc;
 
-use crate::error::{Error, IntoError, Result};
+use crate::error::{Error, IntoError};
 use crate::fmt_type::format_type;
 use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
@@ -121,100 +121,6 @@ impl Type {
             self,
             Type::Bool | Type::Int | Type::Null | Type::String | Type::Void | Type::Dynamic,
         )
-    }
-
-    /// Check that `self` is a subtype of `expected`.
-    ///
-    /// When a type is known for a particular variable, but we then try to use
-    /// that variable in a context where a particular type is expected, we have
-    /// to verify that the known type fits the expected type. For example, a
-    /// record that only has `Int` fields would fit the type `Dict[String, Int]`,
-    /// but not the other way around.
-    ///
-    /// Type errors will be attributed to the span `at`.
-    pub fn check_subtype_of(&self, at: Span, expected: &Type) -> Result<()> {
-        // Uncomment to debug the typecheck, this one gets hit quite often.
-        // println!("Check {self:?} <:? {expected:?}");
-        match (expected, self) {
-            // If we expect void -- there exist no values of type void, it's
-            // dead code. Even `Dynamic` is no good, because expressions of type
-            // `Dynamic` at least have *some* value at runtime.
-            (Type::Void, Type::Void) => Ok(()),
-            (Type::Void, _) => at
-                .error(concat! {
-                    "Expected a value of type "
-                    format_type(&Type::Void).into_owned()
-                    ", but such values do not exist."
-                })
-                .err(),
-
-            // If we defer the typecheck to runtime, anything is allowed.
-            (Type::Dynamic, _) => Ok(()),
-
-            // If we only know our own type at runtime, then we cannot prove at
-            // typecheck time that something is definitely a subtype. Though we
-            // also can't say it's definitely not ... This case is what needs to
-            // to insert a runtime check. But it should happen outside.
-            // TODO: Maybe here we should return a signal that causes a dynamic
-            // check to be inserted?
-            (_, Type::Dynamic) => Ok(()),
-
-            (Type::Function(expected_fn), Type::Function(actual_fn)) => {
-                if expected_fn.args.len() != actual_fn.args.len() {
-                    let mut msg: Vec<Doc> = vec!["Expected a function that takes ".into()];
-                    match expected_fn.args.len() {
-                        0 => msg.push("no arguments:".into()),
-                        1 => msg.push("1 argument:".into()),
-                        n => {
-                            msg.push(n.to_string().into());
-                            msg.push(" arguments:".into());
-                        }
-                    }
-                    msg.push(concat! {
-                        Doc::HardBreak Doc::HardBreak
-                        indent! { format_type(expected).into_owned() }
-                        Doc::HardBreak Doc::HardBreak
-                        "But got a function that takes "
-                    });
-                    msg.push(actual_fn.args.len().to_string().into());
-                    msg.push(concat! {
-                        ":"
-                        Doc::HardBreak Doc::HardBreak
-                        indent! { format_type(self).into_owned() }
-                    });
-                    return at
-                        .error("Arity mismatch.")
-                        .with_body(Doc::Concat(msg))
-                        .err();
-                }
-
-                actual_fn
-                    .result
-                    .check_subtype_of(at, &expected_fn.result)
-                    .map_err(|err|
-                        // TODO: Include full function type in message.
-                        err.with_note(at, "While checking that function types match."))?;
-                for (arg_expected, arg_actual) in expected_fn.args.iter().zip(actual_fn.args.iter())
-                {
-                    // Note, the roles of expected and actual are reversed for
-                    // function arguments.
-                    // TODO: Report error at the argument span?
-                    arg_expected
-                        .check_subtype_of(at, arg_actual)
-                        .map_err(|err| {
-                            err.with_note(at, "While checking that function types match.")
-                        })?;
-                }
-
-                Ok(())
-            }
-
-            // Every type is a subtype of itself.
-            _ if expected == self => Ok(()),
-
-            // TODO: Check inside collections.
-            _ => type_error(at, expected, self).err(),
-        }
     }
 }
 
