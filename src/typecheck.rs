@@ -165,7 +165,6 @@ impl<'a> TypeChecker<'a> {
         TypeChecker { env }
     }
 
-    // TODO: Fix the name.
     /// Check that an expression fits the type requirements.
     ///
     /// This also updates the AST to insert runtime type checks where necessary.
@@ -282,21 +281,17 @@ impl<'a> TypeChecker<'a> {
                 condition,
                 body_then,
                 body_else,
+                span_then,
+                span_else,
                 ..
             } => {
-                // TODO: Should I point the span at the `if` instead?
                 self.check_expr(&TypeReq::Condition, *condition_span, condition)?;
 
                 // TODO: Delete the runtime type check in the evaluator, this is
                 // now a static typecheck.
 
-                // TODO: Record the spans on then and else. For now I'll just
-                // put in the condition span as a temporary hack because I don't
-                // want to change everything all over the place.
-                let span_then = *condition_span;
-                let span_else = *condition_span;
-                let type_then = self.check_expr(req, span_then, body_then)?;
-                let type_else = self.check_expr(req, span_else, body_else)?;
+                let type_then = self.check_expr(req, *span_then, body_then)?;
+                let type_else = self.check_expr(req, *span_else, body_else)?;
 
                 // The inferred type is the meet of the two sides, which may be
                 // more specific than the requirement (which they satisfy).
@@ -694,17 +689,15 @@ impl<'a> TypeChecker<'a> {
                         .err()
                 }
             }
-            Yield::Assoc { op_span, key, value } => match &mut seq_type {
-                // TODO: We need the key and value spans. For now I'm using op_span.
+            Yield::Assoc { op_span, key_span, key, value_span, value } => match &mut seq_type {
                 SeqType::SetOrDict => {
-                    let k = self.check_expr(&TypeReq::None, *op_span, key)?;
-                    let v = self.check_expr(&TypeReq::None, *op_span, value)?;
+                    let k = self.check_expr(&TypeReq::None, *key_span, key)?;
+                    let v = self.check_expr(&TypeReq::None, *value_span, value)?;
                     Ok(SeqType::UntypedDict(*op_span, k, v))
                 }
                 SeqType::TypedDict { key_req, value_req, key_type, value_type, .. } => {
-                    // TODO: Again, spans.
-                    let k = self.check_expr(key_req, *op_span, key)?;
-                    let v = self.check_expr(value_req, *op_span, value)?;
+                    let k = self.check_expr(key_req, *key_span, key)?;
+                    let v = self.check_expr(value_req, *value_span, value)?;
                     *key_type = key_type.meet(&k);
                     *value_type = value_type.meet(&v);
                     Ok(seq_type)
@@ -728,9 +721,8 @@ impl<'a> TypeChecker<'a> {
                     )
                     .err(),
                 SeqType::UntypedDict(_first, key_meet, value_meet) => {
-                    // TODO: Spans again.
-                    let k = self.check_expr(&TypeReq::None, *op_span, key)?;
-                    let v = self.check_expr(&TypeReq::None, *op_span, value)?;
+                    let k = self.check_expr(&TypeReq::None, *key_span, key)?;
+                    let v = self.check_expr(&TypeReq::None, *value_span, value)?;
                     *key_meet = key_meet.meet(&k);
                     *value_meet = value_meet.meet(&v);
                     Ok(seq_type)

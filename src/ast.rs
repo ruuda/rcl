@@ -132,6 +132,8 @@ pub enum Expr {
     IfThenElse {
         condition_span: Span,
         condition: Box<Expr>,
+        span_then: Span,
+        span_else: Span,
         body_then: Box<Expr>,
         body_else: Box<Expr>,
     },
@@ -238,6 +240,8 @@ pub enum Yield {
     Assoc {
         /// The span of the `=` or `:`.
         op_span: Span,
+        key_span: Span,
+        value_span: Span,
         key: Box<Expr>,
         value: Box<Expr>,
     },

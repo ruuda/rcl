@@ -1133,6 +1133,7 @@ impl<'a> Parser<'a> {
                         let (value_span, value) = self.parse_expr()?;
                         Seq::AssocExpr {
                             op_span: op,
+                            field_span: expr_span,
                             field: Box::new(expr),
                             value_span,
                             value: Box::new(value),

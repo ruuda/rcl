@@ -319,6 +319,7 @@ pub enum Seq {
     AssocExpr {
         /// The `:` span.
         op_span: Span,
+        field_span: Span,
         field: Box<Expr>,
         value_span: Span,
         value: Box<Expr>,

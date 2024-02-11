@@ -225,11 +225,15 @@ impl<'a> Abstractor<'a> {
             CExpr::IfThenElse {
                 condition_span,
                 condition,
+                then_span,
+                else_span,
                 then_body,
                 else_body,
                 ..
             } => AExpr::IfThenElse {
                 condition_span: *condition_span,
+                span_then: *then_span,
+                span_else: *else_span,
                 condition: Box::new(self.expr(condition)?),
                 body_then: Box::new(self.expr(&then_body.inner)?),
                 body_else: Box::new(self.expr(&else_body.inner)?),
@@ -342,11 +346,14 @@ impl<'a> Abstractor<'a> {
 
             CSeq::AssocExpr {
                 op_span,
+                field_span,
                 field,
+                value_span,
                 value,
-                ..
             } => ASeq::Yield(Yield::Assoc {
                 op_span: *op_span,
+                key_span: *field_span,
+                value_span: *value_span,
                 key: Box::new(self.expr(field)?),
                 value: Box::new(self.expr(value)?),
             }),
@@ -354,8 +361,8 @@ impl<'a> Abstractor<'a> {
             CSeq::AssocIdent {
                 op_span,
                 field,
+                value_span,
                 value,
-                ..
             } => {
                 // We convert the `key = value` as if it had been written
                 // `"key": value` so we can treat them uniformly from here on.
@@ -363,6 +370,8 @@ impl<'a> Abstractor<'a> {
                 let key_expr = AExpr::StringLit(key_str.into());
                 ASeq::Yield(Yield::Assoc {
                     op_span: *op_span,
+                    key_span: *field,
+                    value_span: *value_span,
                     key: Box::new(key_expr),
                     value: Box::new(self.expr(value)?),
                 })

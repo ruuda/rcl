@@ -334,6 +334,7 @@ impl<'a> Evaluator<'a> {
                 condition,
                 body_then,
                 body_else,
+                ..
             } => {
                 self.inc_eval_depth(*condition_span)?;
                 let cond = self.eval_expr(env, condition)?;
@@ -957,6 +958,7 @@ impl<'a> Evaluator<'a> {
                 op_span,
                 key: key_expr,
                 value: value_expr,
+                ..
             }) => {
                 let (out_keys, out_values) = out.keys_values(*op_span)?;
                 let key = self.eval_expr(env, key_expr)?;
