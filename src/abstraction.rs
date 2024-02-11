@@ -413,20 +413,16 @@ impl<'a> Abstractor<'a> {
                 span: *span,
                 name: span.resolve(self.input).into(),
             },
-            CType::Apply { name, args } => AType::Apply {
-                span: *name,
+            CType::Apply { span, name, args } => AType::Apply {
+                span: *span,
                 name: name.resolve(self.input).into(),
                 args: args
                     .iter()
                     .map(|arg| self.type_expr(&arg.inner))
                     .collect::<Result<Box<_>>>()?,
             },
-            CType::Function {
-                arrow_span,
-                args,
-                result,
-            } => AType::Function {
-                arrow_span: *arrow_span,
+            CType::Function { span, args, result } => AType::Function {
+                span: *span,
                 args: args
                     .iter()
                     .map(|arg| self.type_expr(&arg.inner))

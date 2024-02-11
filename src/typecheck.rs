@@ -86,11 +86,7 @@ fn eval_type_expr(expr: &AType) -> Result<TypeReq> {
                 _ => span.error("Unknown type.").err(),
             }
         }
-        AType::Function {
-            arrow_span,
-            args,
-            result,
-        } => {
+        AType::Function { span, args, result } => {
             let args_types = args
                 .iter()
                 .map(eval_type_expr)
@@ -100,7 +96,7 @@ fn eval_type_expr(expr: &AType) -> Result<TypeReq> {
                 args: args_types,
                 result: result_type,
             });
-            Ok(TypeReq::Annotation(*arrow_span, ReqType::Function(fn_type)))
+            Ok(TypeReq::Annotation(*span, ReqType::Function(fn_type)))
         }
         AType::Apply { span, name, args } => {
             let args_types = args

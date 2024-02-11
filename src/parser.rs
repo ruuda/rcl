@@ -1238,6 +1238,7 @@ impl<'a> Parser<'a> {
         }
 
         // Otherwise, we definitely start with a term.
+        let begin = self.peek_span();
         let term = self.parse_type_term()?;
 
         // Optionally, the term can be followed by `[` to instantiate a generic
@@ -1248,7 +1249,11 @@ impl<'a> Parser<'a> {
             let args = self.parse_types()?;
             self.pop_bracket()?;
 
-            let type_apply = Type::Apply { name: *name, args };
+            let type_apply = Type::Apply {
+                span: self.span_from(begin),
+                name: *name,
+                args,
+            };
             return Ok(type_apply);
         }
 
@@ -1258,15 +1263,15 @@ impl<'a> Parser<'a> {
 
     /// Parse a function type that starts with a `(`.
     fn parse_type_function(&mut self) -> Result<Type> {
+        let begin = self.peek_span();
         self.push_bracket()?;
         let args = self.parse_types()?;
         self.pop_bracket()?;
         self.skip_non_code()?;
-        let arrow_span =
-            self.parse_token(Token::ThinArrow, "Expected '->' here in function type.")?;
+        self.parse_token(Token::ThinArrow, "Expected '->' here in function type.")?;
         let result_type = self.parse_type_expr()?;
         let fn_type = Type::Function {
-            arrow_span,
+            span: self.span_from(begin),
             args,
             result: Box::new(result_type),
         };
