@@ -233,7 +233,6 @@ pub enum Expr {
         args: Vec<Ident>,
         body_span: Span,
         body: Box<Expr>,
-        // The statically inferred type of this function.
         type_: Rc<types::Function>,
     },
 }

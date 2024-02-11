@@ -208,7 +208,7 @@ impl TypeReq {
         }
     }
 
-    /// Return the most precise type that describes a value that satisfies this requirement.
+    /// Return the most precise type that describes any value that satisfies this requirement.
     fn to_type(&self) -> Type {
         match self.req_type() {
             None => Type::Dynamic,

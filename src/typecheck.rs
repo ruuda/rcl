@@ -14,7 +14,7 @@
 
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Expr, Seq, Stmt, Type as AType, UnOp, Yield};
+use crate::ast::{BinOp, Expr, Ident, Seq, Stmt, Type as AType, UnOp, Yield};
 use crate::error::{IntoError, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
@@ -392,6 +392,28 @@ impl<'a> TypeChecker<'a> {
                 req.check_type(expr_span, &Type::Dynamic)?
             }
 
+            Expr::Function { arrow_span, args, body_span, body } => {
+                let fn_type = self.check_function(req, expr_span, args, *body_span, body)?;
+
+                // Now that we know the type of the function, preserve it in the
+                // AST, because we need it in the runtime value. We need to
+                // juggle some temporaries to move values out of the old node
+                // into the new one.
+                let mut args_tmp = Vec::new();
+                let mut body_tmp = Box::new(Expr::NullLit);
+                std::mem::swap(&mut args_tmp, args);
+                std::mem::swap(&mut body_tmp, body);
+                *expr = Expr::TypedFunction {
+                    arrow_span: *arrow_span,
+                    args: args_tmp,
+                    body_span: *body_span,
+                    body: body_tmp,
+                    type_: fn_type.clone(),
+                };
+
+                Typed::Type(Type::Function(fn_type))
+            }
+
             Expr::CheckType { .. } | Expr::CheckType2 { .. } | Expr::TypedFunction { .. } => panic!(
                 "Node {expr:?} is inserted by the typechecker, it should not be present before checking."
             ),
@@ -416,6 +438,64 @@ impl<'a> TypeChecker<'a> {
                 Ok(t)
             }
         }
+    }
+
+    /// Typecheck a function definition.
+    fn check_function(
+        &mut self,
+        req: &TypeReq,
+        expr_span: Span,
+        args: &[Ident],
+        body_span: Span,
+        body: &mut Expr,
+    ) -> Result<Rc<types::Function>> {
+        let mut arg_types = Vec::with_capacity(args.len());
+
+        let checkpoint = self.env.checkpoint();
+        let mut is_error = false;
+
+        let body_req = match req.req_type() {
+            Some(ReqType::Function(fn_req)) => {
+                // TODO: Push the args with the right types into the
+                // environment, check arity, etc.
+                for arg in args.iter() {
+                    let arg_type = Type::Dynamic;
+                    arg_types.push(arg_type.clone());
+                    self.env.push(arg.clone(), arg_type);
+                }
+                &fn_req.result
+            }
+            not_fn_req => {
+                // If there is no type requirement at all on this function, then
+                // all the args have an unknown type and we have no requirement
+                // on the result. If there is a requirement but not for a
+                // function, then this is a type error, but we'll still
+                // typecheck the function first and report the error later.
+                is_error = not_fn_req.is_some();
+                for arg in args.iter() {
+                    let arg_type = Type::Dynamic;
+                    arg_types.push(arg_type.clone());
+                    self.env.push(arg.clone(), arg_type);
+                }
+                &TypeReq::None
+            }
+        };
+
+        let result_type = self.check_expr_2(body_req, body_span, body)?;
+        self.env.pop(checkpoint);
+
+        let fn_type_inner = Rc::new(types::Function {
+            args: arg_types,
+            result: result_type,
+        });
+
+        if is_error {
+            // This check will fail, this is just an easy way to construct the
+            // right error.
+            req.check_type(expr_span, &Type::Function(fn_type_inner.clone()))?;
+        };
+
+        Ok(fn_type_inner)
     }
 
     /// Check that an expression fits the expected type.
