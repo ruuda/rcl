@@ -13,6 +13,7 @@ use std::rc::Rc;
 pub use crate::cst::{BinOp, UnOp};
 
 use crate::source::Span;
+use crate::type_req::TypeReq;
 use crate::types;
 
 /// An identifier.
@@ -210,6 +211,15 @@ pub enum Expr {
         span: Span,
         /// The expected type that the expression has to fit.
         type_: types::Type,
+        body: Box<Expr>,
+    },
+
+    // TODO: Rename to `CheckType`, copy the cods from that one.
+    CheckType2 {
+        /// The span of the expression that we are checking.
+        span: Span,
+        /// The type requirement that the value has to satisfy.
+        type_: TypeReq,
         body: Box<Expr>,
     },
 

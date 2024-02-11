@@ -21,8 +21,7 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
-use crate::type_req::TypeReq;
-use crate::type_req::Typed;
+use crate::type_req::{ReqType, TypeReq, Typed};
 use crate::types::{self, type_error, Type};
 
 pub type Env = crate::env::Env<Type>;
@@ -261,6 +260,83 @@ impl<'a> TypeChecker<'a> {
         expr: &mut Expr,
     ) -> Result<Type> {
         let expr_type = match expr {
+            Expr::Stmt {
+                stmt: _,
+                body_span,
+                body,
+            } => {
+                let ck = self.env.checkpoint();
+                // TODO: Add back the check inside stmt.
+                let t = self.check_expr_2(req, *body_span, body)?;
+                self.env.pop(ck);
+                Typed::Type(t)
+            }
+
+            Expr::Import { .. } => {
+                // TODO: Confirm that the path is a string literal,
+                // we can do that here!
+
+                // The type of an import is always `Dynamic`. Though if that is
+                // the case, that removes one justification for having it be a
+                // keyword instead of a builtin method `std.import`. Because we
+                // can just type it: `std.import: (fname: String) -> Dynamic`.
+                req.check_type(expr_span, &Type::Dynamic)?
+            }
+
+            Expr::BraceLit { elements: seqs, .. } => {
+                let mut is_error = false;
+                // If we have a requirement on the element type, extract it.
+                let seq_type = match req.req_type() {
+                    Some(ReqType::Set(t)) => SeqType::TypedSet(t.as_ref().clone(), Type::Void),
+                    Some(ReqType::Dict(kv)) => {
+                        SeqType::TypedDict(kv.key.clone(), kv.value.clone(), Type::Void, Type::Void)
+                    }
+                    None => SeqType::SetOrDict,
+                    // If we are expecting something other than a dict or list,
+                    // then this is definitely a type error. But to be able to
+                    // report it in full detail, we first infer the type of the
+                    // sequence.
+                    _ => {
+                        is_error = true;
+                        SeqType::SetOrDict
+                    }
+                };
+
+                // Typecheck all the elements, and enforce the element
+                // requirement if we have one. This at the same time infers the
+                // element type.
+                for _seq in seqs {
+                    // TODO: Bring back the `check_seq` for the `TypeReq`.
+                }
+
+                if is_error {
+                    req.check_type(expr_span, &seq_type.into_type())?
+                } else {
+                    Typed::Type(seq_type.into_type())
+                }
+            }
+
+            Expr::BracketLit { elements: seqs, .. } => {
+                // This follows the same structure as `BraceLit`, see comments above.
+                let mut is_error = false;
+                let mut seq_type = match req.req_type() {
+                    Some(ReqType::List(t)) => SeqType::TypedList(t.as_ref().clone(), Type::Void),
+                    None => SeqType::UntypedList(Type::Void),
+                    _ => {
+                        is_error = true;
+                        SeqType::UntypedList(Type::Void)
+                    }
+                };
+                for seq in seqs {
+                    seq_type = self.check_seq(seq, seq_type)?;
+                }
+                if is_error {
+                    req.check_type(expr_span, &seq_type.into_type())?
+                } else {
+                    Typed::Type(seq_type.into_type())
+                }
+            }
+
             Expr::NullLit => req.check_type(expr_span, &Type::Null)?,
             Expr::BoolLit(..) => req.check_type(expr_span, &Type::Bool)?,
             Expr::IntegerLit(..) => req.check_type(expr_span, &Type::Int)?,
@@ -268,16 +344,18 @@ impl<'a> TypeChecker<'a> {
             _ => unimplemented!("TODO: New-style typechecks."),
         };
         match expr_type {
+            // If the type check passed, great, we now know the inferred type.
             Typed::Type(t) => Ok(t),
+
+            // If we couldn't check statically, then we have to insert a runtime
+            // type check around this node. We have to sacrifice a temporary
+            // NullLit to the borrow checker to swap the node into place.
             Typed::Defer(t) => {
-                // Wrap the existing expr in a `CheckType`. We have to
-                // sacrifice a temporary NullLit to the borrow checker.
                 let mut tmp = Expr::NullLit;
                 std::mem::swap(&mut tmp, expr);
-                *expr = Expr::CheckType {
+                *expr = Expr::CheckType2 {
                     span: expr_span,
-                    // TODO: Put the requirement in CheckType.
-                    type_: Type::Null,
+                    type_: req.clone(),
                     body: Box::new(tmp),
                 };
                 Ok(t)
@@ -337,32 +415,14 @@ impl<'a> TypeChecker<'a> {
                 }
             }
 
-            Expr::BraceLit { elements: seqs, .. } => {
-                let mut seq_type = match expected {
-                    Type::Dynamic => SeqType::SetOrDict,
-                    Type::Set(t) => SeqType::TypedSet((**t).clone()),
-                    Type::Dict(kv) => SeqType::TypedDict(kv.key.clone(), kv.value.clone()),
-                    // TODO: This error is misleading, we might find a dict or set,
-                    // not only a dict. We need to typecheck the seqs first, then
-                    // report the error later.
-                    _ => return type_error(expr_span, expected, &"Dict").err(),
-                };
-                for seq in seqs {
-                    seq_type = self.check_seq(seq, seq_type)?;
-                }
-                Ok(seq_type.into_type())
+            Expr::BraceLit { .. } => {
+                // This has been migrated to check2.
+                Ok(Type::Dynamic)
             }
 
-            Expr::BracketLit { elements: seqs, .. } => {
-                let mut seq_type = match expected {
-                    Type::Dynamic => SeqType::UntypedList(Type::Void),
-                    Type::List(t) => SeqType::TypedList((**t).clone()),
-                    _ => return type_error(expr_span, expected, &"List").err(),
-                };
-                for seq in seqs {
-                    seq_type = self.check_seq(seq, seq_type)?;
-                }
-                Ok(seq_type.into_type())
+            Expr::BracketLit { .. } => {
+                // This has been migrated to check2.
+                Ok(Type::Dynamic)
             }
 
             Expr::NullLit => match expected {
@@ -651,7 +711,7 @@ impl<'a> TypeChecker<'a> {
                 expected, expr_span, (*op_span, *op), (*lhs_span, lhs), (*rhs_span, rhs),
             ),
 
-            Expr::CheckType { .. } | Expr::TypedFunction { .. } => panic!(
+            Expr::CheckType { .. } | Expr::CheckType2 { .. } | Expr::TypedFunction { .. } => panic!(
                 "Node {expr:?} is inserted by the typechecker, it should not be present before checking."
             ),
         }
@@ -874,21 +934,25 @@ impl<'a> TypeChecker<'a> {
         match yield_ {
             Yield::Elem { span, value } => match &mut seq_type {
                 SeqType::SetOrDict => {
-                    let t = self.check_expr(&Type::Dynamic, *span, value)?;
+                    let t = self.check_expr_2(&TypeReq::None, *span, value)?;
                     Ok(SeqType::UntypedSet(*span, t))
                 }
-                SeqType::TypedList(expected) | SeqType::TypedSet(expected) => {
-                    self.check_expr(expected, *span, value)?;
+                SeqType::TypedList(r, elem_type_meet) | SeqType::TypedSet(r, elem_type_meet) => {
+                    // First we check that the element satisfies the requirement.
+                    // That gives us an inferred type that can be more precise.
+                    // Meet it with what we have so far.
+                    let elem_type = self.check_expr_2(r, *span, value)?;
+                    *elem_type_meet = elem_type_meet.meet(&elem_type);
                     Ok(seq_type)
                 }
                 SeqType::TypedDict(..) => {
-                    // TODO: We could make a nicer error here, but for now this will do.
-                    // See also the calls to `type_error` in the assoc case below.
-                    type_error(*span, &seq_type.into_type(), &"Dict").err()
+                    // TODO: We want to report here that we expected a key-value
+                    // pair, but then we have to blame it on why we expect that.
+                    unimplemented!("TODO: Put the dict requirement in SeqType::TypedDict, add the context.")
                 }
-                SeqType::UntypedList(et) | SeqType::UntypedSet(.., et) => {
-                    let t = self.check_expr(&Type::Dynamic, *span, value)?;
-                    *et = et.meet(&t);
+                SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet) => {
+                    let elem_type = self.check_expr_2(&TypeReq::None, *span, value)?;
+                    *elem_type_meet = elem_type_meet.meet(&elem_type);
                     Ok(seq_type)
                 }
                 SeqType::UntypedDict(first, _k, _v) => {
@@ -904,22 +968,22 @@ impl<'a> TypeChecker<'a> {
             Yield::Assoc { op_span, key, value } => match &mut seq_type {
                 // TODO: We need the key and value spans. For now I'm using op_span.
                 SeqType::SetOrDict => {
-                    let k = self.check_expr(&Type::Dynamic, *op_span, key)?;
-                    let v = self.check_expr(&Type::Dynamic, *op_span, value)?;
+                    let k = self.check_expr_2(&TypeReq::None, *op_span, key)?;
+                    let v = self.check_expr_2(&TypeReq::None, *op_span, key)?;
                     Ok(SeqType::UntypedDict(*op_span, k, v))
                 }
                 SeqType::TypedList(..) => {
-                    // TODO: We could make a nicer error here, but for now this will do.
-                    type_error(*op_span, &seq_type.into_type(), &"List").err()
+                    unimplemented!("TODO: Put the list requirement in SeqType::TypedList, add the context.")
                 }
                 SeqType::TypedSet(..) => {
-                    // TODO: We could make a nicer error here, but for now this will do.
-                    type_error(*op_span, &seq_type.into_type(), &"Set").err()
+                    unimplemented!("TODO: Put the set requirement in SeqType::TypedSet, add the context.")
                 }
-                SeqType::TypedDict(key_type, value_type) => {
+                SeqType::TypedDict(key_req, value_req, key_meet, value_meet) => {
                     // TODO: Again, spans.
-                    self.check_expr(key_type, *op_span, key)?;
-                    self.check_expr(value_type, *op_span, value)?;
+                    let k = self.check_expr_2(key_req, *op_span, key)?;
+                    let v = self.check_expr_2(value_req, *op_span, value)?;
+                    *key_meet = key_meet.meet(&k);
+                    *value_meet = value_meet.meet(&v);
                     Ok(seq_type)
                 }
                 SeqType::UntypedList(..) => op_span
@@ -934,12 +998,12 @@ impl<'a> TypeChecker<'a> {
                         "The collection is a set and not a dict, because it starts with a scalar value.",
                     )
                     .err(),
-                SeqType::UntypedDict(_first, key_type, value_type) => {
+                SeqType::UntypedDict(_first, key_meet, value_meet) => {
                     // TODO: Spans again.
-                    let k = self.check_expr(&Type::Dynamic, *op_span, key)?;
-                    let v = self.check_expr(&Type::Dynamic, *op_span, value)?;
-                    *key_type = key_type.meet(&k);
-                    *value_type = value_type.meet(&v);
+                    let k = self.check_expr_2(&TypeReq::None, *op_span, key)?;
+                    let v = self.check_expr_2(&TypeReq::None, *op_span, value)?;
+                    *key_meet = key_meet.meet(&k);
+                    *value_meet = value_meet.meet(&v);
                     Ok(seq_type)
                 }
             }
@@ -1016,22 +1080,35 @@ enum SeqType {
     /// It's still unclear whether this is a set or a dict.
     SetOrDict,
 
-    /// Type annotations demand a list here with the following element type.
-    TypedList(Type),
+    /// We expect a list here with the following element type.
+    ///
+    /// We also track the `meet` of the elements, which should be a subtype of
+    /// the requirement.
+    TypedList(TypeReq, Type),
 
-    /// Type annotations demand a set here with the following element type.
-    TypedSet(Type),
+    /// We expect a set here with the following element type.
+    ///
+    /// We also track the `meet` of the elements, which should be a subtype of
+    /// the requirement.
+    TypedSet(TypeReq, Type),
 
-    /// Type annotations demand a dict here with the following key-value types.
-    TypedDict(Type, Type),
+    /// We expect a dict here with the following key-value types.
+    ///
+    /// We also track the `meet` of the elements, which should be a subtype of
+    /// the requirement.
+    TypedDict(TypeReq, TypeReq, Type, Type),
 
     /// We found a list, and the meet of the elements is as follows.
     UntypedList(Type),
 
     /// We found a set, as evidenced by the span of the first scalar.
+    ///
+    /// We also track the `meet` of all the elements.
     UntypedSet(Span, Type),
 
     /// We found a dict, as evidenced by the span of the first key-value.
+    ///
+    /// We also track the `meet` of the key and value types.
     UntypedDict(Span, Type, Type),
 }
 
@@ -1044,9 +1121,9 @@ impl SeqType {
                 key: Type::Void,
                 value: Type::Void,
             })),
-            SeqType::UntypedList(t) | SeqType::TypedList(t) => Type::List(Rc::new(t)),
-            SeqType::UntypedSet(.., t) | SeqType::TypedSet(t) => Type::Set(Rc::new(t)),
-            SeqType::UntypedDict(.., k, v) | SeqType::TypedDict(k, v) => {
+            SeqType::UntypedList(t) | SeqType::TypedList(_, t) => Type::List(Rc::new(t)),
+            SeqType::UntypedSet(.., t) | SeqType::TypedSet(_, t) => Type::Set(Rc::new(t)),
+            SeqType::UntypedDict(.., k, v) | SeqType::TypedDict(_, _, k, v) => {
                 Type::Dict(Rc::new(types::Dict { key: k, value: v }))
             }
         }

@@ -26,8 +26,11 @@ use crate::types::{type_error, Dict, Type};
 /// Requirements can be fulfilled by subtypes of the required type.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum TypeReq {
+    /// We have no requirement on the type, any value is allowed.
+    None,
+
     /// The type was required due to a type annotation.
-    Annotation(Span, Option<ReqType>),
+    Annotation(Span, ReqType),
 
     /// A boolean was required because it's used as a condition.
     Condition,
@@ -196,9 +199,10 @@ pub enum Typed {
 
 impl TypeReq {
     /// Return the type required by this requirement.
-    fn req_type(&self) -> Option<&ReqType> {
+    pub fn req_type(&self) -> Option<&ReqType> {
         match self {
-            TypeReq::Annotation(.., t) => t.as_ref(),
+            TypeReq::None => None,
+            TypeReq::Annotation(.., t) => Some(t),
             TypeReq::Condition => Some(&ReqType::Bool),
             TypeReq::Operator(.., t) => Some(t),
         }
@@ -223,11 +227,9 @@ impl TypeReq {
     /// Explain why the type error is caused.
     fn add_context(&self, error: Error) -> Error {
         match self {
-            TypeReq::Annotation(at, Some(_)) => {
+            TypeReq::None => unreachable!("If no type was expected, it wouldn't cause an error."),
+            TypeReq::Annotation(at, _) => {
                 error.with_note(*at, "The expected type is specified here.")
-            }
-            TypeReq::Annotation(..) => {
-                unreachable!("If no type was expected, it wouldn't cause an error.")
             }
             TypeReq::Condition => {
                 error.with_help("There is no implicit conversion, conditions must be boolean.")
