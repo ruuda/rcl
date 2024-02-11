@@ -37,15 +37,20 @@ fn list<'a>(open: &'a str, close: &'a str, vs: impl Iterator<Item = &'a Value>) 
         elements.push(value(v));
     }
 
-    // Add a trailing comma in tall mode.
-    elements.push(Doc::tall(","));
+    if elements.is_empty() {
+        // An empty collection we always format without space in between.
+        concat! { open close }
+    } else {
+        // Add a trailing comma in tall mode.
+        elements.push(Doc::tall(","));
 
-    group! {
-        open
-        Doc::SoftBreak
-        indent! { Doc::Concat(elements) }
-        Doc::SoftBreak
-        close
+        group! {
+            open
+            Doc::SoftBreak
+            indent! { Doc::Concat(elements) }
+            Doc::SoftBreak
+            close
+        }
     }
 }
 
@@ -75,18 +80,22 @@ pub fn dict<'a>(vs: impl Iterator<Item = (&'a Value, &'a Value)>) -> Doc<'a> {
         elements.push(value(v));
     }
 
-    // Add a trailing separator in tall mode.
-    elements.push(Doc::tall(","));
+    if elements.is_empty() {
+        // An empty dict always formats without spaces.
+        "{}".into()
+    } else {
+        // Add a trailing separator in tall mode.
+        elements.push(Doc::tall(","));
 
-    // With record syntax, in wide mode, we want a space before the closing }.
-    elements.push(Doc::Sep);
+        // With record syntax, in wide mode, we want a space before the closing }.
+        elements.push(Doc::Sep);
 
-    let result = group! {
-        "{"
-        indent! { Doc::Concat(elements) }
-        "}"
-    };
-    result
+        group! {
+            "{"
+            indent! { Doc::Concat(elements) }
+            "}"
+        }
+    }
 }
 
 fn value(v: &Value) -> Doc {
@@ -98,7 +107,8 @@ fn value(v: &Value) -> Doc {
         Value::String(s) => string(s).with_markup(Markup::String),
         Value::List(vs) => list("[", "]", vs.iter()),
         // TODO: An empty set should print as {}, that would be a non-idempotency,
-        // because {} is the empty dict.
+        // because {} is the empty dict. We could add a function `std.empty_set`,
+        // and format it as that?
         Value::Set(vs) => list("{", "}", vs.iter()),
         Value::Dict(vs) => dict(vs.iter()),
         // TODO: Add a more proper printer for functions/builtins. For now this will do.

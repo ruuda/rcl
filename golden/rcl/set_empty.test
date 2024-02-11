@@ -1,0 +1,4 @@
+{ for x in []: x }
+
+# output:
+{}
