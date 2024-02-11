@@ -239,7 +239,7 @@ impl TypeReq {
     }
 
     /// Explain why the type error is caused.
-    fn add_context(&self, error: Error) -> Error {
+    pub fn add_context(&self, error: Error) -> Error {
         match self {
             TypeReq::None => unreachable!("If no type was expected, it wouldn't cause an error."),
             TypeReq::Annotation(at, _) => {
