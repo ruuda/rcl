@@ -15,7 +15,7 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
-use crate::types::{type_error, Dict, Function, Type};
+use crate::types::{report_type_mismatch, Dict, Function, Type};
 
 /// A type requirement.
 ///
@@ -300,7 +300,9 @@ impl TypeReq {
             TypeDiff::Defer(t) => Ok(Typed::Defer(t)),
             TypeDiff::Error(expected, actual) => {
                 // A top-level type error, we can report with a simple message.
-                let err = type_error(at, &expected.to_type(), &actual);
+                let err = at
+                    .error("Type mismatch.")
+                    .with_body(report_type_mismatch(&expected.to_type(), &actual));
                 self.add_context(err).err()
             }
             diff => {

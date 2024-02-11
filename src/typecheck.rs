@@ -20,7 +20,7 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::type_req::{DictReq, FunctionReq, ReqType, TypeReq, Typed};
-use crate::types::{self, Type};
+use crate::types::{self, report_type_mismatch, Type};
 
 pub type Env = crate::env::Env<Type>;
 
@@ -350,12 +350,12 @@ impl<'a> TypeChecker<'a> {
                     // TODO: Typecheck call args.
                     Type::Function(f) => &f.result,
                     Type::Dynamic => &Type::Dynamic,
-                    not_function => return function_span.error(concat! {
-                        "This cannot be called. Expected function but found:"
-                        Doc::HardBreak
-                        Doc::HardBreak
-                        indent! { format_type(not_function).into_owned() }
-                    }).err()
+                    not_function => {
+                        return function_span
+                            .error("This cannot be called.")
+                            .with_body(report_type_mismatch(&"function", not_function))
+                            .err()
+                    },
                 };
 
                 // TODO: When the function type is statically known, possibly

@@ -9,11 +9,9 @@
 
 use std::rc::Rc;
 
-use crate::error::{Error, IntoError};
 use crate::fmt_type::format_type;
 use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
-use crate::source::Span;
 
 /// A type.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -157,33 +155,34 @@ impl AsTypeName for Type {
     }
 }
 
-/// Report a static type error.
+/// Format a static type error body.
 ///
-/// A static type error can be reported at typecheck time based on the AST, so
-/// the culprit is a syntactic construct, not a runtime value.
-///
-/// The `actual` message should be in the form of “Found «actual» instead”.
-pub fn type_error<T1: AsTypeName, T2: AsTypeName>(at: Span, expected: &T1, actual: &T2) -> Error {
+/// This does not include the "Type mismatch." message, so that the body can be
+/// used in various places.
+pub fn report_type_mismatch<T1: AsTypeName, T2: AsTypeName>(
+    expected: &T1,
+    actual: &T2,
+) -> Doc<'static> {
     // If types are atoms, they are short to format, so we can put the message
     // on one line. If they are composite, we put them in an indented block.
     match (expected.is_atom(), actual.is_atom()) {
-        (true, true) => at.error("Type mismatch.").with_body(concat! {
+        (true, true) => concat! {
             "Expected " expected.format_type()
             " but found " actual.format_type() "."
-        }),
-        (true, false) => at.error("Type mismatch.").with_body(concat! {
+        },
+        (true, false) => concat! {
             "Expected " expected.format_type() " but found this type:"
             Doc::HardBreak Doc::HardBreak
             indent! { actual.format_type() }
-        }),
-        (false, true) => at.error("Type mismatch.").with_body(concat! {
+        },
+        (false, true) => concat! {
             "Expected this type:"
             Doc::HardBreak Doc::HardBreak
             indent! { expected.format_type() }
             Doc::HardBreak Doc::HardBreak
             "But found " actual.format_type() "."
-        }),
-        (false, false) => at.error("Type mismatch.").with_body(concat! {
+        },
+        (false, false) => concat! {
             "Expected this type:"
             Doc::HardBreak Doc::HardBreak
             indent! { expected.format_type() }
@@ -191,7 +190,7 @@ pub fn type_error<T1: AsTypeName, T2: AsTypeName>(at: Span, expected: &T1, actua
             "But found this type: "
             Doc::HardBreak Doc::HardBreak
             indent! { actual.format_type() }
-        }),
+        },
     }
 }
 
