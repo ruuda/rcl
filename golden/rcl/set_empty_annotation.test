@@ -1,0 +1,6 @@
+// Without type annotation, this would be a dict.
+let empty: Set[Int] = {};
+empty
+
+# output:
+{}
