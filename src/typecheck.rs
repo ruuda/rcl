@@ -414,6 +414,56 @@ impl<'a> TypeChecker<'a> {
                 Typed::Type(Type::Function(fn_type))
             }
 
+            Expr::Call { function_span, function, args, .. } => {
+                // The direction of the requirements for a call could go two ways.
+                // Take for example: `(x => x + 1)("42")`. We could say, it's a
+                // call with String as first argument, so we push that into the
+                // function body, and there is a type error at the `+` because
+                // we expect a String but `+` creates an Int. But we could also
+                // say, we typecheck the function first, infer `Dynamic -> Int`
+                // (with a runtime check inserted at left-hand side of `+`), then
+                // we call that with "42", which passes, but the runtime check
+                // fails. We go with the latter: we assume function definitions
+                // are always correct, and the error is at the call site.
+                let _fn_type = self.check_expr_2(&TypeReq::None, *function_span, function)?;
+
+                // TODO: When the function type is statically known, possibly
+                // check the args statically. But we can't know the function
+                // type statically in all cases, so since the runtime check will
+                // have to exist anyway, we rely on that for now. We still
+                // descend into the args to typecheck them, but without any
+                // requirement.
+                for (arg_span, arg) in args {
+                    self.check_expr_2(&TypeReq::None, *arg_span, arg)?;
+                }
+
+                // TODO: Get the type from the function return type. For now we
+                // take Dynamic.
+                req.check_type(expr_span, &Type::Dynamic)?
+            }
+
+            Expr::Index { open, collection_span, collection, index_span, index, .. } => {
+                let collection_type = self.check_expr_2(&TypeReq::None, *collection_span, collection)?;
+                let index_req = match collection_type {
+                    Type::List(..) => TypeReq::IndexList,
+                    // TODO: Store the TypeReq in the dict keys, so we can propagate it.
+                    Type::Dict(..) => TypeReq::None,
+                    Type::Dynamic => TypeReq::None,
+                    not_indexable => {
+                        return open
+                            .error("Indexing is not supported here.")
+                            .with_body(concat!{
+                                "Expected a dict or list, but got:"
+                                Doc::HardBreak Doc::HardBreak
+                                indent! { format_type(&not_indexable).into_owned() }
+                            })
+                            .err()
+                    }
+                };
+                let result_type = self.check_expr_2(&index_req, *index_span, index)?;
+                req.check_type(expr_span, &result_type)?
+            }
+
             Expr::CheckType { .. } | Expr::CheckType2 { .. } | Expr::TypedFunction { .. } => panic!(
                 "Node {expr:?} is inserted by the typechecker, it should not be present before checking."
             ),

@@ -37,6 +37,9 @@ pub enum TypeReq {
 
     /// The type was required due to an operator.
     Operator(Span, ReqType),
+
+    /// An integer is required due to indexing into a list.
+    IndexList,
 }
 
 /// The types that can occur in type requirements.
@@ -205,6 +208,7 @@ impl TypeReq {
             TypeReq::Annotation(.., t) => Some(t),
             TypeReq::Condition => Some(&ReqType::Bool),
             TypeReq::Operator(.., t) => Some(t),
+            TypeReq::IndexList => Some(&ReqType::Int),
         }
     }
 
@@ -241,6 +245,7 @@ impl TypeReq {
                 },
             ),
             TypeReq::Operator(..) => unreachable!("We don't have operators with non-atomic types."),
+            TypeReq::IndexList => error.with_help("List indices must be integers."),
         }
     }
 
