@@ -16,10 +16,8 @@ use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, Ident, Seq, Stmt, Type as AType, UnOp, Yield};
 use crate::error::{IntoError, Result};
-use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
-use crate::runtime::Value;
 use crate::source::Span;
 use crate::type_req::{DictReq, FunctionReq, ReqType, TypeReq, Typed};
 use crate::types::{self, Type};
@@ -32,82 +30,6 @@ pub fn prelude() -> Env {
     // TODO: Type std correctly once we have record types.
     env.push("std".into(), Type::Dynamic);
     env
-}
-
-// TODO: Delete in favor of TypeReq::check_value.
-pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
-    match (type_, value) {
-        // For dynamic, any value is fine.
-        (Type::Dynamic, _) => Ok(()),
-
-        // The primitive types.
-        (Type::Bool, Value::Bool(..)) => Ok(()),
-        (Type::Int, Value::Int(..)) => Ok(()),
-        (Type::Null, Value::Null) => Ok(()),
-        (Type::String, Value::String(..)) => Ok(()),
-
-        // Collection types.
-        (Type::List(element_type), Value::List(xs)) => {
-            for v in xs.iter() {
-                // TODO: Extend the error with the list index, possibly with
-                // context, otherwise it might look like we blame a top-level
-                // let.
-                check_value(at, element_type, v)?;
-            }
-            Ok(())
-        }
-        (Type::Set(element_type), Value::Set(xs)) => {
-            for v in xs.iter() {
-                // TODO: Add typecheck context, otherwise it might look like we
-                // blame a top-level let.
-                check_value(at, element_type, v)?;
-            }
-            Ok(())
-        }
-        (Type::Dict(kv), Value::Dict(xs)) => {
-            for (k, v) in xs.iter() {
-                // TODO: Add typecheck context, otherwise it might look like we
-                // blame at top-level let.
-                check_value(at, &kv.key, k)?;
-                check_value(at, &kv.value, v)?;
-            }
-            Ok(())
-        }
-
-        // The function type describes the different callable values.
-        (Type::Function(fn_type), Value::Function(fn_val)) => {
-            let type_val = Type::Function(fn_val.type_.clone());
-            let type_fun = Type::Function(fn_type.clone());
-            type_val.check_subtype_of(at, &type_fun)?;
-            Ok(())
-        }
-        (Type::Function(fn_type), Value::BuiltinFunction(fn_val)) => {
-            let type_val = Type::Function(Rc::new((fn_val.type_)()));
-            let type_fun = Type::Function(fn_type.clone());
-            type_val.check_subtype_of(at, &type_fun)?;
-            Ok(())
-        }
-        (Type::Function(fn_type), Value::BuiltinMethod(instance)) => {
-            let method = instance.method;
-            let type_val = Type::Function(Rc::new((method.type_)()));
-            let type_fun = Type::Function(fn_type.clone());
-            type_val.check_subtype_of(at, &type_fun)?;
-            Ok(())
-        }
-
-        _ => at
-            .error("Type mismatch.")
-            .with_body(concat! {
-                "Expected a value that fits this type:"
-                Doc::HardBreak Doc::HardBreak
-                indent! { format_type(type_).into_owned() }
-                Doc::HardBreak Doc::HardBreak
-                "But got this value:"
-                Doc::HardBreak Doc::HardBreak
-                indent! { format_rcl(value).into_owned() }
-            })
-            .err(),
-    }
 }
 
 /// Convert a type name into the corresponding primitive type requirement.
@@ -469,7 +391,7 @@ impl<'a> TypeChecker<'a> {
                 req.check_type(expr_span, &result_type)?
             }
 
-            Expr::CheckType { .. } | Expr::CheckType2 { .. } | Expr::TypedFunction { .. } => panic!(
+            Expr::CheckType { .. } | Expr::TypedFunction { .. } => panic!(
                 "Node {expr:?} is inserted by the typechecker, it should not be present before checking."
             ),
         };
@@ -483,7 +405,7 @@ impl<'a> TypeChecker<'a> {
             Typed::Defer(t) => {
                 let mut tmp = Expr::NullLit;
                 std::mem::swap(&mut tmp, expr);
-                *expr = Expr::CheckType2 {
+                *expr = Expr::CheckType {
                     span: expr_span,
                     type_: req.clone(),
                     body: Box::new(tmp),

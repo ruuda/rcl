@@ -206,16 +206,6 @@ pub enum Expr {
     /// parsing and abstracting, this node is not part of the AST. Only in the
     /// typecheck phase, the typechecker can decide to insert these nodes.
     CheckType {
-        /// The span to highlight in case of a type error.
-        // TODO: There should also be a span for where the requirement came from.
-        span: Span,
-        /// The expected type that the expression has to fit.
-        type_: types::Type,
-        body: Box<Expr>,
-    },
-
-    // TODO: Rename to `CheckType`, copy the cods from that one.
-    CheckType2 {
         /// The span of the expression that we are checking.
         span: Span,
         /// The type requirement that the value has to satisfy.

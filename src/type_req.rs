@@ -10,8 +10,9 @@
 use std::rc::Rc;
 
 use crate::error::{Error, IntoError, PathElement, Result};
+use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
-use crate::pprint::concat;
+use crate::pprint::{concat, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
 use crate::types::{type_error, Dict, Type};
@@ -317,7 +318,16 @@ impl TypeReq {
 
             // TODO: Typecheck functions.
             _ => at
-                .error("Type mismatch in value. TODO: Pretty-print.")
+                .error("Type mismatch.")
+                .with_body(concat! {
+                    "Expected a value that fits this type:"
+                    Doc::HardBreak Doc::HardBreak
+                    indent! { format_type(&req_type.to_type()).into_owned() }
+                    Doc::HardBreak Doc::HardBreak
+                    "But got this value:"
+                    Doc::HardBreak Doc::HardBreak
+                    indent! { format_rcl(value).into_owned() }
+                })
                 .err(),
         }
     }
