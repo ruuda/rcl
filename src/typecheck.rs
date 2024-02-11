@@ -464,11 +464,19 @@ impl<'a> TypeChecker<'a> {
                 req.check_type(expr_span, &result_type)?
             }
 
+            Expr::UnOp { op_span, op, body_span, body, .. } => {
+                let result_type = self.check_unop2(*op_span, *op, *body_span, body)?;
+                req.check_type(expr_span, &result_type)?
+            },
+
+            Expr::BinOp { op_span, op, lhs_span, lhs, rhs_span, rhs, .. } => {
+                let result_type = self.check_binop2(*op_span, *op, *lhs_span, *rhs_span, lhs, rhs)?;
+                req.check_type(expr_span, &result_type)?
+            }
+
             Expr::CheckType { .. } | Expr::CheckType2 { .. } | Expr::TypedFunction { .. } => panic!(
                 "Node {expr:?} is inserted by the typechecker, it should not be present before checking."
             ),
-
-            _ => unimplemented!("TODO: New-style typechecks."),
         };
         match expr_type {
             // If the type check passed, great, we now know the inferred type.
@@ -546,6 +554,55 @@ impl<'a> TypeChecker<'a> {
         };
 
         Ok(fn_type_inner)
+    }
+
+    fn check_unop2(
+        &mut self,
+        op_span: Span,
+        op: UnOp,
+        body_span: Span,
+        body: &mut Expr,
+    ) -> Result<Type> {
+        // For the operators, they determine the type, so we could immediately
+        // return an error top-down. But as a user, bottom-up is more natural,
+        // so we check the body first. For example, in
+        //
+        //     let x: Int = not 42;
+        //
+        // Already at the `not`, we know the result is Bool but we need Int, so
+        // that's an error. But there *another* error, which is applying `not`
+        // to an int, and if we report only one type error, that seems like it
+        // should come first, as it comes first in the evaluation order too.
+        let (req, result_type) = match op {
+            UnOp::Neg => (TypeReq::Operator(op_span, ReqType::Int), Type::Int),
+            UnOp::Not => (TypeReq::Operator(op_span, ReqType::Bool), Type::Bool),
+        };
+        self.check_expr_2(&req, body_span, body)?;
+        Ok(result_type)
+    }
+
+    fn check_binop2(
+        &mut self,
+        op_span: Span,
+        op: BinOp,
+        lhs_span: Span,
+        rhs_span: Span,
+        lhs: &mut Expr,
+        rhs: &mut Expr,
+    ) -> Result<Type> {
+        let (req, result_type) = match op {
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => {
+                (TypeReq::Operator(op_span, ReqType::Int), Type::Int)
+            }
+            BinOp::And | BinOp::Or => (TypeReq::Operator(op_span, ReqType::Bool), Type::Bool),
+            BinOp::Lt | BinOp::LtEq | BinOp::Gt | BinOp::GtEq | BinOp::Eq | BinOp::Neq => {
+                (TypeReq::None, Type::Bool)
+            }
+            BinOp::Union => unimplemented!("TODO: Binop union is an ad-hoc mess!"),
+        };
+        self.check_expr_2(&req, lhs_span, lhs)?;
+        self.check_expr_2(&req, rhs_span, rhs)?;
+        Ok(result_type)
     }
 
     /// Check that an expression fits the expected type.
