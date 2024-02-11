@@ -8,3 +8,9 @@ stdin:2:15
 2 │ let x: Bool = 0;
   ╵               ^
 Error: Type mismatch. Expected Bool but found Int.
+
+stdin:2:8
+  ╷
+2 │ let x: Bool = 0;
+  ╵        ^~~~
+Note: The expected type is specified here.

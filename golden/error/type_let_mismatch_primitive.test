@@ -7,3 +7,9 @@ stdin:1:14
 1 │ let x: Int = "not an int";
   ╵              ^~~~~~~~~~~~
 Error: Type mismatch. Expected Int but found String.
+
+stdin:1:8
+  ╷
+1 │ let x: Int = "not an int";
+  ╵        ^~~
+Note: The expected type is specified here.

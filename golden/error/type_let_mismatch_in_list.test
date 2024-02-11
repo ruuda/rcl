@@ -7,3 +7,9 @@ stdin:1:22
 1 │ let xs: List[Int] = ["not an int"];
   ╵                      ^~~~~~~~~~~~
 Error: Type mismatch. Expected Int but found String.
+
+stdin:1:14
+  ╷
+1 │ let xs: List[Int] = ["not an int"];
+  ╵              ^~~
+Note: The expected type is specified here.

@@ -21,3 +21,9 @@ Error: Type mismatch. Expected this type:
   ]
 
 But found Null.
+
+stdin:2:8
+  ╷
+2 │ let x: Dict[
+  ╵        ^~~~~
+Note: The expected type is specified here.

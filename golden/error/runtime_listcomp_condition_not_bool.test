@@ -6,3 +6,5 @@ stdin:1:5
 1 │ [if 0: "false"]
   ╵     ^
 Error: Type mismatch. Expected Bool but found Int.
+
+Help: There is no implicit conversion, conditions must be boolean.

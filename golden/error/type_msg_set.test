@@ -11,4 +11,12 @@ Error: Type mismatch. Expected this type:
 
   Set[Int]
 
-But found List.
+But found this type:
+
+  List[Void]
+
+stdin:2:8
+  ╷
+2 │ let x: Set[Int] = [];
+  ╵        ^~~~~~~~
+Note: The expected type is specified here.

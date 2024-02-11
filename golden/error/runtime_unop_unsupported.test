@@ -6,3 +6,9 @@ stdin:1:5
 1 │ not "true"
   ╵     ^~~~~~
 Error: Type mismatch. Expected Bool but found String.
+
+stdin:1:1
+  ╷
+1 │ not "true"
+  ╵ ^~~
+Note: Expected Bool due to this operator.
