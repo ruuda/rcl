@@ -12,11 +12,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{Expr, Ident};
-use crate::error::{IntoError, Result};
+use crate::error::{IntoError, PathElement, Result};
 use crate::eval::Evaluator;
-use crate::pprint::{concat, Doc};
+use crate::fmt_rcl::format_rcl;
+use crate::fmt_type::format_type;
+use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::types;
+use crate::types::{SourcedType, Type};
 
 /// A value provided as argument to a function call.
 pub struct CallArg {
@@ -291,6 +294,65 @@ impl Value {
             other => panic!("Expected String but got {other:?}."),
         }
     }
+
+    /// Dynamically check that the value fits the required type.
+    pub fn is_instance_of(&self, at: Span, type_: &SourcedType) -> Result<()> {
+        let req_type = match &type_.type_ {
+            Type::Dynamic => return Ok(()),
+            t => t,
+        };
+        match (req_type, self) {
+            // For the primitive types, we just check for matching values.
+            (Type::Null, Value::Null) => Ok(()),
+            (Type::Bool, Value::Bool(..)) => Ok(()),
+            (Type::Int, Value::Int(..)) => Ok(()),
+            (Type::String, Value::String(..)) => Ok(()),
+
+            // For compound types, we descend into them to check.
+            (Type::List(elem_type), Value::List(elems)) => {
+                for (i, elem) in elems.iter().enumerate() {
+                    elem.is_instance_of(at, elem_type)
+                        .map_err(|err| err.with_path_element(PathElement::Index(i)))?;
+                }
+                Ok(())
+            }
+            (Type::Set(elem_type), Value::Set(elems)) => {
+                for (i, elem) in elems.iter().enumerate() {
+                    elem.is_instance_of(at, elem_type).map_err(|err|
+                        // Even though sets don't strictly have indexes,
+                        // they do have an order, so report the index to
+                        // clarify that this is a nested error.
+                        err.with_path_element(PathElement::Index(i)))?;
+                }
+                Ok(())
+            }
+            (Type::Dict(dict), Value::Dict(kvs)) => {
+                for (k, v) in kvs.iter() {
+                    k.is_instance_of(at, &dict.key).map_err(|err| {
+                        err.with_path_element(PathElement::Key("TODO: Support any key".into()))
+                    })?;
+                    v.is_instance_of(at, &dict.value).map_err(|err| {
+                        err.with_path_element(PathElement::Key("TODO: Support any key".into()))
+                    })?;
+                }
+                Ok(())
+            }
+
+            // TODO: Typecheck functions.
+            _ => at
+                .error("Type mismatch.")
+                .with_body(concat! {
+                    "Expected a value that fits this type:"
+                    Doc::HardBreak Doc::HardBreak
+                    indent! { format_type(req_type).into_owned() }
+                    Doc::HardBreak Doc::HardBreak
+                    "But got this value:"
+                    Doc::HardBreak Doc::HardBreak
+                    indent! { format_rcl(self).into_owned() }
+                })
+                .err(),
+        }
+    }
 }
 
 impl<'a> From<&'a str> for Value {
@@ -319,7 +381,11 @@ macro_rules! builtin_function {
     ) => {
         pub const $rust_const: crate::runtime::BuiltinFunction = crate::runtime::BuiltinFunction {
             name: $rcl_name,
-            type_: || crate::types::make_function!( ($( $arg_name: $arg_type ),*) -> $result),
+            type_: || {
+                #[allow(unused_imports)]
+                use crate::types::{Type, Dict, Function, builtin, make_function, make_type};
+                crate::types::make_function!( ($( $arg_name: $arg_type ),*) -> $result)
+            },
             f: $rust_name,
         };
     };
@@ -335,7 +401,11 @@ macro_rules! builtin_method {
     ) => {
         pub const $rust_const: crate::runtime::BuiltinMethod = crate::runtime::BuiltinMethod {
             name: $rcl_name,
-            type_: || crate::types::make_function!( ($( $arg_name: $arg_type ),*) -> $result),
+            type_: || {
+                #[allow(unused_imports)]
+                use crate::types::{Type, Dict, Function, builtin, make_function, make_type};
+                crate::types::make_function!( ($( $arg_name: $arg_type ),*) -> $result)
+            },
             f: $rust_name,
         };
     };

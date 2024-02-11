@@ -16,7 +16,6 @@ use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{builtin_function, builtin_method, CallArg, FunctionCall, MethodCall, Value};
-use crate::types::Type;
 
 builtin_function!(
     "std.read_file_utf8",

@@ -13,8 +13,7 @@ use std::rc::Rc;
 pub use crate::cst::{BinOp, UnOp};
 
 use crate::source::Span;
-use crate::type_req::TypeReq;
-use crate::types;
+use crate::types::{self, SourcedType};
 
 /// An identifier.
 // TODO: Should we deduplicate idents, or even all strings, in a hash table?
@@ -211,7 +210,7 @@ pub enum Expr {
         /// The span of the expression that we are checking.
         span: Span,
         /// The type requirement that the value has to satisfy.
-        type_: TypeReq,
+        type_: SourcedType,
         body: Box<Expr>,
     },
 

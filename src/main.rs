@@ -18,7 +18,6 @@ use rcl::runtime::{self, Value};
 use rcl::source::{DocId, Span};
 use rcl::tracer::StderrTracer;
 use rcl::typecheck;
-use rcl::types::Type;
 
 struct App {
     loader: Loader,
@@ -196,7 +195,7 @@ impl App {
                 // Then we bind that to the variable `input`, and in that context,
                 // we evaluate the query expression. The environments should be
                 // clean at this point, so we can reuse them.
-                type_env.push("input".into(), Type::Dynamic);
+                type_env.push("input".into(), typecheck::type_any().clone());
                 value_env.push("input".into(), val_input);
                 let val_result =
                     self.loader

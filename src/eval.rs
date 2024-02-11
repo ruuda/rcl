@@ -22,7 +22,6 @@ use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
 use crate::typecheck;
-use crate::types::Type;
 
 /// An entry on the evaluation stack.
 pub struct EvalContext {
@@ -171,7 +170,7 @@ impl<'a> Evaluator<'a> {
     /// Evaluate a document as the entry point of evaluation.
     pub fn eval_doc(
         &mut self,
-        type_env: &mut crate::env::Env<Type>,
+        type_env: &mut typecheck::Env,
         value_env: &mut Env,
         doc: DocId,
     ) -> Result<Value> {
@@ -550,7 +549,7 @@ impl<'a> Evaluator<'a> {
 
             Expr::CheckType { span, type_, body } => {
                 let v = self.eval_expr(env, body)?;
-                type_.check_value(*span, &v)?;
+                v.is_instance_of(*span, type_)?;
                 Ok(v)
             }
         }
