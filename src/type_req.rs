@@ -15,7 +15,7 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
-use crate::types::{type_error, Dict, Type};
+use crate::types::{type_error, Dict, Function, Type};
 
 /// A type requirement.
 ///
@@ -117,6 +117,9 @@ pub enum TypeDiff {
 
 impl ReqType {
     /// Return the `Type` of a value when this requirement is satisfied.
+    ///
+    /// This function is potentially expensive because it does a deep traversal
+    /// of the type requirement.
     fn to_type(&self) -> Type {
         match self {
             ReqType::Null => Type::Null,
@@ -132,7 +135,13 @@ impl ReqType {
                 };
                 Type::Dict(dict.into())
             }
-            ReqType::Function(_f) => unimplemented!(),
+            ReqType::Function(f) => {
+                let fn_type = Function {
+                    args: f.args.iter().map(|arg_req| arg_req.to_type()).collect(),
+                    result: f.result.to_type(),
+                };
+                Type::Function(fn_type.into())
+            }
         }
     }
 
