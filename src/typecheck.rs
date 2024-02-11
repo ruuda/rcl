@@ -442,11 +442,14 @@ impl<'a> TypeChecker<'a> {
         let mut is_error = false;
 
         let body_req = match req.req_type() {
-            Some(ReqType::Function(fn_req)) => {
-                // TODO: Push the args with the right types into the
-                // environment, check arity, etc.
-                for arg in args.iter() {
-                    let arg_type = Type::Dynamic;
+            // If the arities mismatch, that's an error, and we handle that
+            // in the same arm as a non-function below. We typecheck the body
+            // either way, but we only put the types from the requirement in the
+            // environment if there is a match, because otherwise the body would
+            // likely contain nonsense errors anyway.
+            Some(ReqType::Function(fn_req)) if fn_req.args.len() == args.len() => {
+                for (arg, arg_req) in args.iter().zip(fn_req.args.iter()) {
+                    let arg_type = arg_req.to_type();
                     arg_types.push(arg_type.clone());
                     self.env.push(arg.clone(), arg_type);
                 }
@@ -460,9 +463,8 @@ impl<'a> TypeChecker<'a> {
                 // typecheck the function first and report the error later.
                 is_error = not_fn_req.is_some();
                 for arg in args.iter() {
-                    let arg_type = Type::Dynamic;
-                    arg_types.push(arg_type.clone());
-                    self.env.push(arg.clone(), arg_type);
+                    arg_types.push(Type::Dynamic);
+                    self.env.push(arg.clone(), Type::Dynamic);
                 }
                 &TypeReq::None
             }

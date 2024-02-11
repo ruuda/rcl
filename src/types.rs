@@ -194,6 +194,36 @@ pub fn report_type_mismatch<T1: AsTypeName, T2: AsTypeName>(
     }
 }
 
+/// Format the body of an arity mismatch error.
+///
+/// This prints the two function signatures and their argument count.
+/// TODO: This is unused. But I've written something like this 5 times now.
+/// So let's keep it around for a bit.
+fn _report_arity_mismatch(expected: Rc<Function>, actual: Rc<Function>) -> Doc<'static> {
+    let mut parts: Vec<Doc<'static>> = vec!["Expected a function that takes ".into()];
+    match expected.args.len() {
+        0 => parts.push("no arguments:".into()),
+        1 => parts.push("one argument:".into()),
+        n => {
+            parts.push(n.to_string().into());
+            parts.push(" arguments:".into());
+        }
+    }
+    parts.push(Doc::HardBreak);
+    parts.push(Doc::HardBreak);
+    parts.push(indent! { format_type(&Type::Function(expected)).into_owned() });
+    parts.push(Doc::HardBreak);
+    parts.push(Doc::HardBreak);
+    parts.push("But got a function that takes ".into());
+    parts.push(actual.args.len().to_string().into());
+    parts.push(":".into());
+    parts.push(Doc::HardBreak);
+    parts.push(Doc::HardBreak);
+    parts.push(indent! { format_type(&Type::Function(actual)).into_owned() });
+
+    Doc::Concat(parts)
+}
+
 /// Rust eDSL for writing RCL types.
 ///
 /// The syntax is similar to RCL, except for the generic and function types, to

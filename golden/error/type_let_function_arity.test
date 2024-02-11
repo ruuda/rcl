@@ -6,10 +6,16 @@ stdin:1:32
   ╷
 1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
   ╵                                ^~~~~~~~~~~~~~~~~~
-Error: Arity mismatch. Expected a function that takes 2 arguments:
+Error: Type mismatch. Expected this type:
 
   (Int, String) -> Bool
 
-But got a function that takes 3:
+But found this type:
 
   (Dynamic, Dynamic, Dynamic) -> Bool
+
+stdin:1:8
+  ╷
+1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
+  ╵        ^~~~~~~~~~~~~~~~~~~~~
+Note: The expected type is specified here.
