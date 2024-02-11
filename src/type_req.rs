@@ -112,7 +112,9 @@ pub enum TypeDiff {
 
     /// There is a type mismatch somewhere in the dict type.
     Dict(Box<TypeDiff>, Box<TypeDiff>),
-    // TODO: Define function type errors,
+
+    /// There is a type mismatch somewhere in a function type.
+    Function(Vec<TypeDiff>, Box<TypeDiff>),
 }
 
 impl ReqType {
@@ -190,8 +192,40 @@ impl ReqType {
                     (k_diff, v_diff) => TypeDiff::Dict(k_diff.into(), v_diff.into()),
                 }
             }
+            (ReqType::Function(fn_req), Type::Function(fn_type)) => {
+                if fn_req.args.len() != fn_type.args.len() {
+                    return TypeDiff::Error(req.clone(), type_.clone());
+                }
 
-            // TODO: Check function types.
+                let mut arg_diffs = Vec::with_capacity(fn_req.args.len());
+
+                for (arg_req, arg_type) in fn_req.args.iter().zip(&fn_type.args) {
+                    // TODO: To be properly generic here, we have to allow the
+                    // arguments to be contravariant. Instead of the arg type
+                    // satisfying the requirement (being a subtype of it), it
+                    // has to be the other way around: the requirements have to
+                    // be subtypes of the actual arguments. But we don't have a
+                    // way do that right now, so I'm going to go for just equality,
+                    // which may reject some correct programs but is at least safe.
+                    if &arg_req.to_type() != arg_type {
+                        arg_diffs.push(TypeDiff::Error(arg_req.clone(), arg_type.clone()));
+                    } else {
+                        arg_diffs.push(TypeDiff::Ok(arg_type.clone()));
+                    }
+                }
+
+                match fn_req.result.check_type_impl(&fn_type.result) {
+                    TypeDiff::Ok(..) => TypeDiff::Ok(type_.clone()),
+                    TypeDiff::Defer(t) => {
+                        let fn_type = Function {
+                            args: fn_type.args.clone(),
+                            result: t,
+                        };
+                        TypeDiff::Defer(Type::Function(fn_type.into()))
+                    }
+                    error => TypeDiff::Function(arg_diffs, error.into()),
+                }
+            }
 
             // If we did not match anything, then this is a type error.
             _ => TypeDiff::Error(req.clone(), type_.clone()),

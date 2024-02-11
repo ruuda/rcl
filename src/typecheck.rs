@@ -344,7 +344,19 @@ impl<'a> TypeChecker<'a> {
                 // we call that with "42", which passes, but the runtime check
                 // fails. We go with the latter: we assume function definitions
                 // are always correct, and the error is at the call site.
-                let _fn_type = self.check_expr(&TypeReq::None, *function_span, function)?;
+                let fn_type = self.check_expr(&TypeReq::None, *function_span, function)?;
+
+                let result_type = match &fn_type {
+                    // TODO: Typecheck call args.
+                    Type::Function(f) => &f.result,
+                    Type::Dynamic => &Type::Dynamic,
+                    not_function => return function_span.error(concat! {
+                        "This cannot be called. Expected function but found:"
+                        Doc::HardBreak
+                        Doc::HardBreak
+                        indent! { format_type(not_function).into_owned() }
+                    }).err()
+                };
 
                 // TODO: When the function type is statically known, possibly
                 // check the args statically. But we can't know the function
@@ -356,9 +368,7 @@ impl<'a> TypeChecker<'a> {
                     self.check_expr(&TypeReq::None, *arg_span, arg)?;
                 }
 
-                // TODO: Get the type from the function return type. For now we
-                // take Dynamic.
-                req.check_type(expr_span, &Type::Dynamic)?
+                req.check_type(expr_span, result_type)?
             }
 
             Expr::Index { open, collection_span, collection, index_span, index, .. } => {
