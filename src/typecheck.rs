@@ -341,6 +341,61 @@ impl<'a> TypeChecker<'a> {
             Expr::BoolLit(..) => req.check_type(expr_span, &Type::Bool)?,
             Expr::IntegerLit(..) => req.check_type(expr_span, &Type::Int)?,
             Expr::StringLit(..) => req.check_type(expr_span, &Type::String)?,
+
+            Expr::Format(fragments) => {
+                // Typecheck the fragments. For now we don't demand statically
+                // that they can be formatted, but we do descend into them to
+                // catch other type errors. TODO: check formatability statically.
+                for fragment in fragments {
+                    self.check_expr_2(&TypeReq::None, fragment.span, &mut fragment.body)?;
+                }
+                // Format strings evaluate to string values.
+                req.check_type(expr_span, &Type::String)?
+            },
+
+            Expr::IfThenElse {
+                condition_span,
+                condition,
+                body_then,
+                body_else,
+                ..
+            } => {
+                // TODO: Should I point the span at the `if` instead?
+                self.check_expr_2(&TypeReq::Condition, *condition_span, condition)?;
+
+                // TODO: Delete the runtime type check in the evaluator, this is
+                // now a static typecheck.
+
+                // TODO: Record the spans on then and else. For now I'll just
+                // put in the condition span as a temporary hack because I don't
+                // want to change everything all over the place.
+                let span_then = *condition_span;
+                let span_else = *condition_span;
+                let type_then = self.check_expr_2(req, span_then, body_then)?;
+                let type_else = self.check_expr_2(req, span_else, body_else)?;
+
+                // The inferred type is the meet of the two sides, which may be
+                // more specific than the requirement (which they satisfy).
+                Typed::Type(type_then.meet(&type_else))
+            }
+
+            Expr::Var { span, ident } => match self.env.lookup(ident) {
+                None => return span.error("Unknown variable.").err(),
+                Some(t) => req.check_type(expr_span, t)?,
+            },
+
+            Expr::Field { inner, inner_span, .. } => {
+                self.check_expr_2(&TypeReq::None, *inner_span, inner)?;
+                // At this point, we defer all field lookups to runtime checks.
+                // a few methods we could resolve statically already, but we need
+                // record types to really make this useful.
+                req.check_type(expr_span, &Type::Dynamic)?
+            }
+
+            Expr::CheckType { .. } | Expr::CheckType2 { .. } | Expr::TypedFunction { .. } => panic!(
+                "Node {expr:?} is inserted by the typechecker, it should not be present before checking."
+            ),
+
             _ => unimplemented!("TODO: New-style typechecks."),
         };
         match expr_type {
