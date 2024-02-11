@@ -25,8 +25,8 @@ use crate::pprint::{self, concat};
 use crate::runtime::{Env, Value};
 use crate::source::{Doc, DocId, Span};
 use crate::tracer::Tracer;
+use crate::type_req::TypeReq;
 use crate::typecheck::{self, TypeChecker};
-use crate::types::Type;
 
 /// An owned document.
 ///
@@ -423,7 +423,7 @@ impl Loader {
         let span = self.get_span(id);
         let mut ast = self.get_unchecked_ast(id)?;
         let mut checker = TypeChecker::new(env);
-        checker.check_expr(&Type::Dynamic, span, &mut ast)?;
+        checker.check_expr(&TypeReq::None, span, &mut ast)?;
         Ok(ast)
     }
 

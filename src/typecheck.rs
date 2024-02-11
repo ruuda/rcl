@@ -21,8 +21,8 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
-use crate::type_req::{ReqType, TypeReq, Typed};
-use crate::types::{self, type_error, Type};
+use crate::type_req::{DictReq, FunctionReq, ReqType, TypeReq, Typed};
+use crate::types::{self, Type};
 
 pub type Env = crate::env::Env<Type>;
 
@@ -34,7 +34,7 @@ pub fn prelude() -> Env {
     env
 }
 
-/// Confirm that the value fits the given type.
+// TODO: Delete in favor of TypeReq::check_value.
 pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
     match (type_, value) {
         // For dynamic, any value is fine.
@@ -110,73 +110,97 @@ pub fn check_value(at: Span, type_: &Type, value: &Value) -> Result<()> {
     }
 }
 
+/// Convert a type name into the corresponding primitive type requirement.
+fn get_primitive_type(name: &str) -> Option<ReqType> {
+    match name {
+        "Null" => Some(ReqType::Null),
+        "Bool" => Some(ReqType::Bool),
+        "Int" => Some(ReqType::Int),
+        "String" => Some(ReqType::String),
+        _ => None,
+    }
+}
+
 /// Parse a type expression.
-fn eval_type_expr(expr: &AType) -> Result<Type> {
+fn eval_type_expr(expr: &AType) -> Result<TypeReq> {
     match expr {
-        AType::Term { span, name } => match name.as_ref() {
-            "Bool" => Ok(Type::Bool),
-            "Int" => Ok(Type::Int),
-            "Null" => Ok(Type::Null),
-            "String" => Ok(Type::String),
-            "Dynamic" => Ok(Type::Dynamic),
-            "Dict" => span
-                .error("Expected a concrete type, but found uninstantiated generic type.")
-                .with_help(concat! {
-                    "'" Doc::highlight("Dict") "' without type parameters cannot be used directly."
-                    Doc::SoftBreak
-                    "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Int]") "'."
-                })
-                .err(),
-            "List" => span
-                .error("Expected a concrete type, but found uninstantiated generic type.")
-                .with_help(concat! {
-                    "'" Doc::highlight("List") "' without type parameters cannot be used directly."
-                    Doc::SoftBreak
-                    "Specify an element type, e.g. '" Doc::highlight("List[String]") "'."
-                })
-                .err(),
-            "Set" => span
-                .error("Expected a concrete type, but found uninstantiated generic type.")
-                .with_help(concat! {
-                    "'" Doc::highlight("Set") "' without type parameters cannot be used directly."
-                    Doc::SoftBreak
-                    "Specify an element type, e.g. '" Doc::highlight("Set[String]") "'."
-                })
-                .err(),
-            _ => span.error("Unknown type.").err(),
-        },
-        AType::Function { args, result } => {
+        AType::Term { span, name } => {
+            if let Some(prim) = get_primitive_type(name.as_ref()) {
+                return Ok(TypeReq::Annotation(*span, prim));
+            }
+            match name.as_ref() {
+                // TODO: Should we allow `_` as type too?
+                "Dynamic" => Ok(TypeReq::None),
+                "Dict" => {
+                    span
+                        .error("Expected a concrete type, but found uninstantiated generic type.")
+                        .with_help(concat! {
+                            "'" Doc::highlight("Dict") "' without type parameters cannot be used directly."
+                            Doc::SoftBreak
+                            "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Int]") "'."
+                        })
+                        .err()
+                },
+                "List" => {
+                    span
+                        .error("Expected a concrete type, but found uninstantiated generic type.")
+                        .with_help(concat! {
+                            "'" Doc::highlight("List") "' without type parameters cannot be used directly."
+                            Doc::SoftBreak
+                            "Specify an element type, e.g. '" Doc::highlight("List[String]") "'."
+                        })
+                        .err()
+                },
+                "Set" => {
+                    span
+                        .error("Expected a concrete type, but found uninstantiated generic type.")
+                        .with_help(concat! {
+                            "'" Doc::highlight("Set") "' without type parameters cannot be used directly."
+                            Doc::SoftBreak
+                            "Specify an element type, e.g. '" Doc::highlight("Set[String]") "'."
+                        })
+                        .err()
+                },
+                _ => span.error("Unknown type.").err(),
+            }
+        }
+        AType::Function {
+            arrow_span,
+            args,
+            result,
+        } => {
             let args_types = args
                 .iter()
                 .map(eval_type_expr)
                 .collect::<Result<Vec<_>>>()?;
             let result_type = eval_type_expr(result)?;
-            let fn_type = types::Function {
+            let fn_type = Rc::new(FunctionReq {
                 args: args_types,
                 result: result_type,
-            };
-            Ok(Type::Function(Rc::new(fn_type)))
+            });
+            Ok(TypeReq::Annotation(*arrow_span, ReqType::Function(fn_type)))
         }
         AType::Apply { span, name, args } => {
             let args_types = args
                 .iter()
                 .map(eval_type_expr)
                 .collect::<Result<Vec<_>>>()?;
-            eval_type_apply(*span, name.as_ref(), &args_types)
+            let req_type = eval_type_apply(*span, name.as_ref(), &args_types)?;
+            Ok(TypeReq::Annotation(*span, req_type))
         }
     }
 }
 
 /// Evaluate type constructor application (generic instantiation).
-fn eval_type_apply(name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
+fn eval_type_apply(name_span: Span, name: &str, args: &[TypeReq]) -> Result<ReqType> {
     match name {
         "Dict" => match args {
             [tk, tv] => {
-                let dict = types::Dict {
+                let dict = DictReq {
                     key: tk.clone(),
                     value: tv.clone(),
                 };
-                Ok(Type::Dict(Rc::new(dict)))
+                Ok(ReqType::Dict(Rc::new(dict)))
             }
             // TODO: We can point at the excess or missing arg for a
             // friendlier error, but better to do that in a general way
@@ -189,7 +213,7 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
                 .err(),
         },
         "List" => match args {
-            [te] => Ok(Type::List(Rc::new(te.clone()))),
+            [te] => Ok(ReqType::List(Rc::new(te.clone()))),
             // TODO: As above for dict, we can do a better job of the error.
             _ => name_span
                 .error(concat! {
@@ -199,7 +223,7 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
                 .err(),
         },
         "Set" => match args {
-            [te] => Ok(Type::Set(Rc::new(te.clone()))),
+            [te] => Ok(ReqType::Set(Rc::new(te.clone()))),
             // TODO: As above for dict, we can do a better job of the error.
             _ => name_span
                 .error(concat! {
@@ -210,35 +234,6 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[Type]) -> Result<Type> {
         },
         _ => name_span.error("Unknown generic type.").err(),
     }
-}
-
-/// Wrap the AST node in an `Expr::CheckType`.
-fn wrap_in_check_type(expr: &mut Expr, span: Span, expected: Type) -> Result<()> {
-    // Values of type Void do not exist, so we don't have to wait until
-    // runtime to report an error. TODO: Deduplicate between
-    // Type::check_subtype_of, but probably there exists a way more elegant
-    // way of doing this.
-    if expected == Type::Void {
-        return span
-            .error(concat! {
-                "Expected a value of type "
-                format_type(&Type::Void).into_owned()
-                ", but such values do not exist."
-            })
-            .err();
-    }
-
-    // Wrap the existing expr in a `CheckType`. We have to
-    // sacrifice a temporary NullLit to the borrow checker.
-    let mut tmp = Expr::NullLit;
-    std::mem::swap(&mut tmp, expr);
-    *expr = Expr::CheckType {
-        span,
-        type_: expected,
-        body: Box::new(tmp),
-    };
-
-    Ok(())
 }
 
 pub struct TypeChecker<'a> {
@@ -252,22 +247,22 @@ impl<'a> TypeChecker<'a> {
         TypeChecker { env }
     }
 
-    // TODO: Document this, make this the new default method.
-    pub fn check_expr_2(
-        &mut self,
-        req: &TypeReq,
-        expr_span: Span,
-        expr: &mut Expr,
-    ) -> Result<Type> {
+    // TODO: Fix the name.
+    /// Check that an expression fits the type requirements.
+    ///
+    /// This also updates the AST to insert runtime type checks where necessary.
+    /// Returns the inferred type of the expression, which is a subtype of the
+    /// required type.
+    pub fn check_expr(&mut self, req: &TypeReq, expr_span: Span, expr: &mut Expr) -> Result<Type> {
         let expr_type = match expr {
             Expr::Stmt {
-                stmt: _,
+                stmt,
                 body_span,
                 body,
             } => {
                 let ck = self.env.checkpoint();
-                // TODO: Add back the check inside stmt.
-                let t = self.check_expr_2(req, *body_span, body)?;
+                self.check_stmt(stmt)?;
+                let t = self.check_expr(req, *body_span, body)?;
                 self.env.pop(ck);
                 Typed::Type(t)
             }
@@ -286,7 +281,7 @@ impl<'a> TypeChecker<'a> {
             Expr::BraceLit { elements: seqs, .. } => {
                 let mut is_error = false;
                 // If we have a requirement on the element type, extract it.
-                let seq_type = match req.req_type() {
+                let mut seq_type = match req.req_type() {
                     Some(ReqType::Set(t)) => SeqType::TypedSet(t.as_ref().clone(), Type::Void),
                     Some(ReqType::Dict(kv)) => {
                         SeqType::TypedDict(kv.key.clone(), kv.value.clone(), Type::Void, Type::Void)
@@ -305,8 +300,8 @@ impl<'a> TypeChecker<'a> {
                 // Typecheck all the elements, and enforce the element
                 // requirement if we have one. This at the same time infers the
                 // element type.
-                for _seq in seqs {
-                    // TODO: Bring back the `check_seq` for the `TypeReq`.
+                for seq in seqs {
+                    seq_type = self.check_seq(seq, seq_type)?;
                 }
 
                 if is_error {
@@ -347,7 +342,7 @@ impl<'a> TypeChecker<'a> {
                 // that they can be formatted, but we do descend into them to
                 // catch other type errors. TODO: check formatability statically.
                 for fragment in fragments {
-                    self.check_expr_2(&TypeReq::None, fragment.span, &mut fragment.body)?;
+                    self.check_expr(&TypeReq::None, fragment.span, &mut fragment.body)?;
                 }
                 // Format strings evaluate to string values.
                 req.check_type(expr_span, &Type::String)?
@@ -361,7 +356,7 @@ impl<'a> TypeChecker<'a> {
                 ..
             } => {
                 // TODO: Should I point the span at the `if` instead?
-                self.check_expr_2(&TypeReq::Condition, *condition_span, condition)?;
+                self.check_expr(&TypeReq::Condition, *condition_span, condition)?;
 
                 // TODO: Delete the runtime type check in the evaluator, this is
                 // now a static typecheck.
@@ -371,8 +366,8 @@ impl<'a> TypeChecker<'a> {
                 // want to change everything all over the place.
                 let span_then = *condition_span;
                 let span_else = *condition_span;
-                let type_then = self.check_expr_2(req, span_then, body_then)?;
-                let type_else = self.check_expr_2(req, span_else, body_else)?;
+                let type_then = self.check_expr(req, span_then, body_then)?;
+                let type_else = self.check_expr(req, span_else, body_else)?;
 
                 // The inferred type is the meet of the two sides, which may be
                 // more specific than the requirement (which they satisfy).
@@ -385,7 +380,7 @@ impl<'a> TypeChecker<'a> {
             },
 
             Expr::Field { inner, inner_span, .. } => {
-                self.check_expr_2(&TypeReq::None, *inner_span, inner)?;
+                self.check_expr(&TypeReq::None, *inner_span, inner)?;
                 // At this point, we defer all field lookups to runtime checks.
                 // a few methods we could resolve statically already, but we need
                 // record types to really make this useful.
@@ -425,7 +420,7 @@ impl<'a> TypeChecker<'a> {
                 // we call that with "42", which passes, but the runtime check
                 // fails. We go with the latter: we assume function definitions
                 // are always correct, and the error is at the call site.
-                let _fn_type = self.check_expr_2(&TypeReq::None, *function_span, function)?;
+                let _fn_type = self.check_expr(&TypeReq::None, *function_span, function)?;
 
                 // TODO: When the function type is statically known, possibly
                 // check the args statically. But we can't know the function
@@ -434,7 +429,7 @@ impl<'a> TypeChecker<'a> {
                 // descend into the args to typecheck them, but without any
                 // requirement.
                 for (arg_span, arg) in args {
-                    self.check_expr_2(&TypeReq::None, *arg_span, arg)?;
+                    self.check_expr(&TypeReq::None, *arg_span, arg)?;
                 }
 
                 // TODO: Get the type from the function return type. For now we
@@ -443,7 +438,7 @@ impl<'a> TypeChecker<'a> {
             }
 
             Expr::Index { open, collection_span, collection, index_span, index, .. } => {
-                let collection_type = self.check_expr_2(&TypeReq::None, *collection_span, collection)?;
+                let collection_type = self.check_expr(&TypeReq::None, *collection_span, collection)?;
                 let index_req = match collection_type {
                     Type::List(..) => TypeReq::IndexList,
                     // TODO: Store the TypeReq in the dict keys, so we can propagate it.
@@ -460,17 +455,17 @@ impl<'a> TypeChecker<'a> {
                             .err()
                     }
                 };
-                let result_type = self.check_expr_2(&index_req, *index_span, index)?;
+                let result_type = self.check_expr(&index_req, *index_span, index)?;
                 req.check_type(expr_span, &result_type)?
             }
 
             Expr::UnOp { op_span, op, body_span, body, .. } => {
-                let result_type = self.check_unop2(*op_span, *op, *body_span, body)?;
+                let result_type = self.check_unop(*op_span, *op, *body_span, body)?;
                 req.check_type(expr_span, &result_type)?
             },
 
             Expr::BinOp { op_span, op, lhs_span, lhs, rhs_span, rhs, .. } => {
-                let result_type = self.check_binop2(*op_span, *op, *lhs_span, *rhs_span, lhs, rhs)?;
+                let result_type = self.check_binop(*op_span, *op, *lhs_span, *rhs_span, lhs, rhs)?;
                 req.check_type(expr_span, &result_type)?
             }
 
@@ -539,7 +534,7 @@ impl<'a> TypeChecker<'a> {
             }
         };
 
-        let result_type = self.check_expr_2(body_req, body_span, body)?;
+        let result_type = self.check_expr(body_req, body_span, body)?;
         self.env.pop(checkpoint);
 
         let fn_type_inner = Rc::new(types::Function {
@@ -556,7 +551,7 @@ impl<'a> TypeChecker<'a> {
         Ok(fn_type_inner)
     }
 
-    fn check_unop2(
+    fn check_unop(
         &mut self,
         op_span: Span,
         op: UnOp,
@@ -577,11 +572,11 @@ impl<'a> TypeChecker<'a> {
             UnOp::Neg => (TypeReq::Operator(op_span, ReqType::Int), Type::Int),
             UnOp::Not => (TypeReq::Operator(op_span, ReqType::Bool), Type::Bool),
         };
-        self.check_expr_2(&req, body_span, body)?;
+        self.check_expr(&req, body_span, body)?;
         Ok(result_type)
     }
 
-    fn check_binop2(
+    fn check_binop(
         &mut self,
         op_span: Span,
         op: BinOp,
@@ -598,454 +593,23 @@ impl<'a> TypeChecker<'a> {
             BinOp::Lt | BinOp::LtEq | BinOp::Gt | BinOp::GtEq | BinOp::Eq | BinOp::Neq => {
                 (TypeReq::None, Type::Bool)
             }
-            BinOp::Union => unimplemented!("TODO: Binop union is an ad-hoc mess!"),
+            BinOp::Union => return self.check_binop_union(op_span, lhs_span, rhs_span, lhs, rhs),
         };
-        self.check_expr_2(&req, lhs_span, lhs)?;
-        self.check_expr_2(&req, rhs_span, rhs)?;
+        self.check_expr(&req, lhs_span, lhs)?;
+        self.check_expr(&req, rhs_span, rhs)?;
         Ok(result_type)
-    }
-
-    /// Check that an expression fits the expected type.
-    ///
-    /// This also updates the AST to replace statically known constructs.
-    /// For example, methods might be resolved at runtime, so `Expr::Field` can
-    /// be specialized. Typechecks that are statically removed can also be
-    /// removed from the evaluation phase.
-    ///
-    /// Returns the inferred type of the expression, which is a subtype of the
-    /// expected type.
-    pub fn check_expr(
-        &mut self,
-        expected: &Type,
-        expr_span: Span,
-        expr: &mut Expr,
-    ) -> Result<Type> {
-        match expr {
-            Expr::Stmt {
-                stmt,
-                body_span,
-                body,
-            } => {
-                let ck = self.env.checkpoint();
-                self.check_stmt(stmt)?;
-                let t = self.check_expr(expected, *body_span, body)?;
-                self.env.pop(ck);
-                Ok(t)
-            }
-
-            Expr::Import { path_span, path: _ } => {
-                // TODO: Confirm that the path is a string literal,
-                // we can do that here!
-
-                // The type of an import is always `Dynamic`. Though if that is
-                // the case, that removes one justification for having it be a
-                // keyword instead of a builtin method `std.import`. Because we
-                // can just type it: `std.import: (fname: String) -> Dynamic`.
-                // If the expected type is also dynamic, that is fine; if the
-                // expected type is different, then we need to insert a runtime
-                // type check here.
-                if expected == &Type::Dynamic {
-                    Ok(Type::Dynamic)
-                } else {
-                    // TODO: The path span is the wrong span to blame the
-                    // type error on in case of a runtime type error; we
-                    // should get the obligation site (the annotation on the
-                    // let) from the caller.
-                    let blame_span = *path_span;
-                    wrap_in_check_type(expr, blame_span, expected.clone())?;
-                    Ok(expected.clone())
-                }
-            }
-
-            Expr::BraceLit { .. } => {
-                // This has been migrated to check2.
-                Ok(Type::Dynamic)
-            }
-
-            Expr::BracketLit { .. } => {
-                // This has been migrated to check2.
-                Ok(Type::Dynamic)
-            }
-
-            Expr::NullLit => match expected {
-                Type::Dynamic | Type::Null => Ok(Type::Null),
-                _ => type_error(expr_span, expected, &Type::Null).err(),
-            },
-
-            Expr::BoolLit(..) => match expected {
-                Type::Dynamic | Type::Bool => Ok(Type::Bool),
-                _ => type_error(expr_span, expected, &Type::Bool).err(),
-            },
-
-            Expr::StringLit(..) => match expected {
-                Type::Dynamic | Type::String => Ok(Type::String),
-                _ => type_error(expr_span, expected, &Type::String).err(),
-            },
-
-            Expr::IntegerLit(..) => match expected {
-                Type::Dynamic | Type::Int => Ok(Type::Int),
-                _ => type_error(expr_span, expected, &Type::Int).err(),
-            },
-
-            Expr::Format(fragments) => {
-                // Typecheck the fragments. For now we don't demand statically
-                // that they can be formatted, but we do descend into them to
-                // catch other type errors. TODO: check formatability statically.
-                for fragment in fragments {
-                    self.check_expr(&Type::Dynamic, fragment.span, &mut fragment.body)?;
-                }
-                // Format strings evaluate to string values, so they fit string types.
-                match expected {
-                    Type::Dynamic | Type::String => Ok(Type::String),
-                    _ => type_error(expr_span, expected, &Type::String).err(),
-                }
-            },
-
-            Expr::IfThenElse {
-                condition_span,
-                condition,
-                body_then,
-                body_else,
-                ..
-            } => {
-                // TODO: Should I point the span at the `if` instead?
-                let req_cond = TypeReq::Condition;
-                self.check_expr_2(&req_cond, *condition_span, condition)?;
-
-                // The condition always has to be a boolean.
-                // TODO: Delete the runtime type check in the evaluator, this is
-                // now a static typecheck. See if we can make the error friendly.
-                // TODO: We should add a reason to the error, or maybe a help message,
-                // that explains *why* a bool is expected (because it's a conditional).
-                self.check_expr(&Type::Bool, *condition_span, condition)?;
-                // TODO: Record the spans on then and else. For now I'll just
-                // put in the condition span as a temporary hack because I don't
-                // want to change everything all over the place.
-                let tt = self.check_expr(expected, *condition_span, body_then)?;
-                let te = self.check_expr(expected, *condition_span, body_else)?;
-                let t = tt.meet(&te);
-                debug_assert!(
-                    t.check_subtype_of(expr_span, expected).is_ok(),
-                    "Meet of the branches should be a subtype of the expected type.",
-                );
-                Ok(t)
-            }
-
-            Expr::Var { span, ident } => match (self.env.lookup(ident), expected) {
-                (None, _) => span.error("Unknown variable.").err(),
-
-                // If we don't expect a type statically, then anything is fine.
-                (Some(t), Type::Dynamic) => Ok(t.clone()),
-
-                // If we do expect a type statically, but the type is not known
-                // statically, then we have to insert a runtime type check.
-                (Some(Type::Dynamic), _not_dynamic) => {
-                    let blame_span = *span;
-                    wrap_in_check_type(expr, blame_span, expected.clone())?;
-                    Ok(expected.clone())
-                }
-
-                // If both types are known statically, we can confirm right now
-                // that the type fits.
-                (Some(t), _) => {
-                    t.check_subtype_of(*span, expected)?;
-                    Ok(t.clone())
-                }
-            },
-
-            Expr::Field { inner, inner_span, .. } => {
-                self.check_expr(&Type::Dynamic, *inner_span, inner)?;
-                // At this point, we defer all field lookups to runtime checks.
-                // a few methods we could resolve statically already, but we need
-                // record types to really make this useful.
-                if expected != &Type::Dynamic {
-                    wrap_in_check_type(expr, expr_span, expected.clone())?;
-                }
-                Ok(Type::Dynamic)
-            }
-
-            Expr::Function { arrow_span, args, body_span, body } => {
-                // Typecheck the body with no expectations, and no information
-                // about the argument type. If we do have an expected type, then
-                // we could push this information down, but it is simpler to infer
-                // a function type and then check that it is compatible.
-                let checkpoint = self.env.checkpoint();
-                for arg in args.iter() {
-                    self.env.push(arg.clone(), Type::Dynamic);
-                }
-                let result_type = self.check_expr(&Type::Dynamic, *body_span, body)?;
-                self.env.pop(checkpoint);
-
-                let fn_type_inner = Rc::new(types::Function {
-                    args: args.iter().map(|_| Type::Dynamic).collect(),
-                    result: result_type,
-                });
-                let fn_type = Type::Function(fn_type_inner.clone());
-                fn_type.check_subtype_of(expr_span, expected)?;
-
-                // Now that we know the type of the function, preserve it in the
-                // AST, because we need it in the runtime value. We need to
-                // juggle some temporaries to move values out of the old node
-                // into the new one.
-                let mut args_tmp = Vec::new();
-                let mut body_tmp = Box::new(Expr::NullLit);
-                std::mem::swap(&mut args_tmp, args);
-                std::mem::swap(&mut body_tmp, body);
-                *expr = Expr::TypedFunction {
-                    arrow_span: *arrow_span,
-                    args: args_tmp,
-                    body_span: *body_span,
-                    body: body_tmp,
-                    type_: fn_type_inner,
-                };
-
-                Ok(fn_type)
-            }
-
-            Expr::Call { function_span, function, args, open, close } => {
-                match self.check_expr(&Type::Dynamic, *function_span, function)? {
-                    Type::Dynamic => {
-                        for (arg_span, arg) in args {
-                            self.check_expr(&Type::Dynamic, *arg_span, arg)?;
-                        }
-                        if expected != &Type::Dynamic {
-                            wrap_in_check_type(expr, expr_span, expected.clone())?;
-                        }
-                        Ok(expected.clone())
-                    }
-                    Type::Function(fn_type) => {
-                        // When the function type is statically known, first we
-                        // need to confirm that the arity matches.
-                        if fn_type.args.len() != args.len() {
-                            let mut msg: Vec<Doc> = vec!["The function takes ".into()];
-                            match fn_type.args.len() {
-                                0 => msg.push("no arguments".into()),
-                                1 => msg.push("1 argument".into()),
-                                n => {
-                                    msg.push(n.to_string().into());
-                                    msg.push(" arguments".into());
-                                }
-                            }
-                            msg.push(", but got ".into());
-                            msg.push(args.len().to_string().into());
-                            msg.push(".".into());
-                            let note = concat! {
-                                "Function has this type:"
-                                Doc::HardBreak Doc::HardBreak
-                                indent! { format_type(&Type::Function(fn_type.clone())).into_owned() }
-                            };
-                            if fn_type.args.len() < args.len() {
-                                let (err_span, _) = args[fn_type.args.len()];
-                                return err_span
-                                    .error(concat! { "Unexpected argument. " Doc::Concat(msg) })
-                                    .with_note(*function_span, note)
-                                    .err();
-                            }
-                            if fn_type.args.len() > args.len() {
-                                return close
-                                    // TODO: Include the name of the argument, if it is known.
-                                    .error(concat! { "Missing argument. " Doc::Concat(msg) })
-                                    .with_note(*function_span, note)
-                                    .err();
-                            }
-                        }
-
-                        // Then we can typecheck all arguments.
-                        for ((arg_span, arg), expected_type) in args.iter_mut().zip(fn_type.args.iter()) {
-                            // TODO: Wrap errors in a message with the full function type?
-                            self.check_expr(expected_type, *arg_span, arg)?;
-                        }
-
-                        // Finally, the return type must match the expected value.
-                        match (expected, &fn_type.result) {
-                            (Type::Dynamic, res_type) => Ok(res_type.clone()),
-                            (t, Type::Dynamic) => {
-                                wrap_in_check_type(expr, expr_span, expected.clone())?;
-                                Ok(t.clone())
-                            }
-                            (t, u) => {
-                                u.check_subtype_of(*open, t)?;
-                                Ok(u.clone())
-                            }
-                        }
-                    }
-                    not_callable => {
-                        // Even though we already know the call is a type error,
-                        // still typecheck the arguments and report any errors
-                        // there first, so errors match evaluation order.
-                        for (arg_span, arg) in args {
-                            self.check_expr(&Type::Dynamic, *arg_span, arg)?;
-                        }
-                        type_error(*function_span, &"function", &not_callable)
-                            .with_message("This cannot be called.")
-                            .err()
-                    }
-                }
-            }
-
-            Expr::Index { open, collection_span, collection, index_span, index, .. } => {
-                let collection_type = self.check_expr(&Type::Dynamic, *collection_span, collection)?;
-                match collection_type {
-                    Type::Dynamic => {
-                        self.check_expr(&Type::Dynamic, *index_span, index)?;
-                        if expected != &Type::Dynamic {
-                            wrap_in_check_type(expr, expr_span, expected.clone())?;
-                        }
-                        Ok(expected.clone())
-                    }
-                    Type::List(element_type) => {
-                        self.check_expr(&Type::Int, *index_span, index)?;
-                        match element_type.as_ref() {
-                            Type::Dynamic if *expected == Type::Dynamic => {
-                                // If we don't know what it is, and we don't
-                                // care, everything is fine.
-                                Ok(Type::Dynamic)
-                            }
-                            Type::Dynamic => {
-                                // If we don't know what it is, but we do care,
-                                // we need to insert a runtime check.
-                                wrap_in_check_type(expr, expr_span, expected.clone())?;
-                                Ok(expected.clone())
-                            }
-                            _ => {
-                                // If we know what it is, then we can typecheck
-                                // right now.
-                                element_type.check_subtype_of(expr_span, expected)?;
-                                Ok((*element_type).clone())
-                            }
-                        }
-                    }
-                    Type::Dict(dict) => {
-                        self.check_expr(&dict.key, *index_span, index)?;
-                        // Same cases as above for list, see comments there.
-                        match dict.value {
-                            Type::Dynamic if *expected == Type::Dynamic => {
-                                Ok(Type::Dynamic)
-                            }
-                            Type::Dynamic => {
-                                wrap_in_check_type(expr, expr_span, expected.clone())?;
-                                Ok(expected.clone())
-                            }
-                            _ => {
-                                dict.value.check_subtype_of(expr_span, expected)?;
-                                Ok(dict.value.clone())
-                            }
-                        }
-                    }
-                    not_indexable => {
-                        open
-                            .error("Indexing is not supported here.")
-                            .with_body(concat!{
-                                "Expected a dict or list, but got:"
-                                Doc::HardBreak Doc::HardBreak
-                                indent! { format_type(&not_indexable).into_owned() }
-                            })
-                            .err()
-                    }
-                }
-            }
-
-            Expr::UnOp { op, body_span, body, .. } => self.check_unop(
-                expected, expr_span, *op, *body_span, body
-            ),
-
-            Expr::BinOp { op_span, op, lhs_span, lhs, rhs_span, rhs, .. } => self.check_binop(
-                expected, expr_span, (*op_span, *op), (*lhs_span, lhs), (*rhs_span, rhs),
-            ),
-
-            Expr::CheckType { .. } | Expr::CheckType2 { .. } | Expr::TypedFunction { .. } => panic!(
-                "Node {expr:?} is inserted by the typechecker, it should not be present before checking."
-            ),
-        }
-    }
-
-    fn check_unop(
-        &mut self,
-        expected: &Type,
-        expr_span: Span,
-        op: UnOp,
-        body_span: Span,
-        body: &mut Expr,
-    ) -> Result<Type> {
-        // For the operators, they determine the type, so we could immediately
-        // return an error top-down. But as a user, bottom-up is more natural,
-        // so we check the body first. For example, in
-        //
-        //     let x: Int = not 42;
-        //
-        // Already at the `not`, we know the result is Bool but we need Int, so
-        // that's an error. But there *another* error, which is applying `not`
-        // to an int, and if we report only one type error, that seems like it
-        // should come first, as it comes first in the evaluation order too.
-        match op {
-            UnOp::Neg => {
-                self.check_expr(&Type::Int, body_span, body)?;
-                match expected {
-                    Type::Dynamic | Type::Int => Ok(Type::Int),
-                    _ => type_error(expr_span, expected, &Type::Int).err(),
-                }
-            }
-            UnOp::Not => {
-                self.check_expr(&Type::Bool, body_span, body)?;
-                match expected {
-                    Type::Dynamic | Type::Bool => Ok(Type::Bool),
-                    _ => type_error(expr_span, expected, &Type::Bool).err(),
-                }
-            }
-        }
-    }
-
-    fn check_binop(
-        &mut self,
-        expected: &Type,
-        expr_span: Span,
-        op: (Span, BinOp),
-        lhs: (Span, &mut Expr),
-        rhs: (Span, &mut Expr),
-    ) -> Result<Type> {
-        let (op_span, op) = op;
-        let (lhs_span, lhs) = lhs;
-        let (rhs_span, rhs) = rhs;
-        // As with unop, we typecheck the sides even when we already know that
-        // the result cannot be valid, to get more natural bottom-up errors in
-        // case the bodies contain errors.
-        let (sides_expected, result_type) = match op {
-            BinOp::Add | BinOp::Mul | BinOp::Div | BinOp::Sub => (Type::Int, Type::Int),
-            BinOp::And | BinOp::Or => (Type::Bool, Type::Bool),
-            BinOp::Lt | BinOp::Gt | BinOp::LtEq | BinOp::GtEq => (Type::Int, Type::Bool),
-            BinOp::Eq | BinOp::Neq => (Type::Dynamic, Type::Bool),
-            // For overloaded operators, we have dedicated checks.
-            BinOp::Union => {
-                return self.check_binop_union(
-                    expected,
-                    expr_span,
-                    op_span,
-                    (lhs_span, lhs),
-                    (rhs_span, rhs),
-                )
-            }
-        };
-        self.check_expr(&sides_expected, lhs_span, lhs)?;
-        self.check_expr(&sides_expected, rhs_span, rhs)?;
-        match expected {
-            Type::Dynamic => Ok(result_type),
-            t if t == &result_type => Ok(result_type),
-            _ => type_error(expr_span, expected, &result_type).err(),
-        }
     }
 
     fn check_binop_union(
         &mut self,
-        expected: &Type,
-        expr_span: Span,
         op_span: Span,
-        lhs: (Span, &mut Expr),
-        rhs: (Span, &mut Expr),
+        lhs_span: Span,
+        rhs_span: Span,
+        lhs: &mut Expr,
+        rhs: &mut Expr,
     ) -> Result<Type> {
-        let (lhs_span, lhs) = lhs;
-        let (rhs_span, rhs) = rhs;
-        let lhs_type = self.check_expr(&Type::Dynamic, lhs_span, lhs)?;
-        let rhs_type = self.check_expr(&Type::Dynamic, rhs_span, rhs)?;
+        let lhs_type = self.check_expr(&TypeReq::None, lhs_span, lhs)?;
+        let rhs_type = self.check_expr(&TypeReq::None, rhs_span, rhs)?;
         let result_type = match (&lhs_type, &rhs_type) {
             // TODO: There rules are a bit ad-hoc. Maybe don't allow | with
             // list? Or do allow, but allow it on the left-hand side too?
@@ -1064,14 +628,6 @@ impl<'a> TypeChecker<'a> {
                 return err.err();
             }
         };
-
-        if result_type == Type::Dynamic {
-            // TODO: If the expected type is not dynamic, we need to insert a
-            // runtime check here, but we can't because we don't have access to
-            // the node, only the caller does.
-        } else {
-            result_type.check_subtype_of(expr_span, expected)?;
-        }
 
         Ok(result_type)
     }
@@ -1095,7 +651,7 @@ impl<'a> TypeChecker<'a> {
                 ..
             } => {
                 let collection_type =
-                    self.check_expr(&Type::Dynamic, *collection_span, collection)?;
+                    self.check_expr(&TypeReq::None, *collection_span, collection)?;
                 let ck = self.env.checkpoint();
 
                 match collection_type {
@@ -1108,7 +664,8 @@ impl<'a> TypeChecker<'a> {
                     }
                     Type::Dict(dict) => {
                         if idents.len() != 2 {
-                            // TODO: Deduplicate runtime error.
+                            // TODO: Deduplicate runtime error. Make it a method
+                            // on the type? Same for functions?
                             return idents_span
                                 .error("Expected two variables in dict iteration.")
                                 .with_note(
@@ -1165,7 +722,7 @@ impl<'a> TypeChecker<'a> {
                 condition,
                 body,
             } => {
-                self.check_expr(&Type::Bool, *condition_span, condition)?;
+                self.check_expr(&TypeReq::Condition, *condition_span, condition)?;
                 self.check_seq(body, seq_type)
             }
         }
@@ -1176,14 +733,14 @@ impl<'a> TypeChecker<'a> {
         match yield_ {
             Yield::Elem { span, value } => match &mut seq_type {
                 SeqType::SetOrDict => {
-                    let t = self.check_expr_2(&TypeReq::None, *span, value)?;
+                    let t = self.check_expr(&TypeReq::None, *span, value)?;
                     Ok(SeqType::UntypedSet(*span, t))
                 }
                 SeqType::TypedList(r, elem_type_meet) | SeqType::TypedSet(r, elem_type_meet) => {
                     // First we check that the element satisfies the requirement.
                     // That gives us an inferred type that can be more precise.
                     // Meet it with what we have so far.
-                    let elem_type = self.check_expr_2(r, *span, value)?;
+                    let elem_type = self.check_expr(r, *span, value)?;
                     *elem_type_meet = elem_type_meet.meet(&elem_type);
                     Ok(seq_type)
                 }
@@ -1193,7 +750,7 @@ impl<'a> TypeChecker<'a> {
                     unimplemented!("TODO: Put the dict requirement in SeqType::TypedDict, add the context.")
                 }
                 SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet) => {
-                    let elem_type = self.check_expr_2(&TypeReq::None, *span, value)?;
+                    let elem_type = self.check_expr(&TypeReq::None, *span, value)?;
                     *elem_type_meet = elem_type_meet.meet(&elem_type);
                     Ok(seq_type)
                 }
@@ -1210,8 +767,8 @@ impl<'a> TypeChecker<'a> {
             Yield::Assoc { op_span, key, value } => match &mut seq_type {
                 // TODO: We need the key and value spans. For now I'm using op_span.
                 SeqType::SetOrDict => {
-                    let k = self.check_expr_2(&TypeReq::None, *op_span, key)?;
-                    let v = self.check_expr_2(&TypeReq::None, *op_span, key)?;
+                    let k = self.check_expr(&TypeReq::None, *op_span, key)?;
+                    let v = self.check_expr(&TypeReq::None, *op_span, key)?;
                     Ok(SeqType::UntypedDict(*op_span, k, v))
                 }
                 SeqType::TypedList(..) => {
@@ -1222,8 +779,8 @@ impl<'a> TypeChecker<'a> {
                 }
                 SeqType::TypedDict(key_req, value_req, key_meet, value_meet) => {
                     // TODO: Again, spans.
-                    let k = self.check_expr_2(key_req, *op_span, key)?;
-                    let v = self.check_expr_2(value_req, *op_span, value)?;
+                    let k = self.check_expr(key_req, *op_span, key)?;
+                    let v = self.check_expr(value_req, *op_span, value)?;
                     *key_meet = key_meet.meet(&k);
                     *value_meet = value_meet.meet(&v);
                     Ok(seq_type)
@@ -1242,8 +799,8 @@ impl<'a> TypeChecker<'a> {
                     .err(),
                 SeqType::UntypedDict(_first, key_meet, value_meet) => {
                     // TODO: Spans again.
-                    let k = self.check_expr_2(&TypeReq::None, *op_span, key)?;
-                    let v = self.check_expr_2(&TypeReq::None, *op_span, value)?;
+                    let k = self.check_expr(&TypeReq::None, *op_span, key)?;
+                    let v = self.check_expr(&TypeReq::None, *op_span, value)?;
                     *key_meet = key_meet.meet(&k);
                     *value_meet = value_meet.meet(&v);
                     Ok(seq_type)
@@ -1261,11 +818,11 @@ impl<'a> TypeChecker<'a> {
                 value_span,
                 value,
             } => {
-                let expected = match type_ {
-                    None => Type::Dynamic,
+                let req = match type_ {
+                    None => TypeReq::None,
                     Some(type_expr) => eval_type_expr(type_expr)?,
                 };
-                let inferred = self.check_expr(&expected, *value_span, value)?;
+                let inferred = self.check_expr(&req, *value_span, value)?;
 
                 // The inferred type is at least as precise as the expected type,
                 // as it is a subtype. But when a user specifies a type for a
@@ -1273,7 +830,7 @@ impl<'a> TypeChecker<'a> {
                 // losing information.
                 let bound_type = match type_ {
                     None => inferred,
-                    Some(_) => expected,
+                    Some(_) => req.to_type(),
                 };
                 self.env.push(ident.clone(), bound_type);
 
@@ -1286,16 +843,15 @@ impl<'a> TypeChecker<'a> {
                 message,
             } => {
                 // The condition has to be a boolean, the message can be any value.
-                // TODO: Include a specialized message in the type error.
-                self.check_expr(&Type::Bool, *condition_span, condition)?;
-                self.check_expr(&Type::Dynamic, *message_span, message)?;
+                self.check_expr(&TypeReq::Condition, *condition_span, condition)?;
+                self.check_expr(&TypeReq::None, *message_span, message)?;
                 Ok(())
             }
             Stmt::Trace {
                 message_span,
                 message,
             } => {
-                self.check_expr(&Type::Dynamic, *message_span, message)?;
+                self.check_expr(&TypeReq::None, *message_span, message)?;
                 Ok(())
             }
         }

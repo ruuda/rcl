@@ -421,7 +421,12 @@ impl<'a> Abstractor<'a> {
                     .map(|arg| self.type_expr(&arg.inner))
                     .collect::<Result<Box<_>>>()?,
             },
-            CType::Function { args, result } => AType::Function {
+            CType::Function {
+                arrow_span,
+                args,
+                result,
+            } => AType::Function {
+                arrow_span: *arrow_span,
                 args: args
                     .iter()
                     .map(|arg| self.type_expr(&arg.inner))

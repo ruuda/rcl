@@ -1262,9 +1262,11 @@ impl<'a> Parser<'a> {
         let args = self.parse_types()?;
         self.pop_bracket()?;
         self.skip_non_code()?;
-        self.parse_token(Token::ThinArrow, "Expected '->' here in function type.")?;
+        let arrow_span =
+            self.parse_token(Token::ThinArrow, "Expected '->' here in function type.")?;
         let result_type = self.parse_type_expr()?;
         let fn_type = Type::Function {
+            arrow_span,
             args,
             result: Box::new(result_type),
         };

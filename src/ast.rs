@@ -316,6 +316,7 @@ pub enum Type {
 
     /// A function type with zero or more arguments, and one result type.
     Function {
+        arrow_span: Span,
         args: Box<[Type]>,
         result: Box<Type>,
     },

@@ -595,7 +595,7 @@ impl<'a> Formatter<'a> {
                 self.span(*name)
                 self.types("[", args, "]")
             },
-            Type::Function { args, result } => concat! {
+            Type::Function { args, result, .. } => concat! {
                 self.types("(", args, ")")
                 " -> "
                 self.type_(result)
