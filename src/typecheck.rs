@@ -247,6 +247,7 @@ impl<'a> TypeChecker<'a> {
                 for seq in seqs {
                     seq_type = self.check_seq(seq, seq_type)?;
                 }
+
                 if is_error {
                     req.check_type(expr_span, &seq_type.into_type())?
                 } else {
@@ -690,7 +691,7 @@ impl<'a> TypeChecker<'a> {
                 // TODO: We need the key and value spans. For now I'm using op_span.
                 SeqType::SetOrDict => {
                     let k = self.check_expr(&TypeReq::None, *op_span, key)?;
-                    let v = self.check_expr(&TypeReq::None, *op_span, key)?;
+                    let v = self.check_expr(&TypeReq::None, *op_span, value)?;
                     Ok(SeqType::UntypedDict(*op_span, k, v))
                 }
                 SeqType::TypedList(..) => {

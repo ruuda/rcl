@@ -283,7 +283,8 @@ pub fn type_error<T1: AsTypeName, T2: AsTypeName>(at: Span, expected: &T1, actua
             indent! { expected.format_type() }
             Doc::HardBreak Doc::HardBreak
             "But found this type: "
-            indent! { expected.format_type() }
+            Doc::HardBreak Doc::HardBreak
+            indent! { actual.format_type() }
         }),
     }
 }
