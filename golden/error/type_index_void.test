@@ -9,13 +9,10 @@ stdin:5:4
   ╷
 5 │ {}[{} | std]
   ╵    ^~~~~~~~
-Error: Dict does not have a key {
-  range = std.range,
-  read_file_utf8 = std.read_file_utf8,
-}.
+Error: Expected a value of type Void, but no such values exist.
 
 stdin:5:1
   ╷
 5 │ {}[{} | std]
   ╵ ^~
-Note: On value: {}
+Note: Expected Void because this collection is empty.

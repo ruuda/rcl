@@ -11,4 +11,4 @@ stdin:1:5
   ╷
 1 │ "0" + 1
   ╵     ^
-Note: Expected Int due to this operator.
+Note: Expected Int because of this operator.

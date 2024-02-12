@@ -7,13 +7,10 @@ stdin:3:4
   ╷
 3 │ xs[{} | std]
   ╵    ^~~~~~~~
-Error: Dict does not have a key {
-  range = std.range,
-  read_file_utf8 = std.read_file_utf8,
-}.
+Error: Type mismatch. Expected a value that fits this type:
 
-stdin:3:1
-  ╷
-3 │ xs[{} | std]
-  ╵ ^~
-Note: On value: { «function»: 0 }
+  (Dynamic) -> Int
+
+But got this value:
+
+  { range = std.range, read_file_utf8 = std.read_file_utf8 }

@@ -11,4 +11,4 @@ stdin:1:1
   ╷
 1 │ not "true"
   ╵ ^~~
-Note: Expected Bool due to this operator.
+Note: Expected Bool because of this operator.

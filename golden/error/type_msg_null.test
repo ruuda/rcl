@@ -13,4 +13,4 @@ stdin:2:8
   ╷
 2 │ let x: Null = 0;
   ╵        ^~~~
-Note: The expected type is specified here.
+Note: Expected Null because of this annotation.

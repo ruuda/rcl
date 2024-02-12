@@ -13,4 +13,4 @@ stdin:2:8
   ╷
 2 │ let x: Bool = 0;
   ╵        ^~~~
-Note: The expected type is specified here.
+Note: Expected Bool because of this annotation.

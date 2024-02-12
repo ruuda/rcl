@@ -12,4 +12,4 @@ stdin:1:8
   ╷
 1 │ let x: Int = "not an int";
   ╵        ^~~
-Note: The expected type is specified here.
+Note: Expected Int because of this annotation.
