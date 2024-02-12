@@ -12,7 +12,7 @@ Error: Type mismatch. Expected this type:
 
 But found this type:
 
-  (Dynamic, Dynamic, Dynamic) -> Bool
+  (Any, Any, Any) -> Bool
 
 stdin:1:8
   ╷

@@ -1,4 +1,4 @@
-// This is a regression test, the typechecker tried to blame an error on Dynamic here.
+// This is a regression test, the typechecker tried to blame an error on Any here.
 let f = x => 0;
 let xs = {f: 0};
 xs[x => x]

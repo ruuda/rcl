@@ -1,4 +1,4 @@
-// This is a regression test, the typechecker tried to blame an error on Dynamic here.
+// This is a regression test, the typechecker tried to blame an error on Any here.
 // TODO: The type error that complained about Void was maybe nicer, at least for
 // a type system geek, but for a regular user, maybe the key error is actually
 // better.

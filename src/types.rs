@@ -18,12 +18,10 @@ use crate::source::Span;
 /// A type.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Type {
-    /// Any value, the type is not statically known.
+    /// Any value, a more concrete type is not statically known.
     ///
     /// This is the top of the type lattice, it is a supertype of all types.
-    // TODO: Rename to `Any`? It is now very clearly the "any" value type in the
-    // lattice and it's no longer an exception to mean "runtime-checked".
-    Dynamic,
+    Any,
 
     /// The type of unreachable code.
     ///
@@ -74,7 +72,7 @@ pub struct Function {
 pub enum Source {
     /// There is no source for this type.
     ///
-    /// This is the case for `Type::Dynamic` when it is introduced by the
+    /// This is the case for `Type::Any` when it is introduced by the
     /// typechecker for expressions that are not otherwise constrained.
     None,
 
@@ -147,11 +145,11 @@ impl Type {
     /// TODO: This should take self and other by value.
     pub fn meet(&self, other: &Type) -> Type {
         match (self, other) {
-            // Anything involving dynamic becomes dynamic, anything involving
+            // Anything involving any becomes any, anything involving
             // void becomes the other thing, these are the top and bottom of
             // the type lattice.
-            (Type::Dynamic, _) => Type::Dynamic,
-            (_, Type::Dynamic) => Type::Dynamic,
+            (Type::Any, _) => Type::Any,
+            (_, Type::Any) => Type::Any,
             (Type::Void, that) => that.clone(),
             (this, Type::Void) => this.clone(),
 
@@ -191,15 +189,15 @@ impl Type {
             }),
 
             // TODO: Support meeting functions.
-            (Type::Function(_), Type::Function(_)) => Type::Dynamic,
+            (Type::Function(_), Type::Function(_)) => Type::Any,
 
             // Any two values that mismatch, we can't describe with a single
             // static type, but that doesn't mean it's a type error, the program
             // may still be valid at runtime. E.g, I have a list with a function
             // and an int. If the program only ever calls `list[0]` and performs
             // integer addition on `list[1]`, that is fine. We can type the list
-            // as `List[Dynamic]`.
-            _ => Type::Dynamic,
+            // as `List[Any]`.
+            _ => Type::Any,
         }
     }
 
@@ -207,7 +205,7 @@ impl Type {
     pub fn is_atom(&self) -> bool {
         matches!(
             self,
-            Type::Bool | Type::Int | Type::Null | Type::String | Type::Void | Type::Dynamic,
+            Type::Bool | Type::Int | Type::Null | Type::String | Type::Void | Type::Any,
         )
     }
 }
@@ -285,10 +283,10 @@ impl SourcedType {
         }
     }
 
-    /// Construct [`Type::Dynamic`] without source.
+    /// Construct [`Type::Any`] without source.
     pub const fn any() -> SourcedType {
         SourcedType {
-            type_: Type::Dynamic,
+            type_: Type::Any,
             source: Source::None,
         }
     }
@@ -311,18 +309,18 @@ impl SourcedType {
     /// *not* mean that `U < T` holds!
     pub fn is_subtype_of(&self, other: &SourcedType) -> TypeDiff {
         match (&self.type_, &other.type_) {
-            // Void is a subtype of everything, Dynamic a supertype of everything,
+            // Void is a subtype of everything, Any a supertype of everything,
             // they are the top and bottom of the lattice.
             (Type::Void, _) => TypeDiff::Ok(self.clone()),
-            (_, Type::Dynamic) => TypeDiff::Ok(self.clone()),
+            (_, Type::Any) => TypeDiff::Ok(self.clone()),
 
             // If I take any value from not-Void, it is not a member of Void.
             (_, Type::Void) => TypeDiff::Error(self.clone(), other.clone()),
 
             // If I take any arbitrary value, is it a member of some type T,
-            // when T is not `Dynamic` (that case is already covered above)?
+            // when T is not `Any` (that case is already covered above)?
             // We don't know, it depends on T.
-            (Type::Dynamic, _) => TypeDiff::Defer(other.clone()),
+            (Type::Any, _) => TypeDiff::Defer(other.clone()),
 
             // Every type is a subtype of itself. We preserve the right-hand
             // side as the type because usually that has the more interesting
@@ -334,7 +332,7 @@ impl SourcedType {
             (Type::String, Type::String) => TypeDiff::Ok(other.clone()),
 
             // The collection types are covariant in their argument.
-            // E.g. `List[Int] < List[Dynamic]`.
+            // E.g. `List[Int] < List[Any]`.
             (Type::List(l1), Type::List(l2)) => match l1.is_subtype_of(l2) {
                 TypeDiff::Ok(..) => TypeDiff::Ok(self.clone()),
                 TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
@@ -402,15 +400,11 @@ impl TypeDiff {
                         ", but no such values exist."
                     })
                 } else {
-                    // Dynamic can never be the top level-cause of a type error.
+                    // Any can never be the top level-cause of a type error.
                     // As a supertype, any value is fine, and as the actual type,
                     // it should result in a runtime check rather than an error.
-                    debug_assert_ne!(actual.type_, Type::Dynamic, "Any should not cause errors.");
-                    debug_assert_ne!(
-                        expected.type_,
-                        Type::Dynamic,
-                        "Any should not cause errors."
-                    );
+                    debug_assert_ne!(actual.type_, Type::Any, "Any should not cause errors.");
+                    debug_assert_ne!(expected.type_, Type::Any, "Any should not cause errors.");
 
                     // A top-level type error, we can report with a simple message.
                     at.error("Type mismatch.")
@@ -550,9 +544,9 @@ pub fn builtin(type_: Type) -> SourcedType {
 /// * `Dict[K, V]` is written `{K: V}`.
 /// * `(P, Q) -> R` is written `(fn (P, Q) -> R)`
 macro_rules! make_type {
+    (Any) => { builtin(Type::Any) };
     (Int) => { builtin(Type::Int) };
     (Bool) => { builtin(Type::Bool) };
-    (Dynamic) => { builtin(Type::Dynamic) };
     (String) => { builtin(Type::String) };
     ([$elem:tt]) => { builtin(Type::List(Rc::new(make_type!($elem)))) };
     ({$elem:tt}) => { builtin(Type::Set(Rc::new(make_type!($elem)))) };

@@ -147,7 +147,7 @@ fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> 
 
 builtin_method!(
     "Dict.contains",
-    (element: Dynamic) -> Bool,
+    (element: Any) -> Bool,
     const DICT_CONTAINS,
     builtin_dict_contains
 );
@@ -160,7 +160,7 @@ fn builtin_dict_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Valu
 
 builtin_method!(
     "List.contains",
-    (element: Dynamic) -> Bool,
+    (element: Any) -> Bool,
     const LIST_CONTAINS,
     builtin_list_contains
 );
@@ -174,7 +174,7 @@ fn builtin_list_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Valu
 
 builtin_method!(
     "Set.contains",
-    (element: Dynamic) -> Bool,
+    (element: Any) -> Bool,
     const SET_CONTAINS,
     builtin_set_contains
 );
@@ -187,7 +187,7 @@ fn builtin_set_contains(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
 
 builtin_method!(
     "Dict.get",
-    (key: Dynamic, default: Dynamic) -> Dynamic,
+    (key: Any, default: Any) -> Any,
     const DICT_GET,
     builtin_dict_get
 );
@@ -205,7 +205,7 @@ fn builtin_dict_get(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
 
 builtin_method!(
     "Dict.keys",
-    () -> {Dynamic},
+    () -> {Any},
     const DICT_KEYS,
     builtin_dict_keys
 );
@@ -217,7 +217,7 @@ fn builtin_dict_keys(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
 
 builtin_method!(
     "Dict.values",
-    () -> [Dynamic],
+    () -> [Any],
     const DICT_VALUES,
     builtin_dict_values
 );
@@ -229,7 +229,7 @@ fn builtin_dict_values(_eval: &mut Evaluator, call: MethodCall) -> Result<Value>
 
 builtin_method!(
     "Dict.except",
-    (key: Dynamic) -> {Dynamic: Dynamic},
+    (key: Any) -> {Any: Any},
     const DICT_EXCEPT,
     builtin_dict_except
 );
@@ -243,7 +243,7 @@ fn builtin_dict_except(_eval: &mut Evaluator, call: MethodCall) -> Result<Value>
 
 builtin_method!(
     "Set.except",
-    (element: Dynamic) -> {Dynamic},
+    (element: Any) -> {Any},
     const SET_EXCEPT,
     builtin_set_except
 );
@@ -298,7 +298,7 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
 
 builtin_method!(
     "List.group_by",
-    (get_key: (fn (element: Dynamic) -> Dynamic)) -> {Dynamic: [Dynamic]},
+    (get_key: (fn (element: Any) -> Any)) -> {Any: [Any]},
     const LIST_GROUP_BY,
     builtin_list_group_by
 );
@@ -313,7 +313,7 @@ fn builtin_list_group_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value
 
 builtin_method!(
     "Set.group_by",
-    (get_key: (fn (element: Dynamic) -> Dynamic)) -> {Dynamic: {Dynamic}},
+    (get_key: (fn (element: Any) -> Any)) -> {Any: {Any}},
     const SET_GROUP_BY,
     builtin_set_group_by
 );
@@ -362,7 +362,7 @@ fn builtin_key_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
 
 builtin_method!(
     "List.key_by",
-    (get_key: (fn (element: Dynamic) -> Dynamic)) -> {Dynamic: [Dynamic]},
+    (get_key: (fn (element: Any) -> Any)) -> {Any: [Any]},
     const LIST_KEY_BY,
     builtin_list_key_by
 );
@@ -373,7 +373,7 @@ fn builtin_list_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> 
 
 builtin_method!(
     "Set.key_by",
-    (get_key: (fn (element: Dynamic) -> Dynamic)) -> {Dynamic: {Dynamic}},
+    (get_key: (fn (element: Any) -> Any)) -> {Any: {Any}},
     const SET_KEY_BY,
     builtin_set_key_by
 );
@@ -556,9 +556,9 @@ fn builtin_string_replace(_eval: &mut Evaluator, call: MethodCall) -> Result<Val
 builtin_method!(
     "List.fold",
     (
-        seed: Dynamic,
-        reduce: (fn (accumulator: Dynamic, element: Dynamic) -> Dynamic)
-    ) -> Dynamic,
+        seed: Any,
+        reduce: (fn (accumulator: Any, element: Any) -> Any)
+    ) -> Any,
     const LIST_FOLD,
     builtin_list_fold
 );
@@ -606,7 +606,7 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
 
 builtin_method!(
     "List.join",
-    (separator: Dynamic) -> String,
+    (separator: Any) -> String,
     const LIST_JOIN,
     builtin_list_join
 );
@@ -632,7 +632,7 @@ fn builtin_list_join(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
 
 builtin_method!(
     "List.reverse",
-    () -> [Dynamic],
+    () -> [Any],
     const LIST_REVERSE,
     builtin_list_reverse
 );
@@ -645,7 +645,7 @@ fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
 
 builtin_method!(
     "List.enumerate",
-    () -> {Int: Dynamic},
+    () -> {Int: Any},
     const LIST_ENUMERATE,
     builtin_list_enumerate
 );

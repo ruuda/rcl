@@ -97,29 +97,29 @@ let add: (Int, Int) -> Int = (x, y) => x + y;
 The parentheses are mandatory, even for functions that take a single argument.
 A trailing comma is optional.
 
-## The dynamic type
+## The Any type
 
-The `Dynamic` type signals to the typechecker that the type of a value is not
-known statically. Variables that have type `Dynamic` never cause static type
-errors, but they can still cause runtime type errors.
+Any possible value is an instance of the `Any` type. It is the least informative
+type: nothing more specific is known statically. Variables that have type `Any`
+never cause static type errors, but they can still cause runtime type errors.
 
 ```rcl
 let x: Int = 32;
-let y: Dynamic = x;
-// Not a static type error: an expression with type Dynamic could evaluate to
-// a string, so assigning it to a variable of type String is allowed. But at
+let y: Any = x;
+// Not a static type error: an expression with type Any could evaluate to a
+// string, so assigning it to a variable of type String is allowed. But at
 // runtime, we verify that the value is really a string, and that check fails.
 let z: String = y;
 z
 ```
 
-Annotating a variable with `Dynamic` is not useful. At best it behaves the same
+Annotating a variable with `Any` is not useful. At best it behaves the same
 as not annotating the variable, but in the worst case it forces the typechecker
-to discard type information that it was able to infer. However, `Dynamic` can be
+to discard type information that it was able to infer. However, `Any` can be
 useful as part of a more complex type, to partially enforce some structure:
 
 ```rcl
-let widgets: Dict[String, Dynamic] = {
+let widgets: Dict[String, Any] = {
   frobnicator = { foobar = 42 },
   turbo-encabulator = { prefabulated = true, bearings = "spurving" },
 };

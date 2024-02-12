@@ -14,4 +14,4 @@ stdin:2:1
   ╵ ^
 Note: Function has this type:
 
-  (Dynamic) -> Int
+  (Any) -> Int

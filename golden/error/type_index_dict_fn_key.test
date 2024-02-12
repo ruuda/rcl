@@ -9,7 +9,7 @@ stdin:3:4
   ╵    ^~~~~~~~
 Error: Type mismatch. Expected a value that fits this type:
 
-  (Dynamic) -> Int
+  (Any) -> Int
 
 But got this value:
 

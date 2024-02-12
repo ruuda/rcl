@@ -416,7 +416,7 @@ impl Loader {
     pub fn get_typechecked_ast(&self, env: &mut typecheck::Env, id: DocId) -> Result<ast::Expr> {
         // The typechecker needs a span to blame type errors on, we put in the
         // entire document. It is not going to blame any type errors on this
-        // span, because we check Type::Dynamic which any value satisfies. If we
+        // span, because we check `Type::Any` which any value satisfies. If we
         // want to typecheck through imports, we would need an expected type and
         // span from the import site.
         let span = self.get_span(id);

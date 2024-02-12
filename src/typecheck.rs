@@ -31,11 +31,11 @@ pub fn prelude() -> Env {
     env
 }
 
-/// Convert a type name into the corresponding primitive type requirement.
+/// Convert a type name into the corresponding primitive type.
 fn get_primitive_type(name: &str) -> Option<Type> {
     match name {
+        "Any" => Some(Type::Any),
         "Bool" => Some(Type::Bool),
-        "Dynamic" => Some(Type::Dynamic),
         "Int" => Some(Type::Int),
         "Null" => Some(Type::Null),
         "String" => Some(Type::String),
@@ -168,7 +168,7 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<
 /// Shorthand for writing [`SourcedType::any`].
 pub fn type_any() -> &'static SourcedType {
     &SourcedType {
-        type_: Type::Dynamic,
+        type_: Type::Any,
         source: Source::None,
     }
 }
@@ -244,10 +244,10 @@ impl<'a> TypeChecker<'a> {
                 // TODO: Confirm that the path is a string literal,
                 // we can do that here!
 
-                // The type of an import is always `Dynamic`. Though if that is
+                // The type of an import is always `Any`. Though if that is
                 // the case, that removes one justification for having it be a
                 // keyword instead of a builtin method `std.import`. Because we
-                // can just type it: `std.import: (fname: String) -> Dynamic`.
+                // can just type it: `std.import: (fname: String) -> Any`.
                 type_any().is_subtype_of(expected).check(expr_span)?
             }
 
@@ -274,7 +274,7 @@ impl<'a> TypeChecker<'a> {
                     // report it in full detail, we first infer the type of the
                     // sequence.
                     not_collection => {
-                        is_error = not_collection != &Type::Dynamic;
+                        is_error = not_collection != &Type::Any;
                         SeqType::SetOrDict
                     }
                 };
@@ -304,7 +304,7 @@ impl<'a> TypeChecker<'a> {
                         elem_infer: SourcedType::void(expr_span),
                     },
                     not_list => {
-                        is_error = not_list != &Type::Dynamic;
+                        is_error = not_list != &Type::Any;
                         SeqType::UntypedList(SourcedType::void(expr_span))
                     }
                 };
@@ -400,7 +400,7 @@ impl<'a> TypeChecker<'a> {
                 // call with String as first argument, so we push that into the
                 // function body, and there is a type error at the `+` because
                 // we expect a String but `+` creates an Int. But we could also
-                // say, we typecheck the function first, infer `Dynamic -> Int`
+                // say, we typecheck the function first, infer `Any -> Int`
                 // (with a runtime check inserted at left-hand side of `+`), then
                 // we call that with "42", which passes, but the runtime check
                 // fails. We go with the latter: we assume function definitions
@@ -410,7 +410,7 @@ impl<'a> TypeChecker<'a> {
                 let result_type = match &fn_type.type_ {
                     // TODO: Typecheck call args.
                     Type::Function(f) => &f.result,
-                    Type::Dynamic => type_any(),
+                    Type::Any => type_any(),
                     _not_function => {
                         return function_span
                             .error("This cannot be called.")
@@ -437,7 +437,7 @@ impl<'a> TypeChecker<'a> {
                 let (index_type, result_type) = match &collection_type.type_ {
                     Type::List(t) => (type_int_index(), (**t).clone()),
                     Type::Dict(kv) => (&kv.key, kv.value.clone()),
-                    Type::Dynamic => (type_any(), type_any().clone()),
+                    Type::Any => (type_any(), type_any().clone()),
                     not_indexable => {
                         return open
                             .error("Indexing is not supported here.")
@@ -522,7 +522,7 @@ impl<'a> TypeChecker<'a> {
                 // on the result. If there is a requirement but not for a
                 // function, then this is a type error, but we'll still
                 // typecheck the function first and report the error later.
-                is_error = not_fn != &Type::Dynamic;
+                is_error = not_fn != &Type::Any;
                 for arg in args.iter() {
                     arg_types.push(type_any().clone());
                     self.env.push(arg.clone(), type_any().clone());
@@ -590,7 +590,7 @@ impl<'a> TypeChecker<'a> {
             BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => (Type::Int, Type::Int),
             BinOp::And | BinOp::Or => (Type::Bool, Type::Bool),
             BinOp::Lt | BinOp::LtEq | BinOp::Gt | BinOp::GtEq | BinOp::Eq | BinOp::Neq => {
-                (Type::Dynamic, Type::Bool)
+                (Type::Any, Type::Bool)
             }
             BinOp::Union => return self.check_binop_union(op_span, lhs_span, rhs_span, lhs, rhs),
         };
@@ -620,7 +620,7 @@ impl<'a> TypeChecker<'a> {
                 type_: Type::Set(Rc::new(tl.meet(tr.as_ref()))),
                 source: Source::None,
             },
-            (Type::Dynamic, _) | (_, Type::Dynamic) => type_any().clone(),
+            (Type::Any, _) | (_, Type::Any) => type_any().clone(),
             (not_collection, _) => {
                 let err = op_span.error(concat! {
                     "Expected Dict or Set as the left-hand side of "
@@ -660,7 +660,7 @@ impl<'a> TypeChecker<'a> {
                 match &collection_type.type_ {
                     // If we don't know the type, we can't verify the number of
                     // loop variables, and we don't know their types.
-                    Type::Dynamic => {
+                    Type::Any => {
                         for ident in idents {
                             self.env.push(ident.clone(), type_any().clone());
                         }
