@@ -125,6 +125,16 @@ let widgets: Dict[String, Any] = {
 };
 ```
 
+## The Void type
+
+No possible value is an instance of the `Void` type. It is the inferred element
+type for empty collections.
+
+```rcl
+// Inferred to have type `List[Void]`.
+let xs = [];
+```
+
 ## Static checks
 
 The type system is designed to help prevent bugs first and foremost, and to help
