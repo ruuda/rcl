@@ -1,0 +1,18 @@
+// Without the Any, the typechecker would catch it statically. But now we have
+// to catch it at runtime.
+let x: Any = 32;
+let y: String = x;
+y
+
+# output:
+stdin:4:17
+  ╷
+4 │ let y: String = x;
+  ╵                 ^
+Error: Type mismatch. Expected a value that fits this type:
+
+  String
+
+But got this value:
+
+  32
