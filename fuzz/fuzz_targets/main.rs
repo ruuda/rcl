@@ -96,14 +96,14 @@ fn fuzz_eval(loader: &mut Loader, input: &str) -> Result<()> {
 fn run_fmt(loader: &mut Loader, input: &str, cfg: &pprint::Config) -> Result<String> {
     let id = loader.load_string(input.to_string());
     let cst = loader.get_cst(id)?;
-    let doc = rcl::fmt_cst::format_expr(&input, &cst);
+    let doc = rcl::fmt_cst::format_expr(input, &cst);
     let result = doc.println(cfg);
     Ok(result)
 }
 
 /// Run the formatter twice and check for idempotency.
 fn fuzz_fmt(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
-    let out1 = run_fmt(loader, &input, &cfg)?;
+    let out1 = run_fmt(loader, input, &cfg)?;
     let out2 = run_fmt(loader, &out1, &cfg)?;
     assert_eq!(out1, out2, "Formatting should be idempotent.");
     Ok(())

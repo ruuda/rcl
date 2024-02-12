@@ -1,4 +1,5 @@
 #![no_main]
+#![allow(clippy::nonminimal_bool)]
 
 //! This fuzzer test that the lexer and `is_identifier` functions agree.
 

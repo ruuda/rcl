@@ -862,7 +862,7 @@ impl<'a> Evaluator<'a> {
                 // If the let has a type annotation, then we verify that the
                 // value fits the specified type.
                 if let Some(type_expr) = type_ {
-                    let type_ = self.eval_type_expr(env, type_expr)?;
+                    let type_ = self.eval_type_expr(type_expr)?;
                     typecheck::check_value(*ident_span, type_.as_ref(), &v)?;
                 }
 
@@ -1036,7 +1036,7 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    fn eval_type_expr(&mut self, env: &mut Env, type_: &AType) -> Result<Rc<Type>> {
+    fn eval_type_expr(&mut self, type_: &AType) -> Result<Rc<Type>> {
         match type_ {
             AType::Term { span, name } => match self.type_env.lookup(name) {
                 Some(t) => Ok(t.clone()),
@@ -1067,9 +1067,9 @@ impl<'a> Evaluator<'a> {
             AType::Function { args, result } => {
                 let args_types = args
                     .iter()
-                    .map(|t| self.eval_type_expr(env, t))
+                    .map(|t| self.eval_type_expr(t))
                     .collect::<Result<Vec<_>>>()?;
-                let result_type = self.eval_type_expr(env, result)?;
+                let result_type = self.eval_type_expr(result)?;
                 let fn_type = types::Function {
                     args: args_types,
                     result: result_type,
@@ -1079,7 +1079,7 @@ impl<'a> Evaluator<'a> {
             AType::Apply { span, name, args } => {
                 let args_types = args
                     .iter()
-                    .map(|t| self.eval_type_expr(env, t))
+                    .map(|t| self.eval_type_expr(t))
                     .collect::<Result<Vec<_>>>()?;
                 self.eval_type_apply(*span, name.as_ref(), &args_types)
             }
