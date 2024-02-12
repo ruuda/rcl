@@ -339,9 +339,8 @@ impl Value {
             }
 
             // TODO: Typecheck functions.
-            _ => at
-                .error("Type mismatch.")
-                .with_body(concat! {
+            _ => {
+                let error = at.error("Type mismatch.").with_body(concat! {
                     "Expected a value that fits this type:"
                     Doc::HardBreak Doc::HardBreak
                     indent! { format_type(req_type).into_owned() }
@@ -349,8 +348,9 @@ impl Value {
                     "But got this value:"
                     Doc::HardBreak Doc::HardBreak
                     indent! { format_rcl(self).into_owned() }
-                })
-                .err(),
+                });
+                type_.source.clarify_error(type_, error).err()
+            }
         }
     }
 }
