@@ -258,15 +258,15 @@ impl<'a> TypeChecker<'a> {
                     Type::Set(t) => SeqType::TypedSet {
                         set_source: expected.source,
                         elem_super: t.as_ref().clone(),
-                        elem_infer: SourcedType::void(),
+                        elem_infer: SourcedType::void(expr_span),
                     },
                     Type::Dict(kv) => {
                         SeqType::TypedDict {
                             dict_source: expected.source,
                             key_super: kv.key.clone(),
-                            key_infer: SourcedType::void(),
+                            key_infer: SourcedType::void(expr_span),
                             value_super: kv.value.clone(),
-                            value_infer: SourcedType::void(),
+                            value_infer: SourcedType::void(expr_span),
                         }
                     }
                     // If we are expecting something other than a dict or list,
@@ -275,7 +275,7 @@ impl<'a> TypeChecker<'a> {
                     // sequence.
                     not_collection => {
                         is_error = not_collection != &Type::Dynamic;
-                        SeqType::SetOrDict
+                        SeqType::SetOrDict(expr_span)
                     }
                 };
 
@@ -299,11 +299,11 @@ impl<'a> TypeChecker<'a> {
                 let mut seq_type = match &expected.type_ {
                     Type::List(t) => SeqType::TypedList {
                         elem_super: t.as_ref().clone(),
-                        elem_infer: SourcedType::void(),
+                        elem_infer: SourcedType::void(expr_span),
                     },
                     not_list => {
                         is_error = not_list != &Type::Dynamic;
-                        SeqType::UntypedList(SourcedType::void())
+                        SeqType::UntypedList(SourcedType::void(expr_span))
                     }
                 };
                 for seq in seqs {
@@ -731,7 +731,7 @@ impl<'a> TypeChecker<'a> {
     fn check_yield(&mut self, yield_: &mut Yield, mut seq_type: SeqType) -> Result<SeqType> {
         match yield_ {
             Yield::Elem { span, value } => match &mut seq_type {
-                SeqType::SetOrDict => {
+                SeqType::SetOrDict(..) => {
                     let t = self.check_expr(type_any(), *span, value)?;
                     Ok(SeqType::UntypedSet(*span, t))
                 }
@@ -765,7 +765,7 @@ impl<'a> TypeChecker<'a> {
                 }
             }
             Yield::Assoc { op_span, key_span, key, value_span, value } => match &mut seq_type {
-                SeqType::SetOrDict => {
+                SeqType::SetOrDict(..) => {
                     let k = self.check_expr(type_any(), *key_span, key)?;
                     let v = self.check_expr(type_any(), *value_span, value)?;
                     Ok(SeqType::UntypedDict(*op_span, k, v))
@@ -873,7 +873,10 @@ impl<'a> TypeChecker<'a> {
 /// substitute more specialized AST nodes for the different collections.
 enum SeqType {
     /// It's still unclear whether this is a set or a dict.
-    SetOrDict,
+    ///
+    /// The span contains the span of the literal, so we can use this to
+    /// construct the type source when we infer Void.
+    SetOrDict(Span),
 
     /// We expect a list here with the following element type.
     TypedList {
@@ -926,10 +929,10 @@ impl SeqType {
     fn into_type(self) -> SourcedType {
         match self {
             // An empty literal `{}` is a dict, not a set, because it is a dict in json.
-            SeqType::SetOrDict => SourcedType {
+            SeqType::SetOrDict(at) => SourcedType {
                 type_: Type::Dict(Rc::new(Dict {
-                    key: SourcedType::void(),
-                    value: SourcedType::void(),
+                    key: SourcedType::void(at),
+                    value: SourcedType::void(at),
                 })),
                 source: Source::Literal,
             },

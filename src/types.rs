@@ -81,6 +81,9 @@ pub enum Source {
     /// There were multiple sources, we had to merge them and lost the details.
     Many,
 
+    /// Expected `Void` because the collection at the given location is empty.
+    EmptyCollection(Span),
+
     /// The type comes from a built-in function.
     /// TODO: Add more details.
     Builtin,
@@ -240,12 +243,20 @@ impl Source {
 
             Source::Literal => panic!("Found a case where Literal occurs in a type error!"),
 
-            Source::Annotation(at) => error.with_note(
-                *at,
-                concat! {
-                    "Expected " expected_name " because of this annotation."
-                },
-            ),
+            Source::EmptyCollection(at) => {
+                let msg =
+                    concat! { "Expected " expected_name " because this collection is empty." };
+                error.with_note(*at, msg)
+            }
+
+            Source::Annotation(at) => {
+                let msg = if expected_type.is_atom() {
+                    concat! { "Expected " expected_name " because of this annotation." }
+                } else {
+                    "The expected type is specified here.".into()
+                };
+                error.with_note(*at, msg)
+            }
 
             Source::Operator(at) => error.with_note(
                 *at,
@@ -264,11 +275,11 @@ impl Source {
 }
 
 impl SourcedType {
-    /// Construct [`Type::Void`] without source.
-    pub fn void() -> SourcedType {
+    /// Construct [`Type::Void`] with empty collection source.
+    pub fn void(at: Span) -> SourcedType {
         SourcedType {
             type_: Type::Void,
-            source: Source::None,
+            source: Source::EmptyCollection(at),
         }
     }
 
@@ -381,11 +392,28 @@ impl TypeDiff {
         match self {
             TypeDiff::Ok(t) => Ok(Typed::Type(t)),
             TypeDiff::Defer(t) => Ok(Typed::Defer(t)),
-            TypeDiff::Error(expected, actual) => {
-                // A top-level type error, we can report with a simple message.
-                let err = at
-                    .error("Type mismatch.")
-                    .with_body(report_type_mismatch(&expected, &actual));
+            TypeDiff::Error(actual, expected) => {
+                let err = if let Type::Void = expected.type_ {
+                    at.error(concat! {
+                        "Expected a value of type "
+                        "Void".format_type()
+                        ", but no such values exist."
+                    })
+                } else {
+                    // Dynamic can never be the top level-cause of a type error.
+                    // As a supertype, any value is fine, and as the actual type,
+                    // it should result in a runtime check rather than an error.
+                    debug_assert_ne!(actual.type_, Type::Dynamic, "Any should not cause errors.");
+                    debug_assert_ne!(
+                        expected.type_,
+                        Type::Dynamic,
+                        "Any should not cause errors."
+                    );
+
+                    // A top-level type error, we can report with a simple message.
+                    at.error("Type mismatch.")
+                        .with_body(report_type_mismatch(&expected, &actual))
+                };
 
                 // If we have it, explain why the expected type is expected.
                 expected.source.clarify_error(&expected, err).err()
@@ -420,15 +448,6 @@ impl AsTypeName for &'static str {
 
 impl AsTypeName for SourcedType {
     fn format_type(&self) -> Doc<'static> {
-        // If we are generating a type error, and it has Dynamic in there as
-        // the top-level type that we format, then that's a bug in the
-        // typechecker, because Dynamic is just a way to say "I don't know what
-        // the type is yet", you can't violate a type expectation this way.
-        debug_assert_ne!(
-            self.type_,
-            Type::Dynamic,
-            "The Dynamic type should never be a direct cause of a type error.",
-        );
         format_type(&self.type_).into_owned()
     }
 
