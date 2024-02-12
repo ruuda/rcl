@@ -1,0 +1,17 @@
+// This is an example from the documentation.
+// It would execute if not for the typecheck.
+let integers = [for i in [1, 2, 3]: if i > 100: i];
+[for i in integers: not i]
+
+# output:
+stdin:4:25
+  ╷
+4 │ [for i in integers: not i]
+  ╵                         ^
+Error: Type mismatch. Expected Bool but found Int.
+
+stdin:4:21
+  ╷
+4 │ [for i in integers: not i]
+  ╵                     ^~~
+Note: Expected Bool because of this operator.

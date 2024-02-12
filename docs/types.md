@@ -124,3 +124,35 @@ let widgets: Dict[String, Any] = {
   turbo-encabulator = { prefabulated = true, bearings = "spurving" },
 };
 ```
+
+## Static checks
+
+The type system is designed to help prevent bugs first and foremost, and to help
+make code more self-documenting and readable second. It is _not_ a goal that
+every possible document that could be evaluated without the typechecker, is
+well-typed. For example, the following program has a static type error:
+
+```rcl
+let xs: List[Int] = [];
+// Error: Expected String but found Int.
+let ys: List[String] = xs;
+ys
+```
+
+If we remove the type annotations, the document evaluates to `[]`, so the
+typechecker rejects a document that could have been evaluated.
+
+Here is another example of a program that has a static type error, despite
+not even having type annotations:
+
+```rcl
+// This list is empty, but nonetheless inferred to have type `List[Int]`.
+let integers = [for i in [1, 2, 3]: if i > 100: i];
+// Type error: Expected Bool as argument to `not`, but found `Int`.
+[for i in integers: not i]
+```
+
+Without the typechecker this code would execute just fine, because the
+ill-typed code path is never executed. But this above code is very likely a bug,
+and would fail when the parameters change. Therefore <abbr>RCL</abbr> prefers
+keeping the typechecker simple over making every executable document well-typed.

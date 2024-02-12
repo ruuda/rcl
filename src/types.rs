@@ -307,6 +307,16 @@ impl SourcedType {
     /// 3. It depends on `t`, the two types are not orderable.
     /// Note that case 2 (`not (T < U)`) does not imply the converse! It does
     /// *not* mean that `U < T` holds!
+    ///
+    /// Also, we do make some exceptions to this, because it's more helpful to
+    /// catch type errors than to be able to type any possible expression that
+    /// can be evaluated. For example, `not (Int ≤ String)` is definitely true.
+    /// We would like `List` to be covariant in its argument, so we could say
+    /// `List[T] ≤ List[U] <=> T ≤ U`. We would get `not (List[Int] ≤ List[String])`.
+    /// But that violates the above definition, because `[]` is an instance of
+    /// both! But in this case, reporting an error if the element types mismatch
+    /// is helpful, so we won't make `[]` an exception that causes a runtime
+    /// check.
     pub fn is_subtype_of(&self, other: &SourcedType) -> TypeDiff {
         match (&self.type_, &other.type_) {
             // Void is a subtype of everything, Any a supertype of everything,
