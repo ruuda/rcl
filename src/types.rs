@@ -89,11 +89,7 @@ pub enum Source {
     Builtin,
 
     /// The type was inferred from a literal.
-    ///
-    /// I have a suspicion that this case is not going to show up in type errors,
-    /// so I didn't add more details -- let's test first, maybe in the fuzzer,
-    /// if it is even possible to cause an error that can be traced back here.
-    Literal,
+    Literal(Span),
 
     /// It was a type annotation in the source code.
     Annotation(Span),
@@ -241,11 +237,17 @@ impl Source {
             // TODO: Add information about the builtin (function and arg name).
             Source::Builtin => error,
 
-            Source::Literal => panic!("Found a case where Literal occurs in a type error!"),
+            Source::Literal(at) => {
+                let msg = concat! {
+                    "Expected " expected_name " because of this value."
+                };
+                error.with_note(*at, msg)
+            }
 
             Source::EmptyCollection(at) => {
-                let msg =
-                    concat! { "Expected " expected_name " because this collection is empty." };
+                let msg = concat! {
+                    "Expected " expected_name " because this collection is empty."
+                };
                 error.with_note(*at, msg)
             }
 

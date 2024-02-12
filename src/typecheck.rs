@@ -174,10 +174,10 @@ pub fn type_any() -> &'static SourcedType {
 }
 
 /// Construct a `SourcedType` for a literal.
-fn type_literal(type_: Type) -> SourcedType {
+fn type_literal(at: Span, type_: Type) -> SourcedType {
     SourcedType {
         type_,
-        source: Source::Literal,
+        source: Source::Literal(at),
     }
 }
 
@@ -275,7 +275,7 @@ impl<'a> TypeChecker<'a> {
                     // sequence.
                     not_collection => {
                         is_error = not_collection != &Type::Dynamic;
-                        SeqType::SetOrDict(expr_span)
+                        SeqType::SetOrDict
                     }
                 };
 
@@ -286,10 +286,12 @@ impl<'a> TypeChecker<'a> {
                     seq_type = self.check_seq(seq, seq_type)?;
                 }
 
+                let seq_type = seq_type.into_type(expr_span);
+
                 if is_error {
-                    seq_type.into_type().is_subtype_of(expected).check(expr_span)?
+                    seq_type.is_subtype_of(expected).check(expr_span)?
                 } else {
-                    Typed::Type(seq_type.into_type())
+                    Typed::Type(seq_type)
                 }
             }
 
@@ -310,17 +312,19 @@ impl<'a> TypeChecker<'a> {
                     seq_type = self.check_seq(seq, seq_type)?;
                 }
 
+                let seq_type = seq_type.into_type(expr_span);
+
                 if is_error {
-                    seq_type.into_type().is_subtype_of(expected).check(expr_span)?
+                    seq_type.is_subtype_of(expected).check(expr_span)?
                 } else {
-                    Typed::Type(seq_type.into_type())
+                    Typed::Type(seq_type)
                 }
             }
 
-            Expr::NullLit => type_literal(Type::Null).is_subtype_of(expected).check(expr_span)?,
-            Expr::BoolLit(..) => type_literal(Type::Bool).is_subtype_of(expected).check(expr_span)?,
-            Expr::IntegerLit(..) => type_literal(Type::Int).is_subtype_of(expected).check(expr_span)?,
-            Expr::StringLit(..) => type_literal(Type::String).is_subtype_of(expected).check(expr_span)?,
+            Expr::NullLit => type_literal(expr_span, Type::Null).is_subtype_of(expected).check(expr_span)?,
+            Expr::BoolLit(..) => type_literal(expr_span, Type::Bool).is_subtype_of(expected).check(expr_span)?,
+            Expr::IntegerLit(..) => type_literal(expr_span, Type::Int).is_subtype_of(expected).check(expr_span)?,
+            Expr::StringLit(..) => type_literal(expr_span, Type::String).is_subtype_of(expected).check(expr_span)?,
 
             Expr::Format(fragments) => {
                 // Typecheck the fragments. For now we don't demand statically
@@ -330,7 +334,7 @@ impl<'a> TypeChecker<'a> {
                     self.check_expr(type_any(), fragment.span, &mut fragment.body)?;
                 }
                 // Format strings evaluate to string values.
-                type_literal(Type::String).is_subtype_of(expected).check(expr_span)?
+                type_literal(expr_span, Type::String).is_subtype_of(expected).check(expr_span)?
             },
 
             Expr::IfThenElse {
@@ -387,7 +391,7 @@ impl<'a> TypeChecker<'a> {
                     type_: fn_type.clone(),
                 };
 
-                Typed::Type(type_literal(Type::Function(fn_type)))
+                Typed::Type(type_literal(expr_span, Type::Function(fn_type)))
             }
 
             Expr::Call { function_span, function, args, .. } => {
@@ -540,7 +544,7 @@ impl<'a> TypeChecker<'a> {
             // right error.
             let fn_type = SourcedType {
                 type_: Type::Function(fn_type_inner.clone()),
-                source: Source::Literal,
+                source: Source::Literal(expr_span),
             };
             fn_type.is_subtype_of(expected).check(expr_span)?;
         };
@@ -731,7 +735,7 @@ impl<'a> TypeChecker<'a> {
     fn check_yield(&mut self, yield_: &mut Yield, mut seq_type: SeqType) -> Result<SeqType> {
         match yield_ {
             Yield::Elem { span, value } => match &mut seq_type {
-                SeqType::SetOrDict(..) => {
+                SeqType::SetOrDict => {
                     let t = self.check_expr(type_any(), *span, value)?;
                     Ok(SeqType::UntypedSet(*span, t))
                 }
@@ -765,7 +769,7 @@ impl<'a> TypeChecker<'a> {
                 }
             }
             Yield::Assoc { op_span, key_span, key, value_span, value } => match &mut seq_type {
-                SeqType::SetOrDict(..) => {
+                SeqType::SetOrDict => {
                     let k = self.check_expr(type_any(), *key_span, key)?;
                     let v = self.check_expr(type_any(), *value_span, value)?;
                     Ok(SeqType::UntypedDict(*op_span, k, v))
@@ -873,10 +877,7 @@ impl<'a> TypeChecker<'a> {
 /// substitute more specialized AST nodes for the different collections.
 enum SeqType {
     /// It's still unclear whether this is a set or a dict.
-    ///
-    /// The span contains the span of the literal, so we can use this to
-    /// construct the type source when we infer Void.
-    SetOrDict(Span),
+    SetOrDict,
 
     /// We expect a list here with the following element type.
     TypedList {
@@ -926,33 +927,31 @@ enum SeqType {
 
 impl SeqType {
     /// Return the inferred type for this sequence.
-    fn into_type(self) -> SourcedType {
-        match self {
+    ///
+    /// Takes the span of the full collection literal.
+    fn into_type(self, span: Span) -> SourcedType {
+        let type_ = match self {
             // An empty literal `{}` is a dict, not a set, because it is a dict in json.
-            SeqType::SetOrDict(at) => SourcedType {
-                type_: Type::Dict(Rc::new(Dict {
-                    key: SourcedType::void(at),
-                    value: SourcedType::void(at),
-                })),
-                source: Source::Literal,
-            },
-            SeqType::UntypedList(t) | SeqType::TypedList { elem_infer: t, .. } => SourcedType {
-                type_: Type::List(Rc::new(t)),
-                source: Source::Literal,
-            },
-            SeqType::UntypedSet(.., t) | SeqType::TypedSet { elem_infer: t, .. } => SourcedType {
-                type_: Type::Set(Rc::new(t)),
-                source: Source::Literal,
-            },
+            SeqType::SetOrDict => Type::Dict(Rc::new(Dict {
+                key: SourcedType::void(span),
+                value: SourcedType::void(span),
+            })),
+            SeqType::UntypedList(t) | SeqType::TypedList { elem_infer: t, .. } => {
+                Type::List(Rc::new(t))
+            }
+            SeqType::UntypedSet(.., t) | SeqType::TypedSet { elem_infer: t, .. } => {
+                Type::Set(Rc::new(t))
+            }
             SeqType::UntypedDict(.., k, v)
             | SeqType::TypedDict {
                 key_infer: k,
                 value_infer: v,
                 ..
-            } => SourcedType {
-                type_: Type::Dict(Rc::new(Dict { key: k, value: v })),
-                source: Source::Literal,
-            },
+            } => Type::Dict(Rc::new(Dict { key: k, value: v })),
+        };
+        SourcedType {
+            type_,
+            source: Source::Literal(span),
         }
     }
 }

@@ -1,0 +1,11 @@
+// Note, unlike with one element, the type error does not report why it is
+// expecting a String there. We could do better when meeting the types to also
+// preserve one of the spans, but it gets hairy, so TODO: better `meet`.
+{ 1: "A", 2: "B" }["Not an Int"]
+
+# output:
+stdin:4:20
+  ╷
+4 │ { 1: "A", 2: "B" }["Not an Int"]
+  ╵                    ^~~~~~~~~~~~
+Error: Type mismatch. Expected Int but found String.
