@@ -2,14 +2,14 @@
 {}[{} | std]
 
 # output:
-stdin:5:4
+stdin:2:4
   ╷
-5 │ {}[{} | std]
+2 │ {}[{} | std]
   ╵    ^~~~~~~~
 Error: Expected a value of type Void, but no such values exist.
 
-stdin:5:1
+stdin:2:1
   ╷
-5 │ {}[{} | std]
+2 │ {}[{} | std]
   ╵ ^~
 Note: Expected Void because this collection is empty.

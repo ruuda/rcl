@@ -16,6 +16,12 @@ But got this value:
 
   ""
 
+stdin:3:56
+  ╷
+3 │   str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),
+  ╵                                                        ^
+Note: Expected Int because of this operator.
+
 stdin:3:40
   ╷
 3 │   str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),

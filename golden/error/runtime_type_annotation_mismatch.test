@@ -16,3 +16,9 @@ Error: Type mismatch. Expected a value that fits this type:
 But got this value:
 
   32
+
+stdin:4:8
+  ╷
+4 │ let y: String = x;
+  ╵        ^~~~~~
+Note: Expected String because of this annotation.
