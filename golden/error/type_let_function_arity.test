@@ -12,7 +12,7 @@ Error: Type mismatch. Expected this type:
 
 But found this type:
 
-  (Any, Any, Any) -> Bool
+  (x: Any, y: Any, z: Any) -> Bool
 
 stdin:1:8
   ╷

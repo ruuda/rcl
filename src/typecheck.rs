@@ -93,8 +93,11 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
         AType::Function { span, args, result } => {
             let args_types = args
                 .iter()
-                .map(eval_type_expr)
-                .collect::<Result<Vec<_>>>()?;
+                // For user-defined function types, right now we don't allow
+                // argument names. If we do allow them at some point, this is
+                // where we would parse them.
+                .map(|type_expr| Ok((None, eval_type_expr(type_expr)?)))
+                .collect::<Result<Vec<(Option<Ident>, SourcedType)>>>()?;
             let result_type = eval_type_expr(result)?;
             let fn_type = Rc::new(Function {
                 args: args_types,
@@ -510,8 +513,10 @@ impl<'a> TypeChecker<'a> {
             // environment if there is a match, because otherwise the body would
             // likely contain nonsense errors anyway.
             Type::Function(fn_req) if fn_req.args.len() == args.len() => {
-                for (arg, arg_type) in args.iter().zip(fn_req.args.iter()) {
-                    arg_types.push(arg_type.clone());
+                for (arg, (_name, arg_type)) in args.iter().zip(fn_req.args.iter()) {
+                    // If the type includes an argument name, discard it, and
+                    // take the name from the function body instead.
+                    arg_types.push((Some(arg.clone()), arg_type.clone()));
                     self.env.push(arg.clone(), arg_type.clone());
                 }
                 &fn_req.result
@@ -524,7 +529,7 @@ impl<'a> TypeChecker<'a> {
                 // typecheck the function first and report the error later.
                 is_error = not_fn != &Type::Any;
                 for arg in args.iter() {
-                    arg_types.push(type_any().clone());
+                    arg_types.push((Some(arg.clone()), type_any().clone()));
                     self.env.push(arg.clone(), type_any().clone());
                 }
                 type_any()

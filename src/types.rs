@@ -7,8 +7,10 @@
 
 //! Representations of types.
 
+use std::cmp::Ordering;
 use std::rc::Rc;
 
+use crate::ast::Ident;
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_type::format_type;
 use crate::markup::Markup;
@@ -28,14 +30,14 @@ pub enum Type {
     /// This is the bottom of the type lattice, it is a subtype of any type.
     Void,
 
+    /// The primitive type `Null`.
+    Null,
+
     /// The primitive type `Bool`.
     Bool,
 
     /// The primitive type `Int`.
     Int,
-
-    /// The primitive type `Null`.
-    Null,
 
     /// The primitive type `String`.
     String,
@@ -61,10 +63,62 @@ pub struct Dict {
 }
 
 /// A function type.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug)]
 pub struct Function {
-    pub args: Vec<SourcedType>,
+    /// The function arguments, including optional names.
+    ///
+    /// The names are ignored for equality and comparison purposes, but we track
+    /// them to enable more helpful error messages.
+    pub args: Vec<(Option<Ident>, SourcedType)>,
+
+    /// The result type, also called return type.
     pub result: SourcedType,
+}
+
+impl Function {
+    /// Implementation of the comparison operators that ignores argument names.
+    #[inline]
+    fn cmp_impl(&self, other: &Function) -> Ordering {
+        // First we compare on arity, because that's cheap. If it matches, we
+        // compare on result type. And if that matches too, we compare the args
+        // one by one.
+        let mut ord = self
+            .args
+            .len()
+            .cmp(&other.args.len())
+            .then_with(|| self.result.cmp(&other.result));
+
+        let mut args_zip = self.args.iter().zip(other.args.iter());
+
+        while let Ordering::Equal = ord {
+            match args_zip.next() {
+                Some(((_name1, t1), (_name2, t2))) => ord = t1.cmp(t2),
+                None => break,
+            }
+        }
+
+        ord
+    }
+}
+
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp_impl(other) == Ordering::Equal
+    }
+}
+
+impl PartialOrd for Function {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp_impl(other))
+    }
+}
+
+impl Eq for Function {}
+
+impl Ord for Function {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.cmp_impl(other)
+    }
 }
 
 /// The place where a type was constructed.
@@ -581,10 +635,67 @@ pub(crate) use make_type;
 macro_rules! make_function {
     (($( $arg_name:ident: $arg_type:tt ),*) -> $result:tt) => {
         Function {
-            // TODO: Include the argument names in types? Or at least elsewhere?
-            args: vec![ $( make_type!($arg_type) ),* ],
+            args: vec![ $( (Some(stringify!($arg_name).into()), make_type!($arg_type)) ),* ],
             result: make_type!($result),
         }
     };
 }
 pub(crate) use make_function;
+
+#[cfg(test)]
+mod test {
+    use super::{Function, Source, SourcedType, Type};
+
+    fn mk_type(type_: Type) -> SourcedType {
+        SourcedType {
+            type_,
+            source: Source::None,
+        }
+    }
+
+    #[test]
+    fn function_ord_ignores_names() {
+        let mut f1 = Function {
+            args: vec![
+                (Some("a".into()), mk_type(Type::Int)),
+                (Some("b".into()), mk_type(Type::Bool)),
+            ],
+            result: mk_type(Type::String),
+        };
+        let mut f2 = Function {
+            args: vec![
+                (Some("p".into()), mk_type(Type::Int)),
+                (Some("q".into()), mk_type(Type::Bool)),
+            ],
+            result: mk_type(Type::String),
+        };
+        assert_eq!(f1, f2);
+
+        // Even when we delete the names entirely, the functions should still
+        // be equal.
+        f2.args[0].0 = None;
+        assert_eq!(f1, f2);
+
+        // Void orders before String.
+        f1.result = mk_type(Type::Void);
+        assert!(f1 < f2);
+
+        // Void orders before Int.
+        f1.result = mk_type(Type::String);
+        f1.args[0].1 = mk_type(Type::Void);
+        assert!(f1 < f2);
+
+        // Void orders before Bool.
+        f1.args[0].1 = mk_type(Type::Int);
+        f1.args[1].1 = mk_type(Type::Void);
+        assert!(f1 < f2);
+
+        // Now we are back to the initial equality (but with names changed).
+        f1.args[1].1 = mk_type(Type::Bool);
+        assert_eq!(f1, f2);
+
+        // Having fewer args makes it order before.
+        f1.args.pop();
+        assert!(f1 < f2);
+    }
+}

@@ -28,20 +28,27 @@ pub fn format_type(type_: &Type) -> Doc {
         // Collection types.
         Type::Dict(kv) => concat! {
             Doc::from("Dict").with_markup(Markup::Type)
-            format_types("[", [&kv.key.type_, &kv.value.type_], "]")
+            format_types("[", [(None, &kv.key.type_), (None, &kv.value.type_)], "]")
         },
         Type::List(element_type) => concat! {
             Doc::from("List").with_markup(Markup::Type)
-            format_types("[", [&element_type.type_], "]")
+            format_types("[", [(None, &element_type.type_)], "]")
         },
         Type::Set(element_type) => concat! {
             Doc::from("Set").with_markup(Markup::Type)
-            format_types("[", [&element_type.type_], "]")
+            format_types("[", [(None, &element_type.type_)], "]")
         },
 
         // The function type.
         Type::Function(func) => concat! {
-            format_types("(", func.args.iter().map(|st| &st.type_), ")")
+            format_types(
+                "(",
+                func.args.iter().map(|(name, t)| (
+                    name.as_ref().map(|n| n.as_ref()),
+                    &t.type_,
+                )),
+                ")"
+            )
             " -> "
             format_type(&func.result.type_)
         },
@@ -49,13 +56,18 @@ pub fn format_type(type_: &Type) -> Doc {
 }
 
 /// A list of types enclosed by opening and closing delimiters.
-fn format_types<'a, Types: IntoIterator<Item = &'a Type>>(
+fn format_types<'a, Types: IntoIterator<Item = (Option<&'a str>, &'a Type)>>(
     open: &'static str,
     types: Types,
     close: &'static str,
 ) -> Doc<'a> {
     let mut parts = Vec::new();
-    for t in types {
+    for (optional_name, t) in types {
+        if let Some(name) = optional_name {
+            parts.push(name.into());
+            parts.push(":".into());
+            parts.push(Doc::Sep);
+        }
         parts.push(format_type(t));
         parts.push(concat! { "," Doc::Sep });
     }
