@@ -6,9 +6,3 @@ stdin:1:13
 1 │ {}.get("key")
   ╵             ^
 Error: Missing argument 'default'. 'Dict.get' takes 2 arguments, but got 1.
-
-stdin:1:7
-  ╷
-1 │ {}.get("key")
-  ╵       ^
-In call to method 'Dict.get'.

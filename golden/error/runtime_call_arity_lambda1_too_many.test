@@ -7,11 +7,3 @@ stdin:2:10
 2 │ f("too", "many")
   ╵          ^~~~~~
 Error: Unexpected argument. The function takes 1 argument, but got 2.
-
-stdin:2:1
-  ╷
-2 │ f("too", "many")
-  ╵ ^
-Note: Function has this type:
-
-  (Any) -> Int

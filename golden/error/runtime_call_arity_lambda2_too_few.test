@@ -6,12 +6,10 @@ stdin:2:12
   ╷
 2 │ f("too few")
   ╵            ^
-Error: Missing argument. The function takes 2 arguments, but got 1.
+Error: Missing argument 'y'. The function takes 2 arguments, but got 1.
 
-stdin:2:1
+stdin:1:13
   ╷
-2 │ f("too few")
-  ╵ ^
-Note: Function has this type:
-
-  (Any, Any) -> Any
+1 │ let f = (x, y) => x;
+  ╵             ^
+Note: Argument defined here.

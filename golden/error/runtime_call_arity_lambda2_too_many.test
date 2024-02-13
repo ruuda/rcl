@@ -1,17 +1,10 @@
+// TODO: This error should point at the function definition too.
 let f = (x, y) => x;
 f("one", "too", "many")
 
 # output:
-stdin:2:17
+stdin:3:17
   ╷
-2 │ f("one", "too", "many")
+3 │ f("one", "too", "many")
   ╵                 ^~~~~~
 Error: Unexpected argument. The function takes 2 arguments, but got 3.
-
-stdin:2:1
-  ╷
-2 │ f("one", "too", "many")
-  ╵ ^
-Note: Function has this type:
-
-  (Any, Any) -> Any

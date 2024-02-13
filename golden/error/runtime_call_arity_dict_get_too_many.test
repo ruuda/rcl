@@ -6,9 +6,3 @@ stdin:1:26
 1 │ {}.get("key", "default", "unexpected")
   ╵                          ^~~~~~~~~~~~
 Error: Unexpected argument. 'Dict.get' takes 2 arguments, but got 3.
-
-stdin:1:7
-  ╷
-1 │ {}.get("key", "default", "unexpected")
-  ╵       ^
-In call to method 'Dict.get'.

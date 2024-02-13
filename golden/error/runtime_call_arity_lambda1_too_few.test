@@ -6,12 +6,10 @@ stdin:2:3
   ╷
 2 │ f()
   ╵   ^
-Error: Missing argument. The function takes 1 argument, but got 0.
+Error: Missing argument '_'. The function takes 1 argument, but got 0.
 
-stdin:2:1
+stdin:1:9
   ╷
-2 │ f()
-  ╵ ^
-Note: Function has this type:
-
-  (Any) -> Int
+1 │ let f = _ => 42;
+  ╵         ^
+Note: Argument defined here.
