@@ -8,6 +8,7 @@
 //! Evaluation turns ASTs into values.
 
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::ast::{BinOp, CallArg, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
@@ -15,11 +16,15 @@ use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
 use crate::pprint::{concat, indent, Doc};
-use crate::runtime::{self, Env, Function, FunctionCall, MethodCall, MethodInstance, Value};
+use crate::runtime::{
+    self, BuiltinFunction, BuiltinMethod, Env, Function, FunctionCall, MethodCall, MethodInstance,
+    Value,
+};
 use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
 use crate::typecheck;
+use crate::types;
 
 /// An entry on the evaluation stack.
 pub struct EvalContext {
@@ -114,6 +119,13 @@ pub struct Evaluator<'a> {
     /// Because it is immutable, it can be reused across evaluations.
     pub stdlib: Value,
 
+    /// The types of the built-in functions.
+    ///
+    /// Types need to be constructed at runtime because they contain heap objects.
+    /// But the types of built-ins does not change. So we only do it once, and
+    /// then cache them here.
+    function_type_cache: HashMap<fn() -> types::Function, types::Function>,
+
     /// The depth of the evaluation stack.
     ///
     /// Used to error before we overflow the native stack.
@@ -132,9 +144,24 @@ impl<'a> Evaluator<'a> {
             tracer,
             import_stack: Vec::new(),
             stdlib: stdlib::initialize(),
+            function_type_cache: HashMap::new(),
             eval_depth: 0,
             eval_count: EvalCount::new(),
         }
+    }
+
+    /// Return the type of a builtin function, cached.
+    fn get_builtin_function_type(&mut self, builtin: &BuiltinFunction) -> &types::Function {
+        self.function_type_cache
+            .entry(builtin.type_)
+            .or_insert_with(|| (builtin.type_)())
+    }
+
+    /// Return the type of a builtin method, cached.
+    fn get_builtin_method_type(&mut self, builtin: &BuiltinMethod) -> &types::Function {
+        self.function_type_cache
+            .entry(builtin.type_)
+            .or_insert_with(|| (builtin.type_)())
     }
 
     #[inline]
@@ -566,15 +593,18 @@ impl<'a> Evaluator<'a> {
 
         let result = match callee {
             Value::BuiltinMethod(instance) => {
+                let method = instance.method;
+                let fn_type = self.get_builtin_method_type(method);
+                fn_type.check_arity(Some(method.name), &call.args[..], call.call_close)?;
+                // TODO: Also check the type, while we're at it!
+
                 let method_call = MethodCall {
                     call,
                     method_span: instance.method_span,
                     receiver_span: instance.receiver_span,
                     receiver: &instance.receiver,
                 };
-                let method = instance.method;
-                // TODO: Restore arity check, it now has to live here!
-                // TODO: Cache the type if we construct it!
+
                 (method.f)(self, method_call).map_err(|err| {
                     let msg = match error_context() {
                         None => concat! { "In call to method '" Doc::highlight(method.name) "'." },
@@ -583,23 +613,29 @@ impl<'a> Evaluator<'a> {
                     err.with_call_frame(call_open, msg).into()
                 })
             }
-            // TODO: Restore arity check, it now has to live here!
-            // TODO: Cache the type if we construct it!
-            Value::BuiltinFunction(f) => (f.f)(self, call).map_err(|err| {
-                let msg = match error_context() {
-                    None => concat! { "In call to function '" Doc::highlight(f.name) "'." },
-                    Some(ctx) => concat! { ctx ", function '" Doc::highlight(f.name) "'." },
-                };
-                err.with_call_frame(call_open, msg).into()
-            }),
-            Value::Function(fun) => self.eval_function_call(fun, call).map_err(|err| {
-                let msg = match error_context() {
-                    None => "In call to function.".into(),
-                    Some(ctx) => concat! { ctx "." },
-                };
-                err.with_call_frame(call_open, msg).into()
-            }),
-            // TODO: Add a proper type error.
+            Value::BuiltinFunction(f) => {
+                let fn_type = self.get_builtin_function_type(f);
+                fn_type.check_arity(Some(f.name), call.args, call.call_close)?;
+                // TODO: Also check the type, while we're at it!
+                (f.f)(self, call).map_err(|err| {
+                    let msg = match error_context() {
+                        None => concat! { "In call to function '" Doc::highlight(f.name) "'." },
+                        Some(ctx) => concat! { ctx ", function '" Doc::highlight(f.name) "'." },
+                    };
+                    err.with_call_frame(call_open, msg).into()
+                })
+            }
+            Value::Function(fun) => {
+                fun.type_.check_arity(None, call.args, call.call_close)?;
+                // TODO: Also perform typechecks of the arguments.
+                self.eval_function_call(fun, call).map_err(|err| {
+                    let msg = match error_context() {
+                        None => "In call to function.".into(),
+                        Some(ctx) => concat! { ctx "." },
+                    };
+                    err.with_call_frame(call_open, msg).into()
+                })
+            }
             _ => {
                 let msg = match error_context() {
                     None => "In call.".into(),
@@ -618,10 +654,10 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate a call to a lambda function.
-    pub fn eval_function_call(&mut self, fun: &Function, call: FunctionCall) -> Result<Value> {
-        let fn_name = None;
-        fun.type_.check_arity(fn_name, call.args, call.call_close)?;
-
+    ///
+    /// This does not perform all required checks; use [`eval_call`] to evaluate
+    /// a general call to any callable value.
+    fn eval_function_call(&mut self, fun: &Function, call: FunctionCall) -> Result<Value> {
         // TODO: If we could stack multiple layers of envs, then we would not
         // have to clone the full thing.
         let mut env = fun.env.clone();
