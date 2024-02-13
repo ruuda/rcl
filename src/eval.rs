@@ -592,6 +592,16 @@ impl<'a> Evaluator<'a> {
         let call_open = call.call_open;
         self.inc_eval_depth(call_open)?;
 
+        // TODO: The call frames, it's a mess. I have a feeling it can be simpler
+        // while at the same time generating less verbose errors. For example,
+        // if we have a KeyError from `Dict.get`, we don't really need to
+        // include that, because we will already blame the error on a span nearby.
+        // Similar for all these arity errors. Direct errors == no call frames.
+        // Maybe a call to a builtin should return Result<Result<Value>>?
+        // Err if the problem was with the call itself (and we shouldn't add
+        // a frame), and Ok(Err) if the call itself was ok, but internally there
+        // was an error?
+
         let result = match callee {
             Value::BuiltinMethod(instance) => {
                 let method = instance.method;
