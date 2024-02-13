@@ -503,14 +503,14 @@ impl<'a> Evaluator<'a> {
             ),
 
             Expr::TypedFunction {
-                arrow_span,
+                span,
                 args,
                 body_span: _,
                 body,
                 type_,
             } => {
                 let result = Function {
-                    span: *arrow_span,
+                    span: *span,
                     env: env.clone(),
                     args: args.clone(),
                     body: Rc::new((**body).clone()),

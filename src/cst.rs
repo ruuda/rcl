@@ -237,8 +237,6 @@ pub enum Expr {
 
     /// Define a lambda function.
     Function {
-        /// The source location of the `=>`.
-        arrow_span: Span,
         args: Box<[Prefixed<Span>]>,
         /// Any non-code between the final arg and the closing paren.
         suffix: Box<[NonCode]>,

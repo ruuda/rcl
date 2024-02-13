@@ -153,8 +153,6 @@ pub enum Expr {
     /// This node only exists before typechecking. The typechecker converts all
     /// [`Expr::Function`] nodes to [`Expr::TypedFunction`].
     Function {
-        /// The span of the `=>`.
-        arrow_span: Span,
         args: Vec<Ident>,
         body_span: Span,
         body: Box<Expr>,
@@ -219,8 +217,8 @@ pub enum Expr {
     /// This node only exists after typechecking. The typechecker converts all
     /// [`Expr::Function`] nodes to [`Expr::TypedFunction`].
     TypedFunction {
-        /// The span of the `=>`.
-        arrow_span: Span,
+        /// Source location of the function, including args, `=>`, and body.
+        span: Span,
         args: Vec<Ident>,
         body_span: Span,
         body: Box<Expr>,

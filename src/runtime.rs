@@ -189,7 +189,7 @@ impl std::fmt::Debug for BuiltinMethod {
 
 #[derive(Debug)]
 pub struct Function {
-    /// Source location of the `=>` that introduces this lambda function.
+    /// Source location of lambda, including args, `=>`, and body.
     ///
     /// This span is used to identify the function for comparison and equality,
     /// so we don't have to inspect its AST.

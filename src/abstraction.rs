@@ -256,13 +256,11 @@ impl<'a> Abstractor<'a> {
             },
 
             CExpr::Function {
-                arrow_span,
                 args,
                 body_span,
                 body,
                 ..
             } => AExpr::Function {
-                arrow_span: *arrow_span,
                 args: args
                     .iter()
                     .map(|arg| arg.inner.resolve(self.input).into())

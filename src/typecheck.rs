@@ -372,7 +372,7 @@ impl<'a> TypeChecker<'a> {
                 type_any().is_subtype_of(expected).check(expr_span)?
             }
 
-            Expr::Function { arrow_span, args, body_span, body } => {
+            Expr::Function { args, body_span, body } => {
                 let fn_type = self.check_function(expected, expr_span, args, *body_span, body)?;
 
                 // Now that we know the type of the function, preserve it in the
@@ -384,7 +384,7 @@ impl<'a> TypeChecker<'a> {
                 std::mem::swap(&mut args_tmp, args);
                 std::mem::swap(&mut body_tmp, body);
                 *expr = Expr::TypedFunction {
-                    arrow_span: *arrow_span,
+                    span: expr_span,
                     args: args_tmp,
                     body_span: *body_span,
                     body: body_tmp,
