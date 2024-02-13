@@ -11,7 +11,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
-use crate::ast::{Expr, Ident};
+use crate::ast::{CallArg, Expr};
 use crate::error::{IntoError, PathElement, Result};
 use crate::eval::Evaluator;
 use crate::fmt_rcl::format_rcl;
@@ -20,12 +20,6 @@ use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::types;
 use crate::types::{SourcedType, Type};
-
-/// A value provided as argument to a function call.
-pub struct CallArg {
-    pub span: Span,
-    pub value: Value,
-}
 
 /// The arguments to a function call at runtime.
 pub struct FunctionCall<'a> {
@@ -36,91 +30,7 @@ pub struct FunctionCall<'a> {
     pub call_close: Span,
 
     /// The arguments and their spans in the source code.
-    pub args: &'a [CallArg],
-}
-
-impl<'a> FunctionCall<'a> {
-    /// Return an error if the number of arguments is unexpected.
-    pub fn check_arity_static(
-        &self,
-        name: &'static str,
-        expected_args: &[&'static str],
-    ) -> Result<()> {
-        if self.args.len() == expected_args.len() {
-            return Ok(());
-        }
-
-        if self.args.len() < expected_args.len() {
-            let missing_arg = &expected_args[self.args.len()];
-            let msg = concat! {
-                "Missing argument '"
-                Doc::highlight(missing_arg)
-                "'. '"
-                Doc::highlight(name)
-                "' takes "
-                match expected_args.len() {
-                    1 => "1 argument".to_string(),
-                    n => format!("{n} arguments"),
-                }
-                ", but got "
-                self.args.len().to_string()
-                "."
-            };
-            self.call_close.error(msg).err()
-        } else {
-            let excess_arg = &self.args[expected_args.len()];
-            let msg = concat! {
-                "Unexpected argument. '"
-                Doc::highlight(name)
-                "' takes "
-                match expected_args.len() {
-                    1 => "1 argument".to_string(),
-                    n => format!("{n} arguments"),
-                }
-                ", but got "
-                self.args.len().to_string()
-                "."
-            };
-            excess_arg.span.error(msg).err()
-        }
-    }
-
-    /// As `check_arity`, but for user-defined functions (lambdas).
-    pub fn check_arity_dynamic(&self, expected_args: &[Ident]) -> Result<()> {
-        if self.args.len() == expected_args.len() {
-            return Ok(());
-        }
-
-        if self.args.len() < expected_args.len() {
-            let missing_arg = &expected_args[self.args.len()];
-            let msg = concat! {
-                "Missing argument '"
-                Doc::highlight(missing_arg.as_ref()).into_owned()
-                "'. The function takes "
-                match expected_args.len() {
-                    1 => "1 argument".to_string(),
-                    n => format!("{n} arguments"),
-                }
-                ", but got "
-                self.args.len().to_string()
-                "."
-            };
-            self.call_close.error(msg).err()
-        } else {
-            let excess_arg = &self.args[expected_args.len()];
-            let msg = concat! {
-                "Unexpected argument. The function takes "
-                match expected_args.len() {
-                    1 => "1 argument".to_string(),
-                    n => format!("{n} arguments"),
-                }
-                ", but got "
-                self.args.len().to_string()
-                "."
-            };
-            excess_arg.span.error(msg).err()
-        }
-    }
+    pub args: &'a [CallArg<Value>],
 }
 
 /// The arguments to a method call at runtime.
@@ -200,8 +110,9 @@ pub struct Function {
     /// TODO: It might be nicer to capture only the variables that are needed,
     /// but then we need to inspect the body AST when the lambda is produced.
     pub env: Env,
-    pub args: Vec<Ident>,
     pub body: Rc<Expr>,
+
+    /// The type of this function, including its arguments.
     pub type_: Rc<types::Function>,
 }
 
@@ -383,7 +294,7 @@ macro_rules! builtin_function {
             name: $rcl_name,
             type_: || {
                 #[allow(unused_imports)]
-                use crate::types::{Type, Dict, Function, builtin, make_function, make_type};
+                use crate::types::{Type, Dict, Function, FunctionArg, builtin, make_function, make_type};
                 crate::types::make_function!( ($( $arg_name: $arg_type ),*) -> $result)
             },
             f: $rust_name,
@@ -403,7 +314,7 @@ macro_rules! builtin_method {
             name: $rcl_name,
             type_: || {
                 #[allow(unused_imports)]
-                use crate::types::{Type, Dict, Function, builtin, make_function, make_type};
+                use crate::types::{Type, Dict, Function, FunctionArg, builtin, make_function, make_type};
                 crate::types::make_function!( ($( $arg_name: $arg_type ),*) -> $result)
             },
             f: $rust_name,

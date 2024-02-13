@@ -10,14 +10,12 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
+use crate::ast::{BinOp, CallArg, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
 use crate::pprint::{concat, indent, Doc};
-use crate::runtime::{
-    self, CallArg, Env, Function, FunctionCall, MethodCall, MethodInstance, Value,
-};
+use crate::runtime::{self, Env, Function, FunctionCall, MethodCall, MethodInstance, Value};
 use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
@@ -467,10 +465,10 @@ impl<'a> Evaluator<'a> {
                 let fun = self.eval_expr(env, fun_expr)?;
                 let args = args_exprs
                     .iter()
-                    .map(|(span, a)| {
+                    .map(|call_arg| {
                         Ok(CallArg {
-                            span: *span,
-                            value: self.eval_expr(env, a)?,
+                            span: call_arg.span,
+                            value: self.eval_expr(env, &call_arg.value)?,
                         })
                     })
                     .collect::<Result<Vec<_>>>()?;
@@ -504,7 +502,6 @@ impl<'a> Evaluator<'a> {
 
             Expr::TypedFunction {
                 span,
-                args,
                 body_span: _,
                 body,
                 type_,
@@ -512,7 +509,6 @@ impl<'a> Evaluator<'a> {
                 let result = Function {
                     span: *span,
                     env: env.clone(),
-                    args: args.clone(),
                     body: Rc::new((**body).clone()),
                     type_: type_.clone(),
                 };
@@ -577,6 +573,8 @@ impl<'a> Evaluator<'a> {
                     receiver: &instance.receiver,
                 };
                 let method = instance.method;
+                // TODO: Restore arity check, it now has to live here!
+                // TODO: Cache the type if we construct it!
                 (method.f)(self, method_call).map_err(|err| {
                     let msg = match error_context() {
                         None => concat! { "In call to method '" Doc::highlight(method.name) "'." },
@@ -585,6 +583,8 @@ impl<'a> Evaluator<'a> {
                     err.with_call_frame(call_open, msg).into()
                 })
             }
+            // TODO: Restore arity check, it now has to live here!
+            // TODO: Cache the type if we construct it!
             Value::BuiltinFunction(f) => (f.f)(self, call).map_err(|err| {
                 let msg = match error_context() {
                     None => concat! { "In call to function '" Doc::highlight(f.name) "'." },
@@ -619,15 +619,17 @@ impl<'a> Evaluator<'a> {
 
     /// Evaluate a call to a lambda function.
     pub fn eval_function_call(&mut self, fun: &Function, call: FunctionCall) -> Result<Value> {
-        // TODO: Add a better name, possibly also report the source span where
-        // the argument is defined, not just the span of the lambda.
-        call.check_arity_dynamic(&fun.args)
-            .map_err(|err| err.with_note(fun.span, "Function defined here."))?;
+        let fn_name = None;
+        fun.type_.check_arity(fn_name, call.args, call.call_close)?;
 
         // TODO: If we could stack multiple layers of envs, then we would not
         // have to clone the full thing.
         let mut env = fun.env.clone();
-        for (arg_name, CallArg { value, .. }) in fun.args.iter().zip(call.args) {
+        for (arg, CallArg { value, .. }) in fun.type_.args.iter().zip(call.args) {
+            let arg_name = arg
+                .name
+                .as_ref()
+                .expect("Types attached to functions have arg names.");
             env.push(arg_name.clone(), value.clone());
         }
 

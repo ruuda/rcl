@@ -14,7 +14,7 @@
 //! * Removing syntactical differences (e.g. converting `k = v;` into `"k": v`).
 
 use crate::ast::{
-    Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
+    CallArg, Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
 };
 use crate::cst::Prefixed;
 use crate::cst::{Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart, Type as CType};
@@ -263,7 +263,7 @@ impl<'a> Abstractor<'a> {
             } => AExpr::Function {
                 args: args
                     .iter()
-                    .map(|arg| arg.inner.resolve(self.input).into())
+                    .map(|arg| (arg.inner, arg.inner.resolve(self.input).into()))
                     .collect(),
                 body_span: *body_span,
                 body: Box::new(self.expr(body)?),
@@ -283,7 +283,12 @@ impl<'a> Abstractor<'a> {
                 function: Box::new(self.expr(function)?),
                 args: args
                     .iter()
-                    .map(|(span, a)| Ok((*span, self.expr(&a.inner)?)))
+                    .map(|(span, a)| {
+                        Ok(CallArg {
+                            span: *span,
+                            value: self.expr(&a.inner)?,
+                        })
+                    })
                     .collect::<Result<Vec<_>>>()?,
             },
 

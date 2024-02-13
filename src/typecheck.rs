@@ -19,7 +19,9 @@ use crate::error::{IntoError, Result};
 use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
-use crate::types::{report_type_mismatch, Dict, Function, Source, SourcedType, Type, Typed};
+use crate::types::{
+    report_type_mismatch, Dict, Function, FunctionArg, Source, SourcedType, Type, Typed,
+};
 
 pub type Env = crate::env::Env<SourcedType>;
 
@@ -93,11 +95,17 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
         AType::Function { span, args, result } => {
             let args_types = args
                 .iter()
-                // For user-defined function types, right now we don't allow
-                // argument names. If we do allow them at some point, this is
-                // where we would parse them.
-                .map(|type_expr| Ok((None, eval_type_expr(type_expr)?)))
-                .collect::<Result<Vec<(Option<Ident>, SourcedType)>>>()?;
+                .map(|type_expr| {
+                    Ok(FunctionArg {
+                        // For user-defined function types, right now we don't
+                        // allow argument names. If we do allow them at some
+                        // point, this is where we would parse them.
+                        name: None,
+                        span: None,
+                        type_: eval_type_expr(type_expr)?,
+                    })
+                })
+                .collect::<Result<Vec<FunctionArg>>>()?;
             let result_type = eval_type_expr(result)?;
             let fn_type = Rc::new(Function {
                 args: args_types,
@@ -382,13 +390,10 @@ impl<'a> TypeChecker<'a> {
                 // AST, because we need it in the runtime value. We need to
                 // juggle some temporaries to move values out of the old node
                 // into the new one.
-                let mut args_tmp = Vec::new();
                 let mut body_tmp = Box::new(Expr::NullLit);
-                std::mem::swap(&mut args_tmp, args);
                 std::mem::swap(&mut body_tmp, body);
                 *expr = Expr::TypedFunction {
                     span: expr_span,
-                    args: args_tmp,
                     body_span: *body_span,
                     body: body_tmp,
                     type_: fn_type.clone(),
@@ -428,8 +433,8 @@ impl<'a> TypeChecker<'a> {
                 // have to exist anyway, we rely on that for now. We still
                 // descend into the args to typecheck them, but without any
                 // requirement.
-                for (arg_span, arg) in args {
-                    self.check_expr(type_any(), *arg_span, arg)?;
+                for call_arg in args {
+                    self.check_expr(type_any(), call_arg.span, &mut call_arg.value)?;
                 }
 
                 result_type.is_subtype_of(expected).check(expr_span)?
@@ -497,7 +502,7 @@ impl<'a> TypeChecker<'a> {
         &mut self,
         expected: &SourcedType,
         expr_span: Span,
-        args: &[Ident],
+        args: &[(Span, Ident)],
         body_span: Span,
         body: &mut Expr,
     ) -> Result<Rc<Function>> {
@@ -513,11 +518,16 @@ impl<'a> TypeChecker<'a> {
             // environment if there is a match, because otherwise the body would
             // likely contain nonsense errors anyway.
             Type::Function(fn_req) if fn_req.args.len() == args.len() => {
-                for (arg, (_name, arg_type)) in args.iter().zip(fn_req.args.iter()) {
-                    // If the type includes an argument name, discard it, and
-                    // take the name from the function body instead.
-                    arg_types.push((Some(arg.clone()), arg_type.clone()));
-                    self.env.push(arg.clone(), arg_type.clone());
+                for ((arg_span, arg_name), arg_type) in args.iter().zip(fn_req.args.iter()) {
+                    let fn_arg = FunctionArg {
+                        // If the type includes an argument name, discard it,
+                        // and take the name from the function definition instead.
+                        name: Some(arg_name.clone()),
+                        span: Some(*arg_span),
+                        type_: arg_type.type_.clone(),
+                    };
+                    arg_types.push(fn_arg);
+                    self.env.push(arg_name.clone(), arg_type.type_.clone());
                 }
                 &fn_req.result
             }
@@ -528,9 +538,14 @@ impl<'a> TypeChecker<'a> {
                 // function, then this is a type error, but we'll still
                 // typecheck the function first and report the error later.
                 is_error = not_fn != &Type::Any;
-                for arg in args.iter() {
-                    arg_types.push((Some(arg.clone()), type_any().clone()));
-                    self.env.push(arg.clone(), type_any().clone());
+                for (arg_span, arg_name) in args.iter() {
+                    let fn_arg = FunctionArg {
+                        name: Some(arg_name.clone()),
+                        span: Some(*arg_span),
+                        type_: type_any().clone(),
+                    };
+                    arg_types.push(fn_arg);
+                    self.env.push(arg_name.clone(), type_any().clone());
                 }
                 type_any()
             }

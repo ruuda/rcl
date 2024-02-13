@@ -85,6 +85,13 @@ pub enum Stmt {
     },
 }
 
+/// An argument provided to a function call.
+#[derive(Clone, Debug)]
+pub struct CallArg<T> {
+    pub span: Span,
+    pub value: T,
+}
+
 /// An expression.
 // TODO: Should not be cloneable, make it GC'able instead.
 #[derive(Clone, Debug)]
@@ -153,7 +160,7 @@ pub enum Expr {
     /// This node only exists before typechecking. The typechecker converts all
     /// [`Expr::Function`] nodes to [`Expr::TypedFunction`].
     Function {
-        args: Vec<Ident>,
+        args: Vec<(Span, Ident)>,
         body_span: Span,
         body: Box<Expr>,
     },
@@ -166,7 +173,7 @@ pub enum Expr {
         close: Span,
         function_span: Span,
         function: Box<Expr>,
-        args: Vec<(Span, Expr)>,
+        args: Vec<CallArg<Expr>>,
     },
 
     /// Index into a collection as `collection[index]`.
@@ -215,11 +222,12 @@ pub enum Expr {
     /// Define a lambda function.
     ///
     /// This node only exists after typechecking. The typechecker converts all
-    /// [`Expr::Function`] nodes to [`Expr::TypedFunction`].
+    /// [`Expr::Function`] nodes to [`Expr::TypedFunction`]. The arguments and
+    /// their names are stored in the type. The argument names are always
+    /// present.
     TypedFunction {
         /// Source location of the function, including args, `=>`, and body.
         span: Span,
-        args: Vec<Ident>,
         body_span: Span,
         body: Box<Expr>,
         type_: Rc<types::Function>,

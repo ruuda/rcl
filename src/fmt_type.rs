@@ -43,9 +43,9 @@ pub fn format_type(type_: &Type) -> Doc {
         Type::Function(func) => concat! {
             format_types(
                 "(",
-                func.args.iter().map(|(name, t)| (
-                    name.as_ref().map(|n| n.as_ref()),
-                    &t.type_,
+                func.args.iter().map(|arg| (
+                    arg.name.as_ref().map(|n| n.as_ref()),
+                    &arg.type_.type_,
                 )),
                 ")"
             )

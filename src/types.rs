@@ -10,7 +10,7 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
 
-use crate::ast::Ident;
+use crate::ast::{CallArg, Ident};
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_type::format_type;
 use crate::markup::Markup;
@@ -62,62 +62,111 @@ pub struct Dict {
     pub value: SourcedType,
 }
 
-/// A function type.
+/// An argument in a function type.
+///
+/// The names are ignored for equality and comparison purposes, but we track
+/// them to enable more helpful error messages. The name and span can exist
+/// separately. For example, builtin functions have no argument span, but
+/// user-defined functions do.
 #[derive(Clone, Debug)]
+pub struct FunctionArg {
+    /// The name of this argument.
+    pub name: Option<Ident>,
+    /// The span where the argument is defined in the function definition.
+    pub span: Option<Span>,
+    /// The type of the argument.
+    pub type_: SourcedType,
+}
+
+impl PartialEq for FunctionArg {
+    fn eq(&self, other: &Self) -> bool {
+        self.type_.eq(&other.type_)
+    }
+}
+
+impl PartialOrd for FunctionArg {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.type_.partial_cmp(&other.type_)
+    }
+}
+
+impl Eq for FunctionArg {}
+
+impl Ord for FunctionArg {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.type_.cmp(&other.type_)
+    }
+}
+
+/// A function type.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Function {
     /// The function arguments, including optional names.
     ///
     /// The names are ignored for equality and comparison purposes, but we track
     /// them to enable more helpful error messages.
-    pub args: Vec<(Option<Ident>, SourcedType)>,
+    pub args: Vec<FunctionArg>,
 
     /// The result type, also called return type.
     pub result: SourcedType,
 }
 
 impl Function {
-    /// Implementation of the comparison operators that ignores argument names.
-    #[inline]
-    fn cmp_impl(&self, other: &Function) -> Ordering {
-        // First we compare on arity, because that's cheap. If it matches, we
-        // compare on result type. And if that matches too, we compare the args
-        // one by one.
-        let mut ord = self
-            .args
-            .len()
-            .cmp(&other.args.len())
-            .then_with(|| self.result.cmp(&other.result));
-
-        let mut args_zip = self.args.iter().zip(other.args.iter());
-
-        while let Ordering::Equal = ord {
-            match args_zip.next() {
-                Some(((_name1, t1), (_name2, t2))) => ord = t1.cmp(t2),
-                None => break,
-            }
+    /// Confirm that there are as many provided arguments as expected arguments.
+    ///
+    /// If not, report that as an error on the proper spans, with as much
+    /// information as we have.
+    pub fn check_arity<T>(
+        &self,
+        function_name: Option<&str>,
+        provided_args: &[CallArg<T>],
+        call_close: Span,
+    ) -> Result<()> {
+        if provided_args.len() == self.args.len() {
+            return Ok(());
         }
 
-        ord
-    }
-}
+        let fn_name = match function_name {
+            None => "The function".into(),
+            Some(name) => concat! { "'" Doc::highlight(name) "'" },
+        };
 
-impl PartialEq for Function {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp_impl(other) == Ordering::Equal
-    }
-}
+        let n_args = match self.args.len() {
+            1 => "1 argument".to_string(),
+            n => format!("{n} arguments"),
+        };
 
-impl PartialOrd for Function {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp_impl(other))
-    }
-}
+        if provided_args.len() < self.args.len() {
+            let missing_arg = &self.args[provided_args.len()];
 
-impl Eq for Function {}
+            let missing_msg = match &missing_arg.name {
+                None => "Missing argument. ".into(),
+                Some(name) => concat! {
+                  "Missing argument '" Doc::highlight(name.as_ref()) "'. "
+                },
+            };
 
-impl Ord for Function {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.cmp_impl(other)
+            let msg = concat! {
+                missing_msg fn_name " takes " n_args ", but got "
+                provided_args.len().to_string()
+                "."
+            };
+
+            let error = call_close.error(msg.into_owned());
+
+            match missing_arg.span {
+                None => error.err(),
+                Some(arg_span) => error.with_note(arg_span, "Argument defined here.").err(),
+            }
+        } else {
+            let excess_arg = &provided_args[self.args.len()];
+            let msg = concat! {
+                "Unexpected argument. " fn_name " takes " n_args ", but got "
+                provided_args.len().to_string()
+                "."
+            };
+            excess_arg.span.error(msg.into_owned()).err()
+        }
     }
 }
 
@@ -635,7 +684,13 @@ pub(crate) use make_type;
 macro_rules! make_function {
     (($( $arg_name:ident: $arg_type:tt ),*) -> $result:tt) => {
         Function {
-            args: vec![ $( (Some(stringify!($arg_name).into()), make_type!($arg_type)) ),* ],
+            args: vec![
+                $( FunctionArg {
+                    name: Some(stringify!($arg_name).into()),
+                    span: None,
+                    type_: make_type!($arg_type),
+                }),*
+            ],
             result: make_type!($result),
         }
     };
@@ -644,7 +699,8 @@ pub(crate) use make_function;
 
 #[cfg(test)]
 mod test {
-    use super::{Function, Source, SourcedType, Type};
+    use super::{Function, FunctionArg, Source, SourcedType, Type};
+    use crate::source::{DocId, Span};
 
     fn mk_type(type_: Type) -> SourcedType {
         SourcedType {
@@ -657,23 +713,29 @@ mod test {
     fn function_ord_ignores_names() {
         let mut f1 = Function {
             args: vec![
-                (Some("a".into()), mk_type(Type::Int)),
-                (Some("b".into()), mk_type(Type::Bool)),
+                FunctionArg {
+                    name: Some("a".into()),
+                    span: None,
+                    type_: mk_type(Type::Int),
+                },
+                FunctionArg {
+                    name: Some("b".into()),
+                    span: None,
+                    type_: mk_type(Type::Bool),
+                },
             ],
             result: mk_type(Type::String),
         };
-        let mut f2 = Function {
-            args: vec![
-                (Some("p".into()), mk_type(Type::Int)),
-                (Some("q".into()), mk_type(Type::Bool)),
-            ],
-            result: mk_type(Type::String),
-        };
+        let mut f2 = f1.clone();
         assert_eq!(f1, f2);
 
         // Even when we delete the names entirely, the functions should still
         // be equal.
-        f2.args[0].0 = None;
+        f2.args[0].name = None;
+        assert_eq!(f1, f2);
+
+        // Or when we add spans, it shouldn't affect things.
+        f2.args[0].span = Some(Span::new(DocId(0), 0, 0));
         assert_eq!(f1, f2);
 
         // Void orders before String.
@@ -682,16 +744,16 @@ mod test {
 
         // Void orders before Int.
         f1.result = mk_type(Type::String);
-        f1.args[0].1 = mk_type(Type::Void);
+        f1.args[0].type_ = mk_type(Type::Void);
         assert!(f1 < f2);
 
         // Void orders before Bool.
-        f1.args[0].1 = mk_type(Type::Int);
-        f1.args[1].1 = mk_type(Type::Void);
+        f1.args[0].type_ = mk_type(Type::Int);
+        f1.args[1].type_ = mk_type(Type::Void);
         assert!(f1 < f2);
 
         // Now we are back to the initial equality (but with names changed).
-        f1.args[1].1 = mk_type(Type::Bool);
+        f1.args[1].type_ = mk_type(Type::Bool);
         assert_eq!(f1, f2);
 
         // Having fewer args makes it order before.
