@@ -165,6 +165,9 @@ impl Function {
                 provided_args.len().to_string()
                 "."
             };
+            // TODO: Store a reference to the function span in the type,
+            // so we can add a note with the function definition, just like with
+            // the the missing argument.
             excess_arg.span.error(msg.into_owned()).err()
         }
     }

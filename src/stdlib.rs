@@ -265,11 +265,9 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
             call_close: get_key_span,
             args: &args,
         };
-        let key = eval.eval_call(get_key_span, get_key, call, || {
-            Some(concat! {
-                "In call to key selector from '" Doc::highlight(name) "'"
-            })
-        })?;
+        let describe_call_frame =
+            || concat! { "In call to key selector from '" Doc::highlight(name) "'." };
+        let key = eval.eval_call(get_key_span, get_key, call, Some(describe_call_frame))?;
         groups.entry(key).or_default().push(x.clone());
     }
 
@@ -564,11 +562,12 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
             call_close: reduce.span,
             args: &args,
         };
-        acc = eval.eval_call(reduce.span, &reduce.value, call, || {
-            Some(concat! {
-                "In call to reduce function from '" Doc::highlight("List.fold") "'"
-            })
-        })?;
+        let describe_call_frame = || {
+            concat! {
+                "In call to reduce function from '" Doc::highlight("List.fold") "'."
+            }
+        };
+        acc = eval.eval_call(reduce.span, &reduce.value, call, Some(describe_call_frame))?;
     }
 
     Ok(acc)
