@@ -135,9 +135,36 @@ impl Formatter {
     /// Format a dict as a TOML "inline table".
     pub fn inline_table<'a>(
         &mut self,
-        _vs: impl Iterator<Item = (&'a Value, &'a Value)>,
+        vs: impl Iterator<Item = (&'a Value, &'a Value)>,
     ) -> Result<Doc<'a>> {
-        unimplemented!("TODO: Toml inline tables.");
+        let mut elements = Vec::new();
+        for (k, v) in vs {
+            if !elements.is_empty() {
+                elements.push(",".into());
+                elements.push(Doc::Sep);
+            }
+            elements.push(self.push_key(k)?);
+            elements.push(" = ".into());
+            elements.push(self.value(v)?);
+            self.path.pop().expect("Push and pop are balanced.");
+        }
+
+        let result = if elements.is_empty() {
+            // An empty collection we always format without space in between.
+            "{}".into()
+        } else {
+            // Add a trailing comma in tall mode.
+            elements.push(Doc::tall(","));
+
+            group! {
+                "{"
+                Doc::Sep
+                indent! { Doc::Concat(elements) }
+                Doc::Sep
+                "}"
+            }
+        };
+        Ok(result)
     }
 
     /// Format a key-value pair. <https://toml.io/en/v1.0.0#keyvalue-pair>
@@ -153,7 +180,7 @@ impl Formatter {
     fn table<'a>(&mut self, vs: impl Iterator<Item = (&'a Value, &'a Value)>) -> Result<Doc<'a>> {
         let mut doc = Doc::empty();
         for (k, v) in vs {
-            doc = doc + self.key_value(k, v)?
+            doc = doc + self.key_value(k, v)?;
         }
         Ok(doc)
     }
