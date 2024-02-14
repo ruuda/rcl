@@ -78,6 +78,7 @@ Output modes:
                 document is a list or set of strings, output each string on its
                 own line.
   rcl           Output pretty-printed RCL.
+  toml          Output TOML.
 
 Sandboxing modes:
   workdir       Only allow importing files inside the working directory and
@@ -130,6 +131,7 @@ pub enum OutputFormat {
     Raw,
     #[default]
     Rcl,
+    Toml,
 }
 
 /// Options for commands that evaluate expressions.
@@ -239,6 +241,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     "json" => OutputFormat::Json,
                     "raw" => OutputFormat::Raw,
                     "rcl" => OutputFormat::Rcl,
+                    "toml" => OutputFormat::Toml,
                 }
             }
             Arg::Long("sandbox") => {
@@ -561,7 +564,7 @@ mod test {
         );
         assert_eq!(
             fail_parse(&["rcl", "eval", "infile", "--output=yamr"]),
-            "Error: Expected --output to be followed by one of json, raw, rcl. See --help for usage.\n"
+            "Error: Expected --output to be followed by one of json, raw, rcl, toml. See --help for usage.\n"
         );
         assert_eq!(
             fail_parse(&["rcl", "frobnicate", "infile"]),
