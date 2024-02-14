@@ -17,6 +17,7 @@ enum Mode {
     Eval,
     Format { width: u32 },
     EvalJson { width: u32 },
+    EvalToml { width: u32 },
 }
 
 /// Helper for `Arbitrary` to get a value in 0..=245, such that the byte is not a newline.
@@ -63,6 +64,9 @@ impl<'a> Arbitrary<'a> for Input<'a> {
                 width: u.arbitrary::<NonNewline>()?.0 as u32,
             },
             b"e" => Mode::EvalJson {
+                width: u.arbitrary::<NonNewline>()?.0 as u32,
+            },
+            b"t" => Mode::EvalToml {
                 width: u.arbitrary::<NonNewline>()?.0 as u32,
             },
             _ => return Err(Error::IncorrectFormat),
@@ -143,6 +147,19 @@ fn fuzz_eval_json(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Resu
     Ok(())
 }
 
+/// Evaluate the input expression into toml, then ignore the result.
+fn fuzz_eval_toml(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
+    let id = loader.load_string(input.to_string());
+    let full_span = loader.get_span(id);
+    let mut tracer = VoidTracer;
+    let mut evaluator = Evaluator::new(loader, &mut tracer);
+    let mut env = rcl::runtime::prelude();
+    let value = evaluator.eval_doc(&mut env, id)?;
+    let toml = rcl::fmt_toml::format_toml(full_span, &value)?;
+    let _ = toml.println(&cfg);
+    Ok(())
+}
+
 fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
     match input.mode {
         Mode::Lex => {
@@ -169,6 +186,13 @@ fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
                 markup: MarkupMode::None,
             };
             let _ = fuzz_eval_json(loader, input.data, cfg);
+        }
+        Mode::EvalToml { width } => {
+            let cfg = pprint::Config {
+                width,
+                markup: MarkupMode::None,
+            };
+            let _ = fuzz_eval_toml(loader, input.data, cfg);
         }
     };
 
