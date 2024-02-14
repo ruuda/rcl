@@ -9,7 +9,10 @@ there are a few reasons for using the module:
  * Supporting a wider range of types. The module preserves set values and
    dictionaries with non-string keys.
 
-The name of the module is `rcl`.
+The name of the module is `rcl`. See the [installation instructions][install]
+for how to get the Python module.
+
+[install]: installation.md#python-module-from-source
 
 ## load_file
 
