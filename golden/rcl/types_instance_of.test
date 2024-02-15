@@ -1,0 +1,14 @@
+// This tests the `is_instance_of` check that gets inserted for doing dynamic
+// type checks.
+let x = null;
+let y: Any = x;
+let z: Null = y;
+
+let x = true;
+let y: Any = x;
+let z: Bool = y;
+
+z
+
+# output:
+true

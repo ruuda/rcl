@@ -1,0 +1,11 @@
+// This tests inference of the collection type arguments,
+// and in particular meet() with Void on the right-hand side.
+[
+  // Will be inferred Int.
+  0,
+  // Will be inferred Void.
+  for x in []: x,
+]
+
+# output:
+[0]
