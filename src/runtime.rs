@@ -19,7 +19,7 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::types;
-use crate::types::{SourcedType, Type};
+use crate::types::{SourcedType, Type, Typed};
 
 /// The arguments to a function call at runtime.
 pub struct FunctionCall<'a> {
@@ -249,7 +249,15 @@ impl Value {
                 Ok(())
             }
 
-            // TODO: Typecheck functions.
+            (Type::Function(fn_type), Value::Function(fn_val)) => {
+                match fn_val.type_.is_subtype_of(fn_type).check(at)? {
+                    Typed::Type(..) => Ok(()),
+                    Typed::Defer(..) => {
+                        unimplemented!("Figure out a good way to report that we can't check this.")
+                    }
+                }
+            }
+
             _ => {
                 let error = at.error("Type mismatch.").with_body(concat! {
                     "Expected a value that fits this type:"

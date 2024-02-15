@@ -1,0 +1,13 @@
+// If we define `f` without type annotation, then the inferred type would
+// include the argument name. But now we forget the type.
+let f: Any = x => x * 2;
+
+// Then here we add the type back. But this time we lost the argument name.
+let g: (Int) -> Int = f;
+
+// Now when we call `g`, we can infer from the type that we are passing too few
+// arguments, but we can't name the missing argument.
+g()
+
+# output:
+TODO

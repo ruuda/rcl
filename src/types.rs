@@ -98,6 +98,36 @@ impl Ord for FunctionArg {
     }
 }
 
+impl FunctionArg {
+    /// Check whether a function argument is a subtype.
+    ///
+    /// Function arguments are contravariant: the subtype relationship
+    /// goes the other way. For example, `(Any) -> Int` is a subtype of
+    /// `(Int) -> Int`: in every case where we need to call the latter,
+    /// we can call the former. So although `Int ≤ Any`, as function args
+    /// we have the opposite: `Arg(Any) ≤ Arg(Int)`.
+    pub fn is_subtype_of(&self, other: &FunctionArg) -> TypeDiff<FunctionArg> {
+        match other.type_.is_subtype_of(&self.type_) {
+            TypeDiff::Ok(t) => TypeDiff::Ok(FunctionArg {
+                // Ok returns the most specific type, so we take the name and
+                // span from there, though if it has no name, we take the other
+                // name.
+                name: other.name.as_ref().or(self.name.as_ref()).cloned(),
+                span: other.span,
+                type_: t,
+            }),
+            TypeDiff::Defer(t) => TypeDiff::Defer(FunctionArg {
+                // Defer returns the most generic type, so we take the name and
+                // span from there.
+                name: self.name.as_ref().or(other.name.as_ref()).cloned(),
+                span: self.span,
+                type_: t,
+            }),
+            TypeDiff::Error(err) => TypeDiff::Error(err),
+        }
+    }
+}
+
 /// A function type.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Function {
@@ -171,6 +201,94 @@ impl Function {
             excess_arg.span.error(msg.into_owned()).err()
         }
     }
+
+    pub fn is_subtype_of(self: &Rc<Self>, other: &Rc<Function>) -> TypeDiff<Rc<Function>> {
+        // If there is an arity mismatch, report that as a normal diff.
+        // Unfortunately at this point we don't have access to the type sources,
+        // so this check only kicks in in places where we have a `Function` but
+        // not the surrounding type. In `Type::is_subtype_of` we do the check
+        // that preserves the sources.
+        if self.args.len() != other.args.len() {
+            let err = Mismatch::Atom(
+                SourcedType {
+                    type_: Type::Function(self.clone()),
+                    source: Source::None,
+                },
+                SourcedType {
+                    type_: Type::Function(other.clone()),
+                    source: Source::None,
+                },
+            );
+            return TypeDiff::Error(err);
+        }
+
+        let mut is_err = false;
+        let mut is_defer = false;
+
+        // Function arguments are contravariant: the subtype relationship
+        // goes the other way. For example, `(Any) -> Int` is a subtype of
+        // `(Int) -> Int`: in every case where we need to call the latter,
+        // we can call the former.
+        let mut args = Vec::with_capacity(self.args.len());
+        let mut arg_diffs = Vec::new();
+
+        for (a1, a2) in self.args.iter().zip(other.args.iter()) {
+            match a2.is_subtype_of(&a1) {
+                TypeDiff::Ok(t) | TypeDiff::Defer(t) if is_err => {
+                    arg_diffs.push(TypeDiff::Ok(t));
+                }
+                TypeDiff::Ok(t) => args.push(t),
+                TypeDiff::Defer(t) => {
+                    is_defer = true;
+                    args.push(t);
+                }
+                err if is_err => arg_diffs.push(err),
+                err => {
+                    is_err = true;
+                    for not_err in args.drain(..) {
+                        arg_diffs.push(TypeDiff::Ok(not_err));
+                    }
+                    arg_diffs.push(err);
+                }
+            }
+        }
+        let result_type = match self.result.is_subtype_of(&other.result) {
+            TypeDiff::Ok(t) | TypeDiff::Defer(t) if is_err => {
+                let err = Mismatch::Function(arg_diffs, TypeDiff::Ok(t).into());
+                return TypeDiff::Error(err);
+            }
+            TypeDiff::Ok(t) => t,
+            TypeDiff::Defer(t) => {
+                is_defer = true;
+                t
+            }
+            err if is_err => {
+                let err = Mismatch::Function(arg_diffs, err.into());
+                return TypeDiff::Error(err);
+            }
+            err => {
+                let err =
+                    Mismatch::Function(args.into_iter().map(TypeDiff::Ok).collect(), err.into());
+                return TypeDiff::Error(err);
+            }
+        };
+        let fn_type = Function {
+            args,
+            result: result_type,
+        };
+        if is_defer {
+            TypeDiff::Defer(fn_type.into())
+        } else {
+            // When we return ok, the type we concluded should be exactly the
+            // same as the subtype. We return the original to enable more reuse,
+            // and not waste memory on identical copies. We might miss out on
+            // collecting argument names though. They don't count for equality,
+            // but it would still be a shame. But it should also be very rare
+            // that a subtype check adds those names. Hmm.
+            debug_assert_eq!(**self, fn_type);
+            TypeDiff::Ok(self.clone())
+        }
+    }
 }
 
 /// The place where a type was constructed.
@@ -215,32 +333,44 @@ pub struct SourcedType {
     pub source: Source,
 }
 
+/// An inner error of a `TypeDiff` for a subtype check `T ≤ U`.
+#[derive(Debug)]
+pub enum Mismatch {
+    /// The type error cannot be broken down further. Here are `T` and `U`.
+    Atom(SourcedType, SourcedType),
+
+    /// Both sides are a list, but the element type has an issue.
+    List(Box<TypeDiff<SourcedType>>),
+
+    /// Both sides are a set, but the element type has an issue.
+    Set(Box<TypeDiff<SourcedType>>),
+
+    /// Both sides are a dict, but the key or value (or both) have issues.
+    Dict(Box<TypeDiff<SourcedType>>, Box<TypeDiff<SourcedType>>),
+
+    /// Both sides are functions of the same arity, but args or result have issues.
+    Function(Vec<TypeDiff<FunctionArg>>, Box<TypeDiff<SourcedType>>),
+}
+
 /// The result of a subtype check `T ≤ U`.
 ///
 /// The result is a tree, to be able to pinpoint where the check fails, enabling
 /// more helpful errors.
 #[derive(Debug)]
-pub enum TypeDiff {
+pub enum TypeDiff<T> {
     /// Yes, `T ≤ U`, and here is `T`.
-    Ok(SourcedType),
+    Ok(T),
 
-    /// No, `not (T ≤ U)`, and here are `T` and `U`.
-    Error(SourcedType, SourcedType),
+    /// For `t: T`, we *might* have `t: U`. Here is `V` such that `T ≤ V ≤ U`.
+    Defer(T),
 
-    /// The types `T` and `U` are not orderable, and here is `U`.
-    Defer(SourcedType),
-
-    /// Both sides are a list, but the element type has an issue.
-    List(Box<TypeDiff>),
-
-    /// Both sides are a set, but the element type has an issue.
-    Set(Box<TypeDiff>),
-
-    /// Both sides are a dict, but the key or value (or both) have issues.
-    Dict(Box<TypeDiff>, Box<TypeDiff>),
-
-    /// Both sides are functions of the same arity, but args or result have issues.
-    Function(Vec<TypeDiff>, Box<TypeDiff>),
+    /// For all `t: T`, we have that `t` is not a value of `U`.
+    ///
+    /// Or, in some cases this is not strictly true, but we want to rule out
+    /// that case because it makes more sense. For example, we say that
+    /// `List[Int]` and `List[String]` are incompatible, even though `[]`
+    /// inhabits both.
+    Error(Mismatch),
 }
 
 impl Type {
@@ -423,7 +553,7 @@ impl SourcedType {
     /// both! But in this case, reporting an error if the element types mismatch
     /// is helpful, so we won't make `[]` an exception that causes a runtime
     /// check.
-    pub fn is_subtype_of(&self, other: &SourcedType) -> TypeDiff {
+    pub fn is_subtype_of(&self, other: &SourcedType) -> TypeDiff<SourcedType> {
         match (&self.type_, &other.type_) {
             // Void is a subtype of everything, Any a supertype of everything,
             // they are the top and bottom of the lattice.
@@ -431,7 +561,7 @@ impl SourcedType {
             (_, Type::Any) => TypeDiff::Ok(self.clone()),
 
             // If I take any value from not-Void, it is not a member of Void.
-            (_, Type::Void) => TypeDiff::Error(self.clone(), other.clone()),
+            (_, Type::Void) => TypeDiff::Error(Mismatch::Atom(self.clone(), other.clone())),
 
             // If I take any arbitrary value, is it a member of some type T,
             // when T is not `Any` (that case is already covered above)?
@@ -452,12 +582,12 @@ impl SourcedType {
             (Type::List(l1), Type::List(l2)) => match l1.is_subtype_of(l2) {
                 TypeDiff::Ok(..) => TypeDiff::Ok(self.clone()),
                 TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
-                error => TypeDiff::List(error.into()),
+                error => TypeDiff::Error(Mismatch::List(error.into())),
             },
             (Type::Set(l1), Type::Set(l2)) => match l1.is_subtype_of(l2) {
                 TypeDiff::Ok(..) => TypeDiff::Ok(self.clone()),
                 TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
-                error => TypeDiff::Set(error.into()),
+                error => TypeDiff::Error(Mismatch::Set(error.into())),
             },
             (Type::Dict(d1), Type::Dict(d2)) => {
                 let dk = d1.key.is_subtype_of(&d2.key);
@@ -479,36 +609,55 @@ impl SourcedType {
                     }
                     // If either the key or value is not a subtype, then the
                     // entire thing is not.
-                    (k_diff, v_diff) => TypeDiff::Dict(k_diff.into(), v_diff.into()),
+                    (k_diff, v_diff) => {
+                        TypeDiff::Error(Mismatch::Dict(k_diff.into(), v_diff.into()))
+                    }
+                }
+            }
+            (Type::Function(f1), Type::Function(f2)) => {
+                if f1.args.len() != f2.args.len() {
+                    // If we have an arity mismatch, report that directly, because
+                    // then we can preserve the sources of the types.
+                    TypeDiff::Error(Mismatch::Atom(self.clone(), other.clone()))
+                } else {
+                    match f1.is_subtype_of(f2) {
+                        TypeDiff::Ok(..) => TypeDiff::Ok(self.clone()),
+                        TypeDiff::Defer(f) => {
+                            let styp = SourcedType {
+                                type_: Type::Function(f),
+                                source: Source::None,
+                            };
+                            TypeDiff::Defer(styp)
+                        }
+                        TypeDiff::Error(err) => TypeDiff::Error(err),
+                    }
                 }
             }
 
-            // TODO: Check function types.
-
             // If we have any other combination of types, they are incompatible.
-            _ => TypeDiff::Error(self.clone(), other.clone()),
+            _ => TypeDiff::Error(Mismatch::Atom(self.clone(), other.clone())),
         }
     }
 }
 
 /// The result of a static typecheck.
-pub enum Typed {
+pub enum Typed<T> {
     /// The type is known statically, and this is the most specific type we infer.
-    Type(SourcedType),
+    Type(T),
 
     /// We can't check this statically, a runtime check is needed.
     ///
     /// If the runtime check passes, then the value fits the returned type.
-    Defer(SourcedType),
+    Defer(T),
 }
 
-impl TypeDiff {
+impl<T> TypeDiff<T> {
     /// Report the diff as a type error, or extract its result.
-    pub fn check(self, at: Span) -> Result<Typed> {
+    pub fn check(self, at: Span) -> Result<Typed<T>> {
         match self {
             TypeDiff::Ok(t) => Ok(Typed::Type(t)),
             TypeDiff::Defer(t) => Ok(Typed::Defer(t)),
-            TypeDiff::Error(actual, expected) => {
+            TypeDiff::Error(Mismatch::Atom(actual, expected)) => {
                 let err = if let Type::Void = expected.type_ {
                     at.error(concat! {
                         "Expected a value of type "
@@ -530,7 +679,7 @@ impl TypeDiff {
                 // If we have it, explain why the expected type is expected.
                 expected.source.clarify_error(&expected, err).err()
             }
-            diff => {
+            TypeDiff::Error(diff) => {
                 // If the error is nested somewhere inside a type, then we
                 // resort to a more complex format where we first print the
                 // type itself, with the error part replaced with a placeholder,
