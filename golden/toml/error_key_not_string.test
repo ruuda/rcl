@@ -1,0 +1,10 @@
+{
+  42: "The answer",
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+Error: To export as TOML, keys must be strings.

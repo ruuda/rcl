@@ -28,6 +28,8 @@ Output in the given format. The following formats are supported:
   a list or set of strings, output each string on its own line.</dd>
   <dt>rcl</dt>
   <dd>Output pretty-printed <abbr>RCL</abbr>.</dd>
+  <dt>toml</dt>
+  <dd>Output <abbr>TOML</abbr>.</dd>
 </dl>
 
 The default output format is `rcl`. For the `je` command shorthand, the default

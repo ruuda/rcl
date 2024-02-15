@@ -1,0 +1,27 @@
+{
+  simple = [21, 42],
+  advanced = [21, 42, "yes", { x = 1, y = 2 }, [999, 999], {}],
+  empty = [],
+  multi-line = {
+    but-nested = [
+      { name = "Leon Kowalski", model = "Nexus-6" },
+      { name = "Pris Stratton", model = "Nexus-6" },
+      { name = "Rachael", model = "Nexus-7" },
+      { name = "Roy Batty", model = "Nexus-6" },
+      { "s p a c e": { for x in []: x } },
+    ],
+  },
+}
+
+# output:
+advanced = [21, 42, "yes", { x = 1, y = 2 }, [999, 999], {}]
+simple = [21, 42]
+
+[multi-line]
+but-nested = [
+  { model = "Nexus-6", name = "Leon Kowalski" },
+  { model = "Nexus-6", name = "Pris Stratton" },
+  { model = "Nexus-7", name = "Rachael" },
+  { model = "Nexus-6", name = "Roy Batty" },
+  { "s p a c e" = [] },
+]

@@ -1,0 +1,12 @@
+{
+  function = x => "Functions are not serializable as TOML.",
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "function"
+Error: Functions cannot be exported as TOML.

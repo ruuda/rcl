@@ -1,0 +1,41 @@
+// This test tests how the different sections (bare keys, tables, and tables in
+// arrays) are appended.
+{
+  bare_key = true,
+
+  package = {
+    name = "rcl",
+    edition = "2021",
+    license = "Apache-2.0",
+  },
+
+  dependencies = {
+    unicode-width = "0.1.10",
+  },
+
+  bin = [
+    { name = "rcl", test = true, bench = false },
+    { name = "fuzz-main", test = false, bench = false },
+  ],
+}
+
+# output:
+bare_key = true
+
+[dependencies]
+unicode-width = "0.1.10"
+
+[package]
+edition = "2021"
+license = "Apache-2.0"
+name = "rcl"
+
+[[bin]]
+bench = false
+name = "rcl"
+test = true
+
+[[bin]]
+bench = false
+name = "fuzz-main"
+test = false

@@ -1,0 +1,15 @@
+{
+  name = "Rachael",
+  model = "Nexus-7",
+  // A multi-line string should be escaped.
+  description =
+    """
+    With her Voight-Kampff test, it took over
+    one hundred questions to determine her nature.
+    """,
+}
+
+# output:
+description = "With her Voight-Kampff test, it took over\none hundred questions to determine her nature.\n"
+model = "Nexus-7"
+name = "Rachael"
