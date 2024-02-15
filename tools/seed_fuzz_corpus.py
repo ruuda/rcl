@@ -28,9 +28,9 @@ def seed_one(fname: str) -> int:
     length of the input in bytes.
     """
     # Prepend a comment line that is required for the fuzzer to decide how
-    # it will treat this input, see also `fuzz_targets/main.rs`. `e` means
+    # it will treat this input, see also `fuzz_targets/main.rs`. `a` means
     # "evaluate", and `Z` is '\n' + 80, for a format width of 80 columns.
-    input_lines: List[str] = ["//eZ\n"]
+    input_lines: List[str] = ["//aZ\n"]
 
     with open(fname, "r", encoding="utf-8") as f:
         for line in f:

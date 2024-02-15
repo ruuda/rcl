@@ -55,20 +55,19 @@ impl<'a> Arbitrary<'a> for Input<'a> {
         // using lower characters, so that we can "REDUCE" (in libfuzzer
         // terminology) an input that is expensive to evaluate to a simpler one
         // that still provides a unique input, but doesn't require running the
-        // full evaluation pipeline.
-        let mode = match u.bytes(1)? {
-            b"a" => Mode::Lex,
-            b"b" => Mode::Parse,
-            b"c" => Mode::Eval,
-            b"d" => Mode::Format {
-                width: u.arbitrary::<NonNewline>()?.0 as u32,
-            },
-            b"e" => Mode::EvalJson {
-                width: u.arbitrary::<NonNewline>()?.0 as u32,
-            },
-            b"t" => Mode::EvalToml {
-                width: u.arbitrary::<NonNewline>()?.0 as u32,
-            },
+        // full evaluation pipeline. We unconditionally have the width byte even
+        // for modes that don't use it, to make samples more portable between
+        // modes.
+        let mode_byte = u.bytes(1);
+        let width = u.arbitrary::<NonNewline>()?.0 as u32;
+        let mode = match mode_byte? {
+            b"A" => Mode::Lex,
+            b"P" => Mode::Parse,
+            b"Q" => Mode::Format { width },
+            // T is reserved for "Typecheck".
+            b"a" => Mode::Eval,
+            b"j" => Mode::EvalJson { width },
+            b"t" => Mode::EvalToml { width },
             _ => return Err(Error::IncorrectFormat),
         };
 
