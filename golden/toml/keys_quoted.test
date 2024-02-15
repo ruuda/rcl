@@ -1,0 +1,19 @@
+// This tests that keys get quoted when necessary.
+{
+  "042": "Seemingly integer key",
+  _underscores_are_ok = true,
+  dashes-are-ok = true,
+  "-start-dashes-too": "of course",
+  "spaces are ok": false,
+  "schreibökonomisch": "certainly not",
+  "": "allowed but discouraged",
+}
+
+# output:
+"" = "allowed but discouraged"
+-start-dashes-too = "of course"
+042 = "Seemingly integer key"
+_underscores_are_ok = true
+dashes-are-ok = true
+"schreibökonomisch" = "certainly not"
+"spaces are ok" = false

@@ -1,0 +1,12 @@
+{
+  range = std.range,
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "range"
+Error: Functions cannot be exported as TOML.

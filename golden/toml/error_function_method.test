@@ -1,0 +1,12 @@
+{
+  method = "Not exportable as TOML.".len
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "method"
+Error: Methods cannot be exported as TOML.

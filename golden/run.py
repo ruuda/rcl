@@ -97,6 +97,8 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
             cmd = ["eval", "--output=raw"]
         case "rcl":
             cmd = ["eval", "--output=rcl"]
+        case "toml":
+            cmd = ["eval", "--output=toml"]
         case unknown:
             raise ValueError(f"No command-line known for {unknown}.")
 

@@ -1,0 +1,22 @@
+// This test tests both that serializing `null` is an error,
+// and that the context of the error is reported properly.
+{
+  outer = {
+    inner = [
+      "first",
+      null,
+      "last",
+    ]
+  }
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ // This test tests both that serializing `null` is an error,
+  ╵ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+in value
+at index 1
+at key "inner"
+at key "outer"
+Error: Null cannot be exported as TOML.

@@ -1,0 +1,25 @@
+{
+  users = [
+    {
+      username = "rbatty",
+      name = "Roy Batty",
+      model = "Nexus-6",
+    },
+    {
+      username = "rachael",
+      name = "Rachael Tyrell",
+      model = "Nexus-7",
+    },
+  ],
+}
+
+# output:
+[[users]]
+model = "Nexus-6"
+name = "Roy Batty"
+username = "rbatty"
+
+[[users]]
+model = "Nexus-7"
+name = "Rachael Tyrell"
+username = "rachael"

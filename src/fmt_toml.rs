@@ -24,7 +24,7 @@ pub fn format_toml(caller: Span, v: &Value) -> Result<Doc> {
 
     match v {
         Value::Dict(kv) => formatter.top_level(kv),
-        _ => formatter.error("Expected a dict for TOML format."),
+        _ => formatter.error("To format as TOML, the top-level value must be a dict."),
     }
 }
 
@@ -96,6 +96,8 @@ impl Formatter {
                 self.path.push(PathElement::Key(k_str.clone()));
                 Ok(self.key(k_str).with_markup(Markup::Identifier))
             }
+            // TODO: If value path allowed non-string keys, then we could
+            // include the key itself in the error.
             _ => self.error("To export as TOML, keys must be strings."),
         }
     }
