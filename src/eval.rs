@@ -489,6 +489,7 @@ impl<'a> Evaluator<'a> {
             } => {
                 // We do strict evaluation, all arguments get evaluated before we go
                 // into the call.
+                self.inc_eval_depth(*function_span)?;
                 let fun = self.eval_expr(env, fun_expr)?;
                 let args = args_exprs
                     .iter()
@@ -499,6 +500,8 @@ impl<'a> Evaluator<'a> {
                         })
                     })
                     .collect::<Result<Vec<_>>>()?;
+
+                self.dec_eval_depth();
 
                 let call = FunctionCall {
                     call_open: *open,
