@@ -22,7 +22,12 @@ def expand_file(in_fname: str, out_dir: str) -> None:
     for mode in b"APQTajt":
         # We set the width parameter to 100 on all samples. The fuzzer may
         # discover other variants but they shouldn’t matter so much.
-        sample_out = b"//" + mode.to_bytes() + b"n\n" + sample_in[nlpos + 1:]
+        sample_out = (
+            b"//"
+            + mode.to_bytes(length=1, byteorder="little")
+            + b"n\n"
+            + sample_in[nlpos + 1 :]
+        )
 
         # Libfuzzer names the fuzz samples after their SHA1 hash.
         name = hashlib.sha1(sample_out).hexdigest()
