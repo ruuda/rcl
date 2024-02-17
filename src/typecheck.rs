@@ -402,7 +402,7 @@ impl<'a> TypeChecker<'a> {
                 Typed::Type(type_literal(expr_span, Type::Function(fn_type)))
             }
 
-            Expr::Call { function_span, function, args, .. } => {
+            Expr::Call { function_span, function, args, close, .. } => {
                 // The direction of the requirements for a call could go two ways.
                 // Take for example: `(x => x + 1)("42")`. We could say, it's a
                 // call with String as first argument, so we push that into the
@@ -416,9 +416,28 @@ impl<'a> TypeChecker<'a> {
                 let fn_type = self.check_expr(type_any(), *function_span, function)?;
 
                 let result_type = match &fn_type.type_ {
-                    // TODO: Typecheck call args.
-                    Type::Function(f) => &f.result,
-                    Type::Any => type_any(),
+                    Type::Function(f) => {
+                        let function_name = None;
+                        f.check_arity(function_name, args, *close)?;
+
+                        // If we know the function type, then we can typecheck
+                        // all the arguments precisely.
+                        for (call_arg, fn_arg) in args.iter_mut().zip(f.args.iter()) {
+                            self.check_expr(&fn_arg.type_, call_arg.span, &mut call_arg.value)?;
+                        }
+
+                        &f.result
+                    },
+                    Type::Any => {
+                        // If we don't know the function type, then we don't have
+                        // any expectations on the arguments, but we still need
+                        // to typecheck them.
+                        for call_arg in args {
+                            self.check_expr(type_any(), call_arg.span, &mut call_arg.value)?;
+                        }
+
+                        type_any()
+                    },
                     _not_function => {
                         return function_span
                             .error("This cannot be called.")
@@ -426,16 +445,6 @@ impl<'a> TypeChecker<'a> {
                             .err()
                     },
                 };
-
-                // TODO: When the function type is statically known, possibly
-                // check the args statically. But we can't know the function
-                // type statically in all cases, so since the runtime check will
-                // have to exist anyway, we rely on that for now. We still
-                // descend into the args to typecheck them, but without any
-                // requirement.
-                for call_arg in args {
-                    self.check_expr(type_any(), call_arg.span, &mut call_arg.value)?;
-                }
 
                 result_type.is_subtype_of(expected).check(expr_span)?
             }

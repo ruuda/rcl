@@ -7,7 +7,6 @@ let g: (Any) -> Int = f;
 
 // This assertion would crash the program if we ever got to runtime. But the
 // arity error below should be detected at typecheck time already.
-// TODO: That is not the case right now, it fails at runtime.
 assert false, "This should fail statically before it fails at runtime.";
 
 // Now when we call `g`, we can infer from the type that we are passing too few
@@ -15,8 +14,8 @@ assert false, "This should fail statically before it fails at runtime.";
 g()
 
 # output:
-stdin:11:8
+stdin:14:3
    ╷
-11 │ assert false, "This should fail statically before it fails at runtime.";
-   ╵        ^~~~~
-Error: Assertion failed. This should fail statically before it fails at runtime.
+14 │ g()
+   ╵   ^
+Error: Missing argument. The function takes 1 argument, but got 0.
