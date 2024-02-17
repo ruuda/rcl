@@ -129,9 +129,11 @@ impl PartialEq for Function {
 impl Eq for Function {}
 
 impl PartialOrd for Function {
+    // coverage:off -- All callers use `Ord`, not `PartialOrd`.
     fn partial_cmp(&self, other: &Function) -> Option<Ordering> {
         Some(self.cmp(other))
     }
+    // coverage:on
 }
 
 impl Ord for Function {
