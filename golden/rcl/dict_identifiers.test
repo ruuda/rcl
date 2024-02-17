@@ -5,7 +5,16 @@
   "safe-ident": 1,
   "unsafe ident": 2,
   "null": 3,
+  "": 0,
+  "-does-not-start-with-safe-char": 42,
 }
 
 # output:
-{ "null": 3, safe-ident = 1, safe_ident = 0, "unsafe ident": 2 }
+{
+  "": 0,
+  "-does-not-start-with-safe-char": 42,
+  "null": 3,
+  safe-ident = 1,
+  safe_ident = 0,
+  "unsafe ident": 2,
+}

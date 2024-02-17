@@ -199,8 +199,7 @@ mod test {
         for part in parse_string_raw(input) {
             let span = match part {
                 StringPart::String(span) => span,
-                StringPart::Escape(span, _) => span,
-                StringPart::Hole(span, _) => span,
+                _ => unreachable!("Tests contain no holes or escapes."),
             };
             result.push(span.resolve(input));
         }
