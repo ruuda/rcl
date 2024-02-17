@@ -1,0 +1,13 @@
+// This example is not minimal, the error would also trigger without the second
+// argument of type `Int`, but we add it to cover the more tricky error
+// reporting case of having an error and a non-error in the argument list.
+let f: (Int, Int) -> Bool = (x, y) => true;
+let g: (String, Int) -> Bool = f;
+null
+
+# output:
+stdin:5:32
+  ╷
+5 │ let g: (String, Int) -> Bool = f;
+  ╵                                ^
+Error: Type mismatch in type. TODO: Pretty-print: Function([Error(Atom(SourcedType { type_: String, source: Annotation(d0[279..285]) }, SourcedType { type_: Int, source: Annotation(d0[235..238]) })), Ok(FunctionArg { name: None, span: None, type_: SourcedType { type_: Int, source: Annotation(d0[240..243]) } })], Ok(SourcedType { type_: Bool, source: Annotation(d0[295..299]) }))

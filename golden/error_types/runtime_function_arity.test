@@ -1,0 +1,24 @@
+// Define a function of arity 2.
+let f = (x, y) => false;
+
+// Forget the type.
+let g: Any = f;
+
+// Force a runtime type check that `g` satisfies a function type of arity 1.
+// This should fail.
+let h: (Int) -> Bool = g;
+
+null
+
+# output:
+stdin:9:24
+  ╷
+9 │ let h: (Int) -> Bool = g;
+  ╵                        ^
+Error: Type mismatch. Expected this type:
+
+  (Int) -> Bool
+
+But found this type:
+
+  (x: Any, y: Any) -> Bool

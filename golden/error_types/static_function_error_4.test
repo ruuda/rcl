@@ -1,0 +1,12 @@
+// See also the other variants of this test. In this case the args are ok but
+// the result type is an error.
+let f: (Int) -> Bool = x => true;
+let g: (Int) -> String = f;
+null
+
+# output:
+stdin:4:26
+  ╷
+4 │ let g: (Int) -> String = f;
+  ╵                          ^
+Error: Type mismatch in type. TODO: Pretty-print: Function([Ok(FunctionArg { name: None, span: None, type_: SourcedType { type_: Int, source: Annotation(d0[118..121]) } })], Error(Atom(SourcedType { type_: Bool, source: Annotation(d0[126..130]) }, SourcedType { type_: String, source: Annotation(d0[160..166]) })))

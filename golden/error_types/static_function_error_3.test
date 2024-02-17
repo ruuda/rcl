@@ -1,0 +1,12 @@
+// See also the other variants of this test. In this case we have multiple error
+// arguments.
+let f: (String, Int) -> Bool = (x, y) => true;
+let g: (Int, String) -> Bool = f;
+null
+
+# output:
+stdin:4:32
+  ╷
+4 │ let g: (Int, String) -> Bool = f;
+  ╵                                ^
+Error: Type mismatch in type. TODO: Pretty-print: Function([Error(Atom(SourcedType { type_: Int, source: Annotation(d0[150..153]) }, SourcedType { type_: String, source: Annotation(d0[103..109]) })), Error(Atom(SourcedType { type_: String, source: Annotation(d0[155..161]) }, SourcedType { type_: Int, source: Annotation(d0[111..114]) }))], Ok(SourcedType { type_: Bool, source: Annotation(d0[166..170]) }))

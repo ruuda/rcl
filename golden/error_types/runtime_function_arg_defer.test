@@ -1,0 +1,20 @@
+// This tests the `FunctionArg::is_subtype_of` check for the case where the
+// inner args return `Defer`. This happens when we check if `Any` is a subtype
+// of `Int` for example.
+let f: (Int) -> Bool = x => true;
+let g: Any = f;
+let h: (Any) -> Bool = g;
+null
+
+# output:
+stdin:6:24
+  ╷
+6 │ let h: (Any) -> Bool = g;
+  ╵                        ^
+Error: Type mismatch. Expected this type:
+
+  (Any) -> Bool
+
+But found this type:
+
+  (x: Int) -> Bool
