@@ -225,15 +225,13 @@ impl Function {
         let mut is_err = false;
         let mut is_defer = false;
 
-        // Function arguments are contravariant: the subtype relationship
-        // goes the other way. For example, `(Any) -> Int` is a subtype of
-        // `(Int) -> Int`: in every case where we need to call the latter,
-        // we can call the former.
         let mut args = Vec::with_capacity(self.args.len());
         let mut arg_diffs = Vec::new();
 
         for (a1, a2) in self.args.iter().zip(other.args.iter()) {
-            match a2.is_subtype_of(&a1) {
+            // Note, the contravariance is built into the `FunctionArg` check,
+            // so here we do check that a1 ≤ a2.
+            match a1.is_subtype_of(a2) {
                 TypeDiff::Ok(t) | TypeDiff::Defer(t) if is_err => {
                     arg_diffs.push(TypeDiff::Ok(t));
                 }
