@@ -83,7 +83,7 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
 
     # Decide which subcommand to test based on the test directory.
     match os.path.basename(os.path.dirname(fname)):
-        case "error":
+        case "error" | "error_types":
             cmd = ["eval"]
         case "error_json":
             cmd = ["eval", "--format=json"]

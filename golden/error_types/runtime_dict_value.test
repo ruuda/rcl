@@ -1,0 +1,26 @@
+let xs = { answer = "42" };
+let ys: Dict[String, Any] = xs;
+// Runtime type error: string "42" is does not the type Int.
+let zs: Dict[String, Int] = ys;
+null
+
+# output:
+stdin:4:29
+  ╷
+4 │ let zs: Dict[String, Int] = ys;
+  ╵                             ^~
+in value
+at key "TODO: Support any key"
+Error: Type mismatch. Expected a value that fits this type:
+
+  Int
+
+But got this value:
+
+  "42"
+
+stdin:4:22
+  ╷
+4 │ let zs: Dict[String, Int] = ys;
+  ╵                      ^~~
+Note: Expected Int because of this annotation.
