@@ -953,7 +953,10 @@ impl<'a> Evaluator<'a> {
             (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x <= y)),
             (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x >= y)),
             // TODO: Throw a type error when the types are not the same, instead of
-            // enabling comparing values of different types.
+            // enabling comparing values of different types. Or do we want to allow
+            // comparing arbitrary values after all? Hmm ... So far I haven't felt
+            // the need to allow comparing anything but int for inequalities. So
+            // maybe it should be a type error?
             (BinOp::Eq, x, y) => Ok(Value::Bool(x == y)),
             (BinOp::Neq, x, y) => Ok(Value::Bool(x != y)),
             _ => {
