@@ -107,18 +107,16 @@ impl<'a> DiffFormatter<'a> {
         }];
         for (i, inner_error) in state.errors.iter().enumerate() {
             let n = i + 1;
-            let err_name = concat! { "Error at E" n.to_string() ":" };
             let message = concat! {
                 Doc::HardBreak
                 Doc::HardBreak
-                err_name.with_markup(Markup::Error)
-                " "
+                "At E" n.to_string() ": "
                 types::report_type_mismatch(inner_error.expected, inner_error.actual)
             };
             parts.push(message);
         }
         let mut error = at
-            .error("Type mismatch in type:")
+            .error("Type mismatch inside this type:")
             .with_body(Doc::Concat(parts).into_owned());
         for inner_error in state.errors.iter() {
             // TODO: We should also add the source of the actual type to the error.

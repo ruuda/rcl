@@ -7,11 +7,11 @@ stdin:2:27
   ╷
 2 │ let ys: Dict[Bool, Int] = xs;
   ╵                           ^~
-Error: Type mismatch in type:
+Error: Type mismatch inside this type:
 
   Dict[<E1>, Int]
 
-Error at E1: Expected Bool but found Int.
+At E1: Expected Bool but found Int.
 
 stdin:2:14
   ╷

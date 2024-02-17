@@ -457,8 +457,17 @@ impl Source {
     /// Add context to a type error about why a particular type was expected.
     pub fn clarify_error<T: AsTypeName>(&self, expected_type: &T, error: Error) -> Error {
         let expected_name = if expected_type.is_atom() {
-            expected_type.format_type()
+            // If it's an atom, we have space to put the name of the type in the
+            // sentence. But remove the coloring, it gets too distracting as the
+            // type here is not the main purpose of the sentence.
+            match expected_type.format_type() {
+                Doc::Markup(_, type_name) => *type_name,
+                _ => unreachable!("Formatted atoms have markup."),
+            }
         } else {
+            // If it's not an atom, the type might be huge, so we don't put it
+            // in the middle of the sentence, we just say "type" and hope the
+            // message is still clear enough.
             "type".into()
         };
         match self {

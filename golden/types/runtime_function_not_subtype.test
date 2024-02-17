@@ -11,11 +11,11 @@ stdin:6:24
   ╷
 6 │ let h: (Any) -> Bool = g;
   ╵                        ^
-Error: Type mismatch in type:
+Error: Type mismatch inside this type:
 
   (x: Any) -> <E1>
 
-Error at E1: Expected Bool but found Int.
+At E1: Expected Bool but found Int.
 
 stdin:6:17
   ╷

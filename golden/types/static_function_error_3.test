@@ -9,13 +9,13 @@ stdin:4:32
   ╷
 4 │ let g: (Int, String) -> Bool = f;
   ╵                                ^
-Error: Type mismatch in type:
+Error: Type mismatch inside this type:
 
   (<E1>, <E2>) -> Bool
 
-Error at E1: Expected String but found Int.
+At E1: Expected String but found Int.
 
-Error at E2: Expected Int but found String.
+At E2: Expected Int but found String.
 
 stdin:3:9
   ╷

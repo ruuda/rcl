@@ -7,11 +7,11 @@ stdin:2:22
   ╷
 2 │ let ys: List[Bool] = xs;
   ╵                      ^~
-Error: Type mismatch in type:
+Error: Type mismatch inside this type:
 
   List[<E1>]
 
-Error at E1: Expected Bool but found Int.
+At E1: Expected Bool but found Int.
 
 stdin:2:14
   ╷

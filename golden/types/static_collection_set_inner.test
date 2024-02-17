@@ -7,11 +7,11 @@ stdin:2:21
   ╷
 2 │ let ys: Set[Bool] = xs;
   ╵                     ^~
-Error: Type mismatch in type:
+Error: Type mismatch inside this type:
 
   Set[<E1>]
 
-Error at E1: Expected Bool but found Int.
+At E1: Expected Bool but found Int.
 
 stdin:2:13
   ╷
