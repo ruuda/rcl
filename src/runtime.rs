@@ -19,7 +19,7 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::types;
-use crate::types::{SourcedType, Type, Typed};
+use crate::types::{Mismatch, Source, SourcedType, Type, TypeDiff};
 
 /// The arguments to a function call at runtime.
 pub struct FunctionCall<'a> {
@@ -250,12 +250,26 @@ impl Value {
             }
 
             (Type::Function(fn_type), Value::Function(fn_val)) => {
-                match fn_val.type_.is_subtype_of(fn_type).check(at)? {
-                    Typed::Type(..) => Ok(()),
-                    Typed::Defer(..) => {
-                        unimplemented!("Figure out a good way to report that we can't check this.")
-                    }
-                }
+                let error = match fn_val.type_.is_subtype_of(fn_type) {
+                    TypeDiff::Ok(..) => return Ok(()),
+                    // If we encounter a defer, if that happens statically at
+                    // typecheck time then we can insert a runtime check. But
+                    // now we are at runtime, and we can't guarantee that these
+                    // types are compatible, so treat that as an error.
+                    TypeDiff::Defer(..) => TypeDiff::Error(Mismatch::Atom(
+                        SourcedType {
+                            type_: Type::Function(fn_val.type_.clone()),
+                            source: Source::None,
+                        },
+                        SourcedType {
+                            type_: Type::Function(fn_type.clone()),
+                            source: Source::None,
+                        },
+                    )),
+                    error => error,
+                };
+                error.check(at)?;
+                unreachable!("The above ? fails.")
             }
 
             _ => {

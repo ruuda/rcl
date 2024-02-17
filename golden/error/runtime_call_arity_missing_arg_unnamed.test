@@ -3,11 +3,20 @@
 let f: Any = x => x * 2;
 
 // Then here we add the type back. But this time we lost the argument name.
-let g: (Int) -> Int = f;
+let g: (Any) -> Int = f;
+
+// This assertion would crash the program if we ever got to runtime. But the
+// arity error below should be detected at typecheck time already.
+// TODO: That is not the case right now, it fails at runtime.
+assert false, "This should fail statically before it fails at runtime.";
 
 // Now when we call `g`, we can infer from the type that we are passing too few
 // arguments, but we can't name the missing argument.
 g()
 
 # output:
-TODO
+stdin:11:8
+   ╷
+11 │ assert false, "This should fail statically before it fails at runtime.";
+   ╵        ^~~~~
+Error: Assertion failed. This should fail statically before it fails at runtime.

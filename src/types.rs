@@ -279,14 +279,10 @@ impl Function {
         if is_defer {
             TypeDiff::Defer(fn_type.into())
         } else {
-            // When we return ok, the type we concluded should be exactly the
-            // same as the subtype. We return the original to enable more reuse,
-            // and not waste memory on identical copies. We might miss out on
-            // collecting argument names though. They don't count for equality,
-            // but it would still be a shame. But it should also be very rare
-            // that a subtype check adds those names. Hmm.
-            debug_assert_eq!(**self, fn_type);
-            TypeDiff::Ok(self.clone())
+            // In this case, even though `self` should be equivalent to `fn_type`,
+            // it is not identical. The sources of the types can differ, and we
+            // may have collected names for unnamed arguments.
+            TypeDiff::Ok(fn_type.into())
         }
     }
 }
