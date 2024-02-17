@@ -209,9 +209,7 @@ impl Value {
     /// Dynamically check that the value fits the required type.
     pub fn is_instance_of(&self, at: Span, type_: &SourcedType) -> Result<()> {
         let req_type = match &type_.type_ {
-            // If we do have this in the future (for example for function arguments)
-            // we should just return Ok(()) here.
-            Type::Any => panic!("As of yet, checking for Any should not happen at runtime."),
+            Type::Any => return Ok(()),
             t => t,
         };
         match (req_type, self) {
