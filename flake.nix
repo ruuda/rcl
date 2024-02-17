@@ -250,7 +250,7 @@
                 grcov . \
                   --source-dir source \
                   --binary-path ${coverageBuild}/bin \
-                  --excl-line '(#\[derive|unreachable!|panic!)\(' \
+                  --excl-line '(#\[derive|unreachable!|panic!|std::process::exit)\(' \
                   --llvm-path $bintools \
                   --prefix-dir source \
                   --llvm \
