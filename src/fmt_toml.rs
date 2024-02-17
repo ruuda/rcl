@@ -91,13 +91,9 @@ impl Formatter {
 
     /// Format a key, and push it to as path, or return an error on non-strings.
     fn push_key<'a>(&mut self, key: &'a Value) -> Result<Doc<'a>> {
+        self.path.push(PathElement::Key(key.clone()));
         match key {
-            Value::String(k_str) => {
-                self.path.push(PathElement::Key(k_str.clone()));
-                Ok(self.key(k_str).with_markup(Markup::Identifier))
-            }
-            // TODO: If value path allowed non-string keys, then we could
-            // include the key itself in the error.
+            Value::String(k_str) => Ok(self.key(k_str).with_markup(Markup::Identifier)),
             _ => self.error("To export as TOML, keys must be strings."),
         }
     }

@@ -241,12 +241,10 @@ impl Value {
             }
             (Type::Dict(dict), Value::Dict(kvs)) => {
                 for (k, v) in kvs.iter() {
-                    k.is_instance_of(at, &dict.key).map_err(|err| {
-                        err.with_path_element(PathElement::Key("TODO: Support any key".into()))
-                    })?;
-                    v.is_instance_of(at, &dict.value).map_err(|err| {
-                        err.with_path_element(PathElement::Key("TODO: Support any key".into()))
-                    })?;
+                    k.is_instance_of(at, &dict.key)
+                        .map_err(|err| err.with_path_element(PathElement::Key(k.clone())))?;
+                    v.is_instance_of(at, &dict.value)
+                        .map_err(|err| err.with_path_element(PathElement::Key(k.clone())))?;
                 }
                 Ok(())
             }

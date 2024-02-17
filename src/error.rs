@@ -7,10 +7,10 @@
 
 //! Types and functions for error reporting.
 
-use std::rc::Rc;
-
+use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
 use crate::pprint::{concat, Doc};
+use crate::runtime::Value;
 use crate::source::{Inputs, Span};
 
 pub type Result<T> = std::result::Result<T, Box<Error>>;
@@ -19,7 +19,7 @@ pub type Result<T> = std::result::Result<T, Box<Error>>;
 // TODO: Record the value itself as well, so we can *show* the thing that's wrong.
 #[derive(Debug)]
 pub enum PathElement {
-    Key(Rc<str>),
+    Key(Value),
     Index(usize),
 }
 
@@ -200,11 +200,8 @@ impl Error {
         for elem in self.path.iter().rev() {
             match elem {
                 PathElement::Key(k) => {
-                    let mut v = "\"".to_string();
-                    crate::string::escape_json(k, &mut v);
-                    v.push('"');
                     path_doc.push("at key ".into());
-                    path_doc.push(Doc::from(v).with_markup(Markup::String));
+                    path_doc.push(format_rcl(k).into_owned());
                 }
                 PathElement::Index(i) => {
                     let v = i.to_string();

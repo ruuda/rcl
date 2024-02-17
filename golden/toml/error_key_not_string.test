@@ -7,4 +7,6 @@ stdin:1:1
   ╷
 1 │ {
   ╵ ^
+in value
+at key 42
 Error: To export as TOML, keys must be strings.

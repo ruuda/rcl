@@ -10,7 +10,7 @@ stdin:4:29
 4 │ let zs: Dict[String, Int] = ys;
   ╵                             ^~
 in value
-at key "TODO: Support any key"
+at key "answer"
 Error: Type mismatch. Expected a value that fits this type:
 
   Int
