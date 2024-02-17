@@ -256,16 +256,16 @@ impl Value {
                     // typecheck time then we can insert a runtime check. But
                     // now we are at runtime, and we can't guarantee that these
                     // types are compatible, so treat that as an error.
-                    TypeDiff::Defer(..) => TypeDiff::Error(Mismatch::Atom(
-                        SourcedType {
+                    TypeDiff::Defer(..) => TypeDiff::Error(Mismatch::Atom {
+                        actual: SourcedType {
                             type_: Type::Function(fn_val.type_.clone()),
                             source: Source::None,
                         },
-                        SourcedType {
+                        expected: SourcedType {
                             type_: Type::Function(fn_type.clone()),
                             source: Source::None,
                         },
-                    )),
+                    }),
                     error => error,
                 };
                 error.check(at)?;

@@ -9,4 +9,14 @@ stdin:4:32
   ╷
 4 │ let g: (Int, String) -> Bool = f;
   ╵                                ^
-Error: Type mismatch in type. TODO: Pretty-print: Function([Ok(FunctionArg { name: None, span: None, type_: SourcedType { type_: Int, source: Annotation(d0[131..134]) } }), Error(Atom(SourcedType { type_: String, source: Annotation(d0[180..186]) }, SourcedType { type_: Int, source: Annotation(d0[136..139]) }))], Ok(SourcedType { type_: Bool, source: Annotation(d0[191..195]) }))
+Error: Type mismatch in type:
+
+  (Int, <E1>) -> Bool
+
+Error at E1: Expected Int but found String.
+
+stdin:3:14
+  ╷
+3 │ let f: (Int, Int) -> Bool = (x, y) => true;
+  ╵              ^~~
+Note: Expected Int because of this annotation.

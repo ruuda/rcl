@@ -7,4 +7,14 @@ stdin:2:22
   ╷
 2 │ let ys: List[Bool] = xs;
   ╵                      ^~
-Error: Type mismatch in type. TODO: Pretty-print: List(Error(Atom(SourcedType { type_: Int, source: Annotation(d0[13..16]) }, SourcedType { type_: Bool, source: Annotation(d0[38..42]) })))
+Error: Type mismatch in type:
+
+  List[<E1>]
+
+Error at E1: Expected Bool but found Int.
+
+stdin:2:14
+  ╷
+2 │ let ys: List[Bool] = xs;
+  ╵              ^~~~
+Note: Expected Bool because of this annotation.

@@ -209,16 +209,16 @@ impl Function {
         // not the surrounding type. In `Type::is_subtype_of` we do the check
         // that preserves the sources.
         if self.args.len() != other.args.len() {
-            let err = Mismatch::Atom(
-                SourcedType {
+            let err = Mismatch::Atom {
+                actual: SourcedType {
                     type_: Type::Function(self.clone()),
                     source: Source::None,
                 },
-                SourcedType {
+                expected: SourcedType {
                     type_: Type::Function(other.clone()),
                     source: Source::None,
                 },
-            );
+            };
             return TypeDiff::Error(err);
         }
 
@@ -331,7 +331,10 @@ pub struct SourcedType {
 #[derive(Debug)]
 pub enum Mismatch {
     /// The type error cannot be broken down further. Here are `T` and `U`.
-    Atom(SourcedType, SourcedType),
+    Atom {
+        expected: SourcedType,
+        actual: SourcedType,
+    },
 
     /// Both sides are a list, but the element type has an issue.
     List(Box<TypeDiff<SourcedType>>),
@@ -555,7 +558,10 @@ impl SourcedType {
             (_, Type::Any) => TypeDiff::Ok(self.clone()),
 
             // If I take any value from not-Void, it is not a member of Void.
-            (_, Type::Void) => TypeDiff::Error(Mismatch::Atom(self.clone(), other.clone())),
+            (_, Type::Void) => TypeDiff::Error(Mismatch::Atom {
+                actual: self.clone(),
+                expected: other.clone(),
+            }),
 
             // If I take any arbitrary value, is it a member of some type T,
             // when T is not `Any` (that case is already covered above)?
@@ -612,7 +618,10 @@ impl SourcedType {
                 if f1.args.len() != f2.args.len() {
                     // If we have an arity mismatch, report that directly, because
                     // then we can preserve the sources of the types.
-                    TypeDiff::Error(Mismatch::Atom(self.clone(), other.clone()))
+                    TypeDiff::Error(Mismatch::Atom {
+                        actual: self.clone(),
+                        expected: other.clone(),
+                    })
                 } else {
                     match f1.is_subtype_of(f2) {
                         TypeDiff::Ok(..) => TypeDiff::Ok(self.clone()),
@@ -629,7 +638,10 @@ impl SourcedType {
             }
 
             // If we have any other combination of types, they are incompatible.
-            _ => TypeDiff::Error(Mismatch::Atom(self.clone(), other.clone())),
+            _ => TypeDiff::Error(Mismatch::Atom {
+                actual: self.clone(),
+                expected: other.clone(),
+            }),
         }
     }
 }
@@ -651,7 +663,7 @@ impl<T> TypeDiff<T> {
         match self {
             TypeDiff::Ok(t) => Ok(Typed::Type(t)),
             TypeDiff::Defer(t) => Ok(Typed::Defer(t)),
-            TypeDiff::Error(Mismatch::Atom(actual, expected)) => {
+            TypeDiff::Error(Mismatch::Atom { actual, expected }) => {
                 let err = if let Type::Void = expected.type_ {
                     at.error(concat! {
                         "Expected a value of type "
@@ -678,9 +690,7 @@ impl<T> TypeDiff<T> {
                 // resort to a more complex format where we first print the
                 // type itself, with the error part replaced with a placeholder,
                 // and then we add a secondary error to explain the placeholder.
-                at.error("Type mismatch in type.")
-                    .with_body(format!("TODO: Pretty-print: {diff:?}"))
-                    .err()
+                crate::fmt_type::DiffFormatter::report(at, &diff).err()
             }
         }
     }

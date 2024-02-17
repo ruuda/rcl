@@ -7,4 +7,14 @@ stdin:2:21
   ╷
 2 │ let ys: Set[Bool] = xs;
   ╵                     ^~
-Error: Type mismatch in type. TODO: Pretty-print: Set(Error(Atom(SourcedType { type_: Int, source: Annotation(d0[12..15]) }, SourcedType { type_: Bool, source: Annotation(d0[36..40]) })))
+Error: Type mismatch in type:
+
+  Set[<E1>]
+
+Error at E1: Expected Bool but found Int.
+
+stdin:2:13
+  ╷
+2 │ let ys: Set[Bool] = xs;
+  ╵             ^~~~
+Note: Expected Bool because of this annotation.
