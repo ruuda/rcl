@@ -1,0 +1,10 @@
+let xs: Dict[Int, Int] = {0: 0};
+let ys: Dict[Int, Bool] = xs;
+null
+
+# output:
+stdin:2:27
+  ╷
+2 │ let ys: Dict[Int, Bool] = xs;
+  ╵                           ^~
+Error: Type mismatch in type. TODO: Pretty-print: Dict(Ok(SourcedType { type_: Int, source: Annotation(d0[46..49]) }), Error(Atom(SourcedType { type_: Int, source: Annotation(d0[18..21]) }, SourcedType { type_: Bool, source: Annotation(d0[51..55]) })))

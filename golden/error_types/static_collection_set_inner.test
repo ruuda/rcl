@@ -1,0 +1,10 @@
+let xs: Set[Int] = {0};
+let ys: Set[Bool] = xs;
+null
+
+# output:
+stdin:2:21
+  ╷
+2 │ let ys: Set[Bool] = xs;
+  ╵                     ^~
+Error: Type mismatch in type. TODO: Pretty-print: Set(Error(Atom(SourcedType { type_: Int, source: Annotation(d0[12..15]) }, SourcedType { type_: Bool, source: Annotation(d0[36..40]) })))
