@@ -110,12 +110,6 @@ impl Span {
         Span::new(self.doc(), self.start() + n_trim, self.end())
     }
 
-    /// Delete n bytes from the end of the span.
-    pub fn trim_end(&self, n: usize) -> Span {
-        let n_trim = self.len().min(n);
-        Span::new(self.doc(), self.start(), self.end() - n_trim)
-    }
-
     /// Keep at most the first `n` bytes of the span.
     pub fn take(&self, n: usize) -> Span {
         Span::new(self.doc(), self.start(), self.end().min(self.start() + n))
@@ -149,13 +143,6 @@ pub trait Source<'a> {
 impl<'a> Source<'a> for &'a str {
     fn resolve(self, span: Span) -> &'a str {
         &self[span.start()..span.end()]
-    }
-}
-
-impl<'a> Source<'a> for &Inputs<'a> {
-    fn resolve(self, span: Span) -> &'a str {
-        let doc = self[span.doc().0 as usize].data;
-        &doc[span.start()..span.end()]
     }
 }
 
