@@ -15,3 +15,9 @@ stdin:4:21
 4 │ [for i in integers: not i]
   ╵                     ^~~
 Note: Expected Bool because of this operator.
+
+stdin:3:27
+  ╷
+3 │ let integers = [for i in [1, 2, 3]: if i > 100: i];
+  ╵                           ^
+Note: Found Int because of this value.

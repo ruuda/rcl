@@ -131,6 +131,14 @@ impl Span {
             self.end().max(other.end()),
         )
     }
+
+    /// Return whether `other` is contained within `self`.
+    ///
+    /// The contained span does not have to be strictly smaller than the span
+    /// itself, a span contains itself.
+    pub fn contains(&self, other: Span) -> bool {
+        (self.start() <= other.start()) && (self.end() >= other.end())
+    }
 }
 
 pub trait Source<'a> {

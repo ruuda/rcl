@@ -295,6 +295,7 @@ pub enum Source {
     None,
 
     /// There were multiple sources, we had to merge them and lost the details.
+    // TODO: Is this even still used?
     Many,
 
     /// Expected `Void` because the collection at the given location is empty.
@@ -387,6 +388,23 @@ pub enum Side {
 }
 
 impl Source {
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            Source::EmptyCollection(s) => Some(*s),
+            Source::Literal(s) => Some(*s),
+            Source::Annotation(s) => Some(*s),
+            Source::Operator(s) => Some(*s),
+            // Note, we don't handle the cases without span with a `_` pattern
+            // on purpose, so that if we add a variant that has a span, it
+            // causes a compile error instead of silently not returning it here.
+            Source::None => None,
+            Source::Many => None,
+            Source::Builtin => None,
+            Source::Condition => None,
+            Source::IndexList => None,
+        }
+    }
+
     /// Combine two sources of types that are known to be equal.
     ///
     /// When types meet and their meet is not equal to either side, then the
@@ -700,7 +718,7 @@ impl<T> TypeDiff<T> {
             TypeDiff::Ok(t) => Ok(Typed::Type(t)),
             TypeDiff::Defer(t) => Ok(Typed::Defer(t)),
             TypeDiff::Error(Mismatch::Atom { actual, expected }) => {
-                let err = if let Type::Void = expected.type_ {
+                let mut error = if let Type::Void = expected.type_ {
                     at.error(concat! {
                         "Expected a value of type "
                         "Void".format_type()
@@ -719,16 +737,23 @@ impl<T> TypeDiff<T> {
                 };
 
                 // If we have it, explain why the expected type is expected.
-                // TODO: Include the clarification for the actual value too,
-                // but only of the type source span is not equal to the span
-                // that we're already blaming the error on. We could do
-                // something similar for the expected type, avoid it in case
-                // of top-level errors directly inside an annotated let-binding,
-                // because those are quite obvious.
-                expected
+                error = expected
                     .source
-                    .clarify_error(Side::Expected, &expected, err)
-                    .err()
+                    .clarify_error(Side::Expected, &expected, error);
+
+                // If the actual type doesn't come from the span that we are
+                // attributing the error to, then also include a note about that.
+                let should_report_source = match actual.source.span() {
+                    // TODO: Should it be contains, or just equality? Can there
+                    // be complex expressions where it helps to single out a
+                    // sub-span?
+                    Some(src_span) => !at.contains(src_span),
+                    None => true,
+                };
+                if should_report_source {
+                    error = actual.source.clarify_error(Side::Actual, &actual, error);
+                }
+                error.err()
             }
             TypeDiff::Error(diff) => {
                 // If the error is nested somewhere inside a type, then we
