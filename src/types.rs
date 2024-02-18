@@ -294,10 +294,6 @@ pub enum Source {
     /// typechecker for expressions that are not otherwise constrained.
     None,
 
-    /// There were multiple sources, we had to merge them and lost the details.
-    // TODO: Is this even still used?
-    Many,
-
     /// Expected `Void` because the collection at the given location is empty.
     EmptyCollection(Span),
 
@@ -398,7 +394,6 @@ impl Source {
             // on purpose, so that if we add a variant that has a span, it
             // causes a compile error instead of silently not returning it here.
             Source::None => None,
-            Source::Many => None,
             Source::Builtin => None,
             Source::Condition => None,
             Source::IndexList => None,
@@ -448,7 +443,6 @@ impl Source {
         };
         match self {
             Source::None => error,
-            Source::Many => error,
 
             // TODO: Add information about the builtin (function and arg name).
             Source::Builtin => error,
