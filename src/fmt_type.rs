@@ -13,7 +13,7 @@ use crate::error::{Error, IntoError};
 use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};
 use crate::source::Span;
-use crate::types::{self, FunctionArg, Mismatch, SourcedType, Type, TypeDiff};
+use crate::types::{self, FunctionArg, Mismatch, Side, SourcedType, Type, TypeDiff};
 
 /// Render a type.
 pub fn format_type(type_: &Type) -> Doc {
@@ -119,11 +119,16 @@ impl<'a> DiffFormatter<'a> {
             .error("Type mismatch inside this type:")
             .with_body(Doc::Concat(parts).into_owned());
         for inner_error in state.errors.iter() {
-            // TODO: We should also add the source of the actual type to the error.
-            error = inner_error
-                .expected
-                .source
-                .clarify_error(inner_error.expected, error);
+            error = inner_error.expected.source.clarify_error(
+                Side::Expected,
+                inner_error.expected,
+                error,
+            );
+            error =
+                inner_error
+                    .actual
+                    .source
+                    .clarify_error(Side::Actual, inner_error.actual, error);
         }
         error
     }

@@ -21,3 +21,9 @@ stdin:4:9
 4 │ let f: (Int, Int) -> Bool = (x, y) => true;
   ╵         ^~~
 Note: Expected Int because of this annotation.
+
+stdin:5:9
+  ╷
+5 │ let g: (String, Int) -> Bool = f;
+  ╵         ^~~~~~
+Note: Found String because of this annotation.

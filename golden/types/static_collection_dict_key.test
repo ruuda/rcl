@@ -18,3 +18,9 @@ stdin:2:14
 2 │ let ys: Dict[Bool, Int] = xs;
   ╵              ^~~~
 Note: Expected Bool because of this annotation.
+
+stdin:1:14
+  ╷
+1 │ let xs: Dict[Int, Int] = {0: 0};
+  ╵              ^~~
+Note: Found Int because of this annotation.

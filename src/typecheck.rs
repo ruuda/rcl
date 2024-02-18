@@ -20,7 +20,7 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::types::{
-    report_type_mismatch, Dict, Function, FunctionArg, Source, SourcedType, Type, Typed,
+    report_type_mismatch, Dict, Function, FunctionArg, Side, Source, SourcedType, Type, Typed,
 };
 
 pub type Env = crate::env::Env<SourcedType>;
@@ -780,7 +780,7 @@ impl<'a> TypeChecker<'a> {
                     let err = span.error(
                         "Expected key-value, not a scalar element, because the collection is a dict."
                     );
-                    dict_source.clarify_error(&"Dict", err).err()
+                    dict_source.clarify_error(Side::Expected, &"Dict", err).err()
                 }
                 SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet) => {
                     let elem_type = self.check_expr(type_any(), *span, value)?;
@@ -819,7 +819,7 @@ impl<'a> TypeChecker<'a> {
                     let err = op_span.error(
                         "Expected scalar element, not key-value, because the collection is a set."
                     );
-                    set_source.clarify_error(&"Set", err).err()
+                    set_source.clarify_error(Side::Expected, &"Set", err).err()
                 }
                 SeqType::UntypedSet(first, _elem) => op_span
                     .error("Expected scalar element, not key-value.")

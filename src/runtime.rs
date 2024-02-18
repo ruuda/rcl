@@ -19,7 +19,7 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::types;
-use crate::types::{Mismatch, Source, SourcedType, Type, TypeDiff};
+use crate::types::{Mismatch, Side, Source, SourcedType, Type, TypeDiff};
 
 /// The arguments to a function call at runtime.
 pub struct FunctionCall<'a> {
@@ -282,7 +282,10 @@ impl Value {
                     Doc::HardBreak Doc::HardBreak
                     indent! { format_rcl(self).into_owned() }
                 });
-                type_.source.clarify_error(type_, error).err()
+                type_
+                    .source
+                    .clarify_error(Side::Expected, type_, error)
+                    .err()
             }
         }
     }

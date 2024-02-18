@@ -371,69 +371,6 @@ pub enum TypeDiff<T> {
 }
 
 impl Type {
-    /// Return the least possible supertype of the two types.
-    ///
-    /// The meet is a type `T` such that `self` and `other` are both subtypes
-    /// of `T`.
-    /// TODO: This should take self and other by value.
-    pub fn meet(&self, other: &Type) -> Type {
-        match (self, other) {
-            // Anything involving any becomes any, anything involving
-            // void becomes the other thing, these are the top and bottom of
-            // the type lattice.
-            (Type::Any, _) => Type::Any,
-            (_, Type::Any) => Type::Any,
-            (Type::Void, that) => that.clone(),
-            (this, Type::Void) => this.clone(),
-
-            // If we have matching primitive types, they are preserved.
-            (Type::Bool, Type::Bool) => Type::Bool,
-            (Type::Int, Type::Int) => Type::Int,
-            (Type::Null, Type::Null) => Type::Null,
-            (Type::String, Type::String) => Type::String,
-
-            // For composite types, we meet on their elements.
-            (Type::Dict(d1), Type::Dict(d2)) => {
-                // Premature optimization: If the two types are equal, we can
-                // skip the meet. I should measure how often we hit this case.
-                let dm = if Rc::ptr_eq(d1, d2) {
-                    d1.clone()
-                } else {
-                    Rc::new(Dict {
-                        key: d1.key.meet(&d2.key),
-                        value: d1.value.meet(&d2.value),
-                    })
-                };
-                Type::Dict(dm)
-            }
-            (Type::List(l1), Type::List(l2)) => Type::List({
-                if Rc::ptr_eq(l1, l2) {
-                    l1.clone()
-                } else {
-                    Rc::new(l1.meet(l2))
-                }
-            }),
-            (Type::Set(s1), Type::Set(s2)) => Type::Set({
-                if Rc::ptr_eq(s1, s2) {
-                    s1.clone()
-                } else {
-                    Rc::new(s1.meet(s2))
-                }
-            }),
-
-            // TODO: Support meeting functions.
-            (Type::Function(_), Type::Function(_)) => Type::Any,
-
-            // Any two values that mismatch, we can't describe with a single
-            // static type, but that doesn't mean it's a type error, the program
-            // may still be valid at runtime. E.g, I have a list with a function
-            // and an int. If the program only ever calls `list[0]` and performs
-            // integer addition on `list[1]`, that is fine. We can type the list
-            // as `List[Any]`.
-            _ => Type::Any,
-        }
-    }
-
     /// Return whether the type is not composite, i.e. is not composed of other types.
     pub fn is_atom(&self) -> bool {
         matches!(
@@ -443,24 +380,41 @@ impl Type {
     }
 }
 
+/// What side to explain the source of a type for.
+pub enum Side {
+    Expected,
+    Actual,
+}
+
 impl Source {
-    /// Combine two sources. Sources only combine when they are equal.
+    /// Combine two sources of types that are known to be equal.
+    ///
+    /// When types meet and their meet is not equal to either side, then the
+    /// source information is lost. But when both types are equal anyway, we can
+    /// pick one of the sources as the source of the combined information. This
+    /// should *only* be called if the types are equal. If they are not, we would
+    /// be attributing types that we generated at runtime to spans in the source
+    /// code!
     pub fn meet(&self, other: &Source) -> Source {
         match (self, other) {
+            // If one side is missing a source, then now we learned one.
             (Source::None, _) => *other,
             (_, Source::None) => *other,
-            (_, _) if self == other => *self,
-            _ => Source::Many,
+            // Builtins have no span to blame them on. We'd rather blame on spans.
+            (Source::Builtin, other) => *other,
+            (other, Source::Builtin) => *other,
+            // All else equal, we go with the source that we discovered first.
+            (first, _) => *first,
         }
     }
 
     /// Add context to a type error about why a particular type was expected.
-    pub fn clarify_error<T: AsTypeName>(&self, expected_type: &T, error: Error) -> Error {
-        let expected_name = if expected_type.is_atom() {
+    pub fn clarify_error<T: AsTypeName>(&self, side: Side, type_: &T, error: Error) -> Error {
+        let type_name = if type_.is_atom() {
             // If it's an atom, we have space to put the name of the type in the
             // sentence. But remove the coloring, it gets too distracting as the
             // type here is not the main purpose of the sentence.
-            match expected_type.format_type() {
+            match type_.format_type() {
                 Doc::Markup(_, type_name) => *type_name,
                 _ => unreachable!("Formatted atoms have markup."),
             }
@@ -469,6 +423,10 @@ impl Source {
             // in the middle of the sentence, we just say "type" and hope the
             // message is still clear enough.
             "type".into()
+        };
+        let side_verb = match side {
+            Side::Expected => "Expected ",
+            Side::Actual => "Found ",
         };
         match self {
             Source::None => error,
@@ -479,23 +437,25 @@ impl Source {
 
             Source::Literal(at) => {
                 let msg = concat! {
-                    "Expected " expected_name " because of this value."
+                    side_verb type_name " because of this value."
                 };
                 error.with_note(*at, msg)
             }
 
             Source::EmptyCollection(at) => {
                 let msg = concat! {
-                    "Expected " expected_name " because this collection is empty."
+                    side_verb type_name " because this collection is empty."
                 };
                 error.with_note(*at, msg)
             }
 
             Source::Annotation(at) => {
-                let msg = if expected_type.is_atom() {
-                    concat! { "Expected " expected_name " because of this annotation." }
-                } else {
-                    "The expected type is specified here.".into()
+                let msg = match side {
+                    _ if type_.is_atom() => {
+                        concat! { side_verb type_name " because of this annotation." }
+                    }
+                    Side::Expected => "The expected type is specified here.".into(),
+                    Side::Actual => "Found a type that is specified here.".into(),
                 };
                 error.with_note(*at, msg)
             }
@@ -503,7 +463,7 @@ impl Source {
             Source::Operator(at) => error.with_note(
                 *at,
                 concat! {
-                    "Expected " expected_name " because of this operator."
+                    side_verb type_name " because of this operator."
                 },
             ),
 
@@ -533,10 +493,77 @@ impl SourcedType {
         }
     }
 
-    /// See [`Type::meet`].
+    /// Return the least possible supertype of the two types.
+    ///
+    /// The meet is a type `T` such that `self` and `other` are both subtypes
+    /// of `T`.
+    /// TODO: This should take self and other by value.
     pub fn meet(&self, other: &SourcedType) -> SourcedType {
-        let type_ = self.type_.meet(&other.type_);
-        let source = self.source.meet(&other.source);
+        let src_meet = self.source.meet(&other.source);
+        let (type_, source) = match (&self.type_, &other.type_) {
+            // Anything involving any becomes any, anything involving
+            // void becomes the other thing, these are the top and bottom of
+            // the type lattice.
+            (Type::Any, _) => (Type::Any, self.source),
+            (_, Type::Any) => (Type::Any, other.source),
+            (Type::Void, that) => (that.clone(), other.source),
+            (this, Type::Void) => (this.clone(), self.source),
+
+            // If we have matching primitive types, they are preserved.
+            (Type::Bool, Type::Bool) => (Type::Bool, src_meet),
+            (Type::Int, Type::Int) => (Type::Int, src_meet),
+            (Type::Null, Type::Null) => (Type::Null, src_meet),
+            (Type::String, Type::String) => (Type::String, src_meet),
+
+            // For composite types, we meet on their elements.
+            (Type::Dict(d1), Type::Dict(d2)) => {
+                // Premature optimization: If the two types are equal, we can
+                // skip the meet. I should measure how often we hit this case.
+                let dm = if Rc::ptr_eq(d1, d2) {
+                    d1.clone()
+                } else {
+                    Rc::new(Dict {
+                        key: d1.key.meet(&d2.key),
+                        value: d1.value.meet(&d2.value),
+                    })
+                };
+                // TODO: If the types are the same on both sides, we can meet the sources.
+                (Type::Dict(dm), Source::None)
+            }
+            (Type::List(l1), Type::List(l2)) => {
+                let type_ = Type::List({
+                    if Rc::ptr_eq(l1, l2) {
+                        l1.clone()
+                    } else {
+                        Rc::new(l1.meet(l2))
+                    }
+                });
+                // TODO: If the types are the same on both sides, we can meet the sources.
+                (type_, Source::None)
+            }
+            (Type::Set(s1), Type::Set(s2)) => {
+                let type_ = Type::Set({
+                    if Rc::ptr_eq(s1, s2) {
+                        s1.clone()
+                    } else {
+                        Rc::new(s1.meet(s2))
+                    }
+                });
+                // TODO: If the types are the same on both sides, we can meet the sources.
+                (type_, Source::None)
+            }
+
+            // TODO: Support meeting functions.
+            (Type::Function(_), Type::Function(_)) => (Type::Any, Source::None),
+
+            // Any two values that mismatch, we can't describe with a single
+            // static type, but that doesn't mean it's a type error, the program
+            // may still be valid at runtime. E.g, I have a list with a function
+            // and an int. If the program only ever calls `list[0]` and performs
+            // integer addition on `list[1]`, that is fine. We can type the list
+            // as `List[Any]`.
+            _ => (Type::Any, Source::None),
+        };
         SourcedType { type_, source }
     }
 
@@ -692,7 +719,16 @@ impl<T> TypeDiff<T> {
                 };
 
                 // If we have it, explain why the expected type is expected.
-                expected.source.clarify_error(&expected, err).err()
+                // TODO: Include the clarification for the actual value too,
+                // but only of the type source span is not equal to the span
+                // that we're already blaming the error on. We could do
+                // something similar for the expected type, avoid it in case
+                // of top-level errors directly inside an annotated let-binding,
+                // because those are quite obvious.
+                expected
+                    .source
+                    .clarify_error(Side::Expected, &expected, err)
+                    .err()
             }
             TypeDiff::Error(diff) => {
                 // If the error is nested somewhere inside a type, then we

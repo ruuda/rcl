@@ -9,3 +9,9 @@ stdin:4:20
 4 │ { 1: "A", 2: "B" }["Not an Int"]
   ╵                    ^~~~~~~~~~~~
 Error: Type mismatch. Expected Int but found String.
+
+stdin:4:3
+  ╷
+4 │ { 1: "A", 2: "B" }["Not an Int"]
+  ╵   ^
+Note: Expected Int because of this value.

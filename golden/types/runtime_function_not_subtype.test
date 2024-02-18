@@ -22,3 +22,9 @@ stdin:6:17
 6 │ let h: (Any) -> Bool = g;
   ╵                 ^~~~
 Note: Expected Bool because of this annotation.
+
+stdin:2:17
+  ╷
+2 │ let f: (Any) -> Int = x => 0;
+  ╵                 ^~~
+Note: Found Int because of this annotation.
