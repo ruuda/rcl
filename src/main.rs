@@ -156,6 +156,11 @@ impl App {
                 let mut env = runtime::prelude();
                 let doc = self.loader.load_cli_target(fname)?;
                 let val = self.loader.evaluate(doc, &mut env, &mut tracer)?;
+
+                if let Some(depfile_path) = eval_opts.output_depfile.as_ref() {
+                    self.loader.write_depfile(depfile_path)?;
+                }
+
                 // TODO: Need to get last inner span.
                 let full_span = self.loader.get_span(doc);
                 self.print_value(&eval_opts, &style_opts, output, full_span, &val)
@@ -184,6 +189,10 @@ impl App {
                 // clean at this point, so we can reuse it.
                 env.push("input".into(), val_input);
                 let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
+
+                if let Some(depfile_path) = eval_opts.output_depfile.as_ref() {
+                    self.loader.write_depfile(depfile_path)?;
+                }
 
                 let full_span = self.loader.get_span(query);
                 self.print_value(&eval_opts, &style_opts, output, full_span, &val_result)
