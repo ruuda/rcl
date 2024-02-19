@@ -1,6 +1,6 @@
 # rcl query
 
-    rcl query [-f | --format <format>] [--] [<file>] <expr>
+    rcl query [-f | --format <format>] [--] [<file>] <expr> [--output <outfile>]
 
 Shorthands:
 

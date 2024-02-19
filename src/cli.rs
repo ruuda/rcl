@@ -66,12 +66,12 @@ Arguments:
              file is bound to the variable 'input'.
 
 Options:
-  -f --format <format>  Output format, see below for the available formats.
-                        Defaults to 'rcl'.
-  -o --output <file>    Write to the given file instead of stdout.
-  --sandbox <mode>      Sandboxing mode, see below. Defaults to 'workdir'.
-  -w --width <width>    Target width for pretty-printing, must be an integer.
-                        Defaults to 80.
+  -f --format <format>   Output format, see below for the available formats.
+                         Defaults to 'rcl'.
+  -o --output <outfile>  Write to the given file instead of stdout.
+  --sandbox <mode>       Sandboxing mode, see below. Defaults to 'workdir'.
+  -w --width <width>     Target width for pretty-printing, must be an integer.
+                         Defaults to 80.
 
 Output format:
   json          Output pretty-printed JSON.
@@ -106,10 +106,12 @@ Arguments:
                    when no file is specified.
 
 Options:
-  -i --in-place       Rewrite files in-place instead of writing to stdout.
-                      By default the formatted result is written to stdout.
-  -w --width <width>  Target width in number of columns, must be an integer.
-                      Defaults to 80.
+  -i --in-place          Rewrite files in-place instead of writing to stdout.
+                         By default the formatted result is written to stdout.
+  -o --output <outfile>  Write to the given file instead of stdout. This is
+                         incompatible with --in-place.
+  -w --width <width>     Target width in number of columns, must be an integer.
+                         Defaults to 80.
 
 See also --help for global options.
 "#;

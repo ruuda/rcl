@@ -1,6 +1,6 @@
 # rcl evaluate
 
-    rcl evaluate [-f | --format <format>] [--] [<file>]
+    rcl evaluate [-f | --format <format>] [--] [<file>] [--output <outfile>]
 
 Shorthands:
 
@@ -43,9 +43,9 @@ Output in the given format. The following formats are supported:
 The default output format is `rcl`. For the `je` command shorthand, the default
 output format is `json`.
 
-### `-w` `--width <width>`
+### `-o` `--output <outfile>`
 
-Target width for pretty-printing, in columns. Must be an integer. Defaults to 80.
+Write the output to the given file instead of stdout.
 
 ### `--sandbox <mode>`
 
@@ -64,3 +64,7 @@ Two modes are available:
 </dl>
 
 The default sandboxing mode is _workdir_.
+
+### `-w` `--width <width>`
+
+Target width for pretty-printing, in columns. Must be an integer. Defaults to 80.
