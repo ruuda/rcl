@@ -45,7 +45,10 @@ output format is `json`.
 
 ### `-o` `--output <outfile>`
 
-Write the output to the given file instead of stdout.
+Write the output to the given file instead of stdout. When [`--directory`][dir]
+is set, the output path is relative to that directory.
+
+[dir]: rcl.md#-c-directory-dir
 
 ### `--sandbox <mode>`
 

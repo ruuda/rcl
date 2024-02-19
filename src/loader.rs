@@ -50,10 +50,10 @@ pub struct PathLookup {
     /// A friendly name displayed to the user.
     ///
     /// This is the path relative to the working directory if possible.
-    name: String,
+    pub name: String,
 
     /// The absolute path on the file system to load the data from.
-    path: PathBuf,
+    pub path: PathBuf,
 }
 
 /// A filesystem resolves import paths to file contents.
@@ -326,6 +326,11 @@ impl Loader {
         })?;
         self.set_filesystem(Box::new(sandbox_fs));
         Ok(())
+    }
+
+    /// Resolve a path specified on the CLI so it respects the workdir.
+    pub fn resolve_cli_path(&self, path: &str) -> Result<PathLookup> {
+        self.filesystem.resolve_entrypoint(path)
     }
 
     /// Borrow all documents.

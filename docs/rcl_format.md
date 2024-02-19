@@ -29,8 +29,11 @@ exactly one input file.
 
 ### `-o` `--output <outfile>`
 
-Write the output to the given file instead of stdout. This option is
+Write the output to the given file instead of stdout. When [`--directory`][dir]
+is set, the output path is relative to that directory. This option is
 incompatible with `--in-place`.
+
+[dir]: rcl.md#-c-directory-dir
 
 ### `-w` `--width <width>`
 
