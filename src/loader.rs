@@ -78,6 +78,9 @@ pub trait Filesystem {
     /// Return where to load `path` when that was a CLI argument.
     fn resolve_entrypoint(&self, path: &str) -> Result<PathLookup>;
 
+    /// Return where to write `path` when that was a CLI argument.
+    fn resolve_output(&self, path: &str) -> PathBuf;
+
     /// Load a resolved path from the filesystem.
     fn load(&self, path: PathLookup) -> Result<Document>;
 }
@@ -99,6 +102,9 @@ impl Filesystem for PanicFilesystem {
     fn resolve_entrypoint(&self, _: &str) -> Result<PathLookup> {
         panic!("Should have initialized the filesystem to a real one before resolving.")
     }
+    fn resolve_output(&self, _: &str) -> PathBuf {
+        panic!("Should have initialized the filesystem to a real one before resolving.")
+    }
     fn load(&self, _: PathLookup) -> Result<Document> {
         panic!("Should have initialized the filesystem to a real one before loading.")
     }
@@ -115,6 +121,9 @@ impl Filesystem for VoidFilesystem {
     }
     fn resolve_entrypoint(&self, _: &str) -> Result<PathLookup> {
         Error::new("Void filesystem does not load files.").err()
+    }
+    fn resolve_output(&self, _: &str) -> PathBuf {
+        panic!("Void filesystem should not be used for output paths.");
     }
     fn load(&self, _: PathLookup) -> Result<Document> {
         Error::new("Void filesystem does not load files.").err()
@@ -252,19 +261,24 @@ impl Filesystem for SandboxFilesystem {
     }
 
     fn resolve_entrypoint(&self, path: &str) -> Result<PathLookup> {
-        let path_buf: PathBuf = if path.starts_with('/') {
+        // Making the path relative to the workdir is the same for in/outputs.
+        let path_buf = self.resolve_output(path);
+
+        // The entrypoint is specified on the command line and therefore
+        // implicitly trusted, it's okay for it to lie outside of the working
+        // directory.
+        self.resolve_absolute(path_buf, SandboxMode::Unrestricted)
+    }
+
+    fn resolve_output(&self, path: &str) -> PathBuf {
+        if path.starts_with('/') {
             path.into()
         } else {
             // The path is relative to the working directory.
             let mut path_buf = self.workdir.clone();
             path_buf.push(path);
             path_buf
-        };
-
-        // The entrypoint is specified on the command line and therefore
-        // implicitly trusted, it's okay for it to lie outside of the working
-        // directory.
-        self.resolve_absolute(path_buf, SandboxMode::Unrestricted)
+        }
     }
 
     fn load(&self, path: PathLookup) -> Result<Document> {
@@ -329,8 +343,8 @@ impl Loader {
     }
 
     /// Resolve a path specified on the CLI so it respects the workdir.
-    pub fn resolve_cli_path(&self, path: &str) -> Result<PathLookup> {
-        self.filesystem.resolve_entrypoint(path)
+    pub fn resolve_cli_output_path(&self, path: &str) -> PathBuf {
+        self.filesystem.resolve_output(path)
     }
 
     /// Borrow all documents.

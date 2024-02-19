@@ -35,12 +35,12 @@ impl App {
 
     /// Write a string to a file.
     fn print_to_file(&self, out_path: &str, data: String) -> Result<()> {
-        let out_path = self.loader.resolve_cli_path(out_path)?;
-        std::fs::write(&out_path.path, data).map_err(|err| {
+        let out_path = self.loader.resolve_cli_output_path(out_path);
+        std::fs::write(&out_path, data).map_err(|err| {
             // The concat! macro is not exported, we'll make do with a vec here.
             let parts = vec![
                 "Failed to write to file '".into(),
-                Doc::highlight(&out_path.name).into_owned(),
+                Doc::highlight(out_path.to_string_lossy().as_ref()).into_owned(),
                 "': ".into(),
                 err.to_string().into(),
             ];
