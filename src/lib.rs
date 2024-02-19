@@ -26,6 +26,7 @@ pub mod fmt_raw;
 pub mod fmt_rcl;
 pub mod fmt_toml;
 pub mod fmt_type;
+pub mod fmt_yaml_stream;
 pub mod highlight;
 pub mod lexer;
 pub mod loader;

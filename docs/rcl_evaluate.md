@@ -23,13 +23,21 @@ Output in the given format. The following formats are supported:
 <dl>
   <dt>json</dt>
   <dd>Output pretty-printed <abbr>JSON</abbr>.</dd>
+
   <dt>raw</dt>
   <dd>If the document is a string, output the string itself. If the document is
   a list or set of strings, output each string on its own line.</dd>
+
   <dt>rcl</dt>
   <dd>Output pretty-printed <abbr>RCL</abbr>.</dd>
+
   <dt>toml</dt>
   <dd>Output <abbr>TOML</abbr>.</dd>
+
+  <dt>yaml-stream</dt>
+  <dd>If the document is a list, output every element as a <abbr>JSON</abbr>
+  document, prefixed by the <code>---</code> <abbr>YAML</abbr> document
+  separator. Top-level values other than lists are not valid for this format.</dd>
 </dl>
 
 The default output format is `rcl`. For the `je` command shorthand, the default

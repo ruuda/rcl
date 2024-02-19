@@ -1,0 +1,34 @@
+[
+  {
+    apiVersion = "v1",
+    kind = "Service",
+    metadata = { name = "frobnicator", namespace = "default" },
+  },
+  {
+    apiVersion = "v1",
+    kind = "ConfigMap",
+    metadata = { name = "frobnicator-config" },
+    data = {
+      "config.toml":
+        """
+        [frobnicator]
+        level = 11
+        """
+    }
+  }
+]
+
+# output:
+---
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {"name": "frobnicator", "namespace": "default"}
+}
+---
+{
+  "apiVersion": "v1",
+  "data": {"config.toml": "[frobnicator]\nlevel = 11\n"},
+  "kind": "ConfigMap",
+  "metadata": {"name": "frobnicator-config"}
+}

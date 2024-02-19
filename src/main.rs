@@ -71,6 +71,9 @@ impl App {
             OutputFormat::Raw => rcl::fmt_raw::format_raw(value_span, value)?,
             OutputFormat::Rcl => rcl::fmt_rcl::format_rcl(value),
             OutputFormat::Toml => rcl::fmt_toml::format_toml(value_span, value)?,
+            OutputFormat::YamlStream => {
+                rcl::fmt_yaml_stream::format_yaml_stream(value_span, value)?
+            }
         };
         self.print_doc_stdout(format_opts, out_doc);
         Ok(())

@@ -24,12 +24,12 @@ pub fn format_json(caller: Span, v: &Value) -> Result<Doc> {
 ///
 /// The formatter tracks the path in the value that we are formatting from, such
 /// that we can report the location of an error, in case an error occurs.
-struct Formatter {
+pub struct Formatter {
     /// The source location where json formatting was triggered from.
-    caller: Span,
+    pub caller: Span,
 
     /// Where we currently are in the value to be formatted.
-    path: Vec<PathElement>,
+    pub path: Vec<PathElement>,
 }
 
 impl Formatter {
@@ -106,7 +106,7 @@ impl Formatter {
         Ok(result)
     }
 
-    fn value<'a>(&mut self, v: &'a Value) -> Result<Doc<'a>> {
+    pub fn value<'a>(&mut self, v: &'a Value) -> Result<Doc<'a>> {
         let result: Doc = match v {
             Value::Null => Doc::from("null").with_markup(Markup::Keyword),
             Value::Bool(true) => Doc::from("true").with_markup(Markup::Keyword),

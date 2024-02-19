@@ -66,19 +66,22 @@ Arguments:
              file is bound to the variable 'input'.
 
 Options:
-  -o --output <format>  Output format, can be one of 'json', 'raw', 'rcl', see
-                        below. Defaults to 'rcl'.
+  -o --output <format>  Output format, see below for the available formats.
+                        Defaults to 'rcl'.
   -w --width <width>    Target width for pretty-printing, must be an integer.
                         Defaults to 80.
   --sandbox <mode>      Sandboxing mode, see below. Defaults to 'workdir'.
 
-Output modes:
+Output format:
   json          Output pretty-printed JSON.
   raw           If the document is a string, output the string itself. If the
                 document is a list or set of strings, output each string on its
                 own line.
   rcl           Output pretty-printed RCL.
   toml          Output TOML.
+  yaml-stream   If the document is a list, output every element as a JSON
+                document, prefixed by the '---' YAML document separator.
+                Top-level values other than lists are not valid for this format.
 
 Sandboxing modes:
   workdir       Only allow importing files inside the working directory and
@@ -132,6 +135,7 @@ pub enum OutputFormat {
     #[default]
     Rcl,
     Toml,
+    YamlStream,
 }
 
 /// Options for commands that evaluate expressions.
@@ -242,6 +246,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     "raw" => OutputFormat::Raw,
                     "rcl" => OutputFormat::Rcl,
                     "toml" => OutputFormat::Toml,
+                    "yaml-stream" => OutputFormat::YamlStream,
                 }
             }
             Arg::Long("sandbox") => {
@@ -564,7 +569,7 @@ mod test {
         );
         assert_eq!(
             fail_parse(&["rcl", "eval", "infile", "--output=yamr"]),
-            "Error: Expected --output to be followed by one of json, raw, rcl, toml. See --help for usage.\n"
+            "Error: Expected --output to be followed by one of json, raw, rcl, toml, yaml-stream. See --help for usage.\n"
         );
         assert_eq!(
             fail_parse(&["rcl", "frobnicate", "infile"]),

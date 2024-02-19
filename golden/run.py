@@ -99,6 +99,8 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
             cmd = ["eval", "--output=rcl"]
         case "toml":
             cmd = ["eval", "--output=toml"]
+        case "yaml_stream":
+            cmd = ["eval", "--output=yaml-stream"]
         case unknown:
             raise ValueError(f"No command-line known for {unknown}.")
 
