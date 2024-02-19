@@ -495,7 +495,7 @@ impl Loader {
         }
     }
 
-    fn write_depfile_impl(&self, out_path: &Path) -> io::Result<()> {
+    fn write_depfile_impl(&self, target_path: &Path, out_path: &Path) -> io::Result<()> {
         use std::io::Write;
         use std::os::unix::ffi::OsStrExt;
         let f = std::fs::File::create(out_path)?;
@@ -510,12 +510,31 @@ impl Loader {
         Ok(())
     }
 
-    pub fn write_depfile(&self, out_path: &str) -> Result<()> {
+    pub fn write_depfile(&self, target: DocId, out_path: &str) -> Result<()> {
         // The depfile output path is specified on the CLI, so we resolve it in
         // the same way as other CLI argument paths: with `resolve_entrypoint`.
         // This makes it work with --directory.
         let resolved_path = self.filesystem.resolve_entrypoint(out_path)?;
-        self.write_depfile_impl(&resolved_path.path)
+
+        // To use the depfile feature in Ninja, the depfile *must* include the
+        // name of the final output file. Not even of the input file! This below
+        // is wrong!
+        let target_path = match self
+            .loaded_files
+            .iter()
+            .find(|(_path, doc_id)| **doc_id == target)
+        {
+            Some((path, _)) => path.as_ref(),
+            None => {
+                return Error::new(concat! {
+                    "To use " crate::pprint::Doc::highlight("--output-depfile")
+                    ", the input must be a file."
+                })
+                .err()
+            }
+        };
+
+        self.write_depfile_impl(target_path, &resolved_path.path)
             .map_err(|err| Error::new(format!("Failed to write depfile: {}.", err)).into())
     }
 }
