@@ -7,11 +7,13 @@
 
 use std::io::Write;
 
-use rcl::cli::{self, Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, StyleOptions};
+use rcl::cli::{
+    self, Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, OutputTarget, StyleOptions,
+};
 use rcl::error::{Error, Result};
 use rcl::loader::{Loader, SandboxMode};
 use rcl::markup::MarkupMode;
-use rcl::pprint;
+use rcl::pprint::{self, Doc};
 use rcl::runtime::{self, Value};
 use rcl::source::{DocId, Span};
 use rcl::tracer::StderrTracer;
@@ -31,18 +33,49 @@ impl App {
         }
     }
 
-    fn print_doc_stdout(&self, style_opts: &StyleOptions, doc: pprint::Doc) {
+    /// Write a string to a file.
+    fn print_to_file(&self, out_path: &str, data: String) -> Result<()> {
+        std::fs::write(out_path, data).map_err(|err| {
+            // The concat! macro is not exported, we'll make do with a vec here.
+            let parts = vec![
+                "Failed to write to file '".into(),
+                Doc::highlight(out_path).into_owned(),
+                "': ".into(),
+                err.to_string().into(),
+            ];
+            Error::new(Doc::Concat(parts)).into()
+        })
+    }
+
+    fn print_doc_target(
+        &self,
+        output: OutputTarget,
+        style_opts: &StyleOptions,
+        doc: pprint::Doc,
+    ) -> Result<()> {
         let stdout = std::io::stdout();
-        let cfg = pprint::Config {
-            markup: self
+        let markup = match output {
+            OutputTarget::Stdout => self
                 .opts
                 .markup
                 .unwrap_or_else(|| MarkupMode::default_for_fd(&stdout)),
+            OutputTarget::File(..) => self.opts.markup.unwrap_or(MarkupMode::None),
+        };
+        let cfg = pprint::Config {
             width: style_opts.width,
+            markup,
         };
         let result = doc.println(&cfg);
-        let mut out = stdout.lock();
-        self.print_string(&mut out, result);
+        match output {
+            OutputTarget::Stdout => {
+                let mut out = stdout.lock();
+                self.print_string(&mut out, result);
+            }
+            OutputTarget::File(fname) => {
+                self.print_to_file(&fname, result)?;
+            }
+        };
+        Ok(())
     }
 
     fn print_doc_stderr(&self, doc: pprint::Doc) {
@@ -63,6 +96,7 @@ impl App {
         &self,
         eval_opts: &EvalOptions,
         style_opts: &StyleOptions,
+        output: OutputTarget,
         value_span: Span,
         value: &Value,
     ) -> Result<()> {
@@ -75,8 +109,7 @@ impl App {
                 rcl::fmt_yaml_stream::format_yaml_stream(value_span, value)?
             }
         };
-        self.print_doc_stdout(style_opts, out_doc);
-        Ok(())
+        self.print_doc_target(output, style_opts, out_doc)
     }
 
     fn print_fatal_error(&self, err: Error) -> ! {
@@ -92,12 +125,11 @@ impl App {
         StderrTracer::new(self.opts.markup)
     }
 
-    fn main_fmt(&self, style_opts: &StyleOptions, doc: DocId) -> Result<()> {
+    fn main_fmt(&self, output: OutputTarget, style_opts: &StyleOptions, doc: DocId) -> Result<()> {
         let data = self.loader.get_doc(doc).data;
         let cst = self.loader.get_cst(doc)?;
         let res = rcl::fmt_cst::format_expr(data, &cst);
-        self.print_doc_stdout(style_opts, res);
-        Ok(())
+        self.print_doc_target(output, style_opts, res)
     }
 
     fn main(&mut self) -> Result<()> {
@@ -114,6 +146,7 @@ impl App {
                 eval_opts,
                 style_opts,
                 fname,
+                output,
             } => {
                 self.loader
                     .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
@@ -124,7 +157,7 @@ impl App {
                 let val = self.loader.evaluate(doc, &mut env, &mut tracer)?;
                 // TODO: Need to get last inner span.
                 let full_span = self.loader.get_span(doc);
-                self.print_value(&eval_opts, &style_opts, full_span, &val)
+                self.print_value(&eval_opts, &style_opts, output, full_span, &val)
             }
 
             Cmd::Query {
@@ -132,6 +165,7 @@ impl App {
                 style_opts,
                 fname,
                 query: expr,
+                output,
             } => {
                 self.loader
                     .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
@@ -151,10 +185,14 @@ impl App {
                 let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
 
                 let full_span = self.loader.get_span(query);
-                self.print_value(&eval_opts, &style_opts, full_span, &val_result)
+                self.print_value(&eval_opts, &style_opts, output, full_span, &val_result)
             }
 
-            Cmd::Format { style_opts, target } => match target {
+            Cmd::Format {
+                style_opts,
+                target,
+                output,
+            } => match target {
                 FormatTarget::InPlace { fnames: _ } => {
                     todo!("TODO: --in-place formatting is not yet implemented.");
                 }
@@ -164,7 +202,7 @@ impl App {
                         self.opts.workdir.as_deref(),
                     )?;
                     let doc = self.loader.load_cli_target(fname)?;
-                    self.main_fmt(&style_opts, doc)
+                    self.main_fmt(output, &style_opts, doc)
                 }
             },
 

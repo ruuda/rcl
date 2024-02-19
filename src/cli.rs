@@ -68,9 +68,10 @@ Arguments:
 Options:
   -f --format <format>  Output format, see below for the available formats.
                         Defaults to 'rcl'.
+  -o --output <file>    Write to the given file instead of stdout.
+  --sandbox <mode>      Sandboxing mode, see below. Defaults to 'workdir'.
   -w --width <width>    Target width for pretty-printing, must be an integer.
                         Defaults to 80.
-  --sandbox <mode>      Sandboxing mode, see below. Defaults to 'workdir'.
 
 Output format:
   json          Output pretty-printed JSON.
@@ -186,6 +187,15 @@ pub enum FormatTarget {
     InPlace { fnames: Vec<Target> },
 }
 
+/// An output file to write results to.
+#[derive(Debug, Eq, PartialEq)]
+pub enum OutputTarget {
+    /// Write to the given file.
+    File(String),
+    /// Write to stdout.
+    Stdout,
+}
+
 /// The different subcommands supported by the main program.
 #[derive(Debug, Eq, PartialEq)]
 pub enum Cmd {
@@ -193,16 +203,19 @@ pub enum Cmd {
         eval_opts: EvalOptions,
         style_opts: StyleOptions,
         fname: Target,
+        output: OutputTarget,
     },
     Query {
         eval_opts: EvalOptions,
         style_opts: StyleOptions,
         fname: Target,
         query: String,
+        output: OutputTarget,
     },
     Format {
         style_opts: StyleOptions,
         target: FormatTarget,
+        output: OutputTarget,
     },
     Highlight {
         fname: Target,
@@ -228,6 +241,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     let mut in_place = false;
     let mut is_version = false;
     let mut targets: Vec<Target> = Vec::new();
+    let mut output = OutputTarget::Stdout;
 
     while let Some(arg) = args.next() {
         match arg.as_ref() {
@@ -260,6 +274,12 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 global_opts.workdir = parse_option! {
                     args: arg,
                     |x: &str| Ok::<_, std::convert::Infallible>(Some(x.to_string()))
+                };
+            }
+            Arg::Long("output") | Arg::Short("o") => {
+                output = parse_option! {
+                    args: arg,
+                    |x: &str| Ok::<_, std::convert::Infallible>(OutputTarget::File(x.to_string()))
                 };
             }
             Arg::Long("width") | Arg::Short("w") => {
@@ -352,6 +372,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             eval_opts,
             style_opts,
             fname: get_unique_target(targets)?,
+            output,
         },
         Some("query") => {
             let (fname, query) = match targets.len() {
@@ -390,6 +411,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 style_opts,
                 query,
                 fname,
+                output,
             }
         }
         Some("format") => Cmd::Format {
@@ -401,6 +423,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     fname: get_unique_target(targets)?,
                 }
             },
+            output,
         },
         Some("highlight") => Cmd::Highlight {
             fname: get_unique_target(targets)?,
@@ -424,8 +447,8 @@ fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
 #[cfg(test)]
 mod test {
     use crate::cli::{
-        Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, SandboxMode, StyleOptions,
-        Target,
+        Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, OutputTarget, SandboxMode,
+        StyleOptions, Target,
     };
     use crate::markup::MarkupMode;
     use crate::pprint::Config;
@@ -455,6 +478,7 @@ mod test {
             eval_opts: EvalOptions::default(),
             style_opts: StyleOptions::default(),
             fname: Target::File("infile".into()),
+            output: OutputTarget::Stdout,
         };
         let mut expected = (expected_opt, expected_cmd);
 
@@ -555,6 +579,13 @@ mod test {
             *fname = Target::StdinDefault;
         }
         assert_eq!(parse(&["rcl", "e"]), expected);
+
+        // Test the --output flag.
+        if let Cmd::Evaluate { output, .. } = &mut expected.1 {
+            *output = OutputTarget::File("outfile".to_string());
+        }
+        assert_eq!(parse(&["rcl", "e", "--output=outfile"]), expected);
+        assert_eq!(parse(&["rcl", "-ooutfile", "evaluate"]), expected);
     }
 
     #[test]
@@ -592,6 +623,7 @@ mod test {
             target: FormatTarget::Stdout {
                 fname: Target::File("infile".into()),
             },
+            output: OutputTarget::Stdout,
         };
         let mut expected = (expected_opt, expected_cmd);
 
@@ -657,6 +689,7 @@ mod test {
             style_opts: StyleOptions::default(),
             fname: Target::File("infile".into()),
             query: "input.name".to_string(),
+            output: OutputTarget::Stdout,
         };
         let mut expected = (expected_opt, expected_cmd);
         assert_eq!(parse(&["rcl", "query", "infile", "input.name"]), expected);
