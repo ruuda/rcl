@@ -31,8 +31,8 @@ Command shorthands:
   e, eval      Alias for 'evaluate'.
   f, fmt       Alias for 'format'.
   h            Alias for 'highlight'.
-  jq           Alias for 'query --output=json'.
-  je           Alias for 'eval --output=json'.
+  jq           Alias for 'query --format=json'.
+  je           Alias for 'eval --format=json'.
   q            Alias for 'query'.
 
 Global options:
@@ -66,7 +66,7 @@ Arguments:
              file is bound to the variable 'input'.
 
 Options:
-  -o --output <format>  Output format, see below for the available formats.
+  -f --format <format>  Output format, see below for the available formats.
                         Defaults to 'rcl'.
   -w --width <width>    Target width for pretty-printing, must be an integer.
                         Defaults to 80.
@@ -239,7 +239,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     "none" => Some(MarkupMode::None),
                 }
             }
-            Arg::Long("output") | Arg::Short("o") => {
+            Arg::Long("format") | Arg::Short("f") => {
                 eval_opts.format = match_option! {
                     args: arg,
                     "json" => OutputFormat::Json,
@@ -504,10 +504,10 @@ mod test {
             expected
         );
 
-        // Test that --output works. We don't have to be as thorough, it's using
+        // Test that --format works. We don't have to be as thorough, it's using
         // the same parser, if it works for the other options it should work here.
         if let Cmd::Evaluate {
-            style_opts: style_opts,
+            style_opts,
             eval_opts,
             ..
         } = &mut expected.1
@@ -515,17 +515,17 @@ mod test {
             style_opts.width = 80;
             eval_opts.format = OutputFormat::Json;
         }
-        assert_eq!(parse(&["rcl", "e", "infile", "-ojson"]), expected);
-        assert_eq!(parse(&["rcl", "e", "infile", "--output", "json"]), expected);
-        assert_eq!(parse(&["rcl", "e", "infile", "--output=json"]), expected);
-        assert_eq!(parse(&["rcl", "-ojson", "e", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "-orcl", "-ojson", "e", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "-fjson"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "--format", "json"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "--format=json"]), expected);
+        assert_eq!(parse(&["rcl", "-fjson", "e", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "-frcl", "-fjson", "e", "infile"]), expected);
         assert_eq!(parse(&["rcl", "je", "infile"]), expected);
 
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
             eval_opts.format = OutputFormat::Raw;
         }
-        assert_eq!(parse(&["rcl", "e", "infile", "-oraw"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "-fraw"]), expected);
 
         // Test --sandbox.
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
@@ -568,8 +568,8 @@ mod test {
             "Error: 'bobcat' is not valid for -w. See --help for usage.\n"
         );
         assert_eq!(
-            fail_parse(&["rcl", "eval", "infile", "--output=yamr"]),
-            "Error: Expected --output to be followed by one of json, raw, rcl, toml, yaml-stream. See --help for usage.\n"
+            fail_parse(&["rcl", "eval", "infile", "--format=yamr"]),
+            "Error: Expected --format to be followed by one of json, raw, rcl, toml, yaml-stream. See --help for usage.\n"
         );
         assert_eq!(
             fail_parse(&["rcl", "frobnicate", "infile"]),

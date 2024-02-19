@@ -91,7 +91,7 @@ editor. Save the file above as `buckets.json`. Because <abbr>RCL</abbr> is a
 superset of <abbr>JSON</abbr>, we can evaluate this file with <abbr>RCL</abbr>,
 and it should evaluate to itself.
 
-    rcl evaluate --output=json buckets.json
+    rcl evaluate --format=json buckets.json
 
 This prints the document to stdout, formatted and colorized.
 
@@ -157,9 +157,9 @@ configuration looks like this:
 
 Evaluating the document should produce the same <abbr>JSON</abbr> output as before:
 
-    rcl evaluate --output=json buckets.rcl
+    rcl evaluate --format=json buckets.rcl
 
-We can also output in <abbr>RCL</abbr> syntax with `--output=rcl`. This is the
+We can also output in <abbr>RCL</abbr> syntax with `--format=rcl`. This is the
 default, so when we are inspecting the configuration, and not feeding it into a
 tool that expects <abbr>JSON</abbr> or <abbr>YAML</abbr>, we can just run:
 

@@ -1,12 +1,12 @@
 # rcl evaluate
 
-    rcl evaluate [-o | --output <format>] [-w | --width <width>] [--] [<file>]
+    rcl evaluate [-f | --format <format>] [--] [<file>]
 
 Shorthands:
 
     rcl eval
-    rcl e   (uses default --output=rcl)
-    rcl je  (sets --output=json)
+    rcl e   (uses default --format=rcl)
+    rcl je  (sets --format=json)
 
 ## Description
 
@@ -16,7 +16,7 @@ When no file is specified, the input defaults to stdin.
 
 ## Options
 
-### `-o` `--output <format>`
+### `-f` `--format <format>`
 
 Output in the given format. The following formats are supported:
 

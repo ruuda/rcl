@@ -86,21 +86,21 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
         case "error":
             cmd = ["eval"]
         case "error_json":
-            cmd = ["eval", "--output=json"]
+            cmd = ["eval", "--format=json"]
         case "error_raw":
-            cmd = ["eval", "--output=raw"]
+            cmd = ["eval", "--format=raw"]
         case "fmt":
             cmd = ["fmt"]
         case "json":
-            cmd = ["eval", "--output=json"]
+            cmd = ["eval", "--format=json"]
         case "raw":
-            cmd = ["eval", "--output=raw"]
+            cmd = ["eval", "--format=raw"]
         case "rcl":
-            cmd = ["eval", "--output=rcl"]
+            cmd = ["eval", "--format=rcl"]
         case "toml":
-            cmd = ["eval", "--output=toml"]
+            cmd = ["eval", "--format=toml"]
         case "yaml_stream":
-            cmd = ["eval", "--output=yaml-stream"]
+            cmd = ["eval", "--format=yaml-stream"]
         case unknown:
             raise ValueError(f"No command-line known for {unknown}.")
 
