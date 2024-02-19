@@ -56,9 +56,11 @@ the dependent file, this option can only be used in combination with `--output`.
 ### `-o` `--output <outfile>`
 
 Write the output to the given file instead of stdout. When [`--directory`][dir]
-is set, the output path is relative to that directory.
+is set, the output path is relative to that directory. [`--color`][color] does
+not apply when using `--output`.
 
-[dir]: rcl.md#-c-directory-dir
+[dir]:   rcl.md#-c-directory-dir
+[color]: rcl.md#-color-mode
 
 ### `--sandbox <mode>`
 

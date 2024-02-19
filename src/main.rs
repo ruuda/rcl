@@ -60,7 +60,9 @@ impl App {
                 .opts
                 .markup
                 .unwrap_or_else(|| MarkupMode::default_for_fd(&stdout)),
-            OutputTarget::File(..) => self.opts.markup.unwrap_or(MarkupMode::None),
+            // When the output is a file, we don't want to put ANSI escape codes
+            // in the file; --output is unaffected by --color.
+            OutputTarget::File(..) => MarkupMode::None,
         };
         let cfg = pprint::Config {
             width: style_opts.width,
