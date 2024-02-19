@@ -7,7 +7,7 @@
 
 use std::io::Write;
 
-use rcl::cli::{self, Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat};
+use rcl::cli::{self, Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, StyleOptions};
 use rcl::error::{Error, Result};
 use rcl::loader::{Loader, SandboxMode};
 use rcl::markup::MarkupMode;
@@ -31,14 +31,14 @@ impl App {
         }
     }
 
-    fn print_doc_stdout(&self, format_opts: &FormatOptions, doc: pprint::Doc) {
+    fn print_doc_stdout(&self, style_opts: &StyleOptions, doc: pprint::Doc) {
         let stdout = std::io::stdout();
         let cfg = pprint::Config {
             markup: self
                 .opts
                 .markup
                 .unwrap_or_else(|| MarkupMode::default_for_fd(&stdout)),
-            width: format_opts.width,
+            width: style_opts.width,
         };
         let result = doc.println(&cfg);
         let mut out = stdout.lock();
@@ -62,7 +62,7 @@ impl App {
     pub fn print_value(
         &self,
         eval_opts: &EvalOptions,
-        format_opts: &FormatOptions,
+        style_opts: &StyleOptions,
         value_span: Span,
         value: &Value,
     ) -> Result<()> {
@@ -75,7 +75,7 @@ impl App {
                 rcl::fmt_yaml_stream::format_yaml_stream(value_span, value)?
             }
         };
-        self.print_doc_stdout(format_opts, out_doc);
+        self.print_doc_stdout(style_opts, out_doc);
         Ok(())
     }
 
@@ -92,11 +92,11 @@ impl App {
         StderrTracer::new(self.opts.markup)
     }
 
-    fn main_fmt(&self, format_opts: &FormatOptions, doc: DocId) -> Result<()> {
+    fn main_fmt(&self, style_opts: &StyleOptions, doc: DocId) -> Result<()> {
         let data = self.loader.get_doc(doc).data;
         let cst = self.loader.get_cst(doc)?;
         let res = rcl::fmt_cst::format_expr(data, &cst);
-        self.print_doc_stdout(format_opts, res);
+        self.print_doc_stdout(style_opts, res);
         Ok(())
     }
 
@@ -112,7 +112,7 @@ impl App {
 
             Cmd::Evaluate {
                 eval_opts,
-                format_opts,
+                style_opts,
                 fname,
             } => {
                 self.loader
@@ -124,12 +124,12 @@ impl App {
                 let val = self.loader.evaluate(doc, &mut env, &mut tracer)?;
                 // TODO: Need to get last inner span.
                 let full_span = self.loader.get_span(doc);
-                self.print_value(&eval_opts, &format_opts, full_span, &val)
+                self.print_value(&eval_opts, &style_opts, full_span, &val)
             }
 
             Cmd::Query {
                 eval_opts,
-                format_opts,
+                style_opts,
                 fname,
                 query: expr,
             } => {
@@ -151,13 +151,10 @@ impl App {
                 let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
 
                 let full_span = self.loader.get_span(query);
-                self.print_value(&eval_opts, &format_opts, full_span, &val_result)
+                self.print_value(&eval_opts, &style_opts, full_span, &val_result)
             }
 
-            Cmd::Format {
-                format_opts,
-                target,
-            } => match target {
+            Cmd::Format { style_opts, target } => match target {
                 FormatTarget::InPlace { fnames: _ } => {
                     todo!("TODO: --in-place formatting is not yet implemented.");
                 }
@@ -167,7 +164,7 @@ impl App {
                         self.opts.workdir.as_deref(),
                     )?;
                     let doc = self.loader.load_cli_target(fname)?;
-                    self.main_fmt(&format_opts, doc)
+                    self.main_fmt(&style_opts, doc)
                 }
             },
 

@@ -150,12 +150,12 @@ pub struct EvalOptions {
 
 /// Options for commands that pretty-print their output.
 #[derive(Debug, Eq, PartialEq)]
-pub struct FormatOptions {
+pub struct StyleOptions {
     /// Target width (number of columns) to try to not exceed.
     pub width: u32,
 }
 
-impl Default for FormatOptions {
+impl Default for StyleOptions {
     fn default() -> Self {
         Self { width: 80 }
     }
@@ -191,17 +191,17 @@ pub enum FormatTarget {
 pub enum Cmd {
     Evaluate {
         eval_opts: EvalOptions,
-        format_opts: FormatOptions,
+        style_opts: StyleOptions,
         fname: Target,
     },
     Query {
         eval_opts: EvalOptions,
-        format_opts: FormatOptions,
+        style_opts: StyleOptions,
         fname: Target,
         query: String,
     },
     Format {
-        format_opts: FormatOptions,
+        style_opts: StyleOptions,
         target: FormatTarget,
     },
     Highlight {
@@ -222,7 +222,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
 
     let mut cmd: Option<&'static str> = None;
     let mut cmd_help: Option<&'static str> = None;
-    let mut format_opts = FormatOptions::default();
+    let mut style_opts = StyleOptions::default();
     let mut global_opts = GlobalOptions::default();
     let mut eval_opts = EvalOptions::default();
     let mut in_place = false;
@@ -263,7 +263,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 };
             }
             Arg::Long("width") | Arg::Short("w") => {
-                format_opts.width = parse_option! { args: arg, u32::from_str };
+                style_opts.width = parse_option! { args: arg, u32::from_str };
             }
             Arg::Long("in-place") | Arg::Short("i") => {
                 in_place = true;
@@ -350,7 +350,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     let result = match cmd {
         Some("evaluate") => Cmd::Evaluate {
             eval_opts,
-            format_opts,
+            style_opts,
             fname: get_unique_target(targets)?,
         },
         Some("query") => {
@@ -387,13 +387,13 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             };
             Cmd::Query {
                 eval_opts,
-                format_opts,
+                style_opts,
                 query,
                 fname,
             }
         }
         Some("format") => Cmd::Format {
-            format_opts,
+            style_opts,
             target: if in_place {
                 FormatTarget::InPlace { fnames: targets }
             } else {
@@ -424,7 +424,7 @@ fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
 #[cfg(test)]
 mod test {
     use crate::cli::{
-        Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat, SandboxMode,
+        Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, SandboxMode, StyleOptions,
         Target,
     };
     use crate::markup::MarkupMode;
@@ -453,7 +453,7 @@ mod test {
         };
         let expected_cmd = Cmd::Evaluate {
             eval_opts: EvalOptions::default(),
-            format_opts: FormatOptions::default(),
+            style_opts: StyleOptions::default(),
             fname: Target::File("infile".into()),
         };
         let mut expected = (expected_opt, expected_cmd);
@@ -490,8 +490,8 @@ mod test {
 
         // Test that --width works, in any location, last option wins.
         expected.0.markup = None;
-        if let Cmd::Evaluate { format_opts, .. } = &mut expected.1 {
-            format_opts.width = 42;
+        if let Cmd::Evaluate { style_opts, .. } = &mut expected.1 {
+            style_opts.width = 42;
         }
         assert_eq!(parse(&["rcl", "e", "--width=42", "infile"]), expected);
         assert_eq!(parse(&["rcl", "e", "--width", "42", "infile"]), expected);
@@ -507,12 +507,12 @@ mod test {
         // Test that --output works. We don't have to be as thorough, it's using
         // the same parser, if it works for the other options it should work here.
         if let Cmd::Evaluate {
-            format_opts,
+            style_opts: style_opts,
             eval_opts,
             ..
         } = &mut expected.1
         {
-            format_opts.width = 80;
+            style_opts.width = 80;
             eval_opts.format = OutputFormat::Json;
         }
         assert_eq!(parse(&["rcl", "e", "infile", "-ojson"]), expected);
@@ -588,7 +588,7 @@ mod test {
             workdir: None,
         };
         let expected_cmd = Cmd::Format {
-            format_opts: FormatOptions::default(),
+            style_opts: StyleOptions::default(),
             target: FormatTarget::Stdout {
                 fname: Target::File("infile".into()),
             },
@@ -654,7 +654,7 @@ mod test {
         };
         let expected_cmd = Cmd::Query {
             eval_opts: EvalOptions::default(),
-            format_opts: FormatOptions::default(),
+            style_opts: StyleOptions::default(),
             fname: Target::File("infile".into()),
             query: "input.name".to_string(),
         };
