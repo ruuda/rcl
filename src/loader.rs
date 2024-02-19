@@ -15,7 +15,7 @@ use std::{env, path};
 
 use crate::abstraction;
 use crate::ast;
-use crate::cli::Target;
+use crate::cli::{OutputTarget, Target};
 use crate::cst;
 use crate::error::{Error, Result};
 use crate::eval::Evaluator;
@@ -495,12 +495,14 @@ impl Loader {
         }
     }
 
-    fn write_depfile_impl(&self, target_path: &Path, out_path: &Path) -> io::Result<()> {
+    fn write_depfile_impl(&self, target_path: &Path, depfile_path: &Path) -> io::Result<()> {
         use std::io::Write;
         use std::os::unix::ffi::OsStrExt;
-        let f = std::fs::File::create(out_path)?;
+        let f = std::fs::File::create(depfile_path)?;
         let mut w = std::io::BufWriter::new(f);
-        w.write_all(b"out:")?;
+        let rel_target = self.filesystem.get_relative_path(target_path);
+        w.write_all(rel_target.as_os_str().as_bytes())?;
+        w.write_all(b":")?;
         for (path, _doc_id) in self.loaded_files.iter() {
             let rel_path = self.filesystem.get_relative_path(path);
             w.write_all(b" ")?;
@@ -510,31 +512,25 @@ impl Loader {
         Ok(())
     }
 
-    pub fn write_depfile(&self, target: DocId, out_path: &str) -> Result<()> {
-        // The depfile output path is specified on the CLI, so we resolve it in
-        // the same way as other CLI argument paths: with `resolve_entrypoint`.
-        // This makes it work with --directory.
-        let resolved_path = self.filesystem.resolve_entrypoint(out_path)?;
-
-        // To use the depfile feature in Ninja, the depfile *must* include the
-        // name of the final output file. Not even of the input file! This below
-        // is wrong!
-        let target_path = match self
-            .loaded_files
-            .iter()
-            .find(|(_path, doc_id)| **doc_id == target)
-        {
-            Some((path, _)) => path.as_ref(),
-            None => {
+    pub fn write_depfile(&self, target: &OutputTarget, depfile_path: &str) -> Result<()> {
+        // The depfile output path is specified on the CLI, so we resolve it
+        // to make it respect --directory.
+        let resolved_depfile = self.resolve_cli_output_path(depfile_path);
+        let resolved_target = match target {
+            OutputTarget::File(path) => self.resolve_cli_output_path(path),
+            OutputTarget::Stdout => {
                 return Error::new(concat! {
-                    "To use " crate::pprint::Doc::highlight("--output-depfile")
-                    ", the input must be a file."
+                    "To use "
+                    crate::pprint::Doc::highlight("--output-depfile")
+                    ", "
+                    crate::pprint::Doc::highlight("--output")
+                    " is required."
                 })
                 .err()
             }
         };
 
-        self.write_depfile_impl(target_path, &resolved_path.path)
+        self.write_depfile_impl(&resolved_target, &resolved_depfile)
             .map_err(|err| Error::new(format!("Failed to write depfile: {}.", err)).into())
     }
 }

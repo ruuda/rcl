@@ -48,7 +48,8 @@ output format is `json`.
 Write the names of the files that were loaded during evaluation in Makefile
 syntax to the file `<depfile>`. This can be used by build systems to re-run
 `rcl` when one of the inputs changes. See also [the depfile section of the
-Ninja documentation][ninja-depfile].
+Ninja documentation][ninja-depfile]. Because the depfile includes the name of
+the dependent file, this option can only be used in combination with `--output`.
 
 [ninja-depfile]: https://ninja-build.org/manual.html#_depfile
 

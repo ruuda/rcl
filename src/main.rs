@@ -158,7 +158,7 @@ impl App {
                 let val = self.loader.evaluate(doc, &mut env, &mut tracer)?;
 
                 if let Some(depfile_path) = eval_opts.output_depfile.as_ref() {
-                    self.loader.write_depfile(depfile_path)?;
+                    self.loader.write_depfile(&output, depfile_path)?;
                 }
 
                 // TODO: Need to get last inner span.
@@ -191,7 +191,7 @@ impl App {
                 let val_result = self.loader.evaluate(query, &mut env, &mut tracer)?;
 
                 if let Some(depfile_path) = eval_opts.output_depfile.as_ref() {
-                    self.loader.write_depfile(depfile_path)?;
+                    self.loader.write_depfile(&output, depfile_path)?;
                 }
 
                 let full_span = self.loader.get_span(query);
