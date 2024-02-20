@@ -12,6 +12,9 @@ simple functional programming language that resembles [Python][python] and
  * Enabling large repositories to split configuration into small reusable pieces
    that can be referenced from a single consistent entry point, in the same way
    that Nix enables this for [Nixpkgs][nixpkgs].
+ * Sharing configuration between tools that do not natively share data. For
+   example, import the same user account definitions into Terraform, Tailscale,
+   Kubernetes, and Ansible.
 
 RCL can be used through the `rcl` command-line tool that can export documents
 to json and [other formats][output]. It can also be used through a native Python
