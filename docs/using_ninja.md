@@ -26,14 +26,19 @@ truly massive, <abbr>RCL</abbr> is probably fast enough that it doesn’t matter
 
 Still, it’s a bit of a shame to unnecessarily rebuild files. _Can we do better?_
 
+Also, what if _which files_ we want to generate itself depends on configuation?
+We could write the build script in Python and use [the Python module](python_bindings.md),
+but this starts to become a home-grown build system, so maybe we should reach
+for a proper one instead.
+
 ## Make
 
 Updating generated files when inputs change is the role of a build tool.
 We could use [Make][gnumake] and write a makefile:
 
 ```make
-policies.tf.json: policies.tf.rcl
-    rcl --format=json --output=$@ $<
+policies.json: policies.rcl
+    rcl evaluate --format=json --output=$@ $<
 ```
 
 Aside from the somewhat arcane syntax, this makefile has one big problem. If
@@ -65,7 +70,7 @@ to invoke a program. This is also where we can tell Ninja to use a
 ```ninja
 rule rcl
   description = Generating $out
-  command = rcl eval --format=$format $in --output=$out --output-depfile=$out.d
+  command = rcl eval --color=ansi --format=$format --output=$out --output-depfile=$out.d $in
   depfile = $out.d
   deps = gcc
 ```
@@ -98,7 +103,71 @@ $ ninja
 [1/1] Generating policy.tf.json
 ```
 
-TODO: Put `--color=ansi` in there. But then `--output` should ignore it.
-
 [ninja-rule]: https://ninja-build.org/manual.html#_rules
 [ninja-stmt]: https://ninja-build.org/manual.html#_build_statements
+
+## Generating Ninja files
+
+Okay, so we can write a Ninja file by hand, it’s not even that bad. But at some
+point, we’re going to end up with lots of similar build statements, and wish we
+had a way to abstract that. If only there was a language that could abstract
+away this repetition …
+
+We can write a `build.rcl` that evaluates to a Ninja build file like so:
+
+```rcl
+#!/usr/bin/env -S rcl evaluate --output=build.ninja --format=raw
+
+let ninja_prelude =
+  """
+  rule rcl
+    description = Generating $out
+    command = rcl eval --color=ansi --format=$format --output=$out --output-depfile=$out.d $in
+    depfile = $out.d
+    deps = gcc
+  """;
+
+let build_format = basename =>
+  f"""
+  build {basename}.json: rcl {basename}.rcl
+    format = {format}
+  """;
+
+// File basenames that we want to generate build rules for.
+// This is the part we need to edit when we add more files.
+let basenames_json = ["policy.tf"];
+
+let sections = [
+  ninja_prelude,
+  for basename in basenames_json: build_json(basename),
+];
+
+sections.join("\n")
+```
+
+Now we can generate the same build file that we previously wrote by hand, and
+when we add more json target files, we only need to add one string to the list.
+By adding a `#!`-line and making the file executable, we can even record how the
+Ninja file is generated. Unfortunately, even with the `#!`-line we are back to
+multiple build steps: first `./build.rcl`, and then `ninja`. _Can we do better?_
+
+For bootstrapping `build.ninja`, that will always need one more step. But after
+we run `./build.rcl` once, Ninja can keep `build.ninja` up to date for us. We
+just need to list it as a build target:
+
+```rcl
+let sections = [
+  ninja_prelude,
+  """
+  build build.ninja: rcl build.rcl
+    format = raw
+  """,
+  for basename in basenames_json: build_json(basename),
+];
+```
+
+TODO: Add example to generate from dict keys with `rcl query`.
+
+## Conclusion
+
+TODO: Summarize how powerful this is.
