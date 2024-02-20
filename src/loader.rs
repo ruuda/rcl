@@ -15,7 +15,7 @@ use std::{env, path};
 
 use crate::abstraction;
 use crate::ast;
-use crate::cli::Target;
+use crate::cli::{OutputTarget, Target};
 use crate::cst;
 use crate::error::{Error, Result};
 use crate::eval::Evaluator;
@@ -83,6 +83,11 @@ pub trait Filesystem {
 
     /// Load a resolved path from the filesystem.
     fn load(&self, path: PathLookup) -> Result<Document>;
+
+    /// Return `path`, but relative to the working directory, if possible.
+    ///
+    /// If the path lies outside of the working directory, return the original.
+    fn get_relative_path<'a>(&self, path: &'a Path) -> &'a Path;
 }
 
 /// A dummy filesystem impl to use during initialization.
@@ -108,6 +113,9 @@ impl Filesystem for PanicFilesystem {
     fn load(&self, _: PathLookup) -> Result<Document> {
         panic!("Should have initialized the filesystem to a real one before loading.")
     }
+    fn get_relative_path<'a>(&self, _: &'a Path) -> &'a Path {
+        panic!("Should have initialized the filesystem to a real one before resolving.")
+    }
 }
 
 /// Filesystem that fails to load anything.
@@ -127,6 +135,11 @@ impl Filesystem for VoidFilesystem {
     }
     fn load(&self, _: PathLookup) -> Result<Document> {
         Error::new("Void filesystem does not load files.").err()
+    }
+    fn get_relative_path<'a>(&self, _: &'a Path) -> &'a Path {
+        // It's okay to panic here, `get_relative_path` is only used in features
+        // that are not used by the fuzzer.
+        panic!("Void filesystem does not relativize paths.")
     }
 }
 
@@ -298,6 +311,13 @@ impl Filesystem for SandboxFilesystem {
         };
 
         Ok(doc)
+    }
+
+    fn get_relative_path<'a>(&self, path: &'a Path) -> &'a Path {
+        match path.strip_prefix(&self.workdir) {
+            Ok(p) => p,
+            Err(..) => path,
+        }
     }
 }
 
@@ -473,5 +493,44 @@ impl Loader {
                 self.load_stdin()
             }
         }
+    }
+
+    fn write_depfile_impl(&self, target_path: &Path, depfile_path: &Path) -> io::Result<()> {
+        use std::io::Write;
+        use std::os::unix::ffi::OsStrExt;
+        let f = std::fs::File::create(depfile_path)?;
+        let mut w = std::io::BufWriter::new(f);
+        let rel_target = self.filesystem.get_relative_path(target_path);
+        w.write_all(rel_target.as_os_str().as_bytes())?;
+        w.write_all(b":")?;
+        for (path, _doc_id) in self.loaded_files.iter() {
+            let rel_path = self.filesystem.get_relative_path(path);
+            w.write_all(b" ")?;
+            w.write_all(rel_path.as_os_str().as_bytes())?;
+        }
+        w.write_all(b"\n")?;
+        Ok(())
+    }
+
+    pub fn write_depfile(&self, target: &OutputTarget, depfile_path: &str) -> Result<()> {
+        // The depfile output path is specified on the CLI, so we resolve it
+        // to make it respect --directory.
+        let resolved_depfile = self.resolve_cli_output_path(depfile_path);
+        let resolved_target = match target {
+            OutputTarget::File(path) => self.resolve_cli_output_path(path),
+            OutputTarget::Stdout => {
+                return Error::new(concat! {
+                    "To use "
+                    crate::pprint::Doc::highlight("--output-depfile")
+                    ", "
+                    crate::pprint::Doc::highlight("--output")
+                    " is required."
+                })
+                .err()
+            }
+        };
+
+        self.write_depfile_impl(&resolved_target, &resolved_depfile)
+            .map_err(|err| Error::new(format!("Failed to write depfile: {}.", err)).into())
     }
 }

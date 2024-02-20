@@ -66,12 +66,15 @@ Arguments:
              file is bound to the variable 'input'.
 
 Options:
-  -f --format <format>   Output format, see below for the available formats.
-                         Defaults to 'rcl'.
-  -o --output <outfile>  Write to the given file instead of stdout.
-  --sandbox <mode>       Sandboxing mode, see below. Defaults to 'workdir'.
-  -w --width <width>     Target width for pretty-printing, must be an integer.
-                         Defaults to 80.
+  -f --format <format>     Output format, see below for the available formats.
+                           Defaults to 'rcl'.
+  -o --output <outfile>    Write to the given file instead of stdout.
+  --output-depfile <file>  Write all dependencies that were loaded during
+                           evaluation to <file> in Makefile syntax. This can be
+                           used by e.g. the Ninja build system.
+  --sandbox <mode>         Sandboxing mode, see below. Defaults to 'workdir'.
+  -w --width <width>       Target width for pretty-printing, must be an integer.
+                           Defaults to 80.
 
 Output format:
   json          Output pretty-printed JSON.
@@ -149,6 +152,12 @@ pub struct EvalOptions {
 
     /// Policy for what files can be imported.
     pub sandbox: SandboxMode,
+
+    /// File to write dependencies to.
+    ///
+    /// See also the depfile documentation from the Ninja build system:
+    /// <https://ninja-build.org/manual.html#_depfile>.
+    pub output_depfile: Option<String>,
 }
 
 /// Options for commands that pretty-print their output.
@@ -255,6 +264,12 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     "none" => Some(MarkupMode::None),
                 }
             }
+            Arg::Long("directory") | Arg::Short("C") => {
+                global_opts.workdir = parse_option! {
+                    args: arg,
+                    |x: &str| Ok::<_, std::convert::Infallible>(Some(x.to_string()))
+                };
+            }
             Arg::Long("format") | Arg::Short("f") => {
                 eval_opts.format = match_option! {
                     args: arg,
@@ -265,24 +280,24 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     "yaml-stream" => OutputFormat::YamlStream,
                 }
             }
+            Arg::Long("output") | Arg::Short("o") => {
+                output = parse_option! {
+                    args: arg,
+                    |x: &str| Ok::<_, std::convert::Infallible>(OutputTarget::File(x.to_string()))
+                };
+            }
+            Arg::Long("output-depfile") => {
+                eval_opts.output_depfile = parse_option! {
+                    args: arg,
+                    |x: &str| Ok::<_, std::convert::Infallible>(Some(x.to_string()))
+                };
+            }
             Arg::Long("sandbox") => {
                 eval_opts.sandbox = match_option! {
                     args: arg,
                     "workdir" => SandboxMode::Workdir,
                     "unrestricted" => SandboxMode::Unrestricted,
                 }
-            }
-            Arg::Long("directory") | Arg::Short("C") => {
-                global_opts.workdir = parse_option! {
-                    args: arg,
-                    |x: &str| Ok::<_, std::convert::Infallible>(Some(x.to_string()))
-                };
-            }
-            Arg::Long("output") | Arg::Short("o") => {
-                output = parse_option! {
-                    args: arg,
-                    |x: &str| Ok::<_, std::convert::Infallible>(OutputTarget::File(x.to_string()))
-                };
             }
             Arg::Long("width") | Arg::Short("w") => {
                 style_opts.width = parse_option! { args: arg, u32::from_str };

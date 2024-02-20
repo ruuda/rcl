@@ -43,12 +43,24 @@ Output in the given format. The following formats are supported:
 The default output format is `rcl`. For the `je` command shorthand, the default
 output format is `json`.
 
+### `--output-depfile <depfile>`
+
+Write the names of the files that were loaded during evaluation in Makefile
+syntax to the file `<depfile>`. This can be used by build systems to re-run
+`rcl` when one of the inputs changes. See also [the depfile section of the
+Ninja documentation][ninja-depfile]. Because the depfile includes the name of
+the dependent file, this option can only be used in combination with `--output`.
+
+[ninja-depfile]: https://ninja-build.org/manual.html#_depfile
+
 ### `-o` `--output <outfile>`
 
 Write the output to the given file instead of stdout. When [`--directory`][dir]
-is set, the output path is relative to that directory.
+is set, the output path is relative to that directory. [`--color`][color] does
+not apply when using `--output`.
 
-[dir]: rcl.md#-c-directory-dir
+[dir]:   rcl.md#-c-directory-dir
+[color]: rcl.md#-color-mode
 
 ### `--sandbox <mode>`
 

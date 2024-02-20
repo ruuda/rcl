@@ -31,6 +31,11 @@ Set how output is colored. The following modes are available:
   <dd>Do not color output at all.</dd>
 </dl>
 
+The coloring applies only to stdout and stderr, it does not apply to files
+written with [`--output`][eval-output].
+
+[eval-output]: rcl_evaluate.md#-o-output-outfile
+
 ### `-C` `--directory <dir>`
 
 When loading files, consider `<dir>` to be the working directory for relative
