@@ -16,16 +16,24 @@ specified, the input defaults to stdin. Print the result to stdout, unless
 
 ## Options
 
+### `-c` `--check`
+
+TODO: This option currently does not exist, but it should. It should make the
+program exit with code 1 if formatting is incorrect.
+
 ### `-i` `--in-place`
 
 Instead of printing to stdout, rewrite files in-place. When this option is used,
 the command accepts multiple input files. Without this option, there must be
 exactly one input file.
 
-### `-c` `--check`
+### `-o` `--output <outfile>`
 
-TODO: This option currently does not exist, but it should. It should make the
-program exit with code 1 if formatting is incorrect.
+Write the output to the given file instead of stdout. When [`--directory`][dir]
+is set, the output path is relative to that directory. This option is
+incompatible with `--in-place`.
+
+[dir]: rcl.md#-c-directory-dir
 
 ### `-w` `--width <width>`
 

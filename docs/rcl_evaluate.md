@@ -1,12 +1,12 @@
 # rcl evaluate
 
-    rcl evaluate [-o | --output <format>] [-w | --width <width>] [--] [<file>]
+    rcl evaluate [-f | --format <format>] [--] [<file>] [--output <outfile>]
 
 Shorthands:
 
     rcl eval
-    rcl e   (uses default --output=rcl)
-    rcl je  (sets --output=json)
+    rcl e   (uses default --format=rcl)
+    rcl je  (sets --format=json)
 
 ## Description
 
@@ -16,7 +16,7 @@ When no file is specified, the input defaults to stdin.
 
 ## Options
 
-### `-o` `--output <format>`
+### `-f` `--format <format>`
 
 Output in the given format. The following formats are supported:
 
@@ -43,9 +43,12 @@ Output in the given format. The following formats are supported:
 The default output format is `rcl`. For the `je` command shorthand, the default
 output format is `json`.
 
-### `-w` `--width <width>`
+### `-o` `--output <outfile>`
 
-Target width for pretty-printing, in columns. Must be an integer. Defaults to 80.
+Write the output to the given file instead of stdout. When [`--directory`][dir]
+is set, the output path is relative to that directory.
+
+[dir]: rcl.md#-c-directory-dir
 
 ### `--sandbox <mode>`
 
@@ -64,3 +67,7 @@ Two modes are available:
 </dl>
 
 The default sandboxing mode is _workdir_.
+
+### `-w` `--width <width>`
+
+Target width for pretty-printing, in columns. Must be an integer. Defaults to 80.

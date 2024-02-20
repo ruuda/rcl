@@ -1,11 +1,11 @@
 # rcl query
 
-    rcl query [-o | --output <format>] [-w | --width <width>] [--] [<file>] <expr>
+    rcl query [-f | --format <format>] [--] [<file>] <expr> [--output <outfile>]
 
 Shorthands:
 
-    rcl q   (uses default --output=rcl)
-    rcl jq  (sets --output=json)
+    rcl q   (uses default --format=rcl)
+    rcl jq  (sets --format=json)
 
 ## Description
 

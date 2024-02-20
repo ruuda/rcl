@@ -31,8 +31,8 @@ Command shorthands:
   e, eval      Alias for 'evaluate'.
   f, fmt       Alias for 'format'.
   h            Alias for 'highlight'.
-  jq           Alias for 'query --output=json'.
-  je           Alias for 'eval --output=json'.
+  jq           Alias for 'query --format=json'.
+  je           Alias for 'eval --format=json'.
   q            Alias for 'query'.
 
 Global options:
@@ -66,11 +66,12 @@ Arguments:
              file is bound to the variable 'input'.
 
 Options:
-  -o --output <format>  Output format, see below for the available formats.
-                        Defaults to 'rcl'.
-  -w --width <width>    Target width for pretty-printing, must be an integer.
-                        Defaults to 80.
-  --sandbox <mode>      Sandboxing mode, see below. Defaults to 'workdir'.
+  -f --format <format>   Output format, see below for the available formats.
+                         Defaults to 'rcl'.
+  -o --output <outfile>  Write to the given file instead of stdout.
+  --sandbox <mode>       Sandboxing mode, see below. Defaults to 'workdir'.
+  -w --width <width>     Target width for pretty-printing, must be an integer.
+                         Defaults to 80.
 
 Output format:
   json          Output pretty-printed JSON.
@@ -105,10 +106,12 @@ Arguments:
                    when no file is specified.
 
 Options:
-  -i --in-place       Rewrite files in-place instead of writing to stdout.
-                      By default the formatted result is written to stdout.
-  -w --width <width>  Target width in number of columns, must be an integer.
-                      Defaults to 80.
+  -i --in-place          Rewrite files in-place instead of writing to stdout.
+                         By default the formatted result is written to stdout.
+  -o --output <outfile>  Write to the given file instead of stdout. This is
+                         incompatible with --in-place.
+  -w --width <width>     Target width in number of columns, must be an integer.
+                         Defaults to 80.
 
 See also --help for global options.
 "#;
@@ -150,12 +153,12 @@ pub struct EvalOptions {
 
 /// Options for commands that pretty-print their output.
 #[derive(Debug, Eq, PartialEq)]
-pub struct FormatOptions {
+pub struct StyleOptions {
     /// Target width (number of columns) to try to not exceed.
     pub width: u32,
 }
 
-impl Default for FormatOptions {
+impl Default for StyleOptions {
     fn default() -> Self {
         Self { width: 80 }
     }
@@ -186,23 +189,35 @@ pub enum FormatTarget {
     InPlace { fnames: Vec<Target> },
 }
 
+/// An output file to write results to.
+#[derive(Debug, Eq, PartialEq)]
+pub enum OutputTarget {
+    /// Write to the given file.
+    File(String),
+    /// Write to stdout.
+    Stdout,
+}
+
 /// The different subcommands supported by the main program.
 #[derive(Debug, Eq, PartialEq)]
 pub enum Cmd {
     Evaluate {
         eval_opts: EvalOptions,
-        format_opts: FormatOptions,
+        style_opts: StyleOptions,
         fname: Target,
+        output: OutputTarget,
     },
     Query {
         eval_opts: EvalOptions,
-        format_opts: FormatOptions,
+        style_opts: StyleOptions,
         fname: Target,
         query: String,
+        output: OutputTarget,
     },
     Format {
-        format_opts: FormatOptions,
+        style_opts: StyleOptions,
         target: FormatTarget,
+        output: OutputTarget,
     },
     Highlight {
         fname: Target,
@@ -222,12 +237,13 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
 
     let mut cmd: Option<&'static str> = None;
     let mut cmd_help: Option<&'static str> = None;
-    let mut format_opts = FormatOptions::default();
+    let mut style_opts = StyleOptions::default();
     let mut global_opts = GlobalOptions::default();
     let mut eval_opts = EvalOptions::default();
     let mut in_place = false;
     let mut is_version = false;
     let mut targets: Vec<Target> = Vec::new();
+    let mut output = OutputTarget::Stdout;
 
     while let Some(arg) = args.next() {
         match arg.as_ref() {
@@ -239,7 +255,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     "none" => Some(MarkupMode::None),
                 }
             }
-            Arg::Long("output") | Arg::Short("o") => {
+            Arg::Long("format") | Arg::Short("f") => {
                 eval_opts.format = match_option! {
                     args: arg,
                     "json" => OutputFormat::Json,
@@ -262,8 +278,14 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     |x: &str| Ok::<_, std::convert::Infallible>(Some(x.to_string()))
                 };
             }
+            Arg::Long("output") | Arg::Short("o") => {
+                output = parse_option! {
+                    args: arg,
+                    |x: &str| Ok::<_, std::convert::Infallible>(OutputTarget::File(x.to_string()))
+                };
+            }
             Arg::Long("width") | Arg::Short("w") => {
-                format_opts.width = parse_option! { args: arg, u32::from_str };
+                style_opts.width = parse_option! { args: arg, u32::from_str };
             }
             Arg::Long("in-place") | Arg::Short("i") => {
                 in_place = true;
@@ -350,8 +372,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     let result = match cmd {
         Some("evaluate") => Cmd::Evaluate {
             eval_opts,
-            format_opts,
+            style_opts,
             fname: get_unique_target(targets)?,
+            output,
         },
         Some("query") => {
             let (fname, query) = match targets.len() {
@@ -387,13 +410,14 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             };
             Cmd::Query {
                 eval_opts,
-                format_opts,
+                style_opts,
                 query,
                 fname,
+                output,
             }
         }
         Some("format") => Cmd::Format {
-            format_opts,
+            style_opts,
             target: if in_place {
                 FormatTarget::InPlace { fnames: targets }
             } else {
@@ -401,6 +425,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     fname: get_unique_target(targets)?,
                 }
             },
+            output,
         },
         Some("highlight") => Cmd::Highlight {
             fname: get_unique_target(targets)?,
@@ -424,8 +449,8 @@ fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
 #[cfg(test)]
 mod test {
     use crate::cli::{
-        Cmd, EvalOptions, FormatOptions, FormatTarget, GlobalOptions, OutputFormat, SandboxMode,
-        Target,
+        Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, OutputTarget, SandboxMode,
+        StyleOptions, Target,
     };
     use crate::markup::MarkupMode;
     use crate::pprint::Config;
@@ -453,8 +478,9 @@ mod test {
         };
         let expected_cmd = Cmd::Evaluate {
             eval_opts: EvalOptions::default(),
-            format_opts: FormatOptions::default(),
+            style_opts: StyleOptions::default(),
             fname: Target::File("infile".into()),
+            output: OutputTarget::Stdout,
         };
         let mut expected = (expected_opt, expected_cmd);
 
@@ -490,8 +516,8 @@ mod test {
 
         // Test that --width works, in any location, last option wins.
         expected.0.markup = None;
-        if let Cmd::Evaluate { format_opts, .. } = &mut expected.1 {
-            format_opts.width = 42;
+        if let Cmd::Evaluate { style_opts, .. } = &mut expected.1 {
+            style_opts.width = 42;
         }
         assert_eq!(parse(&["rcl", "e", "--width=42", "infile"]), expected);
         assert_eq!(parse(&["rcl", "e", "--width", "42", "infile"]), expected);
@@ -504,28 +530,28 @@ mod test {
             expected
         );
 
-        // Test that --output works. We don't have to be as thorough, it's using
+        // Test that --format works. We don't have to be as thorough, it's using
         // the same parser, if it works for the other options it should work here.
         if let Cmd::Evaluate {
-            format_opts,
+            style_opts,
             eval_opts,
             ..
         } = &mut expected.1
         {
-            format_opts.width = 80;
+            style_opts.width = 80;
             eval_opts.format = OutputFormat::Json;
         }
-        assert_eq!(parse(&["rcl", "e", "infile", "-ojson"]), expected);
-        assert_eq!(parse(&["rcl", "e", "infile", "--output", "json"]), expected);
-        assert_eq!(parse(&["rcl", "e", "infile", "--output=json"]), expected);
-        assert_eq!(parse(&["rcl", "-ojson", "e", "infile"]), expected);
-        assert_eq!(parse(&["rcl", "-orcl", "-ojson", "e", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "-fjson"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "--format", "json"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "--format=json"]), expected);
+        assert_eq!(parse(&["rcl", "-fjson", "e", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "-frcl", "-fjson", "e", "infile"]), expected);
         assert_eq!(parse(&["rcl", "je", "infile"]), expected);
 
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
             eval_opts.format = OutputFormat::Raw;
         }
-        assert_eq!(parse(&["rcl", "e", "infile", "-oraw"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "-fraw"]), expected);
 
         // Test --sandbox.
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
@@ -555,6 +581,13 @@ mod test {
             *fname = Target::StdinDefault;
         }
         assert_eq!(parse(&["rcl", "e"]), expected);
+
+        // Test the --output flag.
+        if let Cmd::Evaluate { output, .. } = &mut expected.1 {
+            *output = OutputTarget::File("outfile".to_string());
+        }
+        assert_eq!(parse(&["rcl", "e", "--output=outfile"]), expected);
+        assert_eq!(parse(&["rcl", "-ooutfile", "evaluate"]), expected);
     }
 
     #[test]
@@ -568,8 +601,8 @@ mod test {
             "Error: 'bobcat' is not valid for -w. See --help for usage.\n"
         );
         assert_eq!(
-            fail_parse(&["rcl", "eval", "infile", "--output=yamr"]),
-            "Error: Expected --output to be followed by one of json, raw, rcl, toml, yaml-stream. See --help for usage.\n"
+            fail_parse(&["rcl", "eval", "infile", "--format=yamr"]),
+            "Error: Expected --format to be followed by one of json, raw, rcl, toml, yaml-stream. See --help for usage.\n"
         );
         assert_eq!(
             fail_parse(&["rcl", "frobnicate", "infile"]),
@@ -588,10 +621,11 @@ mod test {
             workdir: None,
         };
         let expected_cmd = Cmd::Format {
-            format_opts: FormatOptions::default(),
+            style_opts: StyleOptions::default(),
             target: FormatTarget::Stdout {
                 fname: Target::File("infile".into()),
             },
+            output: OutputTarget::Stdout,
         };
         let mut expected = (expected_opt, expected_cmd);
 
@@ -654,9 +688,10 @@ mod test {
         };
         let expected_cmd = Cmd::Query {
             eval_opts: EvalOptions::default(),
-            format_opts: FormatOptions::default(),
+            style_opts: StyleOptions::default(),
             fname: Target::File("infile".into()),
             query: "input.name".to_string(),
+            output: OutputTarget::Stdout,
         };
         let mut expected = (expected_opt, expected_cmd);
         assert_eq!(parse(&["rcl", "query", "infile", "input.name"]), expected);
