@@ -85,8 +85,8 @@ fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Value>
     let max_len = 1_000_000;
 
     if upper.saturating_sub(lower) > max_len {
-        return call
-            .call_close
+        let args_span = call.args[0].span.union(call.args[1].span);
+        return args_span
             .error(concat! {
                 "Range "
                 Doc::string(lower.to_string()).with_markup(Markup::Number)
