@@ -14,7 +14,7 @@ stdin:4:20
   ╷
 4 │ [1, 2, 3].group_by(f)
   ╵                    ^
-In call to key selector from 'List.group_by'.
+In internal call to key selector from 'List.group_by'.
 
 stdin:4:19
   ╷

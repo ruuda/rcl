@@ -508,8 +508,7 @@ impl<'a> Evaluator<'a> {
                     call_close: *close,
                     args: &args[..],
                 };
-                let describe_custom_call_frame: Option<fn() -> Doc<'static>> = None;
-                self.eval_call(*function_span, &fun, call, describe_custom_call_frame)
+                self.eval_call(*function_span, &fun, call)
             }
 
             Expr::Index {
@@ -582,57 +581,23 @@ impl<'a> Evaluator<'a> {
 
     /// Evaluate a call to any callable.
     ///
-    /// It is possible to override the construction of the call frame in errors.
-    /// This is useful to add a more descriptive context when calling functions
-    /// from built-in functions where we can't highlight a proper span.
-    pub fn eval_call<DescribeCallFrame: Copy + Fn() -> Doc<'static>>(
+    /// This function adds a call frame. For calls made from builtins, the call
+    /// frame may not be very clear. Then, in case of error, the caller of
+    /// `eval_call` can replace the call frame with a more descriptive one.
+    pub fn eval_call(
         &mut self,
         callee_span: Span,
         callee: &Value,
         call: FunctionCall,
-        describe_call_frame: Option<DescribeCallFrame>,
     ) -> Result<Value> {
         let call_open = call.call_open;
         self.inc_eval_depth(call_open)?;
 
-        // TODO: The call frames, it's a mess. I have a feeling it can be simpler
-        // while at the same time generating less verbose errors. For example,
-        // if we have a KeyError from `Dict.get`, we don't really need to
-        // include that, because we will already blame the error on a span nearby.
-        // Similar for all these arity errors. Direct errors == no call frames.
-        // Maybe a call to a builtin should return Result<Result<Value>>?
-        // Err if the problem was with the call itself (and we shouldn't add
-        // a frame), and Ok(Err) if the call itself was ok, but internally there
-        // was an error?
-
         let result = match callee {
             Value::BuiltinMethod(instance) => {
                 let method = instance.method;
-
-                let add_call_frame = |err: Box<Error>| {
-                    err.with_call_frame(
-                        call_open,
-                        match describe_call_frame {
-                            Some(f) => f(),
-                            None => concat! {
-                                "In call to method '" Doc::highlight(method.name) "'."
-                            },
-                        },
-                    )
-                    .into()
-                };
-
                 let fn_type = self.get_builtin_method_type(method);
-                let arity = fn_type.check_arity(Some(method.name), call.args, call.call_close);
-
-                // If we have a custom call frame, include it, because the call
-                // itself is not visible in the source code. If we don't, then
-                // the location of the arity error is already quite obvious and
-                // we don't need to also report the `(` on the same line.
-                match describe_call_frame {
-                    None => arity?,
-                    Some(..) => arity.map_err(add_call_frame)?,
-                }
+                fn_type.check_arity(Some(method.name), call.args, call.call_close)?;
                 // TODO: Also check the type, while we're at it!
 
                 let method_call = MethodCall {
@@ -642,63 +607,39 @@ impl<'a> Evaluator<'a> {
                     receiver: &instance.receiver,
                 };
 
-                (method.f)(self, method_call).map_err(add_call_frame)
+                (method.f)(self, method_call).map_err(|err| {
+                    err.with_call_frame(
+                        call_open,
+                        concat! { "In call to method '" Doc::highlight(method.name) "'." },
+                    )
+                    .into()
+                })
             }
             Value::BuiltinFunction(f) => {
-                let add_call_frame = |err: Box<Error>| {
-                    err.with_call_frame(
-                        call_open,
-                        match describe_call_frame {
-                            Some(f) => f(),
-                            None => concat! { "In call to function '" Doc::highlight(f.name) "'." },
-                        },
-                    )
-                    .into()
-                };
-
                 let fn_type = self.get_builtin_function_type(f);
-                let arity = fn_type.check_arity(Some(f.name), call.args, call.call_close);
+                fn_type.check_arity(Some(f.name), call.args, call.call_close)?;
                 // TODO: Also check the type, while we're at it!
 
-                match describe_call_frame {
-                    None => arity?,
-                    Some(..) => arity.map_err(add_call_frame)?,
-                }
-
-                (f.f)(self, call).map_err(add_call_frame)
-            }
-            Value::Function(fun) => {
-                // TODO: Also perform typechecks of the arguments.
-
-                let add_call_frame = |err: Box<Error>| {
+                (f.f)(self, call).map_err(|err| {
                     err.with_call_frame(
                         call_open,
-                        match describe_call_frame {
-                            Some(f) => f(),
-                            None => concat! { "In call to function." },
-                        },
+                        concat! { "In call to function '" Doc::highlight(f.name) "'." },
                     )
                     .into()
-                };
-
-                let arity = fun.type_.check_arity(None, call.args, call.call_close);
-                match describe_call_frame {
-                    None => arity?,
-                    Some(..) => arity.map_err(add_call_frame)?,
-                }
-
-                self.eval_function_call(fun, call).map_err(add_call_frame)
+                })
             }
-            _ => {
-                // Also here, if the call frame is custom, then report it because
-                // it has good context. If we don't have a custom call frame, then
-                // we would just highlight the same span twice, so then skip it.
-                let error = callee_span.error("This is not a function, it cannot be called.");
-                match describe_call_frame {
-                    None => error.err(),
-                    Some(f) => error.with_call_frame(call_open, f()).err(),
-                }
+            Value::Function(fun) => {
+                fun.type_.check_arity(None, call.args, call.call_close)?;
+                // TODO: Also perform typechecks of the arguments.
+
+                self.eval_function_call(fun, call).map_err(|err| {
+                    err.with_call_frame(call_open, "In call to function.")
+                        .into()
+                })
             }
+            _ => callee_span
+                .error("This is not a function, it cannot be called.")
+                .err(),
         };
 
         self.dec_eval_depth();

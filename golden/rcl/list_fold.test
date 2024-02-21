@@ -26,7 +26,7 @@ stdin:3:40
   ╷
 3 │   str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),
   ╵                                        ^~~~~~~~~~~~~~~~~~~
-In call to reduce function from 'List.fold'.
+In internal call to reduce function from 'List.fold'.
 
 stdin:3:35
   ╷

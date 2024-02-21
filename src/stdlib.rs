@@ -253,11 +253,10 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
 
     for x in elements {
         // The call that we construct here is internal, there is no span in the
-        // source code that we could point at. Point at the full argument so we
-        // still have something to highlight.
-        let void_span = get_key_span.take(0);
+        // source code that we could point at. Point at the argument so we still
+        // have something to highlight.
         let args = [CallArg {
-            span: void_span,
+            span: get_key_span,
             value: x.clone(),
         }];
         let call = FunctionCall {
@@ -265,9 +264,23 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
             call_close: get_key_span,
             args: &args,
         };
-        let describe_call_frame =
-            || concat! { "In call to key selector from '" Doc::highlight(name) "'." };
-        let key = eval.eval_call(get_key_span, get_key, call, Some(describe_call_frame))?;
+        let key = eval
+            .eval_call(get_key_span, get_key, call)
+            .map_err(|mut err| {
+                // If the call includes a call frame, then replace it with a more
+                // descriptive one. If the call did not include a call frame, then
+                // we add one here anyway. For errors that are called directly by
+                // builtins, they blame their own span so such errors don't include
+                // a call frame to avoid duplication. But when we call them from a
+                // builtin, then the span that we blame the error on is misleading,
+                // so it is important to have good context here.
+                err.call_stack.pop();
+                err.add_call_frame(
+                    get_key_span,
+                    concat! { "In internal call to key selector from '" Doc::highlight(name) "'." },
+                );
+                err
+            })?;
         groups.entry(key).or_default().push(x.clone());
     }
 
@@ -546,14 +559,13 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
         // The call that we construct here is internal, there is no span in the
         // source code that we could point at. To have something to pin errors
         // to, we'll take the entire span of the 'reduce' argument.
-        let void_span = reduce.span.take(0);
         let args = [
             CallArg {
-                span: void_span,
+                span: reduce.span,
                 value: acc,
             },
             CallArg {
-                span: void_span,
+                span: reduce.span,
                 value: element.clone(),
             },
         ];
@@ -562,12 +574,16 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
             call_close: reduce.span,
             args: &args,
         };
-        let describe_call_frame = || {
-            concat! {
-                "In call to reduce function from '" Doc::highlight("List.fold") "'."
-            }
-        };
-        acc = eval.eval_call(reduce.span, &reduce.value, call, Some(describe_call_frame))?;
+        acc = eval.eval_call(reduce.span, &reduce.value, call).map_err(|mut err| {
+            // We replace the call frame if there was any, see also the rationale
+            // in `builtin_group_by_impl` that has a similar construct.
+            err.call_stack.pop();
+            err.add_call_frame(
+                reduce.span,
+                concat! { "In internal call to reduce function from '" Doc::highlight("List.fold") "'." }
+            );
+            err
+        })?;
     }
 
     Ok(acc)

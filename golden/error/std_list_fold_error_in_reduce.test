@@ -18,7 +18,7 @@ stdin:2:16
   ╷
 2 │ [1, 2].fold(0, (acc, x) => acc + x.len())
   ╵                ^~~~~~~~~~~~~~~~~~~~~~~~~
-In call to reduce function from 'List.fold'.
+In internal call to reduce function from 'List.fold'.
 
 stdin:2:12
   ╷
