@@ -267,15 +267,10 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
         let key = eval
             .eval_call(get_key_span, get_key, call)
             .map_err(|mut err| {
-                // If the call includes a call frame, then replace it with a more
-                // descriptive one. If the call did not include a call frame, then
-                // we add one here anyway. For errors that are called directly by
-                // builtins, they blame their own span so such errors don't include
-                // a call frame to avoid duplication. But when we call them from a
-                // builtin, then the span that we blame the error on is misleading,
-                // so it is important to have good context here.
-                err.call_stack.pop();
-                err.add_call_frame(
+                // If the call includes a call frame for this call, then replace
+                // it with a more descriptive message, since the span is a bit
+                // misleading.
+                err.replace_call_frame(
                     get_key_span,
                     concat! { "In internal call to key selector from '" Doc::highlight(name) "'." },
                 );
@@ -575,10 +570,10 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
             args: &args,
         };
         acc = eval.eval_call(reduce.span, &reduce.value, call).map_err(|mut err| {
-            // We replace the call frame if there was any, see also the rationale
-            // in `builtin_group_by_impl` that has a similar construct.
-            err.call_stack.pop();
-            err.add_call_frame(
+            // If the call includes a call frame for this call, then replace
+            // it with a more descriptive message, since the span is a bit
+            // misleading.
+            err.replace_call_frame(
                 reduce.span,
                 concat! { "In internal call to reduce function from '" Doc::highlight("List.fold") "'." }
             );

@@ -130,6 +130,22 @@ impl Error {
         self.call_stack.push((at, message.into()));
     }
 
+    /// Replace the message at the top of the call stack.
+    ///
+    /// The span that is currently at the top (if there is one at all) must
+    /// match exactly to replace the call frame. If not, then we push the frame
+    /// like normal without popping.
+    pub fn replace_call_frame<M>(&mut self, at: Span, message: M)
+    where
+        Doc<'static>: From<M>,
+    {
+        match self.call_stack.last() {
+            Some(frame) if frame.0 == at => _ = self.call_stack.pop(),
+            _ => {}
+        }
+        self.add_call_frame(at, message)
+    }
+
     /// Append a frame to the error's call stack.
     pub fn with_call_frame<M>(mut self, at: Span, message: M) -> Error
     where
