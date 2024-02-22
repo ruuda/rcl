@@ -245,11 +245,15 @@ pub fn lex(doc: DocId, input: &str) -> Result<Vec<Lexeme>> {
             (token, span) => {
                 debug_assert!(
                     input.is_char_boundary(span.start()),
+                    // coverage:off -- Error not expected to be hit.
                     "Start of {token:?} is not a char boundary.",
+                    // coverage:on
                 );
                 debug_assert!(
                     input.is_char_boundary(span.end()),
+                    // coverage:off -- Error not expected to be hit.
                     "Start of {token:?} is not a char boundary.",
+                    // coverage:on
                 );
                 tokens.push((token, span));
             }
@@ -378,7 +382,9 @@ impl<'a> Lexer<'a> {
 
         debug_assert!(
             !input.is_empty(),
-            "Must have input before continuing to lex."
+            // coverage:off -- Error not expected to be hit.
+            "Must have input before continuing to lex.",
+            // coverage:on
         );
 
         if input.starts_with(b"#!") {
@@ -461,11 +467,13 @@ impl<'a> Lexer<'a> {
                 .err();
         }
 
+        // coverage:off -- Code not expected to be reached.
         unreachable!(
             "We should have handled all bytes, but we forgot {} (0x{:02x})",
             char::from_u32(input[0] as u32).unwrap(),
             input[0],
         );
+        // coverage:on
     }
 
     fn lex_in_space(&mut self) -> Lexeme {
@@ -732,7 +740,9 @@ impl<'a> Lexer<'a> {
 
         debug_assert!(
             !input.is_empty(),
-            "Must have input before continuing to lex."
+            // coverage:off -- Error not expected to be hit.
+            "Must have input before continuing to lex.",
+            // coverage:on
         );
 
         if input.starts_with(b"\\u{") {

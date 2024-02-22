@@ -53,10 +53,12 @@ fn should_color<T: IsTerminal>(fd: &T) -> bool {
     if !fd.is_terminal() {
         return false;
     }
+    // coverage:off -- Tests never run with a terminal, so this is never covered.
     match std::env::var("NO_COLOR") {
         Ok(no_color) => no_color == "",
         Err(..) => true,
     }
+    // coverage:on
 }
 
 impl MarkupMode {

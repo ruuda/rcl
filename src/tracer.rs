@@ -73,6 +73,8 @@ impl Tracer for StderrTracer {
 /// Intended for use by the fuzzer.
 pub struct VoidTracer;
 
+// coverage:off -- The void tracer is only used by the fuzzer, not production code.
 impl Tracer for VoidTracer {
     fn trace(&mut self, _inputs: &Inputs, _span: Span, _message: &Value) {}
 }
+// coverage:on

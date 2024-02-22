@@ -68,14 +68,10 @@ impl<T> Env<T> {
         let EnvCheckpoint(n, _phantom) = to;
         debug_assert!(
             self.bindings.len() >= n,
+            // coverage:off -- Error message is not covered when we don't hit the error.
             "Cannot restore to checkpoint, more got popped already.",
+            // coverage:on
         );
         self.bindings.truncate(n);
-    }
-}
-
-impl<T> Default for Env<T> {
-    fn default() -> Self {
-        Self::new()
     }
 }

@@ -36,20 +36,6 @@ pub struct Config {
     pub markup: MarkupMode,
 }
 
-impl Default for Config {
-    fn default() -> Config {
-        Config {
-            // Although Black found a limit of 88 to produce significantly
-            // shorter files for Python than sticking strictly to 80 (see also
-            // https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#line-length
-            // ), in my tests (based on not that much data so far) I preferred
-            // just 80.
-            width: 80,
-            markup: MarkupMode::None,
-        }
-    }
-}
-
 /// A document tree that can be pretty-printed.
 ///
 /// Every node can be printed in two ways: wide or tall. The goal of the
@@ -174,7 +160,9 @@ impl<'a> Doc<'a> {
         use unicode_width::UnicodeWidthStr;
         debug_assert!(
             !value.contains('\n'),
+            // coverage:off -- Error not expected to be hit.
             "Doc fragments cannot contain newlines, use SoftBreak etc.",
+            // coverage:on
         );
         Doc::Str {
             width: value.width() as u32,
@@ -217,7 +205,9 @@ impl<'a> Doc<'a> {
         use unicode_width::UnicodeWidthStr;
         debug_assert!(
             !value.contains('\n'),
+            // coverage:off -- Error not expected to be hit.
             "Doc fragments cannot contain newlines, use SoftBreak etc.",
+            // coverage:on
         );
         Doc::String {
             width: value.width() as u32,
@@ -230,7 +220,9 @@ impl<'a> Doc<'a> {
         use unicode_width::UnicodeWidthStr;
         debug_assert!(
             !value.contains('\n'),
+            // coverage:off -- Error not expected to be hit.
             "Doc fragments cannot contain newlines, use SoftBreak etc.",
+            // coverage:on
         );
         Doc::WhenTall {
             width: value.width() as u32,
@@ -587,7 +579,9 @@ mod printer {
         pub fn push_str(&mut self, value: &str, width: u32) -> PrintResult {
             debug_assert!(
                 !value.contains('\n'),
-                "Use `newline` to push a newline instead."
+                // coverage:off -- Error not expected to be hit.
+                "Use `newline` to push a newline instead.",
+                // coverage:on
             );
             self.write_indent();
             self.out.push_str(value);
@@ -606,7 +600,9 @@ mod printer {
         pub fn newline(&mut self) -> PrintResult {
             debug_assert!(
                 !self.out.is_empty(),
+                // coverage:off -- Error not expected to be hit.
                 "Should not try to create leading whitespace!",
+                // coverage:on
             );
 
             // HACK: Remove any trailing spaces from the current line before we

@@ -100,6 +100,7 @@ pub trait Filesystem {
 /// to break the cycle for the type system.
 struct PanicFilesystem;
 
+// coverage:off -- Panic file system should not be called in correct code.
 impl Filesystem for PanicFilesystem {
     fn resolve(&self, _: &str, _: &str) -> Result<PathLookup> {
         panic!("Should have initialized the filesystem to a real one before resolving.")
@@ -117,12 +118,14 @@ impl Filesystem for PanicFilesystem {
         panic!("Should have initialized the filesystem to a real one before resolving.")
     }
 }
+// coverage:on
 
 /// Filesystem that fails to load anything.
 ///
 /// Intended for use by the fuzzer.
 pub struct VoidFilesystem;
 
+// coverage:off -- Void filesystem is only used by the fuzzer, not production code.
 impl Filesystem for VoidFilesystem {
     fn resolve(&self, _: &str, _: &str) -> Result<PathLookup> {
         Error::new("Void filesystem does not load files.").err()
@@ -142,6 +145,7 @@ impl Filesystem for VoidFilesystem {
         panic!("Void filesystem does not relativize paths.")
     }
 }
+// coverage:on
 
 /// The policy about which documents can be loaded from the filesystem.
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]

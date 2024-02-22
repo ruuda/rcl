@@ -134,7 +134,9 @@ impl<'a> Parser<'a> {
         self.cursor += 1;
         debug_assert!(
             self.cursor <= self.tokens.len(),
+            // coverage:off -- Error not expected to be hit.
             "Cursor should not go more than beyond the last token.",
+            // coverage:on
         );
 
         result

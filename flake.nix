@@ -251,6 +251,8 @@
                   --source-dir source \
                   --binary-path ${coverageBuild}/bin \
                   --excl-line '(#\[derive|unreachable!|panic!|std::process::exit)\(' \
+                  --excl-start 'coverage:off' \
+                  --excl-stop 'coverage:on' \
                   --llvm-path $bintools \
                   --prefix-dir source \
                   --llvm \

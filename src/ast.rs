@@ -21,17 +21,13 @@ use crate::source::Span;
 #[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Ident(pub Rc<str>);
 
+// coverage:off -- Debug is needed for asserts but not covered when there are no errors.
 impl fmt::Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
-
-impl fmt::Display for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+// coverage:on
 
 impl AsRef<str> for Ident {
     fn as_ref(&self) -> &str {

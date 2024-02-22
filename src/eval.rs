@@ -196,7 +196,9 @@ impl<'a> Evaluator<'a> {
             if ctx.doc == doc {
                 debug_assert!(
                     error.is_none(),
+                    // coverage:off -- Error message not hit when there is no error.
                     "There should not be a cycle in the stack already.",
+                    // coverage:on
                 );
                 let err = imported_from.error("This import creates a cycle.");
                 error = Some(err);
@@ -288,8 +290,10 @@ impl<'a> Evaluator<'a> {
                         assert_eq!(
                             keys.len(),
                             values.len(),
+                            // coverage:off -- Error expected to be hit.
                             "Should have already reported error about mixing \
-                            `k: v` and values in one comprehension."
+                            `k: v` and values in one comprehension.",
+                            // coverage:on
                         );
                         let mut result = BTreeMap::new();
                         for (k, v) in keys.into_iter().zip(values) {

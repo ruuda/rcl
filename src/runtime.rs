@@ -166,15 +166,19 @@ pub struct MethodInstance {
 }
 
 impl std::fmt::Debug for BuiltinFunction {
+    // coverage:off -- Debug is needed for assert, not expected to be called.
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}@{:p}", self.name, self.f)
     }
+    // coverage:on
 }
 
 impl std::fmt::Debug for BuiltinMethod {
+    // coverage:off -- Debug is needed for assert, not expected to be called.
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}@{:p}", self.name, self.f)
     }
+    // coverage:on
 }
 
 #[derive(Debug)]
