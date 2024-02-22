@@ -18,8 +18,10 @@ use crate::fmt_rcl::format_rcl;
 use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
+use crate::type_diff::{Mismatch, TypeDiff};
+use crate::type_source::{Side, Source};
 use crate::types;
-use crate::types::{Mismatch, Side, Source, SourcedType, Type, TypeDiff};
+use crate::types::{SourcedType, Type};
 
 /// The arguments to a function call at runtime.
 pub struct FunctionCall<'a> {

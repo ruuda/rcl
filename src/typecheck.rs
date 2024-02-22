@@ -19,9 +19,9 @@ use crate::error::{IntoError, Result};
 use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
-use crate::types::{
-    report_type_mismatch, Dict, Function, FunctionArg, Side, Source, SourcedType, Type, Typed,
-};
+use crate::type_diff::{report_type_mismatch, Typed};
+use crate::type_source::{Side, Source};
+use crate::types::{Dict, Function, FunctionArg, SourcedType, Type};
 
 pub type Env = crate::env::Env<SourcedType>;
 

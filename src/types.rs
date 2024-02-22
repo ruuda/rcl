@@ -11,11 +11,13 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use crate::ast::{CallArg, Ident};
-use crate::error::{Error, IntoError, Result};
+use crate::error::{IntoError, Result};
 use crate::fmt_type::format_type;
 use crate::markup::Markup;
-use crate::pprint::{concat, indent, Doc};
+use crate::pprint::{concat, Doc};
 use crate::source::Span;
+use crate::type_diff::{Mismatch, TypeDiff};
+use crate::type_source::Source;
 
 /// A type.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -53,6 +55,16 @@ pub enum Type {
 
     /// A function.
     Function(Rc<Function>),
+}
+
+impl Type {
+    /// Return whether the type is not composite, i.e. is not composed of other types.
+    pub fn is_atom(&self) -> bool {
+        matches!(
+            self,
+            Type::Bool | Type::Int | Type::Null | Type::String | Type::Void | Type::Any,
+        )
+    }
 }
 
 /// The type parameters for the `Dict` type.
@@ -285,207 +297,11 @@ impl Function {
     }
 }
 
-/// The place where a type was constructed.
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum Source {
-    /// There is no source for this type.
-    ///
-    /// This is the case for `Type::Any` when it is introduced by the
-    /// typechecker for expressions that are not otherwise constrained.
-    None,
-
-    /// Expected `Void` because the collection at the given location is empty.
-    EmptyCollection(Span),
-
-    /// The type comes from a built-in function.
-    /// TODO: Add more details.
-    Builtin,
-
-    /// The type was inferred from a literal.
-    Literal(Span),
-
-    /// It was a type annotation in the source code.
-    Annotation(Span),
-
-    /// A boolean is required, because it's used as a condition (`if` or `assert`).
-    Condition,
-
-    /// The type is the required type of the operator at the given span.
-    Operator(Span),
-
-    /// An integer is required due to indexing into a list.
-    IndexList,
-}
-
 /// A type and its source.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct SourcedType {
     pub type_: Type,
     pub source: Source,
-}
-
-/// An inner error of a `TypeDiff` for a subtype check `T ≤ U`.
-#[derive(Debug)]
-pub enum Mismatch {
-    /// The type error cannot be broken down further. Here are `T` and `U`.
-    Atom {
-        expected: SourcedType,
-        actual: SourcedType,
-    },
-
-    /// Both sides are a list, but the element type has an issue.
-    List(Box<TypeDiff<SourcedType>>),
-
-    /// Both sides are a set, but the element type has an issue.
-    Set(Box<TypeDiff<SourcedType>>),
-
-    /// Both sides are a dict, but the key or value (or both) have issues.
-    Dict(Box<TypeDiff<SourcedType>>, Box<TypeDiff<SourcedType>>),
-
-    /// Both sides are functions of the same arity, but args or result have issues.
-    Function(Vec<TypeDiff<FunctionArg>>, Box<TypeDiff<SourcedType>>),
-}
-
-/// The result of a subtype check `T ≤ U`.
-///
-/// The result is a tree, to be able to pinpoint where the check fails, enabling
-/// more helpful errors.
-#[derive(Debug)]
-pub enum TypeDiff<T> {
-    /// Yes, `T ≤ U`, and here is `T`.
-    Ok(T),
-
-    /// For `t: T`, we *might* have `t: U`. Here is `V` such that `T ≤ V ≤ U`.
-    Defer(T),
-
-    /// For all `t: T`, we have that `t` is not a value of `U`.
-    ///
-    /// Or, in some cases this is not strictly true, but we want to rule out
-    /// that case because it makes more sense. For example, we say that
-    /// `List[Int]` and `List[String]` are incompatible, even though `[]`
-    /// inhabits both.
-    Error(Mismatch),
-}
-
-impl Type {
-    /// Return whether the type is not composite, i.e. is not composed of other types.
-    pub fn is_atom(&self) -> bool {
-        matches!(
-            self,
-            Type::Bool | Type::Int | Type::Null | Type::String | Type::Void | Type::Any,
-        )
-    }
-}
-
-/// What side to explain the source of a type for.
-pub enum Side {
-    Expected,
-    Actual,
-}
-
-impl Source {
-    pub fn span(&self) -> Option<Span> {
-        match self {
-            Source::EmptyCollection(s) => Some(*s),
-            Source::Literal(s) => Some(*s),
-            Source::Annotation(s) => Some(*s),
-            Source::Operator(s) => Some(*s),
-            // Note, we don't handle the cases without span with a `_` pattern
-            // on purpose, so that if we add a variant that has a span, it
-            // causes a compile error instead of silently not returning it here.
-            Source::None => None,
-            Source::Builtin => None,
-            Source::Condition => None,
-            Source::IndexList => None,
-        }
-    }
-
-    /// Combine two sources of types that are known to be equal.
-    ///
-    /// When types meet and their meet is not equal to either side, then the
-    /// source information is lost. But when both types are equal anyway, we can
-    /// pick one of the sources as the source of the combined information. This
-    /// should *only* be called if the types are equal. If they are not, we would
-    /// be attributing types that we generated at runtime to spans in the source
-    /// code!
-    pub fn meet(&self, other: &Source) -> Source {
-        match (self, other) {
-            // If one side is missing a source, then now we learned one.
-            (Source::None, _) => *other,
-            (_, Source::None) => *other,
-            // Builtins have no span to blame them on. We'd rather blame on spans.
-            (Source::Builtin, other) => *other,
-            (other, Source::Builtin) => *other,
-            // All else equal, we go with the source that we discovered first.
-            (first, _) => *first,
-        }
-    }
-
-    /// Add context to a type error about why a particular type was expected.
-    pub fn clarify_error<T: AsTypeName>(&self, side: Side, type_: &T, error: Error) -> Error {
-        let type_name = if type_.is_atom() {
-            // If it's an atom, we have space to put the name of the type in the
-            // sentence. But remove the coloring, it gets too distracting as the
-            // type here is not the main purpose of the sentence.
-            match type_.format_type() {
-                Doc::Markup(_, type_name) => *type_name,
-                _ => unreachable!("Formatted atoms have markup."),
-            }
-        } else {
-            // If it's not an atom, the type might be huge, so we don't put it
-            // in the middle of the sentence, we just say "type" and hope the
-            // message is still clear enough.
-            "type".into()
-        };
-        let side_verb = match side {
-            Side::Expected => "Expected ",
-            Side::Actual => "Found ",
-        };
-        match self {
-            Source::None => error,
-
-            // TODO: Add information about the builtin (function and arg name).
-            Source::Builtin => error,
-
-            Source::Literal(at) => {
-                let msg = concat! {
-                    side_verb type_name " because of this value."
-                };
-                error.with_note(*at, msg)
-            }
-
-            Source::EmptyCollection(at) => {
-                let msg = concat! {
-                    side_verb type_name " because this collection is empty."
-                };
-                error.with_note(*at, msg)
-            }
-
-            Source::Annotation(at) => {
-                let msg = match side {
-                    _ if type_.is_atom() => {
-                        concat! { side_verb type_name " because of this annotation." }
-                    }
-                    Side::Expected => "The expected type is specified here.".into(),
-                    Side::Actual => "Found a type that is specified here.".into(),
-                };
-                error.with_note(*at, msg)
-            }
-
-            Source::Operator(at) => error.with_note(
-                *at,
-                concat! {
-                    side_verb type_name " because of this operator."
-                },
-            ),
-
-            Source::Condition => {
-                error.with_help("There is no implicit conversion, conditions must be boolean.")
-            }
-
-            Source::IndexList => error.with_help("List indices must be integers."),
-        }
-    }
 }
 
 impl SourcedType {
@@ -583,11 +399,11 @@ impl SourcedType {
     ///
     /// What it means to be a subtype: if we take an arbitrary instance `t` of
     /// type `T`, is it an instance of `U`? There are three possible outcomes:
-    /// 1. Yes, irrespective of `t`. `T` is a subtype of `U`: `T < U`.
-    /// 2. No, irrespective of `t`. `T` is not a subtype of `U`: `not (T < U)`.
+    /// 1. Yes, irrespective of `t`. `T` is a subtype of `U`: `T ≤ U`.
+    /// 2. No, irrespective of `t`. `T` is not a subtype of `U`: `not (T ≤ U)`.
     /// 3. It depends on `t`, the two types are not orderable.
-    /// Note that case 2 (`not (T < U)`) does not imply the converse! It does
-    /// *not* mean that `U < T` holds!
+    /// Note that case 2 (`not (T ≤ U)`) does not imply the converse! It does
+    /// *not* mean that `U ≤ T` holds!
     ///
     /// Also, we do make some exceptions to this, because it's more helpful to
     /// catch type errors than to be able to type any possible expression that
@@ -694,72 +510,6 @@ impl SourcedType {
     }
 }
 
-/// The result of a static typecheck.
-pub enum Typed<T> {
-    /// The type is known statically, and this is the most specific type we infer.
-    Type(T),
-
-    /// We can't check this statically, a runtime check is needed.
-    ///
-    /// If the runtime check passes, then the value fits the returned type.
-    Defer(T),
-}
-
-impl<T> TypeDiff<T> {
-    /// Report the diff as a type error, or extract its result.
-    pub fn check(self, at: Span) -> Result<Typed<T>> {
-        match self {
-            TypeDiff::Ok(t) => Ok(Typed::Type(t)),
-            TypeDiff::Defer(t) => Ok(Typed::Defer(t)),
-            TypeDiff::Error(Mismatch::Atom { actual, expected }) => {
-                let mut error = if let Type::Void = expected.type_ {
-                    at.error(concat! {
-                        "Expected a value of type "
-                        "Void".format_type()
-                        ", but no such values exist."
-                    })
-                } else {
-                    // Any can never be the top level-cause of a type error.
-                    // As a supertype, any value is fine, and as the actual type,
-                    // it should result in a runtime check rather than an error.
-                    debug_assert_ne!(actual.type_, Type::Any, "Any should not cause errors.");
-                    debug_assert_ne!(expected.type_, Type::Any, "Any should not cause errors.");
-
-                    // A top-level type error, we can report with a simple message.
-                    at.error("Type mismatch.")
-                        .with_body(report_type_mismatch(&expected, &actual))
-                };
-
-                // If we have it, explain why the expected type is expected.
-                error = expected
-                    .source
-                    .clarify_error(Side::Expected, &expected, error);
-
-                // If the actual type doesn't come from the span that we are
-                // attributing the error to, then also include a note about that.
-                let should_report_source = match actual.source.span() {
-                    // TODO: Should it be contains, or just equality? Can there
-                    // be complex expressions where it helps to single out a
-                    // sub-span?
-                    Some(src_span) => !at.contains(src_span),
-                    None => true,
-                };
-                if should_report_source {
-                    error = actual.source.clarify_error(Side::Actual, &actual, error);
-                }
-                error.err()
-            }
-            TypeDiff::Error(diff) => {
-                // If the error is nested somewhere inside a type, then we
-                // resort to a more complex format where we first print the
-                // type itself, with the error part replaced with a placeholder,
-                // and then we add a secondary error to explain the placeholder.
-                crate::fmt_type::DiffFormatter::report(at, &diff).err()
-            }
-        }
-    }
-}
-
 /// Helper to enable using short names in type errors.
 pub trait AsTypeName {
     fn format_type(&self) -> Doc<'static>;
@@ -782,45 +532,6 @@ impl AsTypeName for SourcedType {
 
     fn is_atom(&self) -> bool {
         self.type_.is_atom()
-    }
-}
-
-/// Format a static type error body.
-///
-/// This does not include the "Type mismatch." message, so that the body can be
-/// used in various places.
-pub fn report_type_mismatch<T1: AsTypeName, T2: AsTypeName>(
-    expected: &T1,
-    actual: &T2,
-) -> Doc<'static> {
-    // If types are atoms, they are short to format, so we can put the message
-    // on one line. If they are composite, we put them in an indented block.
-    match (expected.is_atom(), actual.is_atom()) {
-        (true, true) => concat! {
-            "Expected " expected.format_type()
-            " but found " actual.format_type() "."
-        },
-        (true, false) => concat! {
-            "Expected " expected.format_type() " but found this type:"
-            Doc::HardBreak Doc::HardBreak
-            indent! { actual.format_type() }
-        },
-        (false, true) => concat! {
-            "Expected this type:"
-            Doc::HardBreak Doc::HardBreak
-            indent! { expected.format_type() }
-            Doc::HardBreak Doc::HardBreak
-            "But found " actual.format_type() "."
-        },
-        (false, false) => concat! {
-            "Expected this type:"
-            Doc::HardBreak Doc::HardBreak
-            indent! { expected.format_type() }
-            Doc::HardBreak Doc::HardBreak
-            "But found this type: "
-            Doc::HardBreak Doc::HardBreak
-            indent! { actual.format_type() }
-        },
     }
 }
 

@@ -13,7 +13,9 @@ use crate::error::{Error, IntoError};
 use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};
 use crate::source::Span;
-use crate::types::{self, FunctionArg, Mismatch, Side, SourcedType, Type, TypeDiff};
+use crate::type_diff::{report_type_mismatch, Mismatch, TypeDiff};
+use crate::type_source::Side;
+use crate::types::{FunctionArg, SourcedType, Type};
 
 /// Render a type.
 pub fn format_type(type_: &Type) -> Doc {
@@ -111,7 +113,7 @@ impl<'a> DiffFormatter<'a> {
                 Doc::HardBreak
                 Doc::HardBreak
                 "At E" n.to_string() ": "
-                types::report_type_mismatch(inner_error.expected, inner_error.actual)
+                report_type_mismatch(inner_error.expected, inner_error.actual)
             };
             parts.push(message);
         }

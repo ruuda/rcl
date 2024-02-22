@@ -38,5 +38,7 @@ pub mod source;
 pub mod stdlib;
 pub mod string;
 pub mod tracer;
+pub mod type_diff;
+pub mod type_source;
 pub mod typecheck;
 pub mod types;
