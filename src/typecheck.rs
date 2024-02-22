@@ -629,9 +629,10 @@ impl<'a> TypeChecker<'a> {
         let (arg_type, result_type) = match op {
             BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => (Type::Int, Type::Int),
             BinOp::And | BinOp::Or => (Type::Bool, Type::Bool),
-            BinOp::Lt | BinOp::LtEq | BinOp::Gt | BinOp::GtEq | BinOp::Eq | BinOp::Neq => {
-                (Type::Any, Type::Bool)
-            }
+            // For now we allow comparison only on integers. It should probably
+            // be allowed on strings as well.
+            BinOp::Lt | BinOp::LtEq | BinOp::Gt | BinOp::GtEq => (Type::Int, Type::Bool),
+            BinOp::Eq | BinOp::Neq => (Type::Any, Type::Bool),
             BinOp::Union => return self.check_binop_union(op_span, lhs_span, rhs_span, lhs, rhs),
         };
         let arg_type = type_operator(op_span, arg_type);
@@ -660,7 +661,11 @@ impl<'a> TypeChecker<'a> {
                 type_: Type::Set(Rc::new(tl.meet(tr.as_ref()))),
                 source: Source::None,
             },
-            (Type::Any, _) | (_, Type::Any) => type_any().clone(),
+            // TODO: Because of this case, we still have to handle the case at
+            // runtime. But we would need a way to express as type requirement
+            // "Set or Dict". That gets messy, I think I prefer to delete the
+            // union operator and add interpolation instead.
+            (Type::Any | Type::Dict(..) | Type::Set(..), _) => type_any().clone(),
             (not_collection, _) => {
                 let err = op_span.error(concat! {
                     "Expected Dict or Set as the left-hand side of "

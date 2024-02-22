@@ -296,12 +296,13 @@ impl<'a> Evaluator<'a> {
                 self.eval_import(doc, *path_span)
             }
 
-            Expr::BraceLit { .. } => unreachable!(
-                // coverage:off -- Code not expected to be reached.
-                "The typechecker replaces `BraceLit` with `SetLit` or `DictLit`.",
-                // coverage:on
-            ),
+            // coverage:off -- Code not expected to be reached.
+            Expr::BraceLit { .. } => {
+                unreachable!("The typechecker replaces `BraceLit` with `SetLit` or `DictLit`.")
+            }
+            // coverage:on
 
+            // Brackets are syntactically lists, we already know that.
             Expr::BracketLit { open, elements } => {
                 let mut out = Vec::new();
                 self.inc_eval_depth(*open)?;
@@ -522,12 +523,11 @@ impl<'a> Evaluator<'a> {
                 self.eval_index(*open, collection, *collection_span, index, *index_span)
             }
 
+            // coverage:off -- Not covered if it's really unreachable.
             Expr::Function { .. } => unreachable!(
-                // coverage:off -- Not covered if it's really unreachable.
                 "The typechecker replaces all Expr::Function with Expr::TypedFunction.",
-                // coverage:on
             ),
-
+            // coverage:on
             Expr::TypedFunction {
                 span,
                 body_span: _,
@@ -745,7 +745,7 @@ impl<'a> Evaluator<'a> {
     fn eval_index_list(&mut self, list: &[Value], index: Value, index_span: Span) -> Result<Value> {
         let i_signed = match index {
             Value::Int(i) => i,
-            _ => return index_span.error("Index must be an integer.").err(),
+            _ => return index_span.error("List index must be an integer.").err(),
         };
 
         let i = match i_signed {
@@ -806,12 +806,7 @@ impl<'a> Evaluator<'a> {
                     op_span.error(err).err()
                 }
             },
-            (_op, _val) => {
-                // TODO: Add a proper type error, report the type of the value.
-                Err(op_span
-                    .error("This operator is not supported for this value.")
-                    .into())
-            }
+            _ => unreachable!("Invalid cases are prevented by the typechecker."),
         }
     }
 
@@ -832,6 +827,17 @@ impl<'a> Evaluator<'a> {
                 let mut result = (*xs).clone();
                 result.extend(ys.iter().cloned());
                 Ok(Value::Set(Rc::new(result)))
+            }
+            (BinOp::Union, _, _) => {
+                // We could make a nicer error and include the values, but I plan
+                // to remove | in favor of unpack, so I'm not going to bother.
+                op_span
+                    .error(concat! {
+                        "Union operator " Doc::highlight("|")
+                        " is not supported between these values. "
+                    })
+                    .with_help("The left-hand side must be a dict or set.")
+                    .err()
             }
             // TODO: Could evaluate these boolean expressions lazily, if the
             // language is really pure. But if I enable external side effects like
@@ -900,12 +906,7 @@ impl<'a> Evaluator<'a> {
             // maybe it should be a type error?
             (BinOp::Eq, x, y) => Ok(Value::Bool(x == y)),
             (BinOp::Neq, x, y) => Ok(Value::Bool(x != y)),
-            _ => {
-                // TODO: Add a proper type error.
-                Err(op_span
-                    .error("This operator is not supported for these values.")
-                    .into())
-            }
+            _ => unreachable!("Invalid cases are prevented by the typechecker."),
         }
     }
 
