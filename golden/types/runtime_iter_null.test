@@ -1,0 +1,9 @@
+let xs: Any = null;
+[for x in xs: "Runtime type error ..."]
+
+# output:
+stdin:2:11
+  ╷
+2 │ [for x in xs: "Runtime type error ..."]
+  ╵           ^~
+Error: This is not iterable.

@@ -1051,7 +1051,6 @@ impl<'a> Evaluator<'a> {
                             );
                         Err(err.into())
                     }
-                    // TODO: Add a proper type error.
                     _ => Err(collection_span.error("This is not iterable.").into()),
                 }
             }
