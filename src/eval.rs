@@ -304,7 +304,7 @@ impl<'a> Evaluator<'a> {
 
             // Brackets are syntactically lists, we already know that.
             Expr::BracketLit { open, elements } => {
-                let mut out = Vec::new();
+                let mut out = Vec::with_capacity(elements.len());
                 self.inc_eval_depth(*open)?;
                 for seq in elements {
                     self.eval_seq(env, seq, &mut |v| out.push(v), &mut |_, _| {
