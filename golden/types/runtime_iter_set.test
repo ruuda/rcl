@@ -1,0 +1,16 @@
+let xs: Any = {1, 2, 3};
+// The typechecker cannot catch this, it's a runtime error.
+[for k, v in xs: false]
+
+# output:
+stdin:3:6
+  ╷
+3 │ [for k, v in xs: false]
+  ╵      ^~~~
+Error: Expected a single variable.
+
+stdin:3:14
+  ╷
+3 │ [for k, v in xs: false]
+  ╵              ^~
+Note: This is a set, it yields one element per iteration.

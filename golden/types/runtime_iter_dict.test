@@ -1,0 +1,16 @@
+let xs: Any = { a = 1, b = 2 };
+// The typechecker cannot catch this, it's a runtime error.
+[for x in xs: false]
+
+# output:
+stdin:3:6
+  ╷
+3 │ [for x in xs: false]
+  ╵      ^
+Error: Expected two variables in dict iteration.
+
+stdin:3:11
+  ╷
+3 │ [for x in xs: false]
+  ╵           ^~
+Note: This is a dict, it yields a key and value per iteration.

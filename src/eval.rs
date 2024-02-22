@@ -525,7 +525,9 @@ impl<'a> Evaluator<'a> {
             }
 
             Expr::Function { .. } => unreachable!(
-                "The typechecker replaces all Expr::Function with Expr::TypedFunction."
+                // coverage:off -- Not covered if it's really unreachable.
+                "The typechecker replaces all Expr::Function with Expr::TypedFunction.",
+                // coverage:on
             ),
 
             Expr::TypedFunction {
@@ -1064,19 +1066,13 @@ impl<'a> Evaluator<'a> {
                 }
             }
             Seq::If {
-                condition_span,
-                condition,
-                body,
+                condition, body, ..
             } => {
                 let cond = self.eval_expr(env, condition)?;
                 match cond {
                     Value::Bool(true) => self.eval_seq(env, body, out),
                     Value::Bool(false) => Ok(()),
-                    _ => {
-                        // TODO: Make this a type error.
-                        let err = condition_span.error("Condition should be a boolean.");
-                        Err(err.into())
-                    }
+                    _ => unreachable!("The typechecker ensures the condition is a Bool."),
                 }
             }
             Seq::Stmt { stmt, body } => {
