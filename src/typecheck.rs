@@ -503,9 +503,11 @@ impl<'a> TypeChecker<'a> {
                     .check(expr_span)?
             }
 
-            Expr::CheckType { .. } | Expr::TypedFunction { .. } | Expr::SetLit { .. } | Expr::DictLit { .. } => panic!(
+            // coverage:off -- Arm should be unreachable.
+            Expr::CheckType { .. } | Expr::TypedFunction { .. } | Expr::SetLit { .. } | Expr::DictLit { .. } => unreachable!(
                 "Node {expr:?} is inserted by the typechecker, it should not be present before checking."
             ),
+            // coverage:on
         };
         match expr_type {
             // If the type check passed, great, we now know the inferred type.
