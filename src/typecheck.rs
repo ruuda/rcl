@@ -679,14 +679,17 @@ impl<'a> TypeChecker<'a> {
             // union operator and add interpolation instead.
             (Type::Any | Type::Dict(..) | Type::Set(..), _) => type_any().clone(),
             (not_collection, _) => {
-                let err = op_span.error(concat! {
+                let error = op_span.error(concat! {
                     "Expected Dict or Set as the left-hand side of "
                     Doc::highlight("|")
                     " operator, but found this:"
                     Doc::HardBreak Doc::HardBreak
                     indent! { format_type(not_collection).into_owned() }
                 });
-                return err.err();
+                return lhs_type
+                    .source
+                    .clarify_error(Side::Actual, &lhs_type, error)
+                    .err();
             }
         };
 

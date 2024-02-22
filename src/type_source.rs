@@ -89,6 +89,7 @@ impl Source {
     }
 
     /// Add context to a type error about why a particular type was expected.
+    /// TODO: Move to SourcedType? Or at least add a shorthand there?
     pub fn clarify_error<T: AsTypeName>(&self, side: Side, type_: &T, error: Error) -> Error {
         let type_name = if type_.is_atom() {
             // If it's an atom, we have space to put the name of the type in the

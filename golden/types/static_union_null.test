@@ -1,0 +1,17 @@
+let x = null;
+x | std
+
+# output:
+stdin:2:3
+  ╷
+2 │ x | std
+  ╵   ^
+Error: Expected Dict or Set as the left-hand side of | operator, but found this:
+
+  Null
+
+stdin:1:9
+  ╷
+1 │ let x = null;
+  ╵         ^~~~
+Note: Found Null because of this value.
