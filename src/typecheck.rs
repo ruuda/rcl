@@ -466,6 +466,12 @@ impl<'a> TypeChecker<'a> {
                     Type::List(t) => (type_int_index(), (**t).clone()),
                     Type::Dict(kv) => (&kv.key, kv.value.clone()),
                     Type::Any => (type_any(), type_any().clone()),
+                    Type::String => {
+                        return open
+                            .error("Indexing into a string is not yet supported.")
+                            .with_note(*collection_span, "This is a string.")
+                            .err()
+                    }
                     not_indexable => {
                         return open
                             .error("Indexing is not supported here.")
