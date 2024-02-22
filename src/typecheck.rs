@@ -473,14 +473,18 @@ impl<'a> TypeChecker<'a> {
                             .err()
                     }
                     not_indexable => {
-                        return open
+                        let error = open
                             .error("Indexing is not supported here.")
                             .with_body(concat!{
                                 "Expected a dict or list, but got:"
                                 Doc::HardBreak Doc::HardBreak
                                 indent! { format_type(not_indexable).into_owned() }
-                            })
-                            .err()
+                            });
+                        return collection_type.source.clarify_error(
+                            Side::Actual,
+                            &collection_type,
+                            error
+                        ).err();
                     }
                 };
                 self.check_expr(index_type, *index_span, index)?;
