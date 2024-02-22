@@ -113,10 +113,18 @@ pub enum Expr {
     },
 
     /// A dict or set literal (depending on the element types) enclosed in `{}`.
+    ///
+    /// The typechecker replaces this by either [`SetLit`] or [`DictLit`].
     BraceLit { open: Span, elements: Vec<Seq> },
 
     /// A list literal enclosed in `[]`.
     BracketLit { open: Span, elements: Vec<Seq> },
+
+    /// A set literal enclosed in `{}`.
+    SetLit { open: Span, elements: Vec<Seq> },
+
+    /// A dict literal enclosed in `{}`.
+    DictLit { open: Span, elements: Vec<Seq> },
 
     /// A null literal.
     NullLit,

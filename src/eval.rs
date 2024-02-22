@@ -296,22 +296,55 @@ impl<'a> Evaluator<'a> {
                 self.eval_import(doc, *path_span)
             }
 
-            Expr::BraceLit { open, elements } => {
-                let mut out = SeqOut::SetOrDict;
+            Expr::BraceLit { .. } => unreachable!(
+                // coverage:off -- Code not expected to be reached.
+                "The typechecker replaces `BraceLit` with `SetLit` or `DictLit`.",
+                // coverage:on
+            ),
+
+            Expr::BracketLit { open, elements } => {
+                // TODO: Can we simplify the SeqOut even further now that the
+                // typechecker confirms?
+                // TODO: Yes we can, by accepting closures from eval_seq.
+                // That would make set iteration more efficient too.
+                // And provide a way to avoid set overwrites!
+                let mut out = SeqOut::List(Vec::new());
                 self.inc_eval_depth(*open)?;
                 for seq in elements {
                     self.eval_seq(env, seq, &mut out)?;
                 }
                 self.dec_eval_depth();
                 match out {
-                    // If we have no keys, it’s a dict, because json has no sets,
-                    // and `{}` is a json value that should evaluate to itself.
-                    SeqOut::SetOrDict => Ok(Value::Dict(Rc::new(BTreeMap::new()))),
-                    SeqOut::Set(_, values) => {
+                    SeqOut::List(values) => Ok(Value::List(Rc::new(values))),
+                    _ => unreachable!("SeqOut::List type is preserved."),
+                }
+            }
+
+            Expr::SetLit { open, elements } => {
+                let mut out = SeqOut::Set(Vec::new());
+                self.inc_eval_depth(*open)?;
+                for seq in elements {
+                    self.eval_seq(env, seq, &mut out)?;
+                }
+                self.dec_eval_depth();
+                match out {
+                    SeqOut::Set(values) => {
                         let result = values.into_iter().collect();
                         Ok(Value::Set(Rc::new(result)))
                     }
-                    SeqOut::Dict(_, keys, values) => {
+                    _ => unreachable!("SeqOut::Set type is preserved."),
+                }
+            }
+
+            Expr::DictLit { open, elements } => {
+                let mut out = SeqOut::Dict(Vec::new(), Vec::new());
+                self.inc_eval_depth(*open)?;
+                for seq in elements {
+                    self.eval_seq(env, seq, &mut out)?;
+                }
+                self.dec_eval_depth();
+                match out {
+                    SeqOut::Dict(keys, values) => {
                         assert_eq!(
                             keys.len(),
                             values.len(),
@@ -326,20 +359,7 @@ impl<'a> Evaluator<'a> {
                         }
                         Ok(Value::Dict(Rc::new(result)))
                     }
-                    SeqOut::List(_) => unreachable!("Did not start out as list."),
-                }
-            }
-
-            Expr::BracketLit { open, elements } => {
-                let mut out = SeqOut::List(Vec::new());
-                self.inc_eval_depth(*open)?;
-                for seq in elements {
-                    self.eval_seq(env, seq, &mut out)?;
-                }
-                self.dec_eval_depth();
-                match out {
-                    SeqOut::List(values) => Ok(Value::List(Rc::new(values))),
-                    _ => unreachable!("SeqOut::List type is preserved."),
+                    _ => unreachable!("SeqOut::Dict type is preserved."),
                 }
             }
 
@@ -966,37 +986,21 @@ impl<'a> Evaluator<'a> {
     }
 
     fn eval_seq(&mut self, env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
-        // For a collection enclosed in {}, now that we have a concrete seq, that
-        // determines whether this is a set comprehension or a dict comprehension.
-        // We really have to look at the syntax of the seq, we cannot resolve the
-        // ambiguity later when we get to evaluating the inner seq, because that
-        // part may be skipped due to a conditional.
-        if let SeqOut::SetOrDict = out {
-            match seq.innermost() {
-                Yield::Elem { span, .. } => *out = SeqOut::Set(*span, Vec::new()),
-                Yield::Assoc { op_span, .. } => {
-                    *out = SeqOut::Dict(*op_span, Vec::new(), Vec::new())
-                }
-            }
-        }
-
         match seq {
             Seq::Yield(Yield::Elem {
-                span,
-                value: value_expr,
+                value: value_expr, ..
             }) => {
-                let out_values = out.values(*span)?;
+                let out_values = out.values();
                 let value = self.eval_expr(env, value_expr)?;
                 out_values.push(value);
                 Ok(())
             }
             Seq::Yield(Yield::Assoc {
-                op_span,
                 key: key_expr,
                 value: value_expr,
                 ..
             }) => {
-                let (out_keys, out_values) = out.keys_values(*op_span)?;
+                let (out_keys, out_values) = out.keys_values();
                 let key = self.eval_expr(env, key_expr)?;
                 let value = self.eval_expr(env, value_expr)?;
                 out_keys.push(key);
@@ -1091,59 +1095,28 @@ enum SeqOut {
     /// Only allow scalar values because we are in a list literal.
     List(Vec<Value>),
 
-    /// The sequence is definitely a set, because the first element is scalar.
-    ///
-    /// The span contains the previous scalar as evidence.
-    Set(Span, Vec<Value>),
+    /// The sequence is definitely a set.
+    Set(Vec<Value>),
 
-    /// The sequence is definitely a dict, because the first element is kv.
-    ///
-    /// The span contains the previous key-value as evidence.
-    Dict(Span, Vec<Value>, Vec<Value>),
-
-    /// It's still unclear whether this is a set or a dict.
-    SetOrDict,
+    /// The sequence is definitely a dict.
+    Dict(Vec<Value>, Vec<Value>),
 }
 
 impl SeqOut {
-    fn values(&mut self, scalar: Span) -> Result<&mut Vec<Value>> {
+    fn values(&mut self) -> &mut Vec<Value> {
         match self {
-            SeqOut::List(values) => Ok(values),
-            SeqOut::Set(_first, values) => Ok(values),
-            SeqOut::Dict(first, _keys, _values) => {
-                let err = scalar
-                    .error("Expected key-value, not a scalar element.")
-                    .with_note(
-                        *first,
-                        "The collection is a dict and not a set, because of this key-value.",
-                    );
-                Err(err.into())
-            }
-            SeqOut::SetOrDict => unreachable!("Should have been replaced by now."),
+            SeqOut::List(values) => values,
+            SeqOut::Set(values) => values,
+            SeqOut::Dict(_keys, _values) => unreachable!("The typechecker prevents this case."),
         }
     }
 
-    fn keys_values(&mut self, kv: Span) -> Result<(&mut Vec<Value>, &mut Vec<Value>)> {
+    fn keys_values(&mut self) -> (&mut Vec<Value>, &mut Vec<Value>) {
         match self {
-            SeqOut::List(_values) => {
-                let err = kv
-                    .error("Expected scalar element, not key-value.")
-                    .with_help(
-                    "Key-value pairs are allowed in dicts, which are enclosed in '{}', not '[]'.",
-                );
-                Err(err.into())
+            SeqOut::Set(..) | SeqOut::List(..) => {
+                unreachable!("The typechecker prevents this case.")
             }
-            SeqOut::Set(first, _values) => {
-                let err = kv
-                    .error("Expected scalar element, not key-value.")
-                    .with_note(
-                        *first,
-                        "The collection is a set and not a dict, because of this scalar value.",
-                    );
-                Err(err.into())
-            }
-            SeqOut::Dict(_first, keys, values) => Ok((keys, values)),
-            SeqOut::SetOrDict => unreachable!("Should have been replaced by now."),
+            SeqOut::Dict(keys, values) => (keys, values),
         }
     }
 }

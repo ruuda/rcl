@@ -262,7 +262,7 @@ impl<'a> TypeChecker<'a> {
                 type_any().is_subtype_of(expected).check(expr_span)?
             }
 
-            Expr::BraceLit { elements: seqs, .. } => {
+            Expr::BraceLit { open, elements: seqs } => {
                 let mut is_error = false;
                 // If we have a requirement on the element type, extract it.
                 let mut seq_type = match &expected.type_ {
@@ -293,11 +293,22 @@ impl<'a> TypeChecker<'a> {
                 // Typecheck all the elements, and enforce the element
                 // requirement if we have one. This at the same time infers the
                 // element type.
-                for seq in seqs {
+                for seq in seqs.iter_mut() {
                     seq_type = self.check_seq(seq, seq_type)?;
                 }
 
                 let seq_type = seq_type.into_type(expr_span);
+
+                // Replace the BraceLit node where we don't know if it's a dict
+                // or set with a node where we do know the type. This simplifies
+                // the evaluator.
+                let mut seqs_moved = Vec::new();
+                std::mem::swap(seqs, &mut seqs_moved);
+                match seq_type.type_ {
+                    Type::Dict(..) => *expr = Expr::DictLit { open: *open, elements: seqs_moved },
+                    Type::Set(..) => *expr = Expr::SetLit { open: *open, elements: seqs_moved },
+                    _ => unreachable!("A `BraceLit` cannot produce a list `SeqType`."),
+                }
 
                 if is_error {
                     seq_type.is_subtype_of(expected).check(expr_span)?
@@ -482,7 +493,7 @@ impl<'a> TypeChecker<'a> {
                     .check(expr_span)?
             }
 
-            Expr::CheckType { .. } | Expr::TypedFunction { .. } => panic!(
+            Expr::CheckType { .. } | Expr::TypedFunction { .. } | Expr::SetLit { .. } | Expr::DictLit { .. } => panic!(
                 "Node {expr:?} is inserted by the typechecker, it should not be present before checking."
             ),
         };
