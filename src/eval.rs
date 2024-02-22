@@ -7,8 +7,8 @@
 
 //! Evaluation turns ASTs into values.
 
-use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{BinOp, CallArg, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
@@ -303,64 +303,42 @@ impl<'a> Evaluator<'a> {
             ),
 
             Expr::BracketLit { open, elements } => {
-                // TODO: Can we simplify the SeqOut even further now that the
-                // typechecker confirms?
-                // TODO: Yes we can, by accepting closures from eval_seq.
-                // That would make set iteration more efficient too.
-                // And provide a way to avoid set overwrites!
-                let mut out = SeqOut::List(Vec::new());
+                let mut out = Vec::new();
                 self.inc_eval_depth(*open)?;
                 for seq in elements {
-                    self.eval_seq(env, seq, &mut out)?;
+                    self.eval_seq(env, seq, &mut |v| out.push(v), &mut |_, _| {
+                        unreachable!("Typechecker ensures scalar elements.")
+                    })?;
                 }
                 self.dec_eval_depth();
-                match out {
-                    SeqOut::List(values) => Ok(Value::List(Rc::new(values))),
-                    _ => unreachable!("SeqOut::List type is preserved."),
-                }
+                Ok(Value::List(Rc::new(out)))
             }
 
             Expr::SetLit { open, elements } => {
-                let mut out = SeqOut::Set(Vec::new());
+                let mut out = BTreeSet::new();
                 self.inc_eval_depth(*open)?;
                 for seq in elements {
-                    self.eval_seq(env, seq, &mut out)?;
+                    self.eval_seq(env, seq, &mut |v| _ = out.insert(v), &mut |_, _| {
+                        unreachable!("Typechecker ensures scalar elements.")
+                    })?;
                 }
                 self.dec_eval_depth();
-                match out {
-                    SeqOut::Set(values) => {
-                        let result = values.into_iter().collect();
-                        Ok(Value::Set(Rc::new(result)))
-                    }
-                    _ => unreachable!("SeqOut::Set type is preserved."),
-                }
+                Ok(Value::Set(Rc::new(out)))
             }
 
             Expr::DictLit { open, elements } => {
-                let mut out = SeqOut::Dict(Vec::new(), Vec::new());
+                let mut out = BTreeMap::new();
                 self.inc_eval_depth(*open)?;
                 for seq in elements {
-                    self.eval_seq(env, seq, &mut out)?;
+                    self.eval_seq(
+                        env,
+                        seq,
+                        &mut |_| unreachable!("Typechecker ensures assoc elements."),
+                        &mut |k, v| _ = out.insert(k, v),
+                    )?;
                 }
                 self.dec_eval_depth();
-                match out {
-                    SeqOut::Dict(keys, values) => {
-                        assert_eq!(
-                            keys.len(),
-                            values.len(),
-                            // coverage:off -- Error expected to be hit.
-                            "Should have already reported error about mixing \
-                            `k: v` and values in one comprehension.",
-                            // coverage:on
-                        );
-                        let mut result = BTreeMap::new();
-                        for (k, v) in keys.into_iter().zip(values) {
-                            result.insert(k, v);
-                        }
-                        Ok(Value::Dict(Rc::new(result)))
-                    }
-                    _ => unreachable!("SeqOut::Dict type is preserved."),
-                }
+                Ok(Value::Dict(Rc::new(out)))
             }
 
             Expr::NullLit => Ok(Value::Null),
@@ -985,14 +963,23 @@ impl<'a> Evaluator<'a> {
         Ok(())
     }
 
-    fn eval_seq(&mut self, env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
+    fn eval_seq<OnScalar, OnAssoc>(
+        &mut self,
+        env: &mut Env,
+        seq: &Seq,
+        on_scalar: &mut OnScalar,
+        on_assoc: &mut OnAssoc,
+    ) -> Result<()>
+    where
+        OnScalar: FnMut(Value),
+        OnAssoc: FnMut(Value, Value),
+    {
         match seq {
             Seq::Yield(Yield::Elem {
                 value: value_expr, ..
             }) => {
-                let out_values = out.values();
                 let value = self.eval_expr(env, value_expr)?;
-                out_values.push(value);
+                on_scalar(value);
                 Ok(())
             }
             Seq::Yield(Yield::Assoc {
@@ -1000,11 +987,9 @@ impl<'a> Evaluator<'a> {
                 value: value_expr,
                 ..
             }) => {
-                let (out_keys, out_values) = out.keys_values();
                 let key = self.eval_expr(env, key_expr)?;
                 let value = self.eval_expr(env, value_expr)?;
-                out_keys.push(key);
-                out_values.push(value);
+                on_assoc(key, value);
                 Ok(())
             }
             Seq::For {
@@ -1019,7 +1004,7 @@ impl<'a> Evaluator<'a> {
                     ([name], Value::List(xs)) => {
                         for x in xs.iter() {
                             let ck = env.push(name.clone(), x.clone());
-                            self.eval_seq(env, body, out)?;
+                            self.eval_seq(env, body, on_scalar, on_assoc)?;
                             env.pop(ck);
                         }
                         Ok(())
@@ -1034,7 +1019,7 @@ impl<'a> Evaluator<'a> {
                     ([name], Value::Set(xs)) => {
                         for x in xs.iter() {
                             let ck = env.push(name.clone(), x.clone());
-                            self.eval_seq(env, body, out)?;
+                            self.eval_seq(env, body, on_scalar, on_assoc)?;
                             env.pop(ck);
                         }
                         Ok(())
@@ -1051,7 +1036,7 @@ impl<'a> Evaluator<'a> {
                             let ck = env.checkpoint();
                             env.push(k_name.clone(), k.clone());
                             env.push(v_name.clone(), v.clone());
-                            self.eval_seq(env, body, out)?;
+                            self.eval_seq(env, body, on_scalar, on_assoc)?;
                             env.pop(ck);
                         }
                         Ok(())
@@ -1074,7 +1059,7 @@ impl<'a> Evaluator<'a> {
             } => {
                 let cond = self.eval_expr(env, condition)?;
                 match cond {
-                    Value::Bool(true) => self.eval_seq(env, body, out),
+                    Value::Bool(true) => self.eval_seq(env, body, on_scalar, on_assoc),
                     Value::Bool(false) => Ok(()),
                     _ => unreachable!("The typechecker ensures the condition is a Bool."),
                 }
@@ -1082,41 +1067,10 @@ impl<'a> Evaluator<'a> {
             Seq::Stmt { stmt, body } => {
                 let ck = env.checkpoint();
                 self.eval_stmt(env, stmt)?;
-                self.eval_seq(env, body, out)?;
+                self.eval_seq(env, body, on_scalar, on_assoc)?;
                 env.pop(ck);
                 Ok(())
             }
-        }
-    }
-}
-
-/// Helper to hold evaluation output for sequences.
-enum SeqOut {
-    /// Only allow scalar values because we are in a list literal.
-    List(Vec<Value>),
-
-    /// The sequence is definitely a set.
-    Set(Vec<Value>),
-
-    /// The sequence is definitely a dict.
-    Dict(Vec<Value>, Vec<Value>),
-}
-
-impl SeqOut {
-    fn values(&mut self) -> &mut Vec<Value> {
-        match self {
-            SeqOut::List(values) => values,
-            SeqOut::Set(values) => values,
-            SeqOut::Dict(_keys, _values) => unreachable!("The typechecker prevents this case."),
-        }
-    }
-
-    fn keys_values(&mut self) -> (&mut Vec<Value>, &mut Vec<Value>) {
-        match self {
-            SeqOut::Set(..) | SeqOut::List(..) => {
-                unreachable!("The typechecker prevents this case.")
-            }
-            SeqOut::Dict(keys, values) => (keys, values),
         }
     }
 }

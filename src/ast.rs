@@ -290,18 +290,6 @@ pub enum Seq {
     },
 }
 
-impl Seq {
-    /// Return the innermost seq, which is either an `Elem` or `Assoc`.
-    pub fn innermost(&self) -> &Yield {
-        match self {
-            Seq::Yield(y) => y,
-            Seq::Stmt { body, .. } => body.innermost(),
-            Seq::For { body, .. } => body.innermost(),
-            Seq::If { body, .. } => body.innermost(),
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum Type {
     /// A term is a named type, not necessarily primitive.
