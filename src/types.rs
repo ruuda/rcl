@@ -345,38 +345,22 @@ impl SourcedType {
 
             // For composite types, we meet on their elements.
             (Type::Dict(d1), Type::Dict(d2)) => {
-                // Premature optimization: If the two types are equal, we can
-                // skip the meet. I should measure how often we hit this case.
-                let dm = if Rc::ptr_eq(d1, d2) {
-                    d1.clone()
-                } else {
-                    Rc::new(Dict {
-                        key: d1.key.meet(&d2.key),
-                        value: d1.value.meet(&d2.value),
-                    })
-                };
+                // TODO: If the meets don't change the key and value type,
+                // we can recycle the original instead of making a new one.
+                let dm = Rc::new(Dict {
+                    key: d1.key.meet(&d2.key),
+                    value: d1.value.meet(&d2.value),
+                });
                 // TODO: If the types are the same on both sides, we can meet the sources.
                 (Type::Dict(dm), Source::None)
             }
             (Type::List(l1), Type::List(l2)) => {
-                let type_ = Type::List({
-                    if Rc::ptr_eq(l1, l2) {
-                        l1.clone()
-                    } else {
-                        Rc::new(l1.meet(l2))
-                    }
-                });
+                let type_ = Type::List(Rc::new(l1.meet(l2)));
                 // TODO: If the types are the same on both sides, we can meet the sources.
                 (type_, Source::None)
             }
             (Type::Set(s1), Type::Set(s2)) => {
-                let type_ = Type::Set({
-                    if Rc::ptr_eq(s1, s2) {
-                        s1.clone()
-                    } else {
-                        Rc::new(s1.meet(s2))
-                    }
-                });
+                let type_ = Type::Set(Rc::new(s1.meet(s2)));
                 // TODO: If the types are the same on both sides, we can meet the sources.
                 (type_, Source::None)
             }
