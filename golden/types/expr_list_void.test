@@ -1,0 +1,5 @@
+let xs: List[Void] = [];
+xs
+
+# output:
+[]
