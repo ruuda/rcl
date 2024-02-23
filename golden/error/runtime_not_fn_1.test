@@ -1,8 +1,9 @@
-"frobnicator"()
+let person = { name = "Deckard" };
+person.name()
 
 # output:
-stdin:1:1
+stdin:2:1
   ╷
-1 │ "frobnicator"()
-  ╵ ^~~~~~~~~~~~~
-Error: This cannot be called. Expected function but found String.
+2 │ person.name()
+  ╵ ^~~~~~~~~~~
+Error: This is not a function, it cannot be called.
