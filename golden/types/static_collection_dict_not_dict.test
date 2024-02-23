@@ -1,0 +1,19 @@
+let xs: Dict[Int, Int] = null;
+null
+
+# output:
+stdin:1:26
+  ╷
+1 │ let xs: Dict[Int, Int] = null;
+  ╵                          ^~~~
+Error: Type mismatch. Expected this type:
+
+  Dict[Int, Int]
+
+But found Null.
+
+stdin:1:9
+  ╷
+1 │ let xs: Dict[Int, Int] = null;
+  ╵         ^~~~~~~~~~~~~~
+Note: The expected type is specified here.

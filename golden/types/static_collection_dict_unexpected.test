@@ -1,0 +1,17 @@
+let xs: Null = { a = 1 };
+xs
+
+# output:
+stdin:1:16
+  ╷
+1 │ let xs: Null = { a = 1 };
+  ╵                ^~~~~~~~~
+Error: Type mismatch. Expected Null but found this type:
+
+  Dict[String, Int]
+
+stdin:1:9
+  ╷
+1 │ let xs: Null = { a = 1 };
+  ╵         ^~~~
+Note: Expected Null because of this annotation.

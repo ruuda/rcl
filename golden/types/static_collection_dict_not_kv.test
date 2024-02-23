@@ -1,0 +1,15 @@
+let xs: Dict[Int, Int] = { "scalar" };
+xs
+
+# output:
+stdin:1:28
+  ╷
+1 │ let xs: Dict[Int, Int] = { "scalar" };
+  ╵                            ^~~~~~~~~
+Error: Expected key-value, not a scalar element, because the collection is a dict.
+
+stdin:1:9
+  ╷
+1 │ let xs: Dict[Int, Int] = { "scalar" };
+  ╵         ^~~~~~~~~~~~~~
+Note: Expected Dict because of this annotation.

@@ -652,6 +652,8 @@ mod test {
         f1.args[0].type_ = mk_type(Type::Int);
         f1.args[1].type_ = mk_type(Type::Void);
         assert!(f1 < f2);
+        // Also trigger the `cmp` method, because `<` doesn't.
+        assert_eq!(f1.cmp(&f2), std::cmp::Ordering::Less);
 
         // Now we are back to the initial equality (but with names changed).
         f1.args[1].type_ = mk_type(Type::Bool);
