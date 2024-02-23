@@ -112,8 +112,11 @@ impl Source {
         match self {
             Source::None => error,
 
-            // TODO: Add information about the builtin (function and arg name).
-            Source::Builtin => error,
+            // TODO: Add information about the builtin (function and arg name?).
+            // At this point builtin types are not involved in type errors,
+            // because we don't resolve anything that produces them at typecheck
+            // time, and we don't yet typecheck arguments in function calls.
+            Source::Builtin => panic!("Currently builtins are not involved in type errors."),
 
             Source::Literal(at) => {
                 let msg = concat! {

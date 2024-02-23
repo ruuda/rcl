@@ -1,0 +1,29 @@
+// This tests reporting an operator as the source of an actual type
+// (vs. the expected type).
+let source = true or false;
+let f = () => source;
+let g: () -> Int = f;
+null
+
+# output:
+stdin:5:20
+  ╷
+5 │ let g: () -> Int = f;
+  ╵                    ^
+Error: Type mismatch inside this type:
+
+  () -> <E1>
+
+At E1: Expected Int but found Bool.
+
+stdin:5:14
+  ╷
+5 │ let g: () -> Int = f;
+  ╵              ^~~
+Note: Expected Int because of this annotation.
+
+stdin:3:19
+  ╷
+3 │ let source = true or false;
+  ╵                   ^~
+Note: Found Bool because of this operator.
