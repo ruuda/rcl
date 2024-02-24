@@ -4,8 +4,9 @@ Contributions in the form of bug reports or pull requests are welcome. For pull
 requests, please consider:
 
  * Write [a proper commit message][proper-commit] and keep the history clean.
- * Avoid unrelated formatting changes, they make it harder to identify
-   functional changes in the diff.
+   Put unrelated changes in separate commits.
+ * Basic checks (formatting, `rustfmt` and `black`, and typechecks,
+   `cargo check` and `mypy --strict`) should pass at every commit.
  * You agree to license your contribution under the Apache 2.0 license.
 
 # Code of conduct
