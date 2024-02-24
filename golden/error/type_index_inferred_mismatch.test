@@ -1,0 +1,14 @@
+{ 1: "32" }["Not an Int"]
+
+# output:
+stdin:1:13
+  ╷
+1 │ { 1: "32" }["Not an Int"]
+  ╵             ^~~~~~~~~~~~
+Error: Type mismatch. Expected Int but found String.
+
+stdin:1:3
+  ╷
+1 │ { 1: "32" }["Not an Int"]
+  ╵   ^
+Note: Expected Int because of this value.

@@ -11,17 +11,17 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
-use crate::ast::{Expr, Ident};
-use crate::error::{IntoError, Result};
+use crate::ast::{CallArg, Expr};
+use crate::error::{IntoError, PathElement, Result};
 use crate::eval::Evaluator;
-use crate::pprint::{concat, Doc};
+use crate::fmt_rcl::format_rcl;
+use crate::fmt_type::format_type;
+use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
-
-/// A value provided as argument to a function call.
-pub struct CallArg {
-    pub span: Span,
-    pub value: Value,
-}
+use crate::type_diff::{Mismatch, TypeDiff};
+use crate::type_source::Source;
+use crate::types;
+use crate::types::{Side, SourcedType, Type};
 
 /// The arguments to a function call at runtime.
 pub struct FunctionCall<'a> {
@@ -32,91 +32,7 @@ pub struct FunctionCall<'a> {
     pub call_close: Span,
 
     /// The arguments and their spans in the source code.
-    pub args: &'a [CallArg],
-}
-
-impl<'a> FunctionCall<'a> {
-    /// Return an error if the number of arguments is unexpected.
-    pub fn check_arity_static(
-        &self,
-        name: &'static str,
-        expected_args: &[&'static str],
-    ) -> Result<()> {
-        if self.args.len() == expected_args.len() {
-            return Ok(());
-        }
-
-        if self.args.len() < expected_args.len() {
-            let missing_arg = &expected_args[self.args.len()];
-            let msg = concat! {
-                "Missing argument '"
-                Doc::highlight(missing_arg)
-                "'. '"
-                Doc::highlight(name)
-                "' takes "
-                match expected_args.len() {
-                    1 => "1 argument".to_string(),
-                    n => format!("{n} arguments"),
-                }
-                ", but got "
-                self.args.len().to_string()
-                "."
-            };
-            self.call_close.error(msg).err()
-        } else {
-            let excess_arg = &self.args[expected_args.len()];
-            let msg = concat! {
-                "Unexpected argument. '"
-                Doc::highlight(name)
-                "' takes "
-                match expected_args.len() {
-                    1 => "1 argument".to_string(),
-                    n => format!("{n} arguments"),
-                }
-                ", but got "
-                self.args.len().to_string()
-                "."
-            };
-            excess_arg.span.error(msg).err()
-        }
-    }
-
-    /// As `check_arity`, but for user-defined functions (lambdas).
-    pub fn check_arity_dynamic(&self, expected_args: &[Ident]) -> Result<()> {
-        if self.args.len() == expected_args.len() {
-            return Ok(());
-        }
-
-        if self.args.len() < expected_args.len() {
-            let missing_arg = &expected_args[self.args.len()];
-            let msg = concat! {
-                "Missing argument '"
-                Doc::highlight(missing_arg.as_ref()).into_owned()
-                "'. The function takes "
-                match expected_args.len() {
-                    1 => "1 argument".to_string(),
-                    n => format!("{n} arguments"),
-                }
-                ", but got "
-                self.args.len().to_string()
-                "."
-            };
-            self.call_close.error(msg).err()
-        } else {
-            let excess_arg = &self.args[expected_args.len()];
-            let msg = concat! {
-                "Unexpected argument. The function takes "
-                match expected_args.len() {
-                    1 => "1 argument".to_string(),
-                    n => format!("{n} arguments"),
-                }
-                ", but got "
-                self.args.len().to_string()
-                "."
-            };
-            excess_arg.span.error(msg).err()
-        }
-    }
+    pub args: &'a [CallArg<Value>],
 }
 
 /// The arguments to a method call at runtime.
@@ -142,6 +58,7 @@ pub struct MethodCall<'a> {
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct BuiltinFunction {
     pub name: &'static str,
+    pub type_: fn() -> types::Function,
     pub f: for<'a> fn(&'a mut Evaluator, FunctionCall<'a>) -> Result<Value>,
 }
 
@@ -149,6 +66,7 @@ pub struct BuiltinFunction {
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct BuiltinMethod {
     pub name: &'static str,
+    pub type_: fn() -> types::Function,
     pub f: for<'a> fn(&'a mut Evaluator, MethodCall<'a>) -> Result<Value>,
 }
 
@@ -183,7 +101,7 @@ impl std::fmt::Debug for BuiltinMethod {
 
 #[derive(Debug)]
 pub struct Function {
-    /// Source location of the `=>` that introduces this lambda function.
+    /// Source location of lambda, including args, `=>`, and body.
     ///
     /// This span is used to identify the function for comparison and equality,
     /// so we don't have to inspect its AST.
@@ -194,8 +112,10 @@ pub struct Function {
     /// TODO: It might be nicer to capture only the variables that are needed,
     /// but then we need to inspect the body AST when the lambda is produced.
     pub env: Env,
-    pub args: Vec<Ident>,
     pub body: Rc<Expr>,
+
+    /// The type of this function, including its arguments.
+    pub type_: Rc<types::Function>,
 }
 
 impl PartialEq for Function {
@@ -211,9 +131,11 @@ impl PartialEq for Function {
 impl Eq for Function {}
 
 impl PartialOrd for Function {
+    // coverage:off -- All callers use `Ord`, not `PartialOrd`.
     fn partial_cmp(&self, other: &Function) -> Option<Ordering> {
         Some(self.cmp(other))
     }
+    // coverage:on
 }
 
 impl Ord for Function {
@@ -287,6 +209,86 @@ impl Value {
             other => panic!("Expected String but got {other:?}."),
         }
     }
+
+    /// Dynamically check that the value fits the required type.
+    pub fn is_instance_of(&self, at: Span, type_: &SourcedType) -> Result<()> {
+        let req_type = match &type_.type_ {
+            Type::Any => return Ok(()),
+            t => t,
+        };
+        match (req_type, self) {
+            // For the primitive types, we just check for matching values.
+            (Type::Null, Value::Null) => Ok(()),
+            (Type::Bool, Value::Bool(..)) => Ok(()),
+            (Type::Int, Value::Int(..)) => Ok(()),
+            (Type::String, Value::String(..)) => Ok(()),
+
+            // For compound types, we descend into them to check.
+            (Type::List(elem_type), Value::List(elems)) => {
+                for (i, elem) in elems.iter().enumerate() {
+                    elem.is_instance_of(at, elem_type)
+                        .map_err(|err| err.with_path_element(PathElement::Index(i)))?;
+                }
+                Ok(())
+            }
+            (Type::Set(elem_type), Value::Set(elems)) => {
+                for (i, elem) in elems.iter().enumerate() {
+                    elem.is_instance_of(at, elem_type).map_err(|err|
+                        // Even though sets don't strictly have indexes,
+                        // they do have an order, so report the index to
+                        // clarify that this is a nested error.
+                        err.with_path_element(PathElement::Index(i)))?;
+                }
+                Ok(())
+            }
+            (Type::Dict(dict), Value::Dict(kvs)) => {
+                for (k, v) in kvs.iter() {
+                    k.is_instance_of(at, &dict.key)
+                        .map_err(|err| err.with_path_element(PathElement::Key(k.clone())))?;
+                    v.is_instance_of(at, &dict.value)
+                        .map_err(|err| err.with_path_element(PathElement::Key(k.clone())))?;
+                }
+                Ok(())
+            }
+
+            (Type::Function(fn_type), Value::Function(fn_val)) => {
+                let error = match fn_val.type_.is_subtype_of(fn_type) {
+                    TypeDiff::Ok(..) => return Ok(()),
+                    // If we encounter a defer, if that happens statically at
+                    // typecheck time then we can insert a runtime check. But
+                    // now we are at runtime, and we can't guarantee that these
+                    // types are compatible, so treat that as an error.
+                    TypeDiff::Defer(..) => TypeDiff::Error(Mismatch::Atom {
+                        actual: SourcedType {
+                            type_: Type::Function(fn_val.type_.clone()),
+                            source: Source::None,
+                        },
+                        expected: SourcedType {
+                            type_: Type::Function(fn_type.clone()),
+                            source: Source::None,
+                        },
+                    }),
+                    error => error,
+                };
+                error.check(at)?;
+                unreachable!("The above ? fails.")
+            }
+
+            _ => {
+                let mut error = at.error("Type mismatch.").with_body(concat! {
+                    "Expected a value that fits this type:"
+                    Doc::HardBreak Doc::HardBreak
+                    indent! { format_type(req_type).into_owned() }
+                    Doc::HardBreak Doc::HardBreak
+                    "But got this value:"
+                    Doc::HardBreak Doc::HardBreak
+                    indent! { format_rcl(self).into_owned() }
+                });
+                type_.explain_error(Side::Expected, &mut error);
+                return error.err();
+            }
+        }
+    }
 }
 
 impl<'a> From<&'a str> for Value {
@@ -309,11 +311,17 @@ pub fn prelude() -> Env {
 macro_rules! builtin_function {
     (
         $rcl_name:expr,
+        ( $( $arg_name:ident: $arg_type:tt ),* ) -> $result:tt,
         const $rust_const:ident,
         $rust_name:ident
     ) => {
         pub const $rust_const: crate::runtime::BuiltinFunction = crate::runtime::BuiltinFunction {
             name: $rcl_name,
+            type_: || {
+                #[allow(unused_imports)]
+                use crate::types::{Type, Dict, Function, FunctionArg, builtin, make_function, make_type};
+                crate::types::make_function!( ($( $arg_name: $arg_type ),*) -> $result)
+            },
             f: $rust_name,
         };
     };
@@ -323,11 +331,17 @@ pub(crate) use builtin_function;
 macro_rules! builtin_method {
     (
         $rcl_name:expr,
+        ( $( $arg_name:ident: $arg_type:tt ),* ) -> $result:tt,
         const $rust_const:ident,
         $rust_name:ident
     ) => {
         pub const $rust_const: crate::runtime::BuiltinMethod = crate::runtime::BuiltinMethod {
             name: $rcl_name,
+            type_: || {
+                #[allow(unused_imports)]
+                use crate::types::{Type, Dict, Function, FunctionArg, builtin, make_function, make_type};
+                crate::types::make_function!( ($( $arg_name: $arg_type ),*) -> $result)
+            },
             f: $rust_name,
         };
     };

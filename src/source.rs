@@ -25,11 +25,13 @@ pub type Inputs<'a> = [Doc<'a>];
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct DocId(pub u32);
 
+// coverage:off -- Only used in assertion failures, which should be uncovered.
 impl fmt::Debug for DocId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
+// coverage:on
 
 /// Marks a location in a source file by byte offset.
 ///
@@ -67,7 +69,9 @@ impl Span {
         // with a panic.
         assert!(
             end <= 0xffff_ffff_ffff,
-            "Document should not be larger than 262 TiB."
+            // coverage:off -- Error is not tested, I don't have such large disk.
+            "Document should not be larger than 262 TiB.",
+            // coverage:on
         );
         debug_assert!(end >= start);
         Span {
@@ -110,17 +114,6 @@ impl Span {
         Span::new(self.doc(), self.start() + n_trim, self.end())
     }
 
-    /// Delete n bytes from the end of the span.
-    pub fn trim_end(&self, n: usize) -> Span {
-        let n_trim = self.len().min(n);
-        Span::new(self.doc(), self.start(), self.end() - n_trim)
-    }
-
-    /// Keep at most the first `n` bytes of the span.
-    pub fn take(&self, n: usize) -> Span {
-        Span::new(self.doc(), self.start(), self.end().min(self.start() + n))
-    }
-
     /// Return a span that runs from self up to but not including `other`.
     pub fn until(&self, other: Span) -> Span {
         debug_assert_eq!(self.doc(), other.doc());
@@ -149,13 +142,6 @@ pub trait Source<'a> {
 impl<'a> Source<'a> for &'a str {
     fn resolve(self, span: Span) -> &'a str {
         &self[span.start()..span.end()]
-    }
-}
-
-impl<'a> Source<'a> for &Inputs<'a> {
-    fn resolve(self, span: Span) -> &'a str {
-        let doc = self[span.doc().0 as usize].data;
-        &doc[span.start()..span.end()]
     }
 }
 

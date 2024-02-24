@@ -1,0 +1,10 @@
+// TODO: This error should point at the function definition too.
+let f = (x, y) => x;
+f("one", "too", "many")
+
+# output:
+stdin:3:17
+  ╷
+3 │ f("one", "too", "many")
+  ╵                 ^~~~~~
+Error: Unexpected argument. The function takes 2 arguments, but got 3.

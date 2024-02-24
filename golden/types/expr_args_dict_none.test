@@ -1,0 +1,12 @@
+let x: Dict = {};
+x
+
+# output:
+stdin:1:8
+  ╷
+1 │ let x: Dict = {};
+  ╵        ^~~~
+Error: Expected a concrete type, but found uninstantiated generic type.
+
+Help: 'Dict' without type parameters cannot be used directly.
+Specify a key and value type, e.g. 'Dict[String, Int]'.

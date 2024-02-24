@@ -1,0 +1,8 @@
+"frobnicator"()
+
+# output:
+stdin:1:1
+  ╷
+1 │ "frobnicator"()
+  ╵ ^~~~~~~~~~~~~
+Error: This cannot be called. Expected function but found String.

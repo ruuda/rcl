@@ -7,17 +7,17 @@ stdin:1:20
   ╵                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Error: Missing argument 'v'. The function takes 2 arguments, but got 1.
 
-stdin:1:27
+stdin:1:24
   ╷
 1 │ [1, 2, 3].group_by((k, v) => "this get_key has too many arguments")
-  ╵                           ^~
-Note: Function defined here.
+  ╵                        ^
+Note: Argument defined here.
 
 stdin:1:20
   ╷
 1 │ [1, 2, 3].group_by((k, v) => "this get_key has too many arguments")
   ╵                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In call to key selector from 'List.group_by'.
+In internal call to key selector from 'List.group_by'.
 
 stdin:1:19
   ╷

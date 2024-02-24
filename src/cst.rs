@@ -237,11 +237,10 @@ pub enum Expr {
 
     /// Define a lambda function.
     Function {
-        /// The source location of the `=>`.
-        span: Span,
         args: Box<[Prefixed<Span>]>,
         /// Any non-code between the final arg and the closing paren.
         suffix: Box<[NonCode]>,
+        body_span: Span,
         body: Box<Expr>,
     },
 
@@ -274,8 +273,9 @@ pub enum Expr {
 
     /// A unary operator.
     UnOp {
-        op: UnOp,
         op_span: Span,
+        op: UnOp,
+        body_span: Span,
         body: Box<Expr>,
     },
 
@@ -294,9 +294,11 @@ pub enum Expr {
         // first form and reformat it to the second. We could store one NonCode
         // with the operator, but then we need to concatenate the noncode from
         // before and after, strip duplicate blanks, etc ... it would be messy.
-        op: BinOp,
         op_span: Span,
+        op: BinOp,
+        lhs_span: Span,
         lhs: Box<Expr>,
+        rhs_span: Span,
         rhs: Box<Expr>,
     },
 }
@@ -315,6 +317,7 @@ pub enum Seq {
     AssocExpr {
         /// The `:` span.
         op_span: Span,
+        field_span: Span,
         field: Box<Expr>,
         value_span: Span,
         value: Box<Expr>,
@@ -366,12 +369,14 @@ pub enum Type {
     ///
     /// For example, `Dict[k, v]`.
     Apply {
+        span: Span,
         name: Span,
         args: Box<[Prefixed<Type>]>,
     },
 
     /// A function type with zero or more arguments, and one result type.
     Function {
+        span: Span,
         args: Box<[Prefixed<Type>]>,
         result: Box<Type>,
     },

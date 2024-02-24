@@ -1,0 +1,15 @@
+let str: Any = "not yet intexable";
+str[0]
+
+# output:
+stdin:2:4
+  ╷
+2 │ str[0]
+  ╵    ^
+Error: Indexing into a string is not yet supported.
+
+stdin:2:1
+  ╷
+2 │ str[0]
+  ╵ ^~~
+Note: This is a string.

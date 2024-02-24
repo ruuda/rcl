@@ -1,0 +1,9 @@
+let f = _ => 42;
+f("too", "many")
+
+# output:
+stdin:2:10
+  ╷
+2 │ f("too", "many")
+  ╵          ^~~~~~
+Error: Unexpected argument. The function takes 1 argument, but got 2.

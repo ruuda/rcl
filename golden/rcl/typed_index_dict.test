@@ -1,0 +1,23 @@
+// This tests a particular case in the runtime type check, where the expectation
+// is `Any`. This is somewhat difficult to achieve because the typechecker
+// naturally does not involve runtime checks for types that can be inferred
+// statically.
+
+// Step 1: Make a value that always has type `Any`.
+let any: Any = null;
+
+// Step 2: Make a dict that *inside* has a dict that involves `Any`.
+let dict = { { a = any }: 1 };
+
+// Step 3: Construct an index, but forget about its type.
+let index = { a = any };
+let index_any: Any = index;
+
+// Now put the pieces together. To index into the dict, we need to know that
+// the key has the right type. We don't know its type statically, so we insert
+// a runtime check. The runtime check has to descend inside, and encounters the
+// dict's value type Any. So we end up at runtime checking `null: Any`.
+dict[index_any]
+
+# output:
+1

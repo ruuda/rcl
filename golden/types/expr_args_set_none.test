@@ -1,0 +1,12 @@
+let x: Set = {};
+x
+
+# output:
+stdin:1:8
+  ╷
+1 │ let x: Set = {};
+  ╵        ^~~
+Error: Expected a concrete type, but found uninstantiated generic type.
+
+Help: 'Set' without type parameters cannot be used directly.
+Specify an element type, e.g. 'Set[String]'.

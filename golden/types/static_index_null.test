@@ -1,0 +1,17 @@
+let x = null;
+x[0]
+
+# output:
+stdin:2:2
+  ╷
+2 │ x[0]
+  ╵  ^
+Error: Indexing is not supported here. Expected a dict or list, but got:
+
+  Null
+
+stdin:1:9
+  ╷
+1 │ let x = null;
+  ╵         ^~~~
+Note: Found Null because of this value.

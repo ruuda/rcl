@@ -3,14 +3,14 @@ let x: Null = 0;
 null
 
 # output:
-stdin:2:5
+stdin:2:15
   ╷
 2 │ let x: Null = 0;
-  ╵     ^
-Error: Type mismatch. Expected a value that fits this type:
+  ╵               ^
+Error: Type mismatch. Expected Null but found Int.
 
-  Null
-
-But got this value:
-
-  0
+stdin:2:8
+  ╷
+2 │ let x: Null = 0;
+  ╵        ^~~~
+Note: Expected Null because of this annotation.

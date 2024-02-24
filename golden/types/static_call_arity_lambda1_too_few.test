@@ -1,0 +1,15 @@
+let f = _ => 42;
+f()
+
+# output:
+stdin:2:3
+  ╷
+2 │ f()
+  ╵   ^
+Error: Missing argument '_'. The function takes 1 argument, but got 0.
+
+stdin:1:9
+  ╷
+1 │ let f = _ => 42;
+  ╵         ^
+Note: Argument defined here.

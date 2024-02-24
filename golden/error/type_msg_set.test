@@ -3,14 +3,20 @@ let x: Set[Int] = [];
 null
 
 # output:
-stdin:2:5
+stdin:2:19
   ╷
 2 │ let x: Set[Int] = [];
-  ╵     ^
-Error: Type mismatch. Expected a value that fits this type:
+  ╵                   ^~
+Error: Type mismatch. Expected this type:
 
   Set[Int]
 
-But got this value:
+But found this type:
 
-  []
+  List[Void]
+
+stdin:2:8
+  ╷
+2 │ let x: Set[Int] = [];
+  ╵        ^~~~~~~~
+Note: Expected Set because of this annotation.

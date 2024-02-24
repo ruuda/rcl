@@ -14,6 +14,7 @@ use rcl::tracer::VoidTracer;
 enum Mode {
     Lex,
     Parse,
+    Typecheck,
     Eval,
     Format { width: u32 },
     EvalJson { width: u32 },
@@ -64,7 +65,7 @@ impl<'a> Arbitrary<'a> for Input<'a> {
             b"A" => Mode::Lex,
             b"P" => Mode::Parse,
             b"Q" => Mode::Format { width },
-            // T is reserved for "Typecheck".
+            b"T" => Mode::Typecheck,
             b"a" => Mode::Eval,
             b"j" => Mode::EvalJson { width },
             b"t" => Mode::EvalToml { width },
@@ -90,8 +91,9 @@ fn fuzz_eval(loader: &mut Loader, input: &str) -> Result<()> {
     let id = loader.load_string(input.to_string());
     let mut tracer = VoidTracer;
     let mut evaluator = Evaluator::new(loader, &mut tracer);
-    let mut env = rcl::runtime::prelude();
-    let _ = evaluator.eval_doc(&mut env, id)?;
+    let mut type_env = rcl::typecheck::prelude();
+    let mut value_env = rcl::runtime::prelude();
+    let _ = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
     Ok(())
 }
 
@@ -122,16 +124,17 @@ fn fuzz_fmt(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()>
 ///   expression, which should evaluate to `x`.
 fn fuzz_eval_json(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
     let mut tracer = VoidTracer;
-    let mut env = rcl::runtime::prelude();
+    let mut type_env = rcl::typecheck::prelude();
+    let mut value_env = rcl::runtime::prelude();
     let doc_1 = loader.load_string(input.to_string());
-    let val_1 = loader.evaluate(doc_1, &mut env, &mut tracer)?;
+    let val_1 = loader.evaluate(&mut type_env, &mut value_env, doc_1, &mut tracer)?;
 
     let full_span = loader.get_span(doc_1);
     let json = rcl::fmt_json::format_json(full_span, &val_1)?;
 
     let out_1 = json.println(&cfg);
     let doc_2 = loader.load_string(out_1);
-    let val_2 = loader.evaluate(doc_2, &mut env, &mut tracer)?;
+    let val_2 = loader.evaluate(&mut type_env, &mut value_env, doc_2, &mut tracer)?;
 
     let full_span = loader.get_span(doc_2);
     let json = rcl::fmt_json::format_json(full_span, &val_2)?;
@@ -152,8 +155,9 @@ fn fuzz_eval_toml(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Resu
     let full_span = loader.get_span(id);
     let mut tracer = VoidTracer;
     let mut evaluator = Evaluator::new(loader, &mut tracer);
-    let mut env = rcl::runtime::prelude();
-    let value = evaluator.eval_doc(&mut env, id)?;
+    let mut type_env = rcl::typecheck::prelude();
+    let mut value_env = rcl::runtime::prelude();
+    let value = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
     let toml = rcl::fmt_toml::format_toml(full_span, &value)?;
     let _ = toml.println(&cfg);
     Ok(())
@@ -168,6 +172,11 @@ fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
         Mode::Parse => {
             let doc = loader.load_string(input.data.to_string());
             let _ = loader.get_cst(doc)?;
+        }
+        Mode::Typecheck => {
+            let doc = loader.load_string(input.data.to_string());
+            let mut env = rcl::typecheck::prelude();
+            let _ = loader.get_typechecked_ast(&mut env, doc)?;
         }
         Mode::Eval => {
             let _ = fuzz_eval(loader, input.data);

@@ -1,0 +1,11 @@
+let x: Any = null;
+x | std
+
+# output:
+stdin:2:3
+  ╷
+2 │ x | std
+  ╵   ^
+Error: Union operator | is not supported between these values.
+
+Help: The left-hand side must be a dict or set.

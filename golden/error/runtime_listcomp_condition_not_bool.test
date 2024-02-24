@@ -1,8 +1,0 @@
-[if 0: "false"]
-
-# output:
-stdin:1:5
-  ╷
-1 │ [if 0: "false"]
-  ╵     ^
-Error: Condition should be a boolean.

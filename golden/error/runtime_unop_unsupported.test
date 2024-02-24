@@ -1,8 +1,0 @@
-not "true"
-
-# output:
-stdin:1:1
-  ╷
-1 │ not "true"
-  ╵ ^~~
-Error: This operator is not supported for this value.

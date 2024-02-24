@@ -86,7 +86,7 @@ impl Formatter {
             }
             match k {
                 Value::String(k_str) => {
-                    self.path.push(PathElement::Key(k_str.clone()));
+                    self.path.push(PathElement::Key(k.clone()));
                     elements.push(self.string(k_str).with_markup(Markup::Identifier))
                 }
                 // TODO: Include information about the encountered type.

@@ -1,0 +1,31 @@
+// This tests reporting a type annotation as the source of an actual type
+// (vs. the expected type).
+let source: List[Int] = [];
+let f = () => source;
+let g: () -> Int = f;
+null
+
+# output:
+stdin:5:20
+  ╷
+5 │ let g: () -> Int = f;
+  ╵                    ^
+Error: Type mismatch inside this type:
+
+  () -> <E1>
+
+At E1: Expected Int but found this type:
+
+  List[Int]
+
+stdin:5:14
+  ╷
+5 │ let g: () -> Int = f;
+  ╵              ^~~
+Note: Expected Int because of this annotation.
+
+stdin:3:13
+  ╷
+3 │ let source: List[Int] = [];
+  ╵             ^~~~~~~~~
+Note: Found List because of this annotation.

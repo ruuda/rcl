@@ -1,0 +1,28 @@
+// See also the other variant of this test. In this case, the non-error is first,
+// which requires a different code path.
+let f: (Int, Int) -> Bool = (x, y) => true;
+let g: (Int, String) -> Bool = f;
+null
+
+# output:
+stdin:4:32
+  ╷
+4 │ let g: (Int, String) -> Bool = f;
+  ╵                                ^
+Error: Type mismatch inside this type:
+
+  (Int, <E1>) -> Bool
+
+At E1: Expected Int but found String.
+
+stdin:3:14
+  ╷
+3 │ let f: (Int, Int) -> Bool = (x, y) => true;
+  ╵              ^~~
+Note: Expected Int because of this annotation.
+
+stdin:4:14
+  ╷
+4 │ let g: (Int, String) -> Bool = f;
+  ╵              ^~~~~~
+Note: Found String because of this annotation.

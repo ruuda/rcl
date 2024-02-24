@@ -1,0 +1,22 @@
+let f = x => 0;
+let xs = { f: 0 };
+xs[{} | std]
+
+# output:
+stdin:3:4
+  ╷
+3 │ xs[{} | std]
+  ╵    ^~~~~~~~
+Error: Type mismatch. Expected a value that fits this type:
+
+  (x: Any) -> Int
+
+But got this value:
+
+  { range = std.range, read_file_utf8 = std.read_file_utf8 }
+
+stdin:1:9
+  ╷
+1 │ let f = x => 0;
+  ╵         ^~~~~~
+Note: Expected Function because of this value.

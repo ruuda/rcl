@@ -1,0 +1,26 @@
+let xs: Dict[Int, Int] = {0: 0};
+let ys: Dict[Bool, Int] = xs;
+null
+
+# output:
+stdin:2:27
+  ╷
+2 │ let ys: Dict[Bool, Int] = xs;
+  ╵                           ^~
+Error: Type mismatch inside this type:
+
+  Dict[<E1>, Int]
+
+At E1: Expected Bool but found Int.
+
+stdin:2:14
+  ╷
+2 │ let ys: Dict[Bool, Int] = xs;
+  ╵              ^~~~
+Note: Expected Bool because of this annotation.
+
+stdin:1:14
+  ╷
+1 │ let xs: Dict[Int, Int] = {0: 0};
+  ╵              ^~~
+Note: Found Int because of this annotation.

@@ -1,0 +1,26 @@
+let xs: List[Int] = [0];
+let ys: List[Bool] = xs;
+null
+
+# output:
+stdin:2:22
+  ╷
+2 │ let ys: List[Bool] = xs;
+  ╵                      ^~
+Error: Type mismatch inside this type:
+
+  List[<E1>]
+
+At E1: Expected Bool but found Int.
+
+stdin:2:14
+  ╷
+2 │ let ys: List[Bool] = xs;
+  ╵              ^~~~
+Note: Expected Bool because of this annotation.
+
+stdin:1:14
+  ╷
+1 │ let xs: List[Int] = [0];
+  ╵              ^~~
+Note: Found Int because of this annotation.

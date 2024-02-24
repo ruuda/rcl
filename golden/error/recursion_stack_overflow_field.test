@@ -5,10 +5,10 @@ let f = f => {{f(f).x}.x.c};
 f(f)
 
 # output:
-stdin:4:15
+stdin:4:16
   ╷
 4 │ let f = f => {{f(f).x}.x.c};
-  ╵               ^~~~~~~~~~
+  ╵                ^~~~
 Error: Evaluation budget exceeded. This expression exceeds the maximum evaluation depth of 150.
 
 stdin:4:17

@@ -1,0 +1,42 @@
+// This is a regression test for an input that caused stack overflow.
+let f = f => f(f)()()()()()()()()();
+f(f)
+
+# output:
+stdin:2:14
+  ╷
+2 │ let f = f => f(f)()()()()()()()()();
+  ╵              ^~~~
+Error: Evaluation budget exceeded. This expression exceeds the maximum evaluation depth of 150.
+
+stdin:2:15
+  ╷
+2 │ let f = f => f(f)()()()()()()()()();
+  ╵               ^
+In call to function.
+
+stdin:2:15
+  ╷
+2 │ let f = f => f(f)()()()()()()()()();
+  ╵               ^
+In call to function.
+
+stdin:2:15
+  ╷
+2 │ let f = f => f(f)()()()()()()()()();
+  ╵               ^
+In call to function.
+
+stdin:2:15
+  ╷
+2 │ let f = f => f(f)()()()()()()()()();
+  ╵               ^
+In call to function.
+
+stdin:2:15
+  ╷
+2 │ let f = f => f(f)()()()()()()()()();
+  ╵               ^
+In call to function.
+
+Note: The call stack is too deep to display in full. Only the innermost calls are shown above.

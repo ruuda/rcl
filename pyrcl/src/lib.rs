@@ -12,14 +12,16 @@ use rcl::loader::{Loader, SandboxMode};
 use rcl::runtime::{self, Value};
 use rcl::source::DocId;
 use rcl::tracer::StderrTracer;
+use rcl::typecheck;
 
 fn evaluate<F: FnOnce(&mut Loader) -> Result<DocId>>(load: F) -> Result<Value> {
     let mut loader = Loader::new();
     loader.initialize_filesystem(SandboxMode::Workdir, None)?;
     let doc = load(&mut loader)?;
     let mut tracer = StderrTracer::new(None);
-    let mut env = runtime::prelude();
-    loader.evaluate(doc, &mut env, &mut tracer)
+    let mut type_env = typecheck::prelude();
+    let mut value_env = runtime::prelude();
+    loader.evaluate(&mut type_env, &mut value_env, doc, &mut tracer)
 }
 
 fn runtime_error(message: &'static str) -> PyErr {

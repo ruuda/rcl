@@ -7,10 +7,10 @@
 
 //! Types and functions for error reporting.
 
-use std::rc::Rc;
-
+use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
 use crate::pprint::{concat, Doc};
+use crate::runtime::Value;
 use crate::source::{Inputs, Span};
 
 pub type Result<T> = std::result::Result<T, Box<Error>>;
@@ -19,7 +19,7 @@ pub type Result<T> = std::result::Result<T, Box<Error>>;
 // TODO: Record the value itself as well, so we can *show* the thing that's wrong.
 #[derive(Debug)]
 pub enum PathElement {
-    Key(Rc<str>),
+    Key(Value),
     Index(usize),
 }
 
@@ -121,6 +121,22 @@ impl Error {
         self.call_stack.push((at, message.into()));
     }
 
+    /// Replace the message at the top of the call stack.
+    ///
+    /// The span that is currently at the top (if there is one at all) must
+    /// match exactly to replace the call frame. If not, then we push the frame
+    /// like normal without popping.
+    pub fn replace_call_frame<M>(&mut self, at: Span, message: M)
+    where
+        Doc<'static>: From<M>,
+    {
+        match self.call_stack.last() {
+            Some(frame) if frame.0 == at => _ = self.call_stack.pop(),
+            _ => {}
+        }
+        self.add_call_frame(at, message)
+    }
+
     /// Append a frame to the error's call stack.
     pub fn with_call_frame<M>(mut self, at: Span, message: M) -> Error
     where
@@ -170,6 +186,12 @@ impl Error {
         self
     }
 
+    /// Append the path element to the value path.
+    pub fn with_path_element(mut self, element: PathElement) -> Error {
+        self.path.push(element);
+        self
+    }
+
     /// Wrap the error in a `Result::Err`.
     pub fn err<T>(self) -> Result<T> {
         Err(Box::new(self))
@@ -185,12 +207,8 @@ impl Error {
         for elem in self.path.iter().rev() {
             match elem {
                 PathElement::Key(k) => {
-                    // TODO: Use the json pretty printer to report this.
-                    let mut v = "\"".to_string();
-                    crate::string::escape_json(k, &mut v);
-                    v.push('"');
                     path_doc.push("at key ".into());
-                    path_doc.push(Doc::from(v).with_markup(Markup::String));
+                    path_doc.push(format_rcl(k).into_owned());
                 }
                 PathElement::Index(i) => {
                     let v = i.to_string();

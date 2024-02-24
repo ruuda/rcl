@@ -1,0 +1,15 @@
+// This is a regression test, the typechecker tried to blame an error on Any here.
+{}[{} | std]
+
+# output:
+stdin:2:4
+  ╷
+2 │ {}[{} | std]
+  ╵    ^~~~~~~~
+Error: Expected a value of type Void, but no such values exist.
+
+stdin:2:1
+  ╷
+2 │ {}[{} | std]
+  ╵ ^~
+Note: Expected Void because this collection is empty.

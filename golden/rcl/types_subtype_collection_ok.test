@@ -1,0 +1,18 @@
+let xs: List[Int] = [0, 1, 2];
+// Int is a subtype of Any. This is ok.
+let ys: List[Any] = xs;
+// Any is not a subtype of int, this causes a Defer in the check.
+let zs: List[Int] = ys;
+
+let xs: Set[Int] = {0, 1, 2};
+let ys: Set[Any] = xs;
+let zs: Set[Int] = ys;
+
+let xs: Dict[String, Int] = { a = 1, b = 2 };
+let ys: Dict[String, Any] = xs;
+let zs: Dict[String, Int] = ys;
+
+zs
+
+# output:
+{ a = 1, b = 2 }

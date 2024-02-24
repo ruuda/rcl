@@ -3,14 +3,14 @@ let x: Bool = 0;
 null
 
 # output:
-stdin:2:5
+stdin:2:15
   ╷
 2 │ let x: Bool = 0;
-  ╵     ^
-Error: Type mismatch. Expected a value that fits this type:
+  ╵               ^
+Error: Type mismatch. Expected Bool but found Int.
 
-  Bool
-
-But got this value:
-
-  0
+stdin:2:8
+  ╷
+2 │ let x: Bool = 0;
+  ╵        ^~~~
+Note: Expected Bool because of this annotation.

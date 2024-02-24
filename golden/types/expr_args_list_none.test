@@ -1,0 +1,12 @@
+let x: List = [];
+x
+
+# output:
+stdin:1:8
+  ╷
+1 │ let x: List = [];
+  ╵        ^~~~
+Error: Expected a concrete type, but found uninstantiated generic type.
+
+Help: 'List' without type parameters cannot be used directly.
+Specify an element type, e.g. 'List[String]'.

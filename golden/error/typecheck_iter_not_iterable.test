@@ -1,0 +1,10 @@
+[for x in 12: x]
+
+# output:
+stdin:1:11
+  ╷
+1 │ [for x in 12: x]
+  ╵           ^~
+Error: This is not iterable. Expected a collection, but got:
+
+  Int

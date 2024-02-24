@@ -1,0 +1,9 @@
+let x: List[Int, Int] = [];
+x
+
+# output:
+stdin:1:8
+  ╷
+1 │ let x: List[Int, Int] = [];
+  ╵        ^~~~~~~~~~~~~~
+Error: Type 'List' takes one type parameter (the element type), but got 2.

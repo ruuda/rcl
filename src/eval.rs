@@ -7,22 +7,24 @@
 
 //! Evaluation turns ASTs into values.
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
-use crate::ast::{BinOp, Expr, FormatFragment, Seq, Stmt, Type as AType, UnOp, Yield};
+use crate::ast::{BinOp, CallArg, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{
-    self, CallArg, Env, Function, FunctionCall, MethodCall, MethodInstance, Value,
+    self, BuiltinFunction, BuiltinMethod, Env, Function, FunctionCall, MethodCall, MethodInstance,
+    Value,
 };
 use crate::source::{DocId, Span};
 use crate::stdlib;
 use crate::tracer::Tracer;
 use crate::typecheck;
-use crate::types::{self, Type};
+use crate::types;
 
 /// An entry on the evaluation stack.
 pub struct EvalContext {
@@ -117,6 +119,13 @@ pub struct Evaluator<'a> {
     /// Because it is immutable, it can be reused across evaluations.
     pub stdlib: Value,
 
+    /// The types of the built-in functions.
+    ///
+    /// Types need to be constructed at runtime because they contain heap objects.
+    /// But the types of built-ins does not change. So we only do it once, and
+    /// then cache them here.
+    function_type_cache: HashMap<fn() -> types::Function, types::Function>,
+
     /// The depth of the evaluation stack.
     ///
     /// Used to error before we overflow the native stack.
@@ -126,11 +135,6 @@ pub struct Evaluator<'a> {
     ///
     /// This is used to break infinite loops.
     pub eval_count: EvalCount,
-
-    /// The (static) environment for the types that are in scope.
-    ///
-    /// TODO: This will be removed with the static typechecker refactor.
-    pub type_env: crate::env::Env<Rc<Type>>,
 }
 
 impl<'a> Evaluator<'a> {
@@ -140,10 +144,24 @@ impl<'a> Evaluator<'a> {
             tracer,
             import_stack: Vec::new(),
             stdlib: stdlib::initialize(),
+            function_type_cache: HashMap::new(),
             eval_depth: 0,
             eval_count: EvalCount::new(),
-            type_env: typecheck::prelude(),
         }
+    }
+
+    /// Return the type of a builtin function, cached.
+    fn get_builtin_function_type(&mut self, builtin: &BuiltinFunction) -> &types::Function {
+        self.function_type_cache
+            .entry(builtin.type_)
+            .or_insert_with(|| (builtin.type_)())
+    }
+
+    /// Return the type of a builtin method, cached.
+    fn get_builtin_method_type(&mut self, builtin: &BuiltinMethod) -> &types::Function {
+        self.function_type_cache
+            .entry(builtin.type_)
+            .or_insert_with(|| (builtin.type_)())
     }
 
     #[inline]
@@ -175,15 +193,20 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate a document as the entry point of evaluation.
-    pub fn eval_doc(&mut self, env: &mut Env, doc: DocId) -> Result<Value> {
+    pub fn eval_doc(
+        &mut self,
+        type_env: &mut typecheck::Env,
+        value_env: &mut Env,
+        doc: DocId,
+    ) -> Result<Value> {
         debug_assert!(self.import_stack.is_empty());
-        let expr = self.loader.get_ast(doc)?;
+        let expr = self.loader.get_typechecked_ast(type_env, doc)?;
         let ctx = EvalContext {
             doc,
             imported_from: None,
         };
         self.import_stack.push(ctx);
-        let result = self.eval_expr(env, &expr)?;
+        let result = self.eval_expr(value_env, &expr)?;
         self.import_stack.pop().expect("Push/pop are balanced.");
         Ok(result)
     }
@@ -216,19 +239,19 @@ impl<'a> Evaluator<'a> {
             return Err(err.into());
         }
 
-        let expr = self.loader.get_ast(doc)?;
+        // Evaluate the import in its own clean environment, it should not be
+        // affected by the surrounding environment of the import statement.
+        let mut type_env = typecheck::prelude();
+        let mut value_env = runtime::prelude();
 
+        let expr = self.loader.get_typechecked_ast(&mut type_env, doc)?;
         let ctx = EvalContext {
             doc,
             imported_from: Some(imported_from),
         };
 
-        // Evaluate the import in its own clean environment, it should not be
-        // affected by the surrounding environment of the import statement.
-        let mut env = runtime::prelude();
-
         self.import_stack.push(ctx);
-        let result = self.eval_expr(&mut env, &expr)?;
+        let result = self.eval_expr(&mut value_env, &expr)?;
         self.import_stack.pop().expect("Push/pop are balanced.");
 
         Ok(result)
@@ -273,46 +296,50 @@ impl<'a> Evaluator<'a> {
                 self.eval_import(doc, *path_span)
             }
 
-            Expr::BraceLit(seqs) => {
-                let mut out = SeqOut::SetOrDict;
-                for seq in seqs {
-                    self.eval_seq(env, seq, &mut out)?;
-                }
-                match out {
-                    // If we have no keys, it’s a dict, because json has no sets,
-                    // and `{}` is a json value that should evaluate to itself.
-                    SeqOut::SetOrDict => Ok(Value::Dict(Rc::new(BTreeMap::new()))),
-                    SeqOut::Set(_, values) => {
-                        let result = values.into_iter().collect();
-                        Ok(Value::Set(Rc::new(result)))
-                    }
-                    SeqOut::Dict(_, keys, values) => {
-                        assert_eq!(
-                            keys.len(),
-                            values.len(),
-                            // coverage:off -- Error expected to be hit.
-                            "Should have already reported error about mixing \
-                            `k: v` and values in one comprehension.",
-                            // coverage:on
-                        );
-                        let mut result = BTreeMap::new();
-                        for (k, v) in keys.into_iter().zip(values) {
-                            result.insert(k, v);
-                        }
-                        Ok(Value::Dict(Rc::new(result)))
-                    }
-                    SeqOut::List(_) => unreachable!("Did not start out as list."),
-                }
+            // coverage:off -- Code not expected to be reached.
+            Expr::BraceLit { .. } => {
+                unreachable!("The typechecker replaces `BraceLit` with `SetLit` or `DictLit`.")
             }
-            Expr::BracketLit(seqs) => {
-                let mut out = SeqOut::List(Vec::new());
-                for seq in seqs {
-                    self.eval_seq(env, seq, &mut out)?;
+            // coverage:on
+
+            // Brackets are syntactically lists, we already know that.
+            Expr::BracketLit { open, elements } => {
+                let mut out = Vec::with_capacity(elements.len());
+                self.inc_eval_depth(*open)?;
+                for seq in elements {
+                    self.eval_seq(env, seq, &mut |v| out.push(v), &mut |_, _| {
+                        unreachable!("Typechecker ensures scalar elements.")
+                    })?;
                 }
-                match out {
-                    SeqOut::List(values) => Ok(Value::List(Rc::new(values))),
-                    _ => unreachable!("SeqOut::List type is preserved."),
+                self.dec_eval_depth();
+                Ok(Value::List(Rc::new(out)))
+            }
+
+            Expr::SetLit { open, elements } => {
+                let mut out = BTreeSet::new();
+                self.inc_eval_depth(*open)?;
+                for seq in elements {
+                    self.eval_seq(env, seq, &mut |v| _ = out.insert(v), &mut |_, _| {
+                        unreachable!("Typechecker ensures scalar elements.")
+                    })?;
                 }
+                self.dec_eval_depth();
+                Ok(Value::Set(Rc::new(out)))
+            }
+
+            Expr::DictLit { open, elements } => {
+                let mut out = BTreeMap::new();
+                self.inc_eval_depth(*open)?;
+                for seq in elements {
+                    self.eval_seq(
+                        env,
+                        seq,
+                        &mut |_| unreachable!("Typechecker ensures assoc elements."),
+                        &mut |k, v| _ = out.insert(k, v),
+                    )?;
+                }
+                self.dec_eval_depth();
+                Ok(Value::Dict(Rc::new(out)))
             }
 
             Expr::NullLit => Ok(Value::Null),
@@ -330,25 +357,26 @@ impl<'a> Evaluator<'a> {
                 condition,
                 body_then,
                 body_else,
+                ..
             } => {
                 self.inc_eval_depth(*condition_span)?;
                 let cond = self.eval_expr(env, condition)?;
                 let result = match cond {
                     Value::Bool(true) => self.eval_expr(env, body_then),
                     Value::Bool(false) => self.eval_expr(env, body_else),
-                    _ => {
-                        // TODO: Make this a type error.
-                        let err = condition_span.error("Condition should be a boolean.");
-                        Err(err.into())
-                    }
+                    _ => unreachable!("The typechecker ensures the condition is a Bool."),
                 };
                 self.dec_eval_depth();
                 result
             }
 
-            Expr::Var { ident, span } => match env.lookup(ident) {
+            Expr::Var { ident, .. } => match env.lookup(ident) {
                 Some(value) => Ok(value.clone()),
-                None => Err(span.error("Unknown variable.").into()),
+                // TODO: The typechecker could replace all variable lookups with
+                // an index into the bindings stack, then we can skip the lookup,
+                // and we don't have to handle this case (except though implicit
+                // bounds checks).
+                None => unreachable!("If it passed the typechecker, the variable exists."),
             },
 
             Expr::Field {
@@ -443,7 +471,7 @@ impl<'a> Evaluator<'a> {
                 }
             }
 
-            Expr::Stmt { stmt, body } => {
+            Expr::Stmt { stmt, body, .. } => {
                 let ck = env.checkpoint();
                 self.eval_stmt(env, stmt)?;
                 let result = self.eval_expr(env, body)?;
@@ -460,25 +488,26 @@ impl<'a> Evaluator<'a> {
             } => {
                 // We do strict evaluation, all arguments get evaluated before we go
                 // into the call.
+                self.inc_eval_depth(*function_span)?;
                 let fun = self.eval_expr(env, fun_expr)?;
                 let args = args_exprs
                     .iter()
-                    .map(|(span, a)| {
+                    .map(|call_arg| {
                         Ok(CallArg {
-                            span: *span,
-                            value: self.eval_expr(env, a)?,
+                            span: call_arg.span,
+                            value: self.eval_expr(env, &call_arg.value)?,
                         })
                     })
                     .collect::<Result<Vec<_>>>()?;
+
+                self.dec_eval_depth();
 
                 let call = FunctionCall {
                     call_open: *open,
                     call_close: *close,
                     args: &args[..],
                 };
-                let error_context = || None;
-
-                self.eval_call(*function_span, &fun, call, error_context)
+                self.eval_call(*function_span, &fun, call)
             }
 
             Expr::Index {
@@ -494,12 +523,22 @@ impl<'a> Evaluator<'a> {
                 self.eval_index(*open, collection, *collection_span, index, *index_span)
             }
 
-            Expr::Function { span, args, body } => {
+            // coverage:off -- Not covered if it's really unreachable.
+            Expr::Function { .. } => unreachable!(
+                "The typechecker replaces all Expr::Function with Expr::TypedFunction.",
+            ),
+            // coverage:on
+            Expr::TypedFunction {
+                span,
+                body_span: _,
+                body,
+                type_,
+            } => {
                 let result = Function {
                     span: *span,
                     env: env.clone(),
-                    args: args.clone(),
                     body: Rc::new((**body).clone()),
+                    type_: type_.clone(),
                 };
                 Ok(Value::Function(Rc::new(result)))
             }
@@ -508,6 +547,7 @@ impl<'a> Evaluator<'a> {
                 op,
                 op_span,
                 body: value_expr,
+                ..
             } => {
                 self.inc_eval_depth(*op_span)?;
                 let value = self.eval_expr(env, value_expr)?;
@@ -521,6 +561,7 @@ impl<'a> Evaluator<'a> {
                 op_span,
                 lhs: lhs_expr,
                 rhs: rhs_expr,
+                ..
             } => {
                 self.inc_eval_depth(*op_span)?;
                 let lhs = self.eval_expr(env, lhs_expr)?;
@@ -529,64 +570,76 @@ impl<'a> Evaluator<'a> {
                 self.dec_eval_depth();
                 Ok(result)
             }
+
+            Expr::CheckType { span, type_, body } => {
+                let v = self.eval_expr(env, body)?;
+                v.is_instance_of(*span, type_)?;
+                Ok(v)
+            }
         }
     }
 
-    pub fn eval_call<MkErr>(
+    /// Evaluate a call to any callable.
+    ///
+    /// This function adds a call frame. For calls made from builtins, the call
+    /// frame may not be very clear. Then, in case of error, the caller of
+    /// `eval_call` can replace the call frame with a more descriptive one.
+    pub fn eval_call(
         &mut self,
         callee_span: Span,
         callee: &Value,
         call: FunctionCall,
-        error_context: MkErr,
-    ) -> Result<Value>
-    where
-        MkErr: FnOnce() -> Option<Doc<'static>>,
-    {
+    ) -> Result<Value> {
         let call_open = call.call_open;
         self.inc_eval_depth(call_open)?;
 
         let result = match callee {
             Value::BuiltinMethod(instance) => {
+                let method = instance.method;
+                let fn_type = self.get_builtin_method_type(method);
+                fn_type.check_arity(Some(method.name), call.args, call.call_close)?;
+                // TODO: Also check the type, while we're at it!
+
                 let method_call = MethodCall {
                     call,
                     method_span: instance.method_span,
                     receiver_span: instance.receiver_span,
                     receiver: &instance.receiver,
                 };
-                let method = instance.method;
+
                 (method.f)(self, method_call).map_err(|err| {
-                    let msg = match error_context() {
-                        None => concat! { "In call to method '" Doc::highlight(method.name) "'." },
-                        Some(ctx) => concat! { ctx ", method '" Doc::highlight(method.name) "'." },
-                    };
-                    err.with_call_frame(call_open, msg).into()
+                    err.with_call_frame(
+                        call_open,
+                        concat! { "In call to method '" Doc::highlight(method.name) "'." },
+                    )
+                    .into()
                 })
             }
-            Value::BuiltinFunction(f) => (f.f)(self, call).map_err(|err| {
-                let msg = match error_context() {
-                    None => concat! { "In call to function '" Doc::highlight(f.name) "'." },
-                    Some(ctx) => concat! { ctx ", function '" Doc::highlight(f.name) "'." },
-                };
-                err.with_call_frame(call_open, msg).into()
-            }),
-            Value::Function(fun) => self.eval_function_call(fun, call).map_err(|err| {
-                let msg = match error_context() {
-                    None => "In call to function.".into(),
-                    Some(ctx) => concat! { ctx "." },
-                };
-                err.with_call_frame(call_open, msg).into()
-            }),
-            // TODO: Add a proper type error.
-            _ => {
-                let msg = match error_context() {
-                    None => "In call.".into(),
-                    Some(ctx) => concat! { ctx "." },
-                };
-                callee_span
-                    .error("This is not a function, it cannot be called.")
-                    .with_call_frame(call_open, msg)
-                    .err()
+            Value::BuiltinFunction(f) => {
+                let fn_type = self.get_builtin_function_type(f);
+                fn_type.check_arity(Some(f.name), call.args, call.call_close)?;
+                // TODO: Also check the type, while we're at it!
+
+                (f.f)(self, call).map_err(|err| {
+                    err.with_call_frame(
+                        call_open,
+                        concat! { "In call to function '" Doc::highlight(f.name) "'." },
+                    )
+                    .into()
+                })
             }
+            Value::Function(fun) => {
+                fun.type_.check_arity(None, call.args, call.call_close)?;
+                // TODO: Also perform typechecks of the arguments.
+
+                self.eval_function_call(fun, call).map_err(|err| {
+                    err.with_call_frame(call_open, "In call to function.")
+                        .into()
+                })
+            }
+            _ => callee_span
+                .error("This is not a function, it cannot be called.")
+                .err(),
         };
 
         self.dec_eval_depth();
@@ -595,16 +648,18 @@ impl<'a> Evaluator<'a> {
     }
 
     /// Evaluate a call to a lambda function.
-    pub fn eval_function_call(&mut self, fun: &Function, call: FunctionCall) -> Result<Value> {
-        // TODO: Add a better name, possibly also report the source span where
-        // the argument is defined, not just the span of the lambda.
-        call.check_arity_dynamic(&fun.args)
-            .map_err(|err| err.with_note(fun.span, "Function defined here."))?;
-
+    ///
+    /// This does not perform all required checks; use [`eval_call`] to evaluate
+    /// a general call to any callable value.
+    fn eval_function_call(&mut self, fun: &Function, call: FunctionCall) -> Result<Value> {
         // TODO: If we could stack multiple layers of envs, then we would not
         // have to clone the full thing.
         let mut env = fun.env.clone();
-        for (arg_name, CallArg { value, .. }) in fun.args.iter().zip(call.args) {
+        for (arg, CallArg { value, .. }) in fun.type_.args.iter().zip(call.args) {
+            let arg_name = arg
+                .name
+                .as_ref()
+                .expect("Types attached to functions have arg names.");
             env.push(arg_name.clone(), value.clone());
         }
 
@@ -690,7 +745,7 @@ impl<'a> Evaluator<'a> {
     fn eval_index_list(&mut self, list: &[Value], index: Value, index_span: Span) -> Result<Value> {
         let i_signed = match index {
             Value::Int(i) => i,
-            _ => return index_span.error("Index must be an integer.").err(),
+            _ => return index_span.error("List index must be an integer.").err(),
         };
 
         let i = match i_signed {
@@ -751,12 +806,7 @@ impl<'a> Evaluator<'a> {
                     op_span.error(err).err()
                 }
             },
-            (_op, _val) => {
-                // TODO: Add a proper type error, report the type of the value.
-                Err(op_span
-                    .error("This operator is not supported for this value.")
-                    .into())
-            }
+            _ => unreachable!("Invalid cases are prevented by the typechecker."),
         }
     }
 
@@ -777,6 +827,17 @@ impl<'a> Evaluator<'a> {
                 let mut result = (*xs).clone();
                 result.extend(ys.iter().cloned());
                 Ok(Value::Set(Rc::new(result)))
+            }
+            (BinOp::Union, _, _) => {
+                // We could make a nicer error and include the values, but I plan
+                // to remove | in favor of unpack, so I'm not going to bother.
+                op_span
+                    .error(concat! {
+                        "Union operator " Doc::highlight("|")
+                        " is not supported between these values. "
+                    })
+                    .with_help("The left-hand side must be a dict or set.")
+                    .err()
             }
             // TODO: Could evaluate these boolean expressions lazily, if the
             // language is really pure. But if I enable external side effects like
@@ -839,43 +900,31 @@ impl<'a> Evaluator<'a> {
             (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x <= y)),
             (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x >= y)),
             // TODO: Throw a type error when the types are not the same, instead of
-            // enabling comparing values of different types.
+            // enabling comparing values of different types. Or do we want to allow
+            // comparing arbitrary values after all? Hmm ... So far I haven't felt
+            // the need to allow comparing anything but int for inequalities. So
+            // maybe it should be a type error?
             (BinOp::Eq, x, y) => Ok(Value::Bool(x == y)),
             (BinOp::Neq, x, y) => Ok(Value::Bool(x != y)),
-            _ => {
-                // TODO: Add a proper type error.
-                Err(op_span
-                    .error("This operator is not supported for these values.")
-                    .into())
-            }
+            _ => unreachable!("Invalid cases are prevented by the typechecker."),
         }
     }
 
     fn eval_stmt(&mut self, env: &mut Env, stmt: &Stmt) -> Result<()> {
         match stmt {
-            Stmt::Let {
-                ident_span,
-                ident,
-                type_,
-                value,
-            } => {
-                // Note, this is not a recursive let, the variable is not bound when
-                // we evaluate the expression.
+            Stmt::Let { ident, value, .. } => {
+                // Note, this is not a recursive let, the variable is not bound
+                // when we evaluate the expression. Even if the let binding has
+                // a type annotation, we don't check it here; the typechecker
+                // inserts a dedicated `CheckType` node when needed.
                 let v = self.eval_expr(env, value)?;
-
-                // If the let has a type annotation, then we verify that the
-                // value fits the specified type.
-                if let Some(type_expr) = type_ {
-                    let type_ = self.eval_type_expr(type_expr)?;
-                    typecheck::check_value(*ident_span, type_.as_ref(), &v)?;
-                }
-
                 env.push(ident.clone(), v);
             }
             Stmt::Assert {
                 condition_span,
                 condition,
                 message: message_expr,
+                ..
             } => {
                 match self.eval_expr(env, condition)? {
                     Value::Bool(true) => {
@@ -895,12 +944,7 @@ impl<'a> Evaluator<'a> {
                             .with_body(body.into_owned())
                             .err();
                     }
-                    _ => {
-                        // TODO: Report a proper type error.
-                        return condition_span
-                            .error("Assertion condition must evaluate to a boolean.")
-                            .err();
-                    }
+                    _ => unreachable!("The typechecker ensures the condition is a Bool."),
                 }
             }
             Stmt::Trace {
@@ -915,41 +959,33 @@ impl<'a> Evaluator<'a> {
         Ok(())
     }
 
-    fn eval_seq(&mut self, env: &mut Env, seq: &Seq, out: &mut SeqOut) -> Result<()> {
-        // For a collection enclosed in {}, now that we have a concrete seq, that
-        // determines whether this is a set comprehension or a dict comprehension.
-        // We really have to look at the syntax of the seq, we cannot resolve the
-        // ambiguity later when we get to evaluating the inner seq, because that
-        // part may be skipped due to a conditional.
-        if let SeqOut::SetOrDict = out {
-            match seq.innermost() {
-                Yield::Elem { span, .. } => *out = SeqOut::Set(*span, Vec::new()),
-                Yield::Assoc { op_span, .. } => {
-                    *out = SeqOut::Dict(*op_span, Vec::new(), Vec::new())
-                }
-            }
-        }
-
+    fn eval_seq<OnScalar, OnAssoc>(
+        &mut self,
+        env: &mut Env,
+        seq: &Seq,
+        on_scalar: &mut OnScalar,
+        on_assoc: &mut OnAssoc,
+    ) -> Result<()>
+    where
+        OnScalar: FnMut(Value),
+        OnAssoc: FnMut(Value, Value),
+    {
         match seq {
             Seq::Yield(Yield::Elem {
-                span,
-                value: value_expr,
+                value: value_expr, ..
             }) => {
-                let out_values = out.values(*span)?;
                 let value = self.eval_expr(env, value_expr)?;
-                out_values.push(value);
+                on_scalar(value);
                 Ok(())
             }
             Seq::Yield(Yield::Assoc {
-                op_span,
                 key: key_expr,
                 value: value_expr,
+                ..
             }) => {
-                let (out_keys, out_values) = out.keys_values(*op_span)?;
                 let key = self.eval_expr(env, key_expr)?;
                 let value = self.eval_expr(env, value_expr)?;
-                out_keys.push(key);
-                out_values.push(value);
+                on_assoc(key, value);
                 Ok(())
             }
             Seq::For {
@@ -964,7 +1000,7 @@ impl<'a> Evaluator<'a> {
                     ([name], Value::List(xs)) => {
                         for x in xs.iter() {
                             let ck = env.push(name.clone(), x.clone());
-                            self.eval_seq(env, body, out)?;
+                            self.eval_seq(env, body, on_scalar, on_assoc)?;
                             env.pop(ck);
                         }
                         Ok(())
@@ -979,7 +1015,7 @@ impl<'a> Evaluator<'a> {
                     ([name], Value::Set(xs)) => {
                         for x in xs.iter() {
                             let ck = env.push(name.clone(), x.clone());
-                            self.eval_seq(env, body, out)?;
+                            self.eval_seq(env, body, on_scalar, on_assoc)?;
                             env.pop(ck);
                         }
                         Ok(())
@@ -996,7 +1032,7 @@ impl<'a> Evaluator<'a> {
                             let ck = env.checkpoint();
                             env.push(k_name.clone(), k.clone());
                             env.push(v_name.clone(), v.clone());
-                            self.eval_seq(env, body, out)?;
+                            self.eval_seq(env, body, on_scalar, on_assoc)?;
                             env.pop(ck);
                         }
                         Ok(())
@@ -1010,192 +1046,26 @@ impl<'a> Evaluator<'a> {
                             );
                         Err(err.into())
                     }
-                    // TODO: Add a proper type error.
                     _ => Err(collection_span.error("This is not iterable.").into()),
                 }
             }
             Seq::If {
-                condition_span,
-                condition,
-                body,
+                condition, body, ..
             } => {
                 let cond = self.eval_expr(env, condition)?;
                 match cond {
-                    Value::Bool(true) => self.eval_seq(env, body, out),
+                    Value::Bool(true) => self.eval_seq(env, body, on_scalar, on_assoc),
                     Value::Bool(false) => Ok(()),
-                    _ => {
-                        // TODO: Make this a type error.
-                        let err = condition_span.error("Condition should be a boolean.");
-                        Err(err.into())
-                    }
+                    _ => unreachable!("The typechecker ensures the condition is a Bool."),
                 }
             }
             Seq::Stmt { stmt, body } => {
                 let ck = env.checkpoint();
                 self.eval_stmt(env, stmt)?;
-                self.eval_seq(env, body, out)?;
+                self.eval_seq(env, body, on_scalar, on_assoc)?;
                 env.pop(ck);
                 Ok(())
             }
-        }
-    }
-
-    fn eval_type_expr(&mut self, type_: &AType) -> Result<Rc<Type>> {
-        match type_ {
-            AType::Term { span, name } => match self.type_env.lookup(name) {
-                Some(t) => Ok(t.clone()),
-                None => {
-                    let err = span.error("Unknown type.");
-                    // TODO: Handle type constructors more first-class after all?
-                    let err = match name.as_ref() {
-                        "Dict" => err.with_help(concat!{
-                            "'" Doc::highlight("Dict") "' without type parameters cannot be used directly."
-                            Doc::SoftBreak
-                            "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Int]") "'."
-                        }),
-                        "List" => err.with_help(concat!{
-                            "'" Doc::highlight("List") "' without type parameters cannot be used directly."
-                            Doc::SoftBreak
-                            "Specify an element type, e.g. '" Doc::highlight("List[String]") "'."
-                        }),
-                        "Set" => err.with_help(concat!{
-                            "'" Doc::highlight("Set") "' without type parameters cannot be used directly."
-                            Doc::SoftBreak
-                            "Specify an element type, e.g. '" Doc::highlight("Set[String]") "'."
-                        }),
-                        _ => err,
-                    };
-                    err.err()
-                }
-            },
-            AType::Function { args, result } => {
-                let args_types = args
-                    .iter()
-                    .map(|t| self.eval_type_expr(t))
-                    .collect::<Result<Vec<_>>>()?;
-                let result_type = self.eval_type_expr(result)?;
-                let fn_type = types::Function {
-                    args: args_types,
-                    result: result_type,
-                };
-                Ok(Rc::new(Type::Function(fn_type)))
-            }
-            AType::Apply { span, name, args } => {
-                let args_types = args
-                    .iter()
-                    .map(|t| self.eval_type_expr(t))
-                    .collect::<Result<Vec<_>>>()?;
-                self.eval_type_apply(*span, name.as_ref(), &args_types)
-            }
-        }
-    }
-
-    /// Evaluate type constructor application (generic instantiation).
-    fn eval_type_apply(
-        &mut self,
-        name_span: Span,
-        name: &str,
-        args: &[Rc<Type>],
-    ) -> Result<Rc<Type>> {
-        match name {
-            "Dict" => match args {
-                [tk, tv] => Ok(Rc::new(Type::Dict(tk.clone(), tv.clone()))),
-                // TODO: We can point at the excess or missing arg for a
-                // friendlier error, but better to do that in a general way
-                // when we add type contructors to `types::Type`.
-                _ => name_span
-                    .error(concat! {
-                        "Type 'Dict' takes two type parameters (key and value), but got "
-                        args.len().to_string() "."
-                    })
-                    .err(),
-            },
-            "List" => match args {
-                [te] => Ok(Rc::new(Type::List(te.clone()))),
-                // TODO: As above for dict, we can do a better job of the error.
-                _ => name_span
-                    .error(concat! {
-                        "Type 'List' takes one type parameter (the element type), but got "
-                        args.len().to_string() "."
-                    })
-                    .err(),
-            },
-            "Set" => match args {
-                [te] => Ok(Rc::new(Type::Set(te.clone()))),
-                // TODO: As above for dict, we can do a better job of the error.
-                _ => name_span
-                    .error(concat! {
-                        "Type 'Set' takes one type parameter (the element type), but got "
-                        args.len().to_string() "."
-                    })
-                    .err(),
-            },
-            // TODO: We could report a nicer error if we knew the types in scope.
-            // Okay, I am convinced now that type constructors should live in
-            // the type namespace. But we can do that later.
-            _ => name_span.error("Unknown generic type.").err(),
-        }
-    }
-}
-
-/// Helper to hold evaluation output for sequences.
-enum SeqOut {
-    /// Only allow scalar values because we are in a list literal.
-    List(Vec<Value>),
-
-    /// The sequence is definitely a set, because the first element is scalar.
-    ///
-    /// The span contains the previous scalar as evidence.
-    Set(Span, Vec<Value>),
-
-    /// The sequence is definitely a dict, because the first element is kv.
-    ///
-    /// The span contains the previous key-value as evidence.
-    Dict(Span, Vec<Value>, Vec<Value>),
-
-    /// It's still unclear whether this is a set or a dict.
-    SetOrDict,
-}
-
-impl SeqOut {
-    fn values(&mut self, scalar: Span) -> Result<&mut Vec<Value>> {
-        match self {
-            SeqOut::List(values) => Ok(values),
-            SeqOut::Set(_first, values) => Ok(values),
-            SeqOut::Dict(first, _keys, _values) => {
-                let err = scalar
-                    .error("Expected key-value, not a scalar element.")
-                    .with_note(
-                        *first,
-                        "The collection is a dict and not a set, because of this key-value.",
-                    );
-                Err(err.into())
-            }
-            SeqOut::SetOrDict => unreachable!("Should have been replaced by now."),
-        }
-    }
-
-    fn keys_values(&mut self, kv: Span) -> Result<(&mut Vec<Value>, &mut Vec<Value>)> {
-        match self {
-            SeqOut::List(_values) => {
-                let err = kv
-                    .error("Expected scalar element, not key-value.")
-                    .with_help(
-                    "Key-value pairs are allowed in dicts, which are enclosed in '{}', not '[]'.",
-                );
-                Err(err.into())
-            }
-            SeqOut::Set(first, _values) => {
-                let err = kv
-                    .error("Expected scalar element, not key-value.")
-                    .with_note(
-                        *first,
-                        "The collection is a set and not a dict, because of this scalar value.",
-                    );
-                Err(err.into())
-            }
-            SeqOut::Dict(_first, keys, values) => Ok((keys, values)),
-            SeqOut::SetOrDict => unreachable!("Should have been replaced by now."),
         }
     }
 }

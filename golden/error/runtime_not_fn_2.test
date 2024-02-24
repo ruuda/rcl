@@ -1,15 +1,8 @@
-let person = { name = "Deckard" };
-person.name()
+"frobnicator".len()(42)
 
 # output:
-stdin:2:1
+stdin:1:1
   ╷
-2 │ person.name()
-  ╵ ^~~~~~~~~~~
+1 │ "frobnicator".len()(42)
+  ╵ ^~~~~~~~~~~~~~~~~~~
 Error: This is not a function, it cannot be called.
-
-stdin:2:12
-  ╷
-2 │ person.name()
-  ╵            ^
-In call.

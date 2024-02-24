@@ -76,14 +76,6 @@ struct Parser<'a> {
     /// The depth of parsing expressions and sequences, to prevent stack
     /// overflow.
     depth: u32,
-
-    /// A stack of the starting points of the spans that we are currently parsing.
-    ///
-    /// This is used to provide full enclosing spans of parts of expressions.
-    /// For example, the condition of an if-else may itself be a complex
-    /// expression, and the CST nodes of the condition don't expose a single
-    /// span that covers it entirely, so we track this separately.
-    span_stack: Vec<usize>,
 }
 
 impl<'a> Parser<'a> {
@@ -96,7 +88,6 @@ impl<'a> Parser<'a> {
             bracket_stack: Vec::new(),
             comment_anchor: Span::new(doc, 0, 0),
             depth: 0,
-            span_stack: Vec::new(),
         }
     }
 
@@ -159,14 +150,8 @@ impl<'a> Parser<'a> {
         self.depth -= 1;
     }
 
-    /// Record the starting position of some span that we will later pop.
-    fn begin_span(&mut self) {
-        self.span_stack.push(self.peek_span().start());
-    }
-
-    /// Pop off the span stack and return the span that covers the source since the matching push.
-    fn end_span(&mut self) -> Span {
-        let start = self.span_stack.pop().expect("Span stack underflow.");
+    /// Return the span from start until (but not including) the cursor, stripping trailing noncode.
+    fn span_from(&self, start: Span) -> Span {
         let end = self.tokens[..self.cursor]
             .iter()
             .rev()
@@ -174,7 +159,7 @@ impl<'a> Parser<'a> {
             .map(|t| t.1.end())
             .next()
             .expect("If we pushed a start, we should find at least that.");
-        Span::new(self.doc, start, end)
+        Span::new(self.doc, start.start(), end)
     }
 
     /// Push an opening bracket onto the stack of brackets when inside a query.
@@ -336,7 +321,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> Result<(Span, Expr)> {
-        self.begin_span();
+        let begin = self.peek_span();
         // TODO: This depth limit is not sustainable if my lets are recursive.
         // We need tail calls or loops to handle them in the parser ...
         self.increase_depth()?;
@@ -355,7 +340,7 @@ impl<'a> Parser<'a> {
         };
         self.decrease_depth();
 
-        Ok((self.end_span(), result))
+        Ok((self.span_from(begin), result))
     }
 
     fn parse_expr_if(&mut self) -> Result<Expr> {
@@ -643,14 +628,14 @@ impl<'a> Parser<'a> {
         };
 
         self.skip_non_code()?;
-        let arrow_span = self.parse_token(Token::FatArrow, "Expected '=>' here.")?;
+        self.parse_token(Token::FatArrow, "Expected '=>' here.")?;
         self.skip_non_code()?;
-        let (_span, body) = self.parse_expr()?;
+        let (body_span, body) = self.parse_expr()?;
 
         let result = Expr::Function {
-            span: arrow_span,
             args,
             suffix,
+            body_span,
             body: Box::new(body),
         };
         Ok(result)
@@ -661,7 +646,8 @@ impl<'a> Parser<'a> {
         self.check_bad_unop()?;
 
         if self.peek().and_then(to_unop).is_some() {
-            return self.parse_expr_unop();
+            let (_span, result) = self.parse_expr_unop()?;
+            return Ok(result);
         }
 
         // Instead of an operator chain, it could still be an import or lambda,
@@ -673,7 +659,7 @@ impl<'a> Parser<'a> {
             return self.parse_expr_import();
         }
 
-        let mut result = self.parse_expr_not_op()?;
+        let (mut lhs_span, mut result) = self.parse_expr_not_op()?;
 
         // We might have binary operators following. If we find one, then
         // all the other ones must be of the same type, to avoid unclear
@@ -687,15 +673,18 @@ impl<'a> Parser<'a> {
                 Some(op) if allowed_op.is_none() || allowed_op == Some(op) => {
                     let span = self.consume();
                     self.skip_non_code()?;
-                    let rhs = self.parse_expr_not_op()?;
+                    let (rhs_span, rhs) = self.parse_expr_not_op()?;
                     allowed_span = Some(span);
                     allowed_op = Some(op);
                     result = Expr::BinOp {
                         op,
                         op_span: span,
+                        lhs_span,
                         lhs: Box::new(result),
+                        rhs_span,
                         rhs: Box::new(rhs),
                     };
+                    lhs_span = lhs_span.union(rhs_span);
                 }
                 Some(_op) => {
                     return self.error(
@@ -710,7 +699,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expr_unop(&mut self) -> Result<Expr> {
+    fn parse_expr_unop(&mut self) -> Result<(Span, Expr)> {
         let op = self
             .peek()
             .and_then(to_unop)
@@ -720,15 +709,16 @@ impl<'a> Parser<'a> {
         self.check_bad_unop()?;
 
         // Nested unary expressions are okay.
-        let body = if self.peek().and_then(to_unop).is_some() {
+        let (body_span, body) = if self.peek().and_then(to_unop).is_some() {
             self.parse_expr_unop()?
         } else {
             self.parse_expr_not_op()?
         };
 
         let result = Expr::UnOp {
-            op,
             op_span: span,
+            op,
+            body_span,
             body: Box::new(body),
         };
 
@@ -749,22 +739,22 @@ impl<'a> Parser<'a> {
                 .err();
         }
 
-        Ok(result)
+        let result_span = span.until(body_span);
+        Ok((result_span, result))
     }
 
-    fn parse_expr_not_op(&mut self) -> Result<Expr> {
+    fn parse_expr_not_op(&mut self) -> Result<(Span, Expr)> {
         // TODO: check for operators before, and report a pretty error
         // to clarify that parens must be used to disambiguate.
-        let before = self.peek_span();
 
+        let begin = self.peek_span();
         let mut result = self.parse_expr_term()?;
 
-        // TODO: This span is not necessarily minimal, it may include whitespace.
         loop {
+            let result_span = self.span_from(begin);
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::LParen) => {
-                    let result_span = before.until(self.peek_span());
                     let open = self.push_bracket()?;
                     let (args, suffix) = self.parse_call_args()?;
                     let close = self.pop_bracket()?;
@@ -778,7 +768,6 @@ impl<'a> Parser<'a> {
                     };
                 }
                 Some(Token::LBracket) => {
-                    let result_span = before.until(self.peek_span());
                     let open = self.push_bracket()?;
                     let (index_span, index) = self.parse_prefixed_expr()?;
                     let close = self.pop_bracket()?;
@@ -792,7 +781,6 @@ impl<'a> Parser<'a> {
                     };
                 }
                 Some(Token::Dot) => {
-                    let result_span = before.until(self.peek_span());
                     self.consume();
                     self.skip_non_code()?;
                     let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
@@ -802,7 +790,7 @@ impl<'a> Parser<'a> {
                         inner: Box::new(result),
                     };
                 }
-                _ => return Ok(result),
+                _ => return Ok((result_span, result)),
             }
         }
     }
@@ -1106,7 +1094,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_seq(&mut self) -> Result<(Span, Seq)> {
-        self.begin_span();
+        let begin = self.peek_span();
 
         // Here we have a lookahead of two tokens ... not great if we want to
         // keep the grammar simple, but for making the syntax prettier it is
@@ -1144,6 +1132,7 @@ impl<'a> Parser<'a> {
                         let (value_span, value) = self.parse_expr()?;
                         Seq::AssocExpr {
                             op_span: op,
+                            field_span: expr_span,
                             field: Box::new(expr),
                             value_span,
                             value: Box::new(value),
@@ -1157,7 +1146,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok((self.end_span(), result))
+        Ok((self.span_from(begin), result))
     }
 
     fn parse_seq_assoc_ident(&mut self) -> Result<Seq> {
@@ -1249,6 +1238,7 @@ impl<'a> Parser<'a> {
         }
 
         // Otherwise, we definitely start with a term.
+        let begin = self.peek_span();
         let term = self.parse_type_term()?;
 
         // Optionally, the term can be followed by `[` to instantiate a generic
@@ -1259,7 +1249,11 @@ impl<'a> Parser<'a> {
             let args = self.parse_types()?;
             self.pop_bracket()?;
 
-            let type_apply = Type::Apply { name: *name, args };
+            let type_apply = Type::Apply {
+                span: self.span_from(begin),
+                name: *name,
+                args,
+            };
             return Ok(type_apply);
         }
 
@@ -1269,6 +1263,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a function type that starts with a `(`.
     fn parse_type_function(&mut self) -> Result<Type> {
+        let begin = self.peek_span();
         self.push_bracket()?;
         let args = self.parse_types()?;
         self.pop_bracket()?;
@@ -1276,6 +1271,7 @@ impl<'a> Parser<'a> {
         self.parse_token(Token::ThinArrow, "Expected '->' here in function type.")?;
         let result_type = self.parse_type_expr()?;
         let fn_type = Type::Function {
+            span: self.span_from(begin),
             args,
             result: Box::new(result_type),
         };

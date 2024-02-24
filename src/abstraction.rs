@@ -14,7 +14,7 @@
 //! * Removing syntactical differences (e.g. converting `k = v;` into `"k": v`).
 
 use crate::ast::{
-    Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
+    CallArg, Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
 };
 use crate::cst::Prefixed;
 use crate::cst::{Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart, Type as CType};
@@ -109,6 +109,7 @@ impl<'a> Abstractor<'a> {
             CStmt::Let {
                 ident,
                 type_,
+                value_span,
                 value,
                 ..
             } => AStmt::Let {
@@ -118,16 +119,18 @@ impl<'a> Abstractor<'a> {
                     None => None,
                     Some(t) => Some(Box::new(self.type_expr(t)?)),
                 },
+                value_span: *value_span,
                 value: Box::new(self.expr(value)?),
             },
             CStmt::Assert {
                 condition_span,
                 condition,
+                message_span,
                 message,
-                ..
             } => AStmt::Assert {
                 condition_span: *condition_span,
                 condition: Box::new(self.expr(condition)?),
+                message_span: *message_span,
                 message: Box::new(self.expr(message)?),
             },
             CStmt::Trace {
@@ -144,8 +147,13 @@ impl<'a> Abstractor<'a> {
     /// Abstract an expression.
     pub fn expr(&self, expr: &CExpr) -> Result<AExpr> {
         let result = match expr {
-            CExpr::Stmt { stmt, body, .. } => AExpr::Stmt {
+            CExpr::Stmt {
+                stmt,
+                body_span,
+                body,
+            } => AExpr::Stmt {
                 stmt: self.stmt(stmt)?,
+                body_span: *body_span,
                 body: Box::new(self.expr(&body.inner)?),
             },
 
@@ -154,19 +162,21 @@ impl<'a> Abstractor<'a> {
                 path: Box::new(self.expr(&path.inner)?),
             },
 
-            CExpr::BraceLit { elements, .. } => AExpr::BraceLit(
-                elements
+            CExpr::BraceLit { open, elements, .. } => AExpr::BraceLit {
+                open: *open,
+                elements: elements
                     .iter()
                     .map(|elem| self.seq(&elem.inner))
                     .collect::<Result<Vec<_>>>()?,
-            ),
+            },
 
-            CExpr::BracketLit { elements, .. } => AExpr::BracketLit(
-                elements
+            CExpr::BracketLit { open, elements, .. } => AExpr::BracketLit {
+                open: *open,
+                elements: elements
                     .iter()
                     .map(|elem| self.seq(&elem.inner))
                     .collect::<Result<Vec<_>>>()?,
-            ),
+            },
 
             CExpr::Parens { body, .. } => self.expr(&body.inner)?,
 
@@ -215,11 +225,15 @@ impl<'a> Abstractor<'a> {
             CExpr::IfThenElse {
                 condition_span,
                 condition,
+                then_span,
+                else_span,
                 then_body,
                 else_body,
                 ..
             } => AExpr::IfThenElse {
                 condition_span: *condition_span,
+                span_then: *then_span,
+                span_else: *else_span,
                 condition: Box::new(self.expr(condition)?),
                 body_then: Box::new(self.expr(&then_body.inner)?),
                 body_else: Box::new(self.expr(&else_body.inner)?),
@@ -242,13 +256,16 @@ impl<'a> Abstractor<'a> {
             },
 
             CExpr::Function {
-                span, args, body, ..
+                args,
+                body_span,
+                body,
+                ..
             } => AExpr::Function {
-                span: *span,
                 args: args
                     .iter()
-                    .map(|arg| arg.inner.resolve(self.input).into())
+                    .map(|arg| (arg.inner, arg.inner.resolve(self.input).into()))
                     .collect(),
+                body_span: *body_span,
                 body: Box::new(self.expr(body)?),
             },
 
@@ -266,7 +283,12 @@ impl<'a> Abstractor<'a> {
                 function: Box::new(self.expr(function)?),
                 args: args
                     .iter()
-                    .map(|(span, a)| Ok((*span, self.expr(&a.inner)?)))
+                    .map(|(span, a)| {
+                        Ok(CallArg {
+                            span: *span,
+                            value: self.expr(&a.inner)?,
+                        })
+                    })
                     .collect::<Result<Vec<_>>>()?,
             },
 
@@ -286,21 +308,31 @@ impl<'a> Abstractor<'a> {
                 index: Box::new(self.expr(&index.inner)?),
             },
 
-            CExpr::UnOp { op, op_span, body } => AExpr::UnOp {
-                op: *op,
+            CExpr::UnOp {
+                op_span,
+                op,
+                body_span,
+                body,
+            } => AExpr::UnOp {
                 op_span: *op_span,
+                op: *op,
+                body_span: *body_span,
                 body: Box::new(self.expr(body)?),
             },
 
             CExpr::BinOp {
-                op,
                 op_span,
+                op,
+                lhs_span,
                 lhs,
+                rhs_span,
                 rhs,
             } => AExpr::BinOp {
-                op: *op,
                 op_span: *op_span,
+                op: *op,
+                lhs_span: *lhs_span,
                 lhs: Box::new(self.expr(lhs)?),
+                rhs_span: *rhs_span,
                 rhs: Box::new(self.expr(rhs)?),
             },
         };
@@ -317,11 +349,14 @@ impl<'a> Abstractor<'a> {
 
             CSeq::AssocExpr {
                 op_span,
+                field_span,
                 field,
+                value_span,
                 value,
-                ..
             } => ASeq::Yield(Yield::Assoc {
                 op_span: *op_span,
+                key_span: *field_span,
+                value_span: *value_span,
                 key: Box::new(self.expr(field)?),
                 value: Box::new(self.expr(value)?),
             }),
@@ -329,8 +364,8 @@ impl<'a> Abstractor<'a> {
             CSeq::AssocIdent {
                 op_span,
                 field,
+                value_span,
                 value,
-                ..
             } => {
                 // We convert the `key = value` as if it had been written
                 // `"key": value` so we can treat them uniformly from here on.
@@ -338,6 +373,8 @@ impl<'a> Abstractor<'a> {
                 let key_expr = AExpr::StringLit(key_str.into());
                 ASeq::Yield(Yield::Assoc {
                     op_span: *op_span,
+                    key_span: *field,
+                    value_span: *value_span,
                     key: Box::new(key_expr),
                     value: Box::new(self.expr(value)?),
                 })
@@ -388,15 +425,16 @@ impl<'a> Abstractor<'a> {
                 span: *span,
                 name: span.resolve(self.input).into(),
             },
-            CType::Apply { name, args } => AType::Apply {
-                span: *name,
+            CType::Apply { span, name, args } => AType::Apply {
+                span: *span,
                 name: name.resolve(self.input).into(),
                 args: args
                     .iter()
                     .map(|arg| self.type_expr(&arg.inner))
                     .collect::<Result<Box<_>>>()?,
             },
-            CType::Function { args, result } => AType::Function {
+            CType::Function { span, args, result } => AType::Function {
+                span: *span,
                 args: args
                     .iter()
                     .map(|arg| self.type_expr(&arg.inner))

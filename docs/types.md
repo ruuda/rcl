@@ -1,7 +1,7 @@
 # Types
 
-***Warning**: The type system is a work in progress. In particular, record types
-are missing, and the implementation of the typechecker is too ad-hoc.*
+_**Warning**: The type system is a work in progress. In particular, record types
+are missing, and the implementation of the typechecker is too ad-hoc._
 
 RCL has a type system that can help to prevent bugs and make configuration more
 self-documenting.
@@ -56,6 +56,35 @@ let port_names: Dict[Int, String] = {
 };
 ```
 
+## Record types
+
+The intention is to support record types and type aliases, but this is not yet
+implemented. They would look roughly like this:
+
+```rcl
+type User = {
+  full_name: String,
+  email: String,
+  uid: Int,
+  groups: Set[String],
+};
+
+let users: List[User] = [
+  {
+    full_name = "Eldon Tyrell",
+    email = "etyrell@tyrell.com",
+    uid = 1,
+    groups = {"executive"},
+  },
+  {
+    full_name = "Rachael Tyrell",
+    email = "rachael@tyrell.com",
+    uid = 7,
+    groups = {"research"},
+  },
+];
+```
+
 ## Function types
 
 Function types are written as an argument list between parentheses, a thin
@@ -68,32 +97,72 @@ let add: (Int, Int) -> Int = (x, y) => x + y;
 The parentheses are mandatory, even for functions that take a single argument.
 A trailing comma is optional.
 
-## The dynamic type
+## The Any type
 
-The `Dynamic` type signals to the typechecker that the type of a value is not
-known statically. Variables that have type `Dynamic` never cause static type
-errors, but they can still cause runtime type errors.
+Any possible value is an instance of the `Any` type. It is the least informative
+type: nothing more specific is known statically. Variables that have type `Any`
+never cause static type errors, but they can still cause runtime type errors.
 
 ```rcl
 let x: Int = 32;
-let y: Dynamic = x;
-// Not a static type error: an expression with type Dynamic could evaluate to
-// a string, so assigning it to a variable of type String is allowed. But at
+let y: Any = x;
+// Not a static type error: an expression with type Any could evaluate to a
+// string, so assigning it to a variable of type String is allowed. But at
 // runtime, we verify that the value is really a string, and that check fails.
 let z: String = y;
 z
 ```
 
-Annotating a variable with `Dynamic` is not useful. At best it behaves the same
+Annotating a variable with `Any` is not useful. At best it behaves the same
 as not annotating the variable, but in the worst case it forces the typechecker
-to discard type information that it was able to infer. However, `Dynamic` can be
+to discard type information that it was able to infer. However, `Any` can be
 useful as part of a more complex type, to partially enforce some structure:
 
 ```rcl
-let widgets: Dict[String, Dynamic] = {
+let widgets: Dict[String, Any] = {
   frobnicator = { foobar = 42 },
   turbo-encabulator = { prefabulated = true, bearings = "spurving" },
 };
 ```
 
-TODO: Currently the `Dynamic` type cannot be written directly.
+## The Void type
+
+No possible value is an instance of the `Void` type. It is the inferred element
+type for empty collections.
+
+```rcl
+// Inferred to have type `List[Void]`.
+let xs = [];
+```
+
+## Static checks
+
+The type system is designed to help prevent bugs first and foremost, and to help
+make code more self-documenting and readable second. It is _not_ a goal that
+every possible document that could be evaluated without the typechecker, is
+well-typed. For example, the following program has a static type error:
+
+```rcl
+let xs: List[Int] = [];
+// Error: Expected String but found Int.
+let ys: List[String] = xs;
+ys
+```
+
+If we remove the type annotations, the document evaluates to `[]`, so the
+typechecker rejects a document that could have been evaluated.
+
+Here is another example of a program that has a static type error, despite
+not even having type annotations:
+
+```rcl
+// This list is empty, but nonetheless inferred to have type `List[Int]`.
+let integers = [for i in [1, 2, 3]: if i > 100: i];
+// Type error: Expected Bool as argument to `not`, but found `Int`.
+[for i in integers: not i]
+```
+
+Without the typechecker this code would execute just fine, because the
+ill-typed code path is never executed. But this above code is very likely a bug,
+and would fail when the parameters change. Therefore <abbr>RCL</abbr> prefers
+keeping the typechecker simple over making every executable document well-typed.

@@ -1,0 +1,12 @@
+// This tests the meet operation on builtins.
+let f: (Int, Int) -> List[Int] = (x, y) => [x, y];
+let g = std.range;
+// This meets the type that comes from the annotation with the type that comes
+// from the builtin in both ways.
+// TODO: This only works after we can infer types through lookups, and for that
+// we need record types.
+let fns = [g, f, g];
+[for f in fns: f(0, 2)]
+
+# output:
+[[0, 1], [0, 2], [0, 1]]

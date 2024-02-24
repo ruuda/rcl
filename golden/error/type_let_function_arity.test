@@ -2,14 +2,20 @@ let f: (Int, String) -> Bool = (x, y, z) => false;
 null
 
 # output:
-stdin:1:5
+stdin:1:32
   ╷
 1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
-  ╵     ^
-Error: Expected a function that takes 2 arguments, but got a function that takes 3 arguments.
+  ╵                                ^~~~~~~~~~~~~~~~~~
+Error: Type mismatch. Expected this type:
 
-stdin:1:42
+  (Int, String) -> Bool
+
+But found this type:
+
+  (x: Any, y: Any, z: Any) -> Bool
+
+stdin:1:8
   ╷
 1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
-  ╵                                          ^~
-Note: Function defined here.
+  ╵        ^~~~~~~~~~~~~~~~~~~~~
+Note: Expected Function because of this annotation.

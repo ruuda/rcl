@@ -3,14 +3,18 @@ let f: (Int, String) -> Bool = "not a function";
 null
 
 # output:
-stdin:2:5
+stdin:2:32
   ╷
 2 │ let f: (Int, String) -> Bool = "not a function";
-  ╵     ^
-Error: Type mismatch. Expected a value that fits this type:
+  ╵                                ^~~~~~~~~~~~~~~~
+Error: Type mismatch. Expected this type:
 
   (Int, String) -> Bool
 
-But got this value:
+But found String.
 
-  "not a function"
+stdin:2:8
+  ╷
+2 │ let f: (Int, String) -> Bool = "not a function";
+  ╵        ^~~~~~~~~~~~~~~~~~~~~
+Note: Expected Function because of this annotation.

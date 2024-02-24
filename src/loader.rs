@@ -25,6 +25,7 @@ use crate::pprint::{self, concat};
 use crate::runtime::{Env, Value};
 use crate::source::{Doc, DocId, Span};
 use crate::tracer::Tracer;
+use crate::typecheck::{self, TypeChecker};
 
 /// An owned document.
 ///
@@ -402,17 +403,39 @@ impl Loader {
     }
 
     /// Parse the given document and return its Abstract Syntax Tree.
-    pub fn get_ast(&self, id: DocId) -> Result<ast::Expr> {
+    ///
+    /// This is the AST before typecheking.
+    pub fn get_unchecked_ast(&self, id: DocId) -> Result<ast::Expr> {
         let doc = self.get_doc(id);
         let cst = self.get_cst(id)?;
         let ast = abstraction::abstract_expr(doc.data, &cst)?;
         Ok(ast)
     }
 
+    /// Parse and typecheck the document, return the checked Abstract Syntax Tree.
+    pub fn get_typechecked_ast(&self, env: &mut typecheck::Env, id: DocId) -> Result<ast::Expr> {
+        // The typechecker needs a span to blame type errors on, we put in the
+        // entire document. It is not going to blame any type errors on this
+        // span, because we check `Type::Any` which any value satisfies. If we
+        // want to typecheck through imports, we would need an expected type and
+        // span from the import site.
+        let span = self.get_span(id);
+        let mut ast = self.get_unchecked_ast(id)?;
+        let mut checker = TypeChecker::new(env);
+        checker.check_expr(typecheck::type_any(), span, &mut ast)?;
+        Ok(ast)
+    }
+
     /// Evaluate the given document and return the resulting value.
-    pub fn evaluate(&mut self, id: DocId, env: &mut Env, tracer: &mut dyn Tracer) -> Result<Value> {
+    pub fn evaluate(
+        &mut self,
+        type_env: &mut typecheck::Env,
+        value_env: &mut Env,
+        id: DocId,
+        tracer: &mut dyn Tracer,
+    ) -> Result<Value> {
         let mut evaluator = Evaluator::new(self, tracer);
-        evaluator.eval_doc(env, id)
+        evaluator.eval_doc(type_env, value_env, id)
     }
 
     fn push(&mut self, document: Document) -> DocId {

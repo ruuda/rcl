@@ -7,22 +7,22 @@ let f = g => g(g(h => k => g(g(h))));
 f(f)
 
 # output:
-stdin:6:31
-  ╷
-6 │ let f = g => g(g(h => k => g(g(h))));
-  ╵                               ^
-Error: Evaluation budget exceeded. This expression exceeds the maximum of 10000 steps.
-
-stdin:6:17
-  ╷
-6 │ let f = g => g(g(h => k => g(g(h))));
-  ╵                 ^
-In call to function.
-
 stdin:6:29
   ╷
 6 │ let f = g => g(g(h => k => g(g(h))));
   ╵                             ^
+Error: Evaluation budget exceeded. This expression exceeds the maximum of 10000 steps.
+
+stdin:6:15
+  ╷
+6 │ let f = g => g(g(h => k => g(g(h))));
+  ╵               ^
+In call to function.
+
+stdin:6:31
+  ╷
+6 │ let f = g => g(g(h => k => g(g(h))));
+  ╵                               ^
 In call to function.
 
 stdin:6:15
@@ -37,10 +37,10 @@ stdin:6:29
   ╵                             ^
 In call to function.
 
-stdin:6:17
+stdin:6:15
   ╷
 6 │ let f = g => g(g(h => k => g(g(h))));
-  ╵                 ^
+  ╵               ^
 In call to function.
 
 Note: The call stack is too deep to display in full. Only the innermost calls are shown above.

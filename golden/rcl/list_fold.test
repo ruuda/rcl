@@ -4,17 +4,29 @@
 }
 
 # output:
+stdin:3:52
+  ╷
+3 │   str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),
+  ╵                                                    ^~~
+Error: Type mismatch. Expected a value that fits this type:
+
+  Int
+
+But got this value:
+
+  ""
+
 stdin:3:56
   ╷
 3 │   str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),
   ╵                                                        ^
-Error: This operator is not supported for these values.
+Note: Expected Int because of this operator.
 
 stdin:3:40
   ╷
 3 │   str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),
   ╵                                        ^~~~~~~~~~~~~~~~~~~
-In call to reduce function from 'List.fold'.
+In internal call to reduce function from 'List.fold'.
 
 stdin:3:35
   ╷

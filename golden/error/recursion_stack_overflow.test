@@ -2,10 +2,10 @@ let f = f => f(f);
 f(f)
 
 # output:
-stdin:1:15
+stdin:1:14
   ╷
 1 │ let f = f => f(f);
-  ╵               ^
+  ╵              ^
 Error: Evaluation budget exceeded. This expression exceeds the maximum evaluation depth of 150.
 
 stdin:1:15

@@ -1,0 +1,9 @@
+let x: Dict[Int] = {};
+x
+
+# output:
+stdin:1:8
+  ╷
+1 │ let x: Dict[Int] = {};
+  ╵        ^~~~~~~~~
+Error: Type 'Dict' takes two type parameters (key and value), but got 1.

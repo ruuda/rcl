@@ -1,0 +1,12 @@
+let xs: Any = [1, 2, 3];
+// The typechecker doesn't know the type of xs,
+// so it doesn't know that the index should be an int,
+// this is a dynamic error.
+xs["not int"]
+
+# output:
+stdin:5:4
+  ╷
+5 │ xs["not int"]
+  ╵    ^~~~~~~~~
+Error: List index must be an integer.

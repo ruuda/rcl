@@ -16,10 +16,12 @@ fuzz_target!(|input: &str| {
 
     let mut loader = Loader::new();
     let mut tracer = VoidTracer;
-    let mut env = rcl::runtime::prelude();
+    // We don't use the prelude here, the expression doesn't use it.
+    let mut type_env = rcl::env::Env::new();
+    let mut value_env = rcl::env::Env::new();
     let doc = loader.load_string(escaped);
     let result = loader
-        .evaluate(doc, &mut env, &mut tracer)
+        .evaluate(&mut type_env, &mut value_env, doc, &mut tracer)
         .expect("Escaped string should be valid RCL.");
     match result {
         Value::String(unescaped) => assert_eq!(input, unescaped.as_ref()),

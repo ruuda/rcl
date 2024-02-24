@@ -1,0 +1,15 @@
+let x: Any = null;
+x[0]
+
+# output:
+stdin:2:2
+  ╷
+2 │ x[0]
+  ╵  ^
+Error: Indexing is not supported here.
+
+stdin:2:1
+  ╷
+2 │ x[0]
+  ╵ ^
+Note: Expected a dict or list, but found: null.

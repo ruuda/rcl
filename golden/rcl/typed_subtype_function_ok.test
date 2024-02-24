@@ -1,0 +1,11 @@
+// Define a function with a particular type `(Any) -> Bool`.
+let f = x => x == 42;
+// Forget about that type.
+let g: Any = f;
+// Now we have to check at runtime that the value of `g` satisfies the type,
+// and it does.
+let h: (Int) -> Bool = g;
+h(21)
+
+# output:
+false

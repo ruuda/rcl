@@ -1,0 +1,17 @@
+// This is a regression test, the typechecker tried to blame an error on Any here.
+let f = x => 0;
+let xs = {f: 0};
+xs[x => x]
+
+# output:
+stdin:4:4
+  ╷
+4 │ xs[x => x]
+  ╵    ^~~~~~
+Error: Dict does not have a key «function».
+
+stdin:4:1
+  ╷
+4 │ xs[x => x]
+  ╵ ^~
+Note: On value: { «function»: 0 }

@@ -1,0 +1,11 @@
+let xs = [0, 1, 2];
+xs["invalid"]
+
+# output:
+stdin:2:4
+  ╷
+2 │ xs["invalid"]
+  ╵    ^~~~~~~~~
+Error: Type mismatch. Expected Int but found String.
+
+Help: List indices must be integers.

@@ -13,6 +13,7 @@ use std::rc::Rc;
 pub use crate::cst::{BinOp, UnOp};
 
 use crate::source::Span;
+use crate::types::{self, SourcedType};
 
 /// An identifier.
 // TODO: Should we deduplicate idents, or even all strings, in a hash table?
@@ -64,6 +65,7 @@ pub enum Stmt {
         ident_span: Span,
         ident: Ident,
         type_: Option<Box<Type>>,
+        value_span: Span,
         value: Box<Expr>,
     },
 
@@ -72,6 +74,7 @@ pub enum Stmt {
         /// The span of the condition. Here we report the error from.
         condition_span: Span,
         condition: Box<Expr>,
+        message_span: Span,
         message: Box<Expr>,
     },
 
@@ -82,12 +85,23 @@ pub enum Stmt {
     },
 }
 
+/// An argument provided to a function call.
+#[derive(Clone, Debug)]
+pub struct CallArg<T> {
+    pub span: Span,
+    pub value: T,
+}
+
 /// An expression.
 // TODO: Should not be cloneable, make it GC'able instead.
 #[derive(Clone, Debug)]
 pub enum Expr {
     /// A statement-like expression.
-    Stmt { stmt: Stmt, body: Box<Expr> },
+    Stmt {
+        stmt: Stmt,
+        body_span: Span,
+        body: Box<Expr>,
+    },
 
     /// Import an expression from a given file path.
     Import {
@@ -99,10 +113,18 @@ pub enum Expr {
     },
 
     /// A dict or set literal (depending on the element types) enclosed in `{}`.
-    BraceLit(Vec<Seq>),
+    ///
+    /// The typechecker replaces this by either [`SetLit`] or [`DictLit`].
+    BraceLit { open: Span, elements: Vec<Seq> },
 
     /// A list literal enclosed in `[]`.
-    BracketLit(Vec<Seq>),
+    BracketLit { open: Span, elements: Vec<Seq> },
+
+    /// A set literal enclosed in `{}`.
+    SetLit { open: Span, elements: Vec<Seq> },
+
+    /// A dict literal enclosed in `{}`.
+    DictLit { open: Span, elements: Vec<Seq> },
 
     /// A null literal.
     NullLit,
@@ -120,10 +142,12 @@ pub enum Expr {
     /// A format string, with string literals and hole contents interleaved.
     Format(Vec<FormatFragment>),
 
-    /// An conditional choice (if, then, else).
+    /// A conditional choice (if, then, else).
     IfThenElse {
         condition_span: Span,
         condition: Box<Expr>,
+        span_then: Span,
+        span_else: Span,
         body_then: Box<Expr>,
         body_else: Box<Expr>,
     },
@@ -140,10 +164,12 @@ pub enum Expr {
     },
 
     /// Define a lambda function.
+    ///
+    /// This node only exists before typechecking. The typechecker converts all
+    /// [`Expr::Function`] nodes to [`Expr::TypedFunction`].
     Function {
-        /// The span of the `=>`.
-        span: Span,
-        args: Vec<Ident>,
+        args: Vec<(Span, Ident)>,
+        body_span: Span,
         body: Box<Expr>,
     },
 
@@ -155,7 +181,7 @@ pub enum Expr {
         close: Span,
         function_span: Span,
         function: Box<Expr>,
-        args: Vec<(Span, Expr)>,
+        args: Vec<CallArg<Expr>>,
     },
 
     /// Index into a collection as `collection[index]`.
@@ -172,17 +198,47 @@ pub enum Expr {
 
     /// Apply a unary operator.
     UnOp {
-        op: UnOp,
         op_span: Span,
+        op: UnOp,
+        body_span: Span,
         body: Box<Expr>,
     },
 
     /// Apply a binary operator.
     BinOp {
-        op: BinOp,
         op_span: Span,
+        op: BinOp,
+        lhs_span: Span,
         lhs: Box<Expr>,
+        rhs_span: Span,
         rhs: Box<Expr>,
+    },
+
+    /// Apply a dynamic type check.
+    ///
+    /// This node is not representable by the concrete syntax tree. After
+    /// parsing and abstracting, this node is not part of the AST. Only in the
+    /// typecheck phase, the typechecker can decide to insert these nodes.
+    CheckType {
+        /// The span of the expression that we are checking.
+        span: Span,
+        /// The type requirement that the value has to satisfy.
+        type_: SourcedType,
+        body: Box<Expr>,
+    },
+
+    /// Define a lambda function.
+    ///
+    /// This node only exists after typechecking. The typechecker converts all
+    /// [`Expr::Function`] nodes to [`Expr::TypedFunction`]. The arguments and
+    /// their names are stored in the type. The argument names are always
+    /// present.
+    TypedFunction {
+        /// Source location of the function, including args, `=>`, and body.
+        span: Span,
+        body_span: Span,
+        body: Box<Expr>,
+        type_: Rc<types::Function>,
     },
 }
 
@@ -197,6 +253,8 @@ pub enum Yield {
     Assoc {
         /// The span of the `=` or `:`.
         op_span: Span,
+        key_span: Span,
+        value_span: Span,
         key: Box<Expr>,
         value: Box<Expr>,
     },
@@ -232,18 +290,6 @@ pub enum Seq {
     },
 }
 
-impl Seq {
-    /// Return the innermost seq, which is either an `Elem` or `Assoc`.
-    pub fn innermost(&self) -> &Yield {
-        match self {
-            Seq::Yield(y) => y,
-            Seq::Stmt { body, .. } => body.innermost(),
-            Seq::For { body, .. } => body.innermost(),
-            Seq::If { body, .. } => body.innermost(),
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum Type {
     /// A term is a named type, not necessarily primitive.
@@ -265,6 +311,7 @@ pub enum Type {
 
     /// A function type with zero or more arguments, and one result type.
     Function {
+        span: Span,
         args: Box<[Type]>,
         result: Box<Type>,
     },

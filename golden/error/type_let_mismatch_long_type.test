@@ -6,11 +6,11 @@ let x: Dict[
 x
 
 # output:
-stdin:2:5
+stdin:5:5
   ╷
-2 │ let x: Dict[
-  ╵     ^
-Error: Type mismatch. Expected a value that fits this type:
+5 │ ] = null;
+  ╵     ^~~~
+Error: Type mismatch. Expected this type:
 
   Dict[
     String,
@@ -20,6 +20,10 @@ Error: Type mismatch. Expected a value that fits this type:
     ],
   ]
 
-But got this value:
+But found Null.
 
-  null
+stdin:2:8
+  ╷
+2 │ let x: Dict[
+  ╵        ^~~~~
+Note: Expected Dict because of this annotation.

@@ -1,0 +1,42 @@
+// See also the other variants of this test. In this case we have multiple error
+// arguments.
+let f: (String, Int) -> Bool = (x, y) => true;
+let g: (Int, String) -> Bool = f;
+null
+
+# output:
+stdin:4:32
+  ╷
+4 │ let g: (Int, String) -> Bool = f;
+  ╵                                ^
+Error: Type mismatch inside this type:
+
+  (<E1>, <E2>) -> Bool
+
+At E1: Expected String but found Int.
+
+At E2: Expected Int but found String.
+
+stdin:3:9
+  ╷
+3 │ let f: (String, Int) -> Bool = (x, y) => true;
+  ╵         ^~~~~~
+Note: Expected String because of this annotation.
+
+stdin:4:9
+  ╷
+4 │ let g: (Int, String) -> Bool = f;
+  ╵         ^~~
+Note: Found Int because of this annotation.
+
+stdin:3:17
+  ╷
+3 │ let f: (String, Int) -> Bool = (x, y) => true;
+  ╵                 ^~~
+Note: Expected Int because of this annotation.
+
+stdin:4:14
+  ╷
+4 │ let g: (Int, String) -> Bool = f;
+  ╵              ^~~~~~
+Note: Found String because of this annotation.

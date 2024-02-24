@@ -1,0 +1,6 @@
+// This tests inference of the collection type arguments,
+// and in particular meet() with null on both sides.
+[null, null]
+
+# output:
+[null, null]

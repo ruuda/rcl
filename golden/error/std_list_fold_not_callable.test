@@ -11,7 +11,7 @@ stdin:1:13
   ╷
 1 │ [1].fold(0, "not callable")
   ╵             ^~~~~~~~~~~~~~
-In call to reduce function from 'List.fold'.
+In internal call to reduce function from 'List.fold'.
 
 stdin:1:9
   ╷
