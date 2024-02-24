@@ -10,6 +10,7 @@
  * Actually implement the `--in-place` for `rcl fmt`.
  * Add a `--follow` for `rcl fmt` that follows imports.
  * Add an `rcl build` subcommand.
+ * Add `to_lower_ascii`, `to_upper_ascii` functions. Maybe even `to_snake_case`.
 
 ## Mid-term
 
