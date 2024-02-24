@@ -369,9 +369,6 @@ impl<'a> TypeChecker<'a> {
             } => {
                 self.check_expr(type_bool_condition(), *condition_span, condition)?;
 
-                // TODO: Delete the runtime type check in the evaluator, this is
-                // now a static typecheck.
-
                 let type_then = self.check_expr(expected, *span_then, body_then)?;
                 let type_else = self.check_expr(expected, *span_else, body_else)?;
 
@@ -614,7 +611,7 @@ impl<'a> TypeChecker<'a> {
         //     let x: Int = not 42;
         //
         // Already at the `not`, we know the result is Bool but we need Int, so
-        // that's an error. But there *another* error, which is applying `not`
+        // that's an error. But there's *another* error, which is applying `not`
         // to an int, and if we report only one type error, that seems like it
         // should come first, as it comes first in the evaluation order too.
         let (body_type, result_type) = match op {
@@ -928,9 +925,6 @@ impl<'a> TypeChecker<'a> {
 /// This enum tracks what we know about the collection so far. We either track
 /// an expected element type, or an inferred one. `TypeChecker::check_yield`
 /// takes this and a `Yield` and incorporates the information.
-///
-/// TODO: The equivalent SeqOut may be removed from the evaluator. Maybe we can
-/// substitute more specialized AST nodes for the different collections.
 enum SeqType {
     /// It's still unclear whether this is a set or a dict.
     SetOrDict,
