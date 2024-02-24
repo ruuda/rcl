@@ -42,7 +42,6 @@ fn get_primitive_type(name: &str) -> Option<Type> {
         "Null" => Some(Type::Null),
         "String" => Some(Type::String),
         "Void" => Some(Type::Void),
-        // TODO: Should we allow `_` as type too?
         _ => None,
     }
 }
