@@ -351,7 +351,7 @@ fn builtin_key_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
 builtin_method!(
     "List.key_by",
     // TODO: Add type variables so we can describe this more accurately.
-    (get_key: (fn (element: Any) -> Any)) -> {Any: [Any]},
+    (get_key: (fn (element: Any) -> Any)) -> {Any: Any},
     const LIST_KEY_BY,
     builtin_list_key_by
 );
@@ -363,7 +363,7 @@ fn builtin_list_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> 
 builtin_method!(
     "Set.key_by",
     // TODO: Add type variables so we can describe this more accurately.
-    (get_key: (fn (element: Any) -> Any)) -> {Any: {Any}},
+    (get_key: (fn (element: Any) -> Any)) -> {Any: Any},
     const SET_KEY_BY,
     builtin_set_key_by
 );
