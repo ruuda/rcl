@@ -22,16 +22,16 @@ pub enum Mismatch {
         actual: SourcedType,
     },
 
-    /// Both sides are a list, but the element type has an issue.
+    /// The type is a subtype of list, but the element type has an issue.
     List(Box<TypeDiff<SourcedType>>),
 
-    /// Both sides are a set, but the element type has an issue.
+    /// The type is a subtype of set, but the element type has an issue.
     Set(Box<TypeDiff<SourcedType>>),
 
-    /// Both sides are a collection, but the element type has an issue.
+    /// The type is a subtype of collection, but the element type has an issue.
     Collection(Box<TypeDiff<SourcedType>>),
 
-    /// Both sides are a dict, but the key or value (or both) have issues.
+    /// The type is a subtype of dict, but the key or value (or both) have issues.
     Dict(Box<TypeDiff<SourcedType>>, Box<TypeDiff<SourcedType>>),
 
     /// Both sides are functions of the same arity, but args or result have issues.
