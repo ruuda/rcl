@@ -28,4 +28,4 @@ stdin:3:14
   ╷
 3 │ let source = {};
   ╵              ^~
-Note: Found type because of this value.
+Note: Found Dict because of this value.

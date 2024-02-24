@@ -14,20 +14,15 @@ use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};
 use crate::source::Span;
 use crate::type_diff::{report_type_mismatch, Mismatch, TypeDiff};
-use crate::type_source::Side;
-use crate::types::{FunctionArg, SourcedType, Type};
+use crate::types::{FunctionArg, Side, SourcedType, Type};
 
 /// Render a type.
 pub fn format_type(type_: &Type) -> Doc {
     match type_ {
-        Type::Any => Doc::from("Any").with_markup(Markup::Type),
-        Type::Void => Doc::from("Void").with_markup(Markup::Type),
-
-        // Primitive types.
-        Type::Bool => Doc::from("Bool").with_markup(Markup::Type),
-        Type::Int => Doc::from("Int").with_markup(Markup::Type),
-        Type::Null => Doc::from("Null").with_markup(Markup::Type),
-        Type::String => Doc::from("String").with_markup(Markup::Type),
+        // For primitive types the short name is the full name.
+        Type::Any | Type::Void | Type::Bool | Type::Int | Type::Null | Type::String => {
+            Doc::from(type_.short_name()).with_markup(Markup::Type)
+        }
 
         // Collection types.
         Type::Dict(kv) => concat! {
@@ -121,16 +116,10 @@ impl<'a> DiffFormatter<'a> {
             .error("Type mismatch inside this type:")
             .with_body(Doc::Concat(parts).into_owned());
         for inner_error in state.errors.iter() {
-            error = inner_error.expected.source.clarify_error(
-                Side::Expected,
-                inner_error.expected,
-                error,
-            );
-            error =
-                inner_error
-                    .actual
-                    .source
-                    .clarify_error(Side::Actual, inner_error.actual, error);
+            inner_error
+                .expected
+                .explain_error(Side::Expected, &mut error);
+            inner_error.actual.explain_error(Side::Actual, &mut error);
         }
         error
     }

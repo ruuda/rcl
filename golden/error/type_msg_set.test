@@ -19,4 +19,4 @@ stdin:2:8
   ╷
 2 │ let x: Set[Int] = [];
   ╵        ^~~~~~~~
-Note: The expected type is specified here.
+Note: Expected Set because of this annotation.

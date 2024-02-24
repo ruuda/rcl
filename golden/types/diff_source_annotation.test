@@ -28,4 +28,4 @@ stdin:3:13
   ╷
 3 │ let source: List[Int] = [];
   ╵             ^~~~~~~~~
-Note: Found a type that is specified here.
+Note: Found List because of this annotation.

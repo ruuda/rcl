@@ -19,9 +19,9 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::type_diff::{Mismatch, TypeDiff};
-use crate::type_source::{Side, Source};
+use crate::type_source::Source;
 use crate::types;
-use crate::types::{SourcedType, Type};
+use crate::types::{Side, SourcedType, Type};
 
 /// The arguments to a function call at runtime.
 pub struct FunctionCall<'a> {
@@ -275,7 +275,7 @@ impl Value {
             }
 
             _ => {
-                let error = at.error("Type mismatch.").with_body(concat! {
+                let mut error = at.error("Type mismatch.").with_body(concat! {
                     "Expected a value that fits this type:"
                     Doc::HardBreak Doc::HardBreak
                     indent! { format_type(req_type).into_owned() }
@@ -284,10 +284,8 @@ impl Value {
                     Doc::HardBreak Doc::HardBreak
                     indent! { format_rcl(self).into_owned() }
                 });
-                type_
-                    .source
-                    .clarify_error(Side::Expected, type_, error)
-                    .err()
+                type_.explain_error(Side::Expected, &mut error);
+                return error.err();
             }
         }
     }

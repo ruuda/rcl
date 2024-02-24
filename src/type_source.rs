@@ -7,16 +7,7 @@
 
 //! Type sources are where types come from, used for error reporting.
 
-use crate::error::Error;
-use crate::pprint::{concat, Doc};
 use crate::source::Span;
-use crate::types::AsTypeName;
-
-/// What side to explain the source of a type for.
-pub enum Side {
-    Expected,
-    Actual,
-}
 
 /// The place where a type was constructed.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -85,76 +76,6 @@ impl Source {
             (other, Source::Builtin) => *other,
             // All else equal, we go with the source that we discovered first.
             (first, _) => *first,
-        }
-    }
-
-    /// Add context to a type error about why a particular type was expected.
-    /// TODO: Move to SourcedType? Or at least add a shorthand there?
-    pub fn clarify_error<T: AsTypeName>(&self, side: Side, type_: &T, error: Error) -> Error {
-        let type_name = if type_.is_atom() {
-            // If it's an atom, we have space to put the name of the type in the
-            // sentence. But remove the coloring, it gets too distracting as the
-            // type here is not the main purpose of the sentence.
-            match type_.format_type() {
-                Doc::Markup(_, type_name) => *type_name,
-                _ => unreachable!("Formatted atoms have markup."),
-            }
-        } else {
-            // If it's not an atom, the type might be huge, so we don't put it
-            // in the middle of the sentence, we just say "type" and hope the
-            // message is still clear enough.
-            "type".into()
-        };
-        let side_verb = match side {
-            Side::Expected => "Expected ",
-            Side::Actual => "Found ",
-        };
-        match self {
-            Source::None => error,
-
-            // TODO: Add information about the builtin (function and arg name?).
-            // At this point builtin types are not involved in type errors,
-            // because we don't resolve anything that produces them at typecheck
-            // time, and we don't yet typecheck arguments in function calls.
-            Source::Builtin => panic!("Currently builtins are not involved in type errors."),
-
-            Source::Literal(at) => {
-                let msg = concat! {
-                    side_verb type_name " because of this value."
-                };
-                error.with_note(*at, msg)
-            }
-
-            Source::EmptyCollection(at) => {
-                let msg = concat! {
-                    side_verb type_name " because this collection is empty."
-                };
-                error.with_note(*at, msg)
-            }
-
-            Source::Annotation(at) => {
-                let msg = match side {
-                    _ if type_.is_atom() => {
-                        concat! { side_verb type_name " because of this annotation." }
-                    }
-                    Side::Expected => "The expected type is specified here.".into(),
-                    Side::Actual => "Found a type that is specified here.".into(),
-                };
-                error.with_note(*at, msg)
-            }
-
-            Source::Operator(at) => error.with_note(
-                *at,
-                concat! {
-                    side_verb type_name " because of this operator."
-                },
-            ),
-
-            Source::Condition => {
-                error.with_help("There is no implicit conversion, conditions must be boolean.")
-            }
-
-            Source::IndexList => error.with_help("List indices must be integers."),
         }
     }
 }

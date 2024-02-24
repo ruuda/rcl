@@ -11,8 +11,7 @@
 use crate::error::{IntoError, Result};
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
-use crate::type_source::Side;
-use crate::types::{AsTypeName, FunctionArg, SourcedType, Type};
+use crate::types::{AsTypeName, FunctionArg, Side, SourcedType, Type};
 
 /// A component in a subtype check `T ≤ U` where `U` is expected and `T` encountered.
 #[derive(Debug)]
@@ -96,9 +95,7 @@ impl<T> TypeDiff<T> {
                 };
 
                 // If we have it, explain why the expected type is expected.
-                error = expected
-                    .source
-                    .clarify_error(Side::Expected, &expected, error);
+                expected.explain_error(Side::Expected, &mut error);
 
                 // If the actual type doesn't come from the span that we are
                 // attributing the error to, then also include a note about that.
@@ -107,7 +104,7 @@ impl<T> TypeDiff<T> {
                     None => true,
                 };
                 if should_report_source {
-                    error = actual.source.clarify_error(Side::Actual, &actual, error);
+                    actual.explain_error(Side::Actual, &mut error);
                 }
                 error.err()
             }

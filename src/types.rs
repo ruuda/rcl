@@ -11,7 +11,7 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use crate::ast::{CallArg, Ident};
-use crate::error::{IntoError, Result};
+use crate::error::{Error, IntoError, Result};
 use crate::fmt_type::format_type;
 use crate::markup::Markup;
 use crate::pprint::{concat, Doc};
@@ -64,6 +64,25 @@ impl Type {
             self,
             Type::Bool | Type::Int | Type::Null | Type::String | Type::Void | Type::Any,
         )
+    }
+
+    /// Return a short name for the type, excluding generic arguments.
+    ///
+    /// For atoms this returns the regular name, for non-atoms it returns e.g.
+    /// `List` for any `List[T]`.
+    pub fn short_name(&self) -> &'static str {
+        match self {
+            Type::Any => "Any",
+            Type::Void => "Void",
+            Type::Null => "Null",
+            Type::Bool => "Bool",
+            Type::Int => "Int",
+            Type::String => "String",
+            Type::Dict(..) => "Dict",
+            Type::List(..) => "List",
+            Type::Set(..) => "Set",
+            Type::Function(..) => "Function",
+        }
     }
 }
 
@@ -297,6 +316,12 @@ impl Function {
     }
 }
 
+/// What side to explain the source of a type for.
+pub enum Side {
+    Expected,
+    Actual,
+}
+
 /// A type and its source.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct SourcedType {
@@ -490,6 +515,57 @@ impl SourcedType {
                 actual: self.clone(),
                 expected: other.clone(),
             }),
+        }
+    }
+
+    /// Add context to a type error about why a particular type was expected.
+    pub fn explain_error(&self, side: Side, error: &mut Error) {
+        let side_verb = match side {
+            Side::Expected => "Expected ",
+            Side::Actual => "Found ",
+        };
+
+        // Note, we don't highlight the type name in the usual type color.
+        // The messages become too distracting if we do.
+        let type_name = self.type_.short_name();
+
+        match &self.source {
+            Source::None => (),
+
+            // TODO: Add information about the builtin (function and arg name?).
+            // At this point builtin types are not involved in type errors,
+            // because we don't resolve anything that produces them at typecheck
+            // time, and we don't yet typecheck arguments in function calls.
+            Source::Builtin => panic!("Currently builtins are not involved in type errors."),
+
+            Source::Literal(at) => {
+                let msg = concat! { side_verb type_name " because of this value." };
+                error.add_note(*at, msg)
+            }
+
+            Source::EmptyCollection(at) => {
+                let msg = concat! { side_verb type_name " because this collection is empty." };
+                error.add_note(*at, msg)
+            }
+
+            Source::Annotation(at) => {
+                let msg = concat! { side_verb type_name " because of this annotation." };
+                error.add_note(*at, msg)
+            }
+
+            Source::Operator(at) => error.add_note(
+                *at,
+                concat! { side_verb type_name " because of this operator." },
+            ),
+
+            Source::Condition => {
+                error.set_help("There is no implicit conversion, conditions must be boolean.")
+            }
+
+            // TODO: Using `help` instead of `note` is not great because there
+            // can only be one help per error. Either extend that, but probably
+            // better, add spans to the sources?
+            Source::IndexList => error.set_help("List indices must be integers."),
         }
     }
 }

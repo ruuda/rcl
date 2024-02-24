@@ -16,4 +16,4 @@ stdin:1:9
   ╷
 1 │ let xs: Dict[Int, Int] = null;
   ╵         ^~~~~~~~~~~~~~
-Note: The expected type is specified here.
+Note: Expected Dict because of this annotation.

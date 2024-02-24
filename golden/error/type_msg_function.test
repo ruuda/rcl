@@ -17,4 +17,4 @@ stdin:2:8
   ╷
 2 │ let f: (Int, String) -> Bool = "not a function";
   ╵        ^~~~~~~~~~~~~~~~~~~~~
-Note: The expected type is specified here.
+Note: Expected Function because of this annotation.

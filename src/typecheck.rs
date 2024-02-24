@@ -20,8 +20,8 @@ use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::type_diff::{report_type_mismatch, Typed};
-use crate::type_source::{Side, Source};
-use crate::types::{Dict, Function, FunctionArg, SourcedType, Type};
+use crate::type_source::Source;
+use crate::types::{Dict, Function, FunctionArg, Side, SourcedType, Type};
 
 pub type Env = crate::env::Env<SourcedType>;
 
@@ -267,13 +267,13 @@ impl<'a> TypeChecker<'a> {
                 // If we have a requirement on the element type, extract it.
                 let mut seq_type = match &expected.type_ {
                     Type::Set(t) => SeqType::TypedSet {
-                        set_source: expected.source,
+                        set_source: expected.clone(),
                         elem_super: t.as_ref().clone(),
                         elem_infer: SourcedType::void(expr_span),
                     },
                     Type::Dict(kv) => {
                         SeqType::TypedDict {
-                            dict_source: expected.source,
+                            dict_source: expected.clone(),
                             key_super: kv.key.clone(),
                             key_infer: SourcedType::void(expr_span),
                             value_super: kv.value.clone(),
@@ -473,18 +473,15 @@ impl<'a> TypeChecker<'a> {
                             .err()
                     }
                     not_indexable => {
-                        let error = open
+                        let mut error = open
                             .error("Indexing is not supported here.")
                             .with_body(concat!{
                                 "Expected a dict or list, but got:"
                                 Doc::HardBreak Doc::HardBreak
                                 indent! { format_type(not_indexable).into_owned() }
                             });
-                        return collection_type.source.clarify_error(
-                            Side::Actual,
-                            &collection_type,
-                            error
-                        ).err();
+                        collection_type.explain_error(Side::Actual, &mut error);
+                        return error.err();
                     }
                 };
                 self.check_expr(index_type, *index_span, index)?;
@@ -679,17 +676,15 @@ impl<'a> TypeChecker<'a> {
             // union operator and add interpolation instead.
             (Type::Any | Type::Dict(..) | Type::Set(..), _) => type_any().clone(),
             (not_collection, _) => {
-                let error = op_span.error(concat! {
+                let mut error = op_span.error(concat! {
                     "Expected Dict or Set as the left-hand side of "
                     Doc::highlight("|")
                     " operator, but found this:"
                     Doc::HardBreak Doc::HardBreak
                     indent! { format_type(not_collection).into_owned() }
                 });
-                return lhs_type
-                    .source
-                    .clarify_error(Side::Actual, &lhs_type, error)
-                    .err();
+                lhs_type.explain_error(Side::Actual, &mut error);
+                return error.err();
             }
         };
 
@@ -808,10 +803,11 @@ impl<'a> TypeChecker<'a> {
                     Ok(seq_type)
                 }
                 SeqType::TypedDict { dict_source, .. } => {
-                    let err = span.error(
+                    let mut error = span.error(
                         "Expected key-value, not a scalar element, because the collection is a dict."
                     );
-                    dict_source.clarify_error(Side::Expected, &"Dict", err).err()
+                    dict_source.explain_error(Side::Expected, &mut error);
+                    error.err()
                 }
                 SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet) => {
                     let elem_type = self.check_expr(type_any(), *span, value)?;
@@ -847,10 +843,11 @@ impl<'a> TypeChecker<'a> {
                         "Key-value pairs are allowed in dicts, which are enclosed in '{}', not '[]'.",
                     ).err(),
                 SeqType::TypedSet { set_source, .. } => {
-                    let err = op_span.error(
+                    let mut error = op_span.error(
                         "Expected scalar element, not key-value, because the collection is a set."
                     );
-                    set_source.clarify_error(Side::Expected, &"Set", err).err()
+                    set_source.explain_error(Side::Expected, &mut error);
+                    error.err()
                 }
                 SeqType::UntypedSet(first, _elem) => op_span
                     .error("Expected scalar element, not key-value.")
@@ -950,7 +947,7 @@ enum SeqType {
     /// We expect a set here with the following element type.
     TypedSet {
         /// The reason we are expecting a set.
-        set_source: Source,
+        set_source: SourcedType,
         /// The required element type. Supertype of the inferred type.
         elem_super: SourcedType,
         /// The inferred element type, the `meet` of all elements.
@@ -960,7 +957,7 @@ enum SeqType {
     /// We expect a dict here with the following key-value types.
     TypedDict {
         /// The reason we are expecting a dict.
-        dict_source: Source,
+        dict_source: SourcedType,
         /// The required key type. Supertype of the inferred type.
         key_super: SourcedType,
         /// The inferred key type, the `meet` of all keys.

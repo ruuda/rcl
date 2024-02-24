@@ -18,4 +18,4 @@ stdin:1:8
   ╷
 1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
   ╵        ^~~~~~~~~~~~~~~~~~~~~
-Note: The expected type is specified here.
+Note: Expected Function because of this annotation.

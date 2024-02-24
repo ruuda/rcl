@@ -19,4 +19,4 @@ stdin:1:9
   ╷
 1 │ let f = x => 0;
   ╵         ^~~~~~
-Note: Expected type because of this value.
+Note: Expected Function because of this value.
