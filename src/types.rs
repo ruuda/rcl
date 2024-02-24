@@ -559,10 +559,18 @@ impl SourcedType {
             // The other way around, a Collection[T] could be a List[U] or
             // Set[U], but we only know that at runtime.
             (Type::Collection(e1), Type::List(e2)) => match e1.is_subtype_of(e2) {
+                // TODO: If we get Ok, we may have learned a more accurate
+                // element type than what we get from `other`. E.g. if we have
+                // `Collection[Int]` but expect `List[Any]`, then if the deferred
+                // check passes, it's a `List[Int]`, not just `List[Any]`. But
+                // I don't want to check that right now, probably `TypeDiff`
+                // should distinguish between "Ok and identical" and "Ok and new
+                // type".
                 TypeDiff::Ok(..) | TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
                 error => TypeDiff::Error(Mismatch::List(error.into())),
             },
             (Type::Collection(e1), Type::Set(e2)) => match e1.is_subtype_of(e2) {
+                // TODO: See note above for the `List` case.
                 TypeDiff::Ok(..) | TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
                 error => TypeDiff::Error(Mismatch::Set(error.into())),
             },
