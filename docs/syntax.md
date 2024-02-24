@@ -118,7 +118,7 @@ above.
 }
 ```
 
-Note, the empty collection `{}` is a dict, not a set.
+Note, without type annotations, the empty collection `{}` is a dict, not a set.
 
 ## Sets
 
@@ -132,13 +132,17 @@ list contains two identical sets:
 ]
 ```
 
-Note, the empty collection `{}` is a dict, not a set. There is currently no
-literal for the empty set. It is possible to work around this using
-comprehensions:
+Note, without type annotations, the empty collection `{}` is a dict, not a set.
+To produce an empty set, we can use a set comprehension:
 
 ```rcl
-// An empty set.
 {for x in []: x}
+```
+
+Or we can use a type annotation to force `{}` to be a set:
+
+```rcl
+let empty_set: Set[Int] = {};
 ```
 
 ## Let bindings
