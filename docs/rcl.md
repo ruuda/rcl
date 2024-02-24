@@ -4,13 +4,16 @@
 
 ## Description
 
-The `rcl` executable; see the commands for more details:
+The `rcl` executable; see the commands for more details. The main commands are:
+
+ * [evaluate](rcl_evaluate.md)
+ * [query](rcl_query.md)
+
+Other commands:
 
  * [build](rcl_build.md)
- * [evaluate](rcl_evaluate.md)
  * [format](rcl_format.md)
  * [highlight](rcl_highlight.md)
- * [query](rcl_query.md)
 
 ## Global options
 
