@@ -318,7 +318,7 @@ impl<'a> TypeChecker<'a> {
                 let mut is_error = false;
                 // If we have a requirement on the element type, extract it.
                 let mut seq_type = match &expected.type_ {
-                    Type::Set(t) => SeqType::TypedSet {
+                    Type::Set(t) | Type::Collection(t) => SeqType::TypedSet {
                         set_source: expected.clone(),
                         elem_super: t.as_ref().clone(),
                         elem_infer: SourcedType::void(expr_span),
@@ -373,7 +373,7 @@ impl<'a> TypeChecker<'a> {
                 // This follows the same structure as `BraceLit`, see comments above.
                 let mut is_error = false;
                 let mut seq_type = match &expected.type_ {
-                    Type::List(t) => SeqType::TypedList {
+                    Type::List(t) | Type::Collection(t) => SeqType::TypedList {
                         elem_super: t.as_ref().clone(),
                         elem_infer: SourcedType::void(expr_span),
                     },
