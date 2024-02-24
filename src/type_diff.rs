@@ -8,7 +8,6 @@
 //! A type diff is the result of a subtype check.
 //!
 //! This module contains the definitions, and machinery for printing type diffs.
-/// An inner error of a `TypeDiff` for a subtype check `T ≤ U`.
 use crate::error::{IntoError, Result};
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
