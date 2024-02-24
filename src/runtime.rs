@@ -255,14 +255,14 @@ impl Value {
             (Type::String, Value::String(..)) => return Ok(()),
 
             // For compound types, we descend into them to check.
-            (Type::List(elem_type), Value::List(elems)) => {
+            (Type::List(elem_type) | Type::Collection(elem_type), Value::List(elems)) => {
                 for (i, elem) in elems.iter().enumerate() {
                     elem.is_instance_of(at, elem_type)
                         .map_err(|err| err.with_path_element(PathElement::Index(i)))?;
                 }
                 return Ok(());
             }
-            (Type::Set(elem_type), Value::Set(elems)) => {
+            (Type::Set(elem_type) | Type::Collection(elem_type), Value::Set(elems)) => {
                 for (i, elem) in elems.iter().enumerate() {
                     elem.is_instance_of(at, elem_type).map_err(|err|
                         // Even though sets don't strictly have indexes,

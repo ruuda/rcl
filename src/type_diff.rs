@@ -28,6 +28,9 @@ pub enum Mismatch {
     /// Both sides are a set, but the element type has an issue.
     Set(Box<TypeDiff<SourcedType>>),
 
+    /// Both sides are a collection, but the element type has an issue.
+    Collection(Box<TypeDiff<SourcedType>>),
+
     /// Both sides are a dict, but the key or value (or both) have issues.
     Dict(Box<TypeDiff<SourcedType>>, Box<TypeDiff<SourcedType>>),
 

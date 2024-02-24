@@ -53,6 +53,9 @@ pub enum Type {
     /// A set with the given element type.
     Set(Rc<SourcedType>),
 
+    /// Either a set or a list.
+    Collection(Rc<SourcedType>),
+
     /// A function.
     Function(Rc<Function>),
 
@@ -84,6 +87,7 @@ impl Type {
             Type::Dict(..) => "Dict",
             Type::List(..) => "List",
             Type::Set(..) => "Set",
+            Type::Collection(..) => "Collection",
             Type::Function(..) => "Function",
             Type::Union(..) => "Union",
         }
@@ -460,6 +464,16 @@ impl SourcedType {
                 // TODO: If the types are the same on both sides, we can meet the sources.
                 (type_, Source::None)
             }
+            // If you mix collection types, then we can at least preserve that
+            // it is a collection.
+            (
+                Type::List(s1) | Type::Set(s1) | Type::Collection(s1),
+                Type::List(s2) | Type::Set(s2) | Type::Collection(s2),
+            ) => {
+                let type_ = Type::Collection(Rc::new(s1.meet(s2)));
+                // TODO: If the types are the same on both sides, we can meet the sources.
+                (type_, Source::None)
+            }
 
             // TODO: Support meeting functions.
             (Type::Function(_), Type::Function(_)) => (Type::Any, Source::None),
@@ -528,9 +542,28 @@ impl SourcedType {
                 TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
                 error => TypeDiff::Error(Mismatch::List(error.into())),
             },
-            (Type::Set(l1), Type::Set(l2)) => match l1.is_subtype_of(l2) {
+            (Type::Set(e1), Type::Set(e2)) => match e1.is_subtype_of(e2) {
                 TypeDiff::Ok(..) => TypeDiff::Ok(self.clone()),
                 TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
+                error => TypeDiff::Error(Mismatch::Set(error.into())),
+            },
+            // List[T], Set[T], and Collection[T] are all subtypes of
+            // Collection[U] when T ≤ U.
+            (Type::List(e1) | Type::Set(e1) | Type::Collection(e1), Type::Collection(e2)) => {
+                match e1.is_subtype_of(e2) {
+                    TypeDiff::Ok(..) => TypeDiff::Ok(self.clone()),
+                    TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
+                    error => TypeDiff::Error(Mismatch::Collection(error.into())),
+                }
+            }
+            // The other way around, a Collection[T] could be a List[U] or
+            // Set[U], but we only know that at runtime.
+            (Type::Collection(e1), Type::List(e2)) => match e1.is_subtype_of(e2) {
+                TypeDiff::Ok(..) | TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
+                error => TypeDiff::Error(Mismatch::List(error.into())),
+            },
+            (Type::Collection(e1), Type::Set(e2)) => match e1.is_subtype_of(e2) {
+                TypeDiff::Ok(..) | TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
                 error => TypeDiff::Error(Mismatch::Set(error.into())),
             },
             (Type::Dict(d1), Type::Dict(d2)) => {
