@@ -9,7 +9,7 @@
  * Accept an expression through `--expr` for `rcl evaluate`.
  * Actually implement the `--in-place` for `rcl fmt`.
  * Add a `--follow` for `rcl fmt` that follows imports.
- * Add a way to output a depfile for Make/Ninja.
+ * Add an `rcl build` subcommand.
 
 ## Mid-term
 
