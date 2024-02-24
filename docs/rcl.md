@@ -6,6 +6,7 @@
 
 The `rcl` executable; see the commands for more details:
 
+ * [build](rcl_build.md)
  * [evaluate](rcl_evaluate.md)
  * [format](rcl_format.md)
  * [highlight](rcl_highlight.md)

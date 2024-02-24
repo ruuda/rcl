@@ -22,6 +22,7 @@ Usage:
   rcl [<options>] <command> <arguments>
 
 Commands:
+  build        Write formatted evaluation results to files.
   evaluate     Evaluate a document to an output format.
   format       Auto-format an RCL document.
   highlight    Print a document with syntax highlighting.
@@ -47,6 +48,50 @@ Color modes:
           variable is not set to a non-empty string. This is the default.
   html    Output HTML tags in the same style as Pandoc.
   none    Do not color output at all.
+"#;
+
+const USAGE_BUILD: &str = r#"
+RCL -- A reasonable configuration language.
+
+Usage:
+  rcl [<options>] build [<buildfile>]
+
+The 'build' command writes evaluated documents to files. It can be used to
+update many generated files in one command, similar to a build tool like Make
+or Ninja, but with the build targets specified in RCL rather than a Makefile.
+The build file is itself an RCL document that should evaluate to a dict that
+maps target file paths to the contents and output format options for that file.
+
+Arguments:
+  <buildfile>       The file with build targets to process, or '-' for stdin.
+                    Defaults to 'build.rcl' when no file is specified.
+
+Options:
+  --sandbox <mode>  Sandboxing mode, see 'rcl evaluate --help` for an
+                    explanation of the modes. Defaults to 'workdir'.
+
+See also --help for global options.
+
+Build targets are dicts with these keys:
+  banner: Bool     For formats that support comments, whether to include a line
+                   that says the file was generated. Optional, default true.
+  contents: Any    The value to format and write to the output file.
+  format: String   The output format, must be one of the formats supported by
+                   'rcl evaluate --format', see 'rcl evaluate --help'.
+  width: Int       Target width for formatting, as for 'rcl evaluate --width'.
+                   Optional, defaults to 80.
+
+Example:
+  {
+    "alice.toml": {
+      contents = { name = "Alice", uid = 42 },
+      format = "toml",
+    },
+    "bob.toml": {
+      contents = { name = "Bob", uid = 43 },
+      format = "toml",
+    },
+  }
 "#;
 
 const USAGE_EVAL_QUERY: &str = r#"
@@ -384,6 +429,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     }
 
     let help_opt = match cmd_help {
+        Some("build") => Some(Cmd::Help { usage: USAGE_BUILD }),
         Some("evaluate") => Some(Cmd::Help {
             usage: USAGE_EVAL_QUERY,
         }),

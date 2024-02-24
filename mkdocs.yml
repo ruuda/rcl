@@ -39,6 +39,7 @@ nav:
       - "Python bindings": "python_bindings.md"
   - "Command reference":
       - "rcl": "rcl.md"
+      - "rcl build": "rcl_build.md"
       - "rcl evaluate": "rcl_evaluate.md"
       - "rcl format": "rcl_format.md"
       - "rcl highlight": "rcl_highlight.md"
