@@ -103,10 +103,7 @@ impl<T> TypeDiff<T> {
                 // If the actual type doesn't come from the span that we are
                 // attributing the error to, then also include a note about that.
                 let should_report_source = match actual.source.span() {
-                    // TODO: Should it be contains, or just equality? Can there
-                    // be complex expressions where it helps to single out a
-                    // sub-span?
-                    Some(src_span) => !at.contains(src_span),
+                    Some(src_span) => at != src_span,
                     None => true,
                 };
                 if should_report_source {
