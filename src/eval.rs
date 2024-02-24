@@ -912,12 +912,7 @@ impl<'a> Evaluator<'a> {
 
     fn eval_stmt(&mut self, env: &mut Env, stmt: &Stmt) -> Result<()> {
         match stmt {
-            Stmt::Let {
-                ident,
-                value_span: _,
-                value,
-                ..
-            } => {
+            Stmt::Let { ident, value, .. } => {
                 // Note, this is not a recursive let, the variable is not bound
                 // when we evaluate the expression. Even if the let binding has
                 // a type annotation, we don't check it here; the typechecker
