@@ -253,6 +253,30 @@ impl App {
                 std::process::exit(0)
             }
 
+            Cmd::Build { eval_opts, fname } => {
+                // Evaluation options support a depfile, but this is not implemented
+                // for builds, we'd have to put multiple output filenames in there
+                // and that is not supported right now.
+                if eval_opts.output_depfile.is_some() {
+                    return Error::new("Generating depfiles is not supported for 'rcl build'.")
+                        .err();
+                }
+
+                self.loader
+                    .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
+
+                // TODO: We can make these members, then we can share a lot of code between commands!
+                let mut tracer = self.get_tracer();
+                let mut type_env = typecheck::prelude();
+                let mut value_env = runtime::prelude();
+                let doc = self.loader.load_cli_target(&fname)?;
+                let val = self
+                    .loader
+                    .evaluate(&mut type_env, &mut value_env, doc, &mut tracer)?;
+
+                rcl::cmd_build::execute_build(val)
+            }
+
             Cmd::Evaluate {
                 eval_opts,
                 style_opts,

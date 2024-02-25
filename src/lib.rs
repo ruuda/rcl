@@ -16,6 +16,7 @@ mod cli_utils;
 pub mod abstraction;
 pub mod ast;
 pub mod cli;
+pub mod cmd_build;
 pub mod cst;
 pub mod env;
 pub mod error;

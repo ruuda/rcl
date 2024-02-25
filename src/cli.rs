@@ -56,11 +56,11 @@ RCL -- A reasonable configuration language.
 Usage:
   rcl [<options>] build [<buildfile>]
 
-The 'build' command writes evaluated documents to files. It can be used to
-update many generated files in one command, similar to a build tool like Make
-or Ninja, but with the build targets specified in RCL rather than a Makefile.
-The build file is itself an RCL document that should evaluate to a dict that
-maps target file paths to the contents and output format options for that file.
+The 'build' command writes formatted values to files. It can be used to update
+many generated files in one command, similar to a build tool like Make or Ninja,
+but with the build targets specified in RCL rather than a makefile. The build
+file is an RCL document that should evaluate to a dict that maps output file
+paths to targets. Targets are dicts with fields as described below.
 
 Arguments:
   <buildfile>       The file with build targets to process, or '-' for stdin.
@@ -72,16 +72,20 @@ Options:
 
 See also --help for global options.
 
-Build targets are dicts with these keys:
-  banner: Bool     For formats that support comments, whether to include a line
-                   that says the file was generated. Optional, default true.
-  contents: Any    The value to format and write to the output file.
-  format: String   The output format, must be one of the formats supported by
-                   'rcl evaluate --format', see 'rcl evaluate --help'.
-  width: Int       Target width for formatting, as for 'rcl evaluate --width'.
-                   Optional, defaults to 80.
+Build target fields:
+
+  banner: String    For formats that support comments, a message to include at
+                    the top of the file. This field is optional, it defaults to
+                    a message that says the file was generated. Set this to an
+                    empty string to disable the banner.
+  contents: Any     The value to format and write to the output file.
+  format: String    The output format, must be one of the formats supported by
+                    'rcl evaluate --format', see 'rcl evaluate --help'.
+  width: Int        Target width for formatting, as for 'rcl evaluate --width'.
+                    Optional, defaults to 80.
 
 Example:
+
   {
     "alice.toml": {
       contents = { name = "Alice", uid = 42 },
@@ -262,6 +266,10 @@ pub enum OutputTarget {
 /// The different subcommands supported by the main program.
 #[derive(Debug, Eq, PartialEq)]
 pub enum Cmd {
+    Build {
+        eval_opts: EvalOptions,
+        fname: Target,
+    },
     Evaluate {
         eval_opts: EvalOptions,
         style_opts: StyleOptions,
@@ -379,6 +387,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 is_version = true;
                 cmd_help = None;
             }
+            Arg::Plain("build") if cmd.is_none() => {
+                cmd = Some("build");
+            }
             Arg::Plain("evaluate") | Arg::Plain("eval") | Arg::Plain("e") if cmd.is_none() => {
                 cmd = Some("evaluate");
             }
@@ -449,6 +460,17 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     }
 
     let result = match cmd {
+        Some("build") => {
+            // Unlike other commands, for `rcl build` the input file defaults to
+            // build.rcl instead of stdin.
+            if targets.is_empty() {
+                targets.push(Target::File("build.rcl".to_string()));
+            }
+            Cmd::Build {
+                eval_opts,
+                fname: get_unique_target(targets)?,
+            }
+        }
         Some("evaluate") => Cmd::Evaluate {
             eval_opts,
             style_opts,
