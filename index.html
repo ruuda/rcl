@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The RCL Configuration Language</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:ital,wght@0,300..900;1,300..900&family=Red+Hat+Text:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+  <style>
+  * {
+    margin: 0;
+    padding: 0;
+    border-spacing: 0;
+    /* Colors: https://coolors.co/000f29-033563-f5e5b8-7b0d1e-9f2042 */
+    --oxford-blue: #000f29ff;
+    --berkeley-blue: #033563ff;
+    --dutch-white: #f5e5b8ff;
+    --burgundy: #7b0d1eff;
+    --amaranth-purple: #9f2042ff;
+  }
+
+  html {
+    background-color: var(--oxford-blue);
+    color: #fff;
+    font-family: 'Red Hat Text', sans-serif;
+    font-optical-sizing: auto;
+    font-size: 18px;
+    line-height: 1.5;
+    --margin: 1.5rem;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Red Hat Display', sans-serif;
+    font-size: 1rem;
+  }
+
+  a {
+    text-decoration: none;
+    color: var(--burgrundy);
+  }
+
+  header {
+    padding: var(--margin);
+    word-spacing: 1rem;
+  }
+
+  header h1 {
+    font-weight: 900;
+    display: inline;
+  }
+
+  section {
+    padding-left: var(--margin);
+    padding-right: var(--margin);
+  }
+
+  h1.tagline {
+    font-size: 2rem;
+    line-height: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  </style>
+
+</head>
+<body>
+  <header>
+    <nav>
+    <a href="/"><h1>RCL</h1></a>
+    <a href="https://docs.ruuda.nl/rcl">Docs</a>
+    <a href="https://github.com/ruuda/rcl">GitHub</a>
+    <a href="https://codeberg.org/ruuda/rcl">Codeberg</a>
+    </nav>
+  </header>
+  <section>
+    <h1 class="tagline">Make configuration boring again</h1>
+    <p>RCL is a domain-specific language for specifying human-written
+    data with just enough abstraction to avoid repetition.
+    It extends json into a simple functional programming
+    language that resembles Python and Nix.</p>
+  </section>
+</body>
+</html>
