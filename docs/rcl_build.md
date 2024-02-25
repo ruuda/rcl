@@ -4,16 +4,43 @@
 
 ## Description
 
-The _build_ command writes formatted <abbr>RCL</abbr> values to files, as
-specified in a build file. It can be used to update multiple generated files in
-one command, similar to a build tool like Make or Ninja, but with the build
-targets specified in <abbr>RCL</abbr> rather than a makefile.
+The _build_ command writes formatted values to files, as specified in a build
+file. It can be used to update multiple generated files in one command, similar
+to a build tool like Make or Ninja, but with the build targets specified in
+<abbr>RCL</abbr> rather than a makefile.
 
-TODO: Link to a docs chapter like the Ninja one.
+RCL’s build support is a lightweight alternative to [using an external build tool
+such as Ninja](using_ninja.md). It is simplistic: it has no ability to call
+external programs, and it will rewrite all outputs even when the inputs did
+not change. For large configurations this might be an issue, but for quickly
+replacing a few repetitive <abbr>YAML</abbr> files with generated ones,
+`rcl build` can be a quick way to adopt <abbr>RCL</abbr> without introducing
+multiple new tools at once.
 
 When no file is specified, `rcl build` reads from `build.rcl` as the default.
-(This is unlike other <abbr>RCL</abbr> subcommands, which default to stdin.)
+This is unlike other <abbr>RCL</abbr> commands, which default to stdin.
 When `<buildfile>` is `-`, read from stdin.
+
+## Example
+
+The following `build.rcl` writes two files to the `users` directory:
+`rachael.toml` and `rbatty.toml`:
+
+```rcl
+let default_options = {
+  banner = "# This file is generated from build.rcl.\n",
+  format = "toml",
+};
+{
+  "users/rachael.toml": default_options | {
+    contents = { name = "Rachael Tyrell", generation = 7 },
+  },
+  "users/rbatty.toml": default_options | {
+    contents = { name = "Roy Batty", generation = 6 },
+  },
+}
+```
+
 
 ## Build files
 
@@ -23,30 +50,38 @@ the build file itself. The value is a dict with the following schema:
 
 ```rcl
 type Target = {
-  banner: Bool,
+  banner: String,
   contents: Any,
   format: String,
   width: Int,
 }
 ```
 
-## Example
+The following fields are supported:
 
-The following `build.rcl` writes two files to the `users` directory:
-`rachael.toml` and `rbatty.toml`:
+### banner
 
-```rcl
-{
-  "users/rachael.toml": {
-    contents = { name = "Rachael Tyrell", generation = 7 },
-    format = "toml",
-  },
-  "users/rbatty.toml": {
-    contents = { name = "Roy Batty", generation = 6 },
-    format = "toml",
-  },
-}
-```
+A string to prepend to the output. This can be useful to add a comment to
+clarify that a file is generated, and point readers at the original source.
+This field is optional and defaults to an empty string. Corresponds to
+[`--banner`](rcl_evaluate.md#-banner-message), although unlike that option,
+`banner` here does not implicitly add a newline.
+
+### contents
+
+The value to write to the file in the desired format.
+
+### format
+
+The output format. This must be one of the formats supported by
+[`--format`](rcl_evaluate.md#-f-format-format).
+This field is optional and defaults to `rcl`.
+
+### width
+
+The target width for pretty-printing in columns. See also
+[`--width`](rcl_evaluate.md#-w-width-width).
+This field is optional and defaults to 80.
 
 ## Options
 
