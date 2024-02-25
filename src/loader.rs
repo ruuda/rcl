@@ -9,6 +9,7 @@
 
 use std::collections::HashMap;
 use std::fs;
+use std::fs::File;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::{env, path};
@@ -83,16 +84,25 @@ pub struct PathLookup {
 /// ... so I am not going to bother handling this properly at this time.
 pub trait Filesystem {
     /// Return where to load `path` when imported from file `from`.
+    ///
+    /// The `from` path is relative to the working directory.
     fn resolve(&self, path: &str, from: &str) -> Result<PathLookup>;
 
     /// Return where to load `path` when that was a CLI argument.
     fn resolve_entrypoint(&self, path: &str) -> Result<PathLookup>;
 
     /// Return where to write `path` when that was a CLI argument.
-    fn resolve_output(&self, path: &str) -> PathBuf;
+    fn resolve_cli_output(&self, path: &str) -> PathBuf;
 
     /// Load a resolved path from the filesystem.
     fn load(&self, path: PathLookup) -> Result<Document>;
+
+    /// Resolve a target output path relative to the `from` path, and open it.
+    ///
+    /// This creates intermediate directories if needed, and checks the sandbox
+    /// policy at every step along the way. The `from` path is relative to the
+    /// working directory, just like with [`resolve`].
+    fn open_build_output(&self, out_path: &str, from: &str) -> Result<fs::File>;
 
     /// Return `path`, but relative to the working directory, if possible.
     ///
@@ -118,11 +128,14 @@ impl Filesystem for PanicFilesystem {
     fn resolve_entrypoint(&self, _: &str) -> Result<PathLookup> {
         panic!("Should have initialized the filesystem to a real one before resolving.")
     }
-    fn resolve_output(&self, _: &str) -> PathBuf {
+    fn resolve_cli_output(&self, _: &str) -> PathBuf {
         panic!("Should have initialized the filesystem to a real one before resolving.")
     }
     fn load(&self, _: PathLookup) -> Result<Document> {
         panic!("Should have initialized the filesystem to a real one before loading.")
+    }
+    fn open_build_output(&self, _: &str, _: &str) -> Result<File> {
+        panic!("Should have initialized the filesystem to a real one before resolving.")
     }
     fn get_relative_path<'a>(&self, _: &'a Path) -> &'a Path {
         panic!("Should have initialized the filesystem to a real one before resolving.")
@@ -143,11 +156,14 @@ impl Filesystem for VoidFilesystem {
     fn resolve_entrypoint(&self, _: &str) -> Result<PathLookup> {
         Error::new("Void filesystem does not load files.").err()
     }
-    fn resolve_output(&self, _: &str) -> PathBuf {
+    fn resolve_cli_output(&self, _: &str) -> PathBuf {
         panic!("Void filesystem should not be used for output paths.");
     }
     fn load(&self, _: PathLookup) -> Result<Document> {
         Error::new("Void filesystem does not load files.").err()
+    }
+    fn open_build_output(&self, _: &str, _: &str) -> Result<File> {
+        panic!("Void filesystem does not open files.")
     }
     fn get_relative_path<'a>(&self, _: &'a Path) -> &'a Path {
         // It's okay to panic here, `get_relative_path` is only used in features
@@ -289,7 +305,7 @@ impl Filesystem for SandboxFilesystem {
 
     fn resolve_entrypoint(&self, path: &str) -> Result<PathLookup> {
         // Making the path relative to the workdir is the same for in/outputs.
-        let path_buf = self.resolve_output(path);
+        let path_buf = self.resolve_cli_output(path);
 
         // The entrypoint is specified on the command line and therefore
         // implicitly trusted, it's okay for it to lie outside of the working
@@ -297,7 +313,7 @@ impl Filesystem for SandboxFilesystem {
         self.resolve_absolute(path_buf, SandboxMode::Unrestricted)
     }
 
-    fn resolve_output(&self, path: &str) -> PathBuf {
+    fn resolve_cli_output(&self, path: &str) -> PathBuf {
         if path.starts_with('/') {
             path.into()
         } else {
@@ -327,6 +343,42 @@ impl Filesystem for SandboxFilesystem {
         };
 
         Ok(doc)
+    }
+
+    fn open_build_output(&self, out_path: &str, from: &str) -> Result<File> {
+        // The initial steps are similar to `resolve`, but we don't need to
+        // support workdir-relative paths with `//`.
+        let mut path_buf = self.workdir.clone();
+
+        if out_path.is_empty() {
+            return Error::new("Output path must not be empty.").err();
+        } else if out_path.starts_with('/') {
+            return Error::new("Writing to absolute paths is not allowed.").err();
+        } else {
+            // The path is relative to the `from` file.
+            path_buf.push(from);
+            path_buf.pop();
+            path_buf.push(out_path);
+        }
+
+        let _workdir_relative = path_buf
+            .strip_prefix(&self.workdir)
+            .expect("The workdir is a prefix by contruction.");
+
+        // TODO: Create the directories one by one, check the sandbox policy and
+        // ensure we don't go outside of the workdir if needed.
+
+        let parent_dir = path_buf
+            .parent()
+            .expect("It has a parent because the output path is not empty.");
+        if let Err(err) = std::fs::create_dir_all(parent_dir) {
+            panic!("TODO: Report IO error properly: {err:?}");
+        }
+
+        match std::fs::File::create(path_buf) {
+            Err(err) => panic!("TODO: Report IO error properly: {err:?}"),
+            Ok(f) => Ok(f),
+        }
     }
 
     fn get_relative_path<'a>(&self, path: &'a Path) -> &'a Path {
@@ -380,7 +432,7 @@ impl Loader {
 
     /// Resolve a path specified on the CLI so it respects the workdir.
     pub fn resolve_cli_output_path(&self, path: &str) -> PathBuf {
-        self.filesystem.resolve_output(path)
+        self.filesystem.resolve_cli_output(path)
     }
 
     /// Borrow all documents.

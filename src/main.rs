@@ -270,11 +270,16 @@ impl App {
                 let mut type_env = typecheck::prelude();
                 let mut value_env = runtime::prelude();
                 let doc = self.loader.load_cli_target(&fname)?;
+
+                // TODO: Would be nice to be able to feed in an expected type.
                 let val = self
                     .loader
                     .evaluate(&mut type_env, &mut value_env, doc, &mut tracer)?;
 
-                rcl::cmd_build::execute_build(val)
+                // TODO: Need to get last inner span.
+                let full_span = self.loader.get_span(doc);
+
+                rcl::cmd_build::execute_build(&self.loader, doc, full_span, val)
             }
 
             Cmd::Evaluate {

@@ -210,6 +210,15 @@ impl Value {
         }
     }
 
+    /// As [`expect_string`], but make an owned `Rc` copy instead of borrowing.
+    #[inline]
+    pub fn expect_string_clone(&self) -> Rc<str> {
+        match self {
+            Value::String(inner) => inner.clone(),
+            other => panic!("Expected String but got {other:?}."),
+        }
+    }
+
     /// Dynamically check that the value fits the required type.
     pub fn is_instance_of(&self, at: Span, type_: &SourcedType) -> Result<()> {
         let req_type = match &type_.type_ {
