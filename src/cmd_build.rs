@@ -74,7 +74,7 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
     // TODO: Would be better to feed in the requirement already during doc evaluation.
     targets_value.is_instance_of(doc_span, &get_build_file_type())?;
 
-    let banner: Rc<str> = "This file is generated from `TODO` using `rcl build`.".into();
+    let banner: Rc<str> = "".into();
 
     // After we did the typecheck, we can use `expect_` safely here.
     let targets = targets_value.expect_dict();
@@ -146,30 +146,6 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
     Ok(result)
 }
 
-/// Render the banner as a comment in the desired output format.
-///
-/// If the format does not support comments, then this return an empty document.
-fn render_banner(format: OutputFormat, banner: &str) -> Doc {
-    if banner.is_empty() {
-        return Doc::Empty;
-    }
-
-    let prefix = match format {
-        // TODO: Should we add a yaml output format just to be able to add comments?
-        OutputFormat::Json | OutputFormat::Raw => return Doc::Empty,
-        OutputFormat::Toml => "# ",
-        OutputFormat::YamlStream => "# ",
-        OutputFormat::Rcl => "// ",
-    };
-    let mut result = Doc::Empty;
-    for line in banner.lines() {
-        result = result + concat! { prefix line Doc::HardBreak };
-    }
-
-    // Add a blank line after the banner.
-    result + Doc::HardBreak
-}
-
 /// Take a build specification and write the outputs to files.
 pub fn execute_build(
     loader: &Loader,
@@ -188,7 +164,7 @@ pub fn execute_build(
         let mut out_file = loader.open_build_output(target.out_path.as_ref(), buildfile)?;
 
         let doc = concat! {
-            render_banner(target.format, target.banner.as_ref())
+            Doc::lines(target.banner.as_ref())
             crate::cmd_eval::format_value(target.format, doc_span, &target.contents)?
         };
         let print_cfg = Config {
