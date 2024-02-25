@@ -182,7 +182,9 @@ pub fn execute_build(
         err
     })?;
 
-    for target in targets {
+    for (i, target) in targets.iter().enumerate() {
+        println!("[{}/{}] Writing {}", i + 1, targets.len(), target.out_path);
+
         let mut out_file = loader.open_build_output(target.out_path.as_ref(), buildfile)?;
 
         let doc = concat! {
