@@ -39,6 +39,9 @@ pub enum Source {
 
     /// An integer is required due to indexing into a list.
     IndexList,
+
+    /// The type is part of the expected type for build files for `rcl build`.
+    BuildFile(&'static str),
 }
 
 impl Source {
@@ -55,6 +58,7 @@ impl Source {
             Source::Builtin => None,
             Source::Condition => None,
             Source::IndexList => None,
+            Source::BuildFile(..) => None,
         }
     }
 
