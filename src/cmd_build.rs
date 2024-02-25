@@ -13,7 +13,7 @@ use crate::cli::OutputFormat;
 use crate::error::{Error, PathElement, Result};
 use crate::fmt_rcl::format_rcl;
 use crate::loader::Loader;
-use crate::pprint::{concat, indent, Doc};
+use crate::pprint::{concat, Config, Doc};
 use crate::runtime::Value;
 use crate::source::{DocId, Span};
 use crate::type_source::Source;
@@ -53,7 +53,7 @@ struct Target {
     banner: Rc<str>,
     contents: Value,
     format: OutputFormat,
-    width: u64,
+    width: u32,
 }
 
 fn parse_format(format: &str) -> Option<OutputFormat> {
@@ -117,7 +117,7 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
                         .err();
                 }
                 "width" => match v {
-                    Value::Int(w) if *w > 0 => target.width = *w as u64,
+                    Value::Int(w) if *w > 0 && *w <= u32::MAX as i64 => target.width = *w as u32,
                     _not_int => {
                         return make_error("Width must be a positive integer.".into()).err()
                     }
@@ -146,6 +146,30 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
     Ok(result)
 }
 
+/// Render the banner as a comment in the desired output format.
+///
+/// If the format does not support comments, then this return an empty document.
+fn render_banner(format: OutputFormat, banner: &str) -> Doc {
+    if banner.is_empty() {
+        return Doc::Empty;
+    }
+
+    let prefix = match format {
+        // TODO: Should we add a yaml output format just to be able to add comments?
+        OutputFormat::Json | OutputFormat::Raw => return Doc::Empty,
+        OutputFormat::Toml => "# ",
+        OutputFormat::YamlStream => "# ",
+        OutputFormat::Rcl => "// ",
+    };
+    let mut result = Doc::Empty;
+    for line in banner.lines() {
+        result = result + concat! { prefix line Doc::HardBreak };
+    }
+
+    // Add a blank line after the banner.
+    result + Doc::HardBreak
+}
+
 /// Take a build specification and write the outputs to files.
 pub fn execute_build(
     loader: &Loader,
@@ -153,12 +177,28 @@ pub fn execute_build(
     doc_span: Span,
     targets_value: Value,
 ) -> Result<()> {
-    let relative_build_file_path = loader.get_doc(buildfile).name;
     let targets = parse_targets(doc_span, targets_value).map_err(|mut err| {
         err.origin = Some(err.origin.unwrap_or(doc_span));
         err
     })?;
 
-    unimplemented!("TODO");
+    for target in targets {
+        let mut out_file = loader.open_build_output(target.out_path.as_ref(), buildfile)?;
+
+        let doc = concat! {
+            render_banner(target.format, target.banner.as_ref())
+            crate::cmd_eval::format_value(target.format, doc_span, &target.contents)?
+        };
+        let print_cfg = Config {
+            width: target.width,
+        };
+        let result = doc.println(&print_cfg);
+
+        match result.write_bytes_no_markup(&mut out_file) {
+            Ok(()) => continue,
+            Err(err) => panic!("TODO: Report IO error: {err:?}"),
+        }
+    }
+
     Ok(())
 }
