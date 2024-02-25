@@ -17,6 +17,8 @@
     --dutch-white: #f5e5b8ff;
     --burgundy: #7b0d1eff;
     --amaranth-purple: #9f2042ff;
+
+    --off-white: #fafaf9;
   }
 
   html {
@@ -26,7 +28,9 @@
     font-optical-sizing: auto;
     font-size: 18px;
     line-height: 1.5;
-    --margin: 1.5rem;
+
+    --margin: 1.7rem;
+    --margin-small: 1.3rem;
   }
 
   h1, h2, h3 {
@@ -41,6 +45,8 @@
 
   header {
     padding: var(--margin);
+    padding-top: var(--margin-small);
+    padding-bottom: var(--margin-small);
     word-spacing: 1rem;
   }
 
@@ -50,15 +56,47 @@
   }
 
   section {
-    padding-left: var(--margin);
-    padding-right: var(--margin);
+    overflow: hidden;
+    padding: var(--margin);
+    background: radial-gradient(
+      farthest-corner at 25% 15%,
+      var(--berkeley-blue),
+      transparent
+    );
+  }
+
+  section.alt {
+    background: var(--off-white);
+    color: var(--oxford-blue);
+  }
+
+  div.feature-block + div.feature-block {
+    margin-top: var(--margin);
   }
 
   h1.tagline {
-    font-size: 2rem;
-    line-height: 2rem;
+    font-size: 2.5rem;
+    line-height: 2.4rem;
     font-weight: 700;
     margin-bottom: 1rem;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  span.cc {
+    font-weight: 600;
+    color: var(--berkeley-blue);
+  }
+
+  footer {
+    padding: var(--margin);
+    padding-top: var(--margin-small);
+    padding-bottom: var(--margin-small);
+    font-size: 0.77rem;
+    opacity: 0.8;
   }
   </style>
 
@@ -79,5 +117,35 @@
     It extends json into a simple functional programming
     language that resembles Python and Nix.</p>
   </section>
+  <section class="alt">
+    <div class="feature-block">
+      <h2>Share data between tools</h2>
+      <p>Generate configuration for tools that do not natively talk to each other,
+      all from a single source of truth.</p>
+    </div>
+    <div class="feature-block">
+      <h2>Remove repetition</h2>
+      <p>Stop copy-pasting.
+      Use variables, list comprehensions, and functions to avoid duplication.
+      Bump <span class="cc">ubuntu-20.04</span> to <span class="cc">24.04</span>
+      in <em>one</em> place instead of 137.</p>
+    </div>
+    <div class="feature-block">
+      <h2>Fight complexity, not your tool</h2>
+      <p>Spend time building your infrastructure,
+      not debugging whitespace issues in your string templates.
+      Generate correct yaml, json, and toml.
+      </p>
+    </div>
+    <div class="feature-block">
+      <h2>Familiar syntax</h2>
+      <p>Have you seen Python or TypeScript before?
+      Then you will find RCL obvious to read and easy to write.
+      </p>
+    </div>
+  </section>
+  <footer>
+    <p>Copyright 2024 <a href="https://ruudvanasseldonk.com">Ruud van Asseldonk</a></p>
+  </footer>
 </body>
 </html>
