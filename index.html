@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The RCL Configuration Language</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:ital,wght@0,300..900;1,300..900&family=Red+Hat+Text:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:ital,wght@0,300..900;1,300..900&family=Red+Hat+Mono:ital,wght@0,300..700;1,300..700&family=Red+Hat+Text:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
   <style>
   * {
     margin: 0;
@@ -40,7 +40,6 @@
 
   a {
     text-decoration: none;
-    color: var(--burgrundy);
   }
 
   header {
@@ -48,6 +47,10 @@
     padding-top: var(--margin-small);
     padding-bottom: var(--margin-small);
     word-spacing: 1rem;
+  }
+
+  header a, footer a {
+    color: white;
   }
 
   header h1 {
@@ -84,12 +87,37 @@
   h2 {
     font-size: 1.3rem;
     font-weight: 700;
+    margin-bottom: 0.2rem;
+  }
+
+  section a {
+    font-weight: 600;
+    color: var(--berkeley-blue);
   }
 
   span.cc {
     font-weight: 600;
     color: var(--berkeley-blue);
   }
+
+  code, pre {
+    font-family: 'Red Hat Mono', monospace;
+    font-size: 0.88rem;
+    display: inline;
+  }
+
+  .code-demo {
+    background-color: #272a2f;
+    margin-top: var(--margin);
+    margin-right: -2rem;
+    padding: 1.5rem;
+    color: #fff;
+    border-radius: 0.5rem;
+  }
+
+  .code-demo .ident { color: #ffd07e; }
+  .code-demo .str   { color: #ff7e7e; }
+  .code-demo .expr  { font-weight: 600; }
 
   footer {
     padding: var(--margin);
@@ -142,6 +170,47 @@
       <p>Have you seen Python or TypeScript before?
       Then you will find RCL obvious to read and easy to write.
       </p>
+    </div>
+  </section>
+  <section>
+    <h2>Demo</h2>
+    <p>TODO</p>
+    </p>
+  </section>
+  <section class="alt">
+    <div class="feature-block">
+      <h2>Built-in json queries</h2>
+      <p>Need to get something from a json document,
+      but can’t figure out the <span class="cc">jq</span> syntax?
+      Try <a href="https://docs.ruuda.nl/rcl/rcl_query/">rcl query</a> instead!
+      </p>
+<div class="code-demo"><code>
+<pre><span class="ident">$</span> curl --silent <wbr/>https://api.vultr.com/v2/regions <wbr
+/>| rcl query <wbr/><span class="expr">'input<wbr/>.regions<wbr/>.key_by(<wbr/>r =&gt; r.id)<wbr/>.nrt'</span>
+
+{
+  <span class="ident">city</span> = <span class="str">"Tokyo"</span>,
+  <span class="ident">continent</span> = <span class="str">"Asia"</span>,
+  <span class="ident">country</span> = <span class="str">"JP"</span>,
+  <span class="ident">id</span> = <span class="str">"nrt"</span>,
+  <span class="ident">options</span> = [
+    <span class="str">"ddos_protection"</span>,
+    <span class="str">"block_storage_high_perf"</span>,
+    <span class="str">"block_storage_storage_opt"</span>,
+    <span class="str">"load_balancers"</span>,
+    <span class="str">"kubernetes"</span>,
+  ],
+}
+</pre>
+</code></div>
+    </div>
+    <div class="feature-block">
+      <h2>Free &amp; open source</h2>
+      <p>RCL is free/libre software,
+      licensed under the Apache 2.0 license.
+      The source code is available on
+      <a href="https://github.com/ruuda/rcl">GitHub</a> and
+      <a href="https://codeberg.org/ruuda/rcl">Codeberg</a>.</p>
     </div>
   </section>
   <footer>
