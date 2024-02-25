@@ -1,7 +1,6 @@
 # Types
 
-_**Warning**: The type system is a work in progress. In particular, record types
-are missing, and the implementation of the typechecker is too ad-hoc._
+_The type system is a work in progress. In particular, record types are missing._
 
 RCL has a type system that can help to prevent bugs and make configuration more
 self-documenting.
@@ -134,6 +133,79 @@ type for empty collections.
 // Inferred to have type `List[Void]`.
 let xs = [];
 ```
+
+## Type inference
+
+In all code, annotated or not, <abbr>RCL</abbr> will infer types. Type inference
+is forward-only[^2] and — with one exception — bottom-up. For example,
+<abbr>RCL</abbr> can infer the following types:
+
+```rcl
+// Elements are inferred to have type `Int`, `xs` has type `List[Int]`.
+let xs = [1, 2, 3];
+
+// Inferred to have type `List[Int]`, because `xs` has that type.
+let ys = xs;
+
+// Type error: operator `or` expects `Bool`, but `ys[0]` has type `Int`.
+ys[0] or ys[1]
+```
+
+Because type inference is forward-only, function arguments have type `Any` when
+they are not explicitly annotated:
+
+```rcl
+// Inferred to have type `(Any, Any) -> Bool`.
+let xor = (x, y) => (x or y) and (not (x and y));
+```
+
+Because we use `x` and `y` with `and` and `or` operators, they have to have type
+`Bool`. However, the typechecker has to assign a type to `x` and `y` _before_
+typechecking the function body, and without additional information, it can only
+pick `Any`. When it continues to check the `or` expression, it inserts a runtime
+type check to confirm that `x` and `y` are `Bool`. To give `xor` a more precise
+type, we have to annotate it:
+
+```rcl
+let xor: (Bool, Bool) -> Bool = (x, y) => (x or y) and (not (x and y));
+```
+
+The exception to bottom-up inference are type annotations. The typechecker
+propagates type requirements top-down into expressions. For example for list
+elements:
+
+```rcl
+let xs: List[Int] = [
+  42,
+  // Type error: expected `Int` but found `String`.
+  "43",
+];
+```
+
+This means that the placement of a type annotation can affect how <abbr>RCL</abbr>
+reports a type error. Although all annotations are enforced, placing annotations
+closer to definitions generally results in clearer error messages. Suppose we
+modified the above example as follows:
+
+```rcl
+// Inferred to have type `List[Any]` because we mix `Int` and `String`.
+let xs = [42, "43"];
+
+// Runtime type error: expected an instance of `Int`, but found string `"43"`.
+let ys: List[Int] = xs;
+```
+
+In this case <abbr>RCL</abbr> can only report that a value failed a type check,
+and that this happened inside a list at index 1, but it can no longer pinpoint
+the location in the source code where the offending value came from.
+
+[^2]: Some languages, in particular those that use Hindley–Milner style type
+      inference such as Haskell and Rust, can use information that occurs at a
+      later point in the program to infer a type earlier in the program. While
+      this is powerful, it also makes type errors more difficult to interpret,
+      especially when combined with record types. Because <abbr>RCL</abbr> aims
+      to be a language that humans can easily _reason_ about, we opt for less
+      powerful but simpler forward-only inference.
 
 ## Static checks
 
