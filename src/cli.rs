@@ -50,7 +50,7 @@ Color modes:
   none    Do not color output at all.
 "#;
 
-const USAGE_BUILD: &str = r#"
+const USAGE_BUILD: &str = r##"
 RCL -- A reasonable configuration language.
 
 Usage:
@@ -74,10 +74,9 @@ See also --help for global options.
 
 Build target fields:
 
-  banner: String    For formats that support comments, a message to include at
-                    the top of the file. This field is optional, it defaults to
-                    a message that says the file was generated. Set this to an
-                    empty string to disable the banner.
+  banner: String    A string to prepend to the output file. For example, a
+                    comment to clarify that the file is generated. Defaults
+                    to an empty string.
   contents: Any     The value to format and write to the output file.
   format: String    The output format, must be one of the formats supported by
                     'rcl evaluate --format', see 'rcl evaluate --help'.
@@ -90,13 +89,14 @@ Example:
     "alice.toml": {
       contents = { name = "Alice", uid = 42 },
       format = "toml",
+      banner = "# This file is generated from build.rcl.\n",
     },
     "bob.toml": {
       contents = { name = "Bob", uid = 43 },
       format = "toml",
     },
   }
-"#;
+"##;
 
 const USAGE_EVAL_QUERY: &str = r#"
 RCL -- A reasonable configuration language.
