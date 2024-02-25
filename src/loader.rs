@@ -435,6 +435,12 @@ impl Loader {
         self.filesystem.resolve_cli_output(path)
     }
 
+    /// Open an output file path specified in a build file.
+    pub fn open_build_output(&self, out_path: &str, from: DocId) -> Result<File> {
+        let from_name = self.get_doc(from).name;
+        self.filesystem.open_build_output(out_path, from_name)
+    }
+
     /// Borrow all documents.
     pub fn as_inputs(&self) -> Vec<Doc> {
         self.documents.iter().map(Document::as_doc).collect()

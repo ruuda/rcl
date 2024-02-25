@@ -9,8 +9,7 @@ use std::io::Write;
 use std::path::Path;
 
 use rcl::cli::{
-    self, Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, OutputTarget, StyleOptions,
-    Target,
+    self, Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputTarget, StyleOptions, Target,
 };
 use rcl::error::{Error, Result};
 use rcl::loader::{Loader, SandboxMode};
@@ -120,15 +119,7 @@ impl App {
         value_span: Span,
         value: &Value,
     ) -> Result<()> {
-        let out_doc = match eval_opts.format {
-            OutputFormat::Json => rcl::fmt_json::format_json(value_span, value)?,
-            OutputFormat::Raw => rcl::fmt_raw::format_raw(value_span, value)?,
-            OutputFormat::Rcl => rcl::fmt_rcl::format_rcl(value),
-            OutputFormat::Toml => rcl::fmt_toml::format_toml(value_span, value)?,
-            OutputFormat::YamlStream => {
-                rcl::fmt_yaml_stream::format_yaml_stream(value_span, value)?
-            }
-        };
+        let out_doc = rcl::cmd_eval::format_value(eval_opts.format, value_span, value)?;
 
         // Prepend the banner if the user specified one.
         let out_doc = match eval_opts.banner.as_ref() {

@@ -186,7 +186,7 @@ pub struct GlobalOptions {
 }
 
 /// The available output formats (JSON, RCL).
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum OutputFormat {
     Json,
     Raw,
