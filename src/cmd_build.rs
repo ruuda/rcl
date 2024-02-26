@@ -81,7 +81,11 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
     let mut result = Vec::with_capacity(targets.len());
 
     for (out_path_value, target_value) in targets.iter() {
-        let mut have_contents = false;
+        // Note, the format does not have a default value on purpose. When you
+        // generate files, that file needs to be in a particular format. Better
+        // be explicit about it.
+        let mut format: Option<OutputFormat> = None;
+        let mut contents: Option<Value> = None;
         let mut target = Target {
             out_path: out_path_value.expect_string_clone(),
             banner: banner.clone(),
@@ -100,14 +104,11 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
                     Value::String(banner) => target.banner = banner.clone(),
                     _not_str => return make_error("Banner must be a string.".into()).err(),
                 },
-                "contents" => {
-                    have_contents = true;
-                    target.contents = v.clone();
-                }
+                "contents" => contents = Some(v.clone()),
                 "format" => {
-                    if let Value::String(format) = v {
-                        if let Some(f) = parse_format(format.as_ref()) {
-                            target.format = f;
+                    if let Value::String(format_str) = v {
+                        if let Some(f) = parse_format(format_str.as_ref()) {
+                            format = Some(f);
                             continue;
                         }
                     }
@@ -131,13 +132,27 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
             }
         }
 
-        if !have_contents {
-            let msg = concat! {
-                "Build targets must have a '" Doc::highlight("contents") "' field."
-            };
-            return Error::new(msg)
-                .with_path_element(PathElement::Key(out_path_value.clone()))
-                .err();
+        match contents {
+            Some(v) => target.contents = v,
+            None => {
+                let msg = concat! {
+                    "Build targets must have a '" Doc::highlight("contents") "' field."
+                };
+                return Error::new(msg)
+                    .with_path_element(PathElement::Key(out_path_value.clone()))
+                    .err();
+            }
+        }
+        match format {
+            Some(f) => target.format = f,
+            None => {
+                let msg = concat! {
+                    "Build targets must have a '" Doc::highlight("format") "' field."
+                };
+                return Error::new(msg)
+                    .with_path_element(PathElement::Key(out_path_value.clone()))
+                    .err();
+            }
         }
 
         result.push(target);

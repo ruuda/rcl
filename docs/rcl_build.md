@@ -75,7 +75,6 @@ The value to write to the file in the desired format.
 
 The output format. This must be one of the formats supported by
 [`--format`](rcl_evaluate.md#-f-format-format).
-This field is optional and defaults to `rcl`.
 
 ### width
 
