@@ -19,7 +19,7 @@
       forEachSystem (system:
         let
           name = "rcl";
-          version = "0.0.0";
+          version = "0.1.0";
           pkgs = import nixpkgs { inherit system; };
 
           python = pkgs.python3.override {

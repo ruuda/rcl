@@ -194,7 +194,7 @@ dependencies = [
 
 [[package]]
 name = "pyrcl"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "pyo3",
  "rcl",
@@ -211,14 +211,14 @@ dependencies = [
 
 [[package]]
 name = "rcl"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "unicode-width",
 ]
 
 [[package]]
 name = "rcl-fuzz"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "arbitrary",
  "libfuzzer-sys",
