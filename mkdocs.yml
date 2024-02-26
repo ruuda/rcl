@@ -21,6 +21,7 @@ nav:
       - "Installation": "installation.md"
       - "Syntax highlighting": "syntax_highlighting.md"
       - "Using Ninja": "using_ninja.md"
+      - "Changelog": "changelog.md"
   - "Language guide":
       - "Syntax": "syntax.md"
       - "Strings": "strings.md"
