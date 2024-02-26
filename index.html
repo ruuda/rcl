@@ -19,6 +19,8 @@
     --amaranth-purple: #9f2042ff;
 
     --off-white: #fafaf9;
+    --text-light: #335184;
+    --text-lighter: #36d;
   }
 
   html {
@@ -29,11 +31,11 @@
     font-size: 18px;
     line-height: 1.5;
 
-    --margin: 1.7rem;
+    --margin: 2.2rem;
     --margin-small: 1.3rem;
   }
 
-  h1, h2, h3 {
+  h1 {
     font-family: 'Red Hat Display', sans-serif;
     font-size: 1rem;
   }
@@ -47,6 +49,11 @@
     padding-top: var(--margin-small);
     padding-bottom: var(--margin-small);
     word-spacing: 1rem;
+    background: radial-gradient(
+      circle at 80% 90%,
+      #3b036354,
+      transparent
+    );
   }
 
   header a, footer a {
@@ -66,28 +73,36 @@
       var(--berkeley-blue),
       transparent
     );
+    color: #eef;
+    padding-bottom: 3rem;
+    padding-top: 3rem;
   }
 
   section.alt {
     background: var(--off-white);
-    color: var(--oxford-blue);
+    color: var(--text-light);
   }
 
   div.feature-block + div.feature-block {
-    margin-top: var(--margin);
+    margin-top: 3rem;
   }
 
   h1.tagline {
+    color: #fff;
     font-size: 2.5rem;
     line-height: 2.4rem;
     font-weight: 700;
-    margin-bottom: 1rem;
+    margin-bottom: 1.7rem;
   }
 
   h2 {
     font-size: 1.3rem;
-    font-weight: 700;
+    font-weight: 600;
     margin-bottom: 0.2rem;
+  }
+
+  section.alt h2 {
+    color: var(--text-lighter);
   }
 
   section a {
@@ -97,7 +112,6 @@
 
   span.cc {
     font-weight: 600;
-    color: var(--berkeley-blue);
   }
 
   code, pre {
@@ -109,10 +123,11 @@
   .code-demo {
     background-color: #272a2f;
     margin-top: var(--margin);
-    margin-right: -2rem;
+    margin-right: -2.2rem;
     padding: 1.5rem;
     color: #fff;
-    border-radius: 0.5rem;
+    border-top-left-radius: 0.5rem;
+    border-bottom-left-radius: 0.5rem;
   }
 
   .code-demo .ident { color: #ffd07e; }
@@ -121,8 +136,6 @@
 
   footer {
     padding: var(--margin);
-    padding-top: var(--margin-small);
-    padding-bottom: var(--margin-small);
     font-size: 0.77rem;
     opacity: 0.8;
   }
@@ -159,7 +172,7 @@
       in <em>one</em> place instead of 137.</p>
     </div>
     <div class="feature-block">
-      <h2>Fight complexity, not your tool</h2>
+      <h2>Fight complexity, not tools</h2>
       <p>Spend time building your infrastructure,
       not debugging whitespace issues in your string templates.
       Generate correct yaml, json, and toml.
