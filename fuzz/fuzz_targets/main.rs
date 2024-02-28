@@ -8,6 +8,8 @@ use rcl::eval::Evaluator;
 use rcl::loader::{Loader, VoidFilesystem};
 use rcl::markup::MarkupMode;
 use rcl::pprint;
+use rcl::runtime::Value;
+use rcl::source::Span;
 use rcl::tracer::VoidTracer;
 
 #[derive(Debug)]
@@ -87,14 +89,16 @@ impl<'a> Arbitrary<'a> for Input<'a> {
 }
 
 /// Evaluate the input expression, then ignore the result.
-fn fuzz_eval(loader: &mut Loader, input: &str) -> Result<()> {
+#[inline(never)]
+fn eval(loader: &mut Loader, input: &str) -> Result<(Span, Value)> {
     let id = loader.load_string(input.to_string());
     let mut tracer = VoidTracer;
     let mut evaluator = Evaluator::new(loader, &mut tracer);
     let mut type_env = rcl::typecheck::prelude();
     let mut value_env = rcl::runtime::prelude();
-    let _ = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
-    Ok(())
+    let result = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
+    let span = loader.get_span(id);
+    Ok((span, result))
 }
 
 /// Run the formatter once.
@@ -151,13 +155,7 @@ fn fuzz_eval_json(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Resu
 
 /// Evaluate the input expression into toml, then ignore the result.
 fn fuzz_eval_toml(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
-    let id = loader.load_string(input.to_string());
-    let full_span = loader.get_span(id);
-    let mut tracer = VoidTracer;
-    let mut evaluator = Evaluator::new(loader, &mut tracer);
-    let mut type_env = rcl::typecheck::prelude();
-    let mut value_env = rcl::runtime::prelude();
-    let value = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
+    let (full_span, value) = eval(loader, input)?;
     let toml = rcl::fmt_toml::format_toml(full_span, &value)?;
     let _ = toml.println(&cfg);
     Ok(())
@@ -179,7 +177,7 @@ fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
             let _ = loader.get_typechecked_ast(&mut env, doc)?;
         }
         Mode::Eval => {
-            let _ = fuzz_eval(loader, input.data);
+            let _ = eval(loader, input.data);
         }
         Mode::Format { width } => {
             let cfg = pprint::Config {
