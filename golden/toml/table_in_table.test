@@ -1,0 +1,15 @@
+{
+  obj = {
+    very_long_name_that_causes = {
+      The_output_to_be = "line-wrapped",
+      over_multiple_lines = true,
+    },
+  },
+}
+
+# output:
+[obj]
+very_long_name_that_causes = {
+  The_output_to_be = "line-wrapped",
+  over_multiple_lines = true,
+}
