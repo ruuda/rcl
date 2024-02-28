@@ -1,6 +1,10 @@
 {
   obj = {
-    very_long_name_that_causes = {
+    // Formatting this on one line exceeds the width of the pretty-printer, it
+    // wants to break it. But it can't because TOML does not allow that. This is
+    // a regression test, in the past we did add line breaks and the output
+    // could not be parsed by Python tomllib or Rust toml crate.
+    very_long_name_that_would_cause = {
       The_output_to_be = "line-wrapped",
       over_multiple_lines = true,
     },
@@ -9,7 +13,4 @@
 
 # output:
 [obj]
-very_long_name_that_causes = {
-  The_output_to_be = "line-wrapped",
-  over_multiple_lines = true,
-}
+very_long_name_that_would_cause = { The_output_to_be = "line-wrapped", over_multiple_lines = true }

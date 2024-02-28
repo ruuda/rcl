@@ -131,6 +131,27 @@ impl Formatter {
     }
 
     /// Format a dict as a TOML "inline table".
+    ///
+    /// Note, the TOML spec has very particular opinions about whitespace,
+    /// newlines, and trailing commas. In arrays, [anything goes][array]
+    ///
+    /// > Arrays are square brackets with values inside. Whitespace is ignored.
+    /// > (...)
+    /// > Arrays can span multiple lines. A terminating comma (also called a
+    /// > trailing comma) is permitted after the last value of the array. Any
+    /// > number of newlines and comments may precede values, commas, and the
+    /// > closing bracket. Indentation between array values and commas is
+    /// > treated as whitespace and ignored.
+    ///
+    /// However, for inline tables, [we don't have that freedom][inline-table]:
+    ///
+    /// > Inline tables are intended to appear on a single line. A terminating
+    /// > comma (also called trailing comma) is not permitted after the last
+    /// > key/value pair in an inline table. No newlines are allowed between the
+    /// > curly braces unless they are valid within a value.
+    ///
+    /// [array]: https://toml.io/en/v1.0.0#array
+    /// [inline-table]: https://toml.io/en/v1.0.0#inline-table
     pub fn inline_table<'a>(
         &mut self,
         vs: impl Iterator<Item = (&'a Value, &'a Value)>,
@@ -138,8 +159,9 @@ impl Formatter {
         let mut elements = Vec::new();
         for (k, v) in vs {
             if !elements.is_empty() {
-                elements.push(",".into());
-                elements.push(Doc::Sep);
+                // Note, we don't use Doc::Sep here because we don't allow line
+                // breaks, see the doc comment above!
+                elements.push(", ".into());
             }
             elements.push(self.push_key(k)?);
             elements.push(" = ".into());
@@ -151,16 +173,10 @@ impl Formatter {
             // An empty collection we always format without space in between.
             "{}".into()
         } else {
-            // Add a trailing comma in tall mode.
-            elements.push(Doc::tall(","));
-
-            group! {
-                "{"
-                Doc::Sep
-                indent! { Doc::Concat(elements) }
-                Doc::Sep
-                "}"
-            }
+            // We intentionally don't add a trailing comma, and we intentionally
+            // use spaces instead of Doc::Sep. Line breaks and trailing commas
+            // are not allowed in inline tables!
+            concat! { "{ " Doc::Concat(elements) " }" }
         };
         Ok(result)
     }
