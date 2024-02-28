@@ -201,6 +201,31 @@ impl Formatter {
         Ok(result)
     }
 
+    /// Render a list or set of dicts in special "Array of Tables" TOML syntax.
+    /// See <https://toml.io/en/v1.0.0#array-of-tables>.
+    fn array_of_tables<'v>(
+        &mut self,
+        key: &'v Value,
+        xs: impl Iterator<Item = &'v Value>,
+        arrays: &mut Vec<Doc<'v>>,
+    ) -> Result<()> {
+        let table_header = self.push_key(key)?;
+        for (i, x) in xs.enumerate() {
+            self.path.push(PathElement::Index(i));
+            let table_body = match x {
+                Value::Dict(table_inner) => self.table(table_inner.iter())?,
+                _ => unreachable!("We checked before that all elements are dicts."),
+            };
+            self.path.pop().expect("We pushed the index before.");
+            arrays.push(concat! {
+                "[[" table_header.clone() "]]"
+                Doc::HardBreak
+                table_body
+            });
+        }
+        Ok(())
+    }
+
     fn top_level<'a>(&mut self, kv: &'a BTreeMap<Value, Value>) -> Result<Doc<'a>> {
         let mut values: Vec<Doc> = Vec::new();
         let mut tables: Vec<Doc> = Vec::new();
@@ -211,21 +236,12 @@ impl Formatter {
                 // List of dicts has a special "Array of Tables" syntax in TOML.
                 // <https://toml.io/en/v1.0.0#array-of-tables>
                 Value::List(xs) if xs.iter().all(|x| matches!(x, Value::Dict(..))) => {
-                    let table_header = self.push_key(k)?;
-                    for (i, x) in xs.iter().enumerate() {
-                        self.path.push(PathElement::Index(i));
-                        let table_body = match x {
-                            Value::Dict(table_inner) => self.table(table_inner.iter())?,
-                            _ => unreachable!("We checked before that all elements are dicts."),
-                        };
-                        self.path.pop().expect("We pushed the index before.");
-                        arrays.push(concat! {
-                            "[[" table_header.clone() "]]"
-                            Doc::HardBreak
-                            table_body
-                        });
-                    }
+                    self.array_of_tables(k, xs.iter(), &mut arrays)?;
                 }
+                Value::Set(xs) if xs.iter().all(|x| matches!(x, Value::Dict(..))) => {
+                    self.array_of_tables(k, xs.iter(), &mut arrays)?;
+                }
+
                 // Top-level dicts get formatted as tables.
                 Value::Dict(table_inner) => {
                     let table_header = self.push_key(k)?;
@@ -237,6 +253,7 @@ impl Formatter {
                         table_body
                     });
                 }
+
                 // Anything else becomes a top-level key-value.
                 top_level_value => values.push(self.key_value(k, top_level_value)?),
             }
