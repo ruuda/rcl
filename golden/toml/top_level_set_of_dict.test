@@ -1,0 +1,10 @@
+// Same shape as the list test, but this time it's a set in RCL.
+// It should still turn into a list in TOML. The values have
+// been simplified a bit.
+{
+  a = {{ x = 1 }},
+}
+
+# output:
+[[a]]
+x = 1
