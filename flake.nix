@@ -22,7 +22,7 @@
           version = "0.1.0";
           pkgs = import nixpkgs { inherit system; };
 
-          python = pkgs.python3.override {
+          python = pkgs.python311.override {
             packageOverrides = self: super: {
               # This package is not in Nixpkgs, define it here.
               # I should consider upstreaming it.
@@ -111,7 +111,7 @@
             inherit version;
             name = "pyrcl";
             src = rustSources;
-            nativeBuildInputs = [pkgs.python3];
+            nativeBuildInputs = [python];
             cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "pyrcl";
             postInstall =
@@ -124,7 +124,10 @@
           rec {
             devShells.default = pkgs.mkShell {
               nativeBuildInputs = [
-                pkgs.black
+                # For consistency we could take `python.pkgs.black`, but it
+                # rebuilds half the Python universe, so instead we take the
+                # cached version that does not depend on our patched pygments.
+                pkgs.python311Packages.black
                 pkgs.maturin
                 pkgs.rustup
                 pythonEnv
@@ -163,7 +166,7 @@
 
               golden = pkgs.runCommand
                 "check-golden"
-                { buildInputs = [ pkgs.python3 ]; }
+                { buildInputs = [ python ]; }
                 ''
                 RCL_BIN=${debugBuild}/bin/rcl python3 ${goldenSources}/run.py
                 touch $out
@@ -230,7 +233,7 @@
 
               coverage = pkgs.runCommand
                 "rcl-coverage"
-                { buildInputs = [ pkgs.python3 pkgs.grcov ]; }
+                { buildInputs = [ python pkgs.grcov ]; }
                 ''
                 export bintools=${pkgs.rustc.llvmPackages.bintools-unwrapped}/bin
 

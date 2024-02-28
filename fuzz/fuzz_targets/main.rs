@@ -8,6 +8,8 @@ use rcl::eval::Evaluator;
 use rcl::loader::{Loader, VoidFilesystem};
 use rcl::markup::MarkupMode;
 use rcl::pprint;
+use rcl::runtime::Value;
+use rcl::source::Span;
 use rcl::tracer::VoidTracer;
 
 #[derive(Debug)]
@@ -17,8 +19,9 @@ enum Mode {
     Typecheck,
     Eval,
     Format { width: u32 },
-    EvalJson { width: u32 },
-    EvalToml { width: u32 },
+    EvalJsonIdempotent { width: u32 },
+    EvalJsonCheck { width: u32 },
+    EvalTomlCheck { width: u32 },
 }
 
 /// Helper for `Arbitrary` to get a value in 0..=245, such that the byte is not a newline.
@@ -67,8 +70,9 @@ impl<'a> Arbitrary<'a> for Input<'a> {
             b"Q" => Mode::Format { width },
             b"T" => Mode::Typecheck,
             b"a" => Mode::Eval,
-            b"j" => Mode::EvalJson { width },
-            b"t" => Mode::EvalToml { width },
+            b"j" => Mode::EvalJsonIdempotent { width },
+            b"k" => Mode::EvalJsonCheck { width },
+            b"t" => Mode::EvalTomlCheck { width },
             _ => return Err(Error::IncorrectFormat),
         };
 
@@ -87,14 +91,16 @@ impl<'a> Arbitrary<'a> for Input<'a> {
 }
 
 /// Evaluate the input expression, then ignore the result.
-fn fuzz_eval(loader: &mut Loader, input: &str) -> Result<()> {
+#[inline(never)]
+fn eval(loader: &mut Loader, input: &str) -> Result<(Span, Value)> {
     let id = loader.load_string(input.to_string());
     let mut tracer = VoidTracer;
     let mut evaluator = Evaluator::new(loader, &mut tracer);
     let mut type_env = rcl::typecheck::prelude();
     let mut value_env = rcl::runtime::prelude();
-    let _ = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
-    Ok(())
+    let result = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
+    let span = loader.get_span(id);
+    Ok((span, result))
 }
 
 /// Run the formatter once.
@@ -122,7 +128,7 @@ fn fuzz_fmt(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()>
 /// * Ensure that evaluation is idempotent. That is, if a given input evaluates
 ///   to json value `x`, that json value should itself be a valid RCL
 ///   expression, which should evaluate to `x`.
-fn fuzz_eval_json(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
+fn fuzz_eval_json_idempotent(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
     let mut tracer = VoidTracer;
     let mut type_env = rcl::typecheck::prelude();
     let mut value_env = rcl::runtime::prelude();
@@ -149,21 +155,37 @@ fn fuzz_eval_json(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Resu
     Ok(())
 }
 
-/// Evaluate the input expression into toml, then ignore the result.
-fn fuzz_eval_toml(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
-    let id = loader.load_string(input.to_string());
-    let full_span = loader.get_span(id);
-    let mut tracer = VoidTracer;
-    let mut evaluator = Evaluator::new(loader, &mut tracer);
-    let mut type_env = rcl::typecheck::prelude();
-    let mut value_env = rcl::runtime::prelude();
-    let value = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
-    let toml = rcl::fmt_toml::format_toml(full_span, &value)?;
-    let _ = toml.println(&cfg);
-    Ok(())
+/// Evaluate the input expression into json.
+///
+/// Then check that the result can be parsed by the `serde_json` crate.
+fn fuzz_eval_json_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
+    let (full_span, value) = eval(loader, input)?;
+    let json_doc = rcl::fmt_json::format_json(full_span, &value)?;
+    let json_str = json_doc.println(&cfg);
+    match serde_json::from_str::<serde_json::Value>(&json_str[..]) {
+        Ok(..) => Ok(()),
+        Err(err) => panic!("RCL output should be parseable, but got {err:?}"),
+    }
+}
+
+/// Evaluate the input expression into toml.
+///
+/// Then check that the result can be parsed by the `toml` crate.
+fn fuzz_eval_toml_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
+    let (full_span, value) = eval(loader, input)?;
+    let toml_doc = rcl::fmt_toml::format_toml(full_span, &value)?;
+    let toml_str = toml_doc.println(&cfg);
+    match toml::from_str::<toml::Value>(&toml_str[..]) {
+        Ok(..) => Ok(()),
+        Err(err) => panic!("RCL output should be parseable, but got {err:?}"),
+    }
 }
 
 fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
+    let mut cfg = pprint::Config {
+        width: 80,
+        markup: MarkupMode::None,
+    };
     match input.mode {
         Mode::Lex => {
             let doc = loader.load_string(input.data.to_string());
@@ -179,28 +201,23 @@ fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
             let _ = loader.get_typechecked_ast(&mut env, doc)?;
         }
         Mode::Eval => {
-            let _ = fuzz_eval(loader, input.data);
+            let _ = eval(loader, input.data);
         }
         Mode::Format { width } => {
-            let cfg = pprint::Config {
-                width,
-                markup: MarkupMode::None,
-            };
+            cfg.width = width;
             let _ = fuzz_fmt(loader, input.data, cfg);
         }
-        Mode::EvalJson { width } => {
-            let cfg = pprint::Config {
-                width,
-                markup: MarkupMode::None,
-            };
-            let _ = fuzz_eval_json(loader, input.data, cfg);
+        Mode::EvalJsonIdempotent { width } => {
+            cfg.width = width;
+            let _ = fuzz_eval_json_idempotent(loader, input.data, cfg);
         }
-        Mode::EvalToml { width } => {
-            let cfg = pprint::Config {
-                width,
-                markup: MarkupMode::None,
-            };
-            let _ = fuzz_eval_toml(loader, input.data, cfg);
+        Mode::EvalJsonCheck { width } => {
+            cfg.width = width;
+            let _ = fuzz_eval_json_check(loader, input.data, cfg);
+        }
+        Mode::EvalTomlCheck { width } => {
+            cfg.width = width;
+            let _ = fuzz_eval_toml_check(loader, input.data, cfg);
         }
     };
 

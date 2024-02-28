@@ -131,6 +131,27 @@ impl Formatter {
     }
 
     /// Format a dict as a TOML "inline table".
+    ///
+    /// Note, the TOML spec has very particular opinions about whitespace,
+    /// newlines, and trailing commas. In arrays, [anything goes][array]
+    ///
+    /// > Arrays are square brackets with values inside. Whitespace is ignored.
+    /// > (...)
+    /// > Arrays can span multiple lines. A terminating comma (also called a
+    /// > trailing comma) is permitted after the last value of the array. Any
+    /// > number of newlines and comments may precede values, commas, and the
+    /// > closing bracket. Indentation between array values and commas is
+    /// > treated as whitespace and ignored.
+    ///
+    /// However, for inline tables, [we don't have that freedom][inline-table]:
+    ///
+    /// > Inline tables are intended to appear on a single line. A terminating
+    /// > comma (also called trailing comma) is not permitted after the last
+    /// > key/value pair in an inline table. No newlines are allowed between the
+    /// > curly braces unless they are valid within a value.
+    ///
+    /// [array]: https://toml.io/en/v1.0.0#array
+    /// [inline-table]: https://toml.io/en/v1.0.0#inline-table
     pub fn inline_table<'a>(
         &mut self,
         vs: impl Iterator<Item = (&'a Value, &'a Value)>,
@@ -138,8 +159,9 @@ impl Formatter {
         let mut elements = Vec::new();
         for (k, v) in vs {
             if !elements.is_empty() {
-                elements.push(",".into());
-                elements.push(Doc::Sep);
+                // Note, we don't use Doc::Sep here because we don't allow line
+                // breaks, see the doc comment above!
+                elements.push(", ".into());
             }
             elements.push(self.push_key(k)?);
             elements.push(" = ".into());
@@ -151,16 +173,10 @@ impl Formatter {
             // An empty collection we always format without space in between.
             "{}".into()
         } else {
-            // Add a trailing comma in tall mode.
-            elements.push(Doc::tall(","));
-
-            group! {
-                "{"
-                Doc::Sep
-                indent! { Doc::Concat(elements) }
-                Doc::Sep
-                "}"
-            }
+            // We intentionally don't add a trailing comma, and we intentionally
+            // use spaces instead of Doc::Sep. Line breaks and trailing commas
+            // are not allowed in inline tables!
+            concat! { "{ " Doc::Concat(elements) " }" }
         };
         Ok(result)
     }
@@ -201,6 +217,31 @@ impl Formatter {
         Ok(result)
     }
 
+    /// Render a list or set of dicts in special "Array of Tables" TOML syntax.
+    /// See <https://toml.io/en/v1.0.0#array-of-tables>.
+    fn array_of_tables<'v>(
+        &mut self,
+        key: &'v Value,
+        xs: impl Iterator<Item = &'v Value>,
+        arrays: &mut Vec<Doc<'v>>,
+    ) -> Result<()> {
+        let table_header = self.push_key(key)?;
+        for (i, x) in xs.enumerate() {
+            self.path.push(PathElement::Index(i));
+            let table_body = match x {
+                Value::Dict(table_inner) => self.table(table_inner.iter())?,
+                _ => unreachable!("We checked before that all elements are dicts."),
+            };
+            self.path.pop().expect("We pushed the index before.");
+            arrays.push(concat! {
+                "[[" table_header.clone() "]]"
+                Doc::HardBreak
+                table_body
+            });
+        }
+        Ok(())
+    }
+
     fn top_level<'a>(&mut self, kv: &'a BTreeMap<Value, Value>) -> Result<Doc<'a>> {
         let mut values: Vec<Doc> = Vec::new();
         let mut tables: Vec<Doc> = Vec::new();
@@ -211,21 +252,12 @@ impl Formatter {
                 // List of dicts has a special "Array of Tables" syntax in TOML.
                 // <https://toml.io/en/v1.0.0#array-of-tables>
                 Value::List(xs) if xs.iter().all(|x| matches!(x, Value::Dict(..))) => {
-                    let table_header = self.push_key(k)?;
-                    for (i, x) in xs.iter().enumerate() {
-                        self.path.push(PathElement::Index(i));
-                        let table_body = match x {
-                            Value::Dict(table_inner) => self.table(table_inner.iter())?,
-                            _ => unreachable!("We checked before that all elements are dicts."),
-                        };
-                        self.path.pop().expect("We pushed the index before.");
-                        arrays.push(concat! {
-                            "[[" table_header.clone() "]]"
-                            Doc::HardBreak
-                            table_body
-                        });
-                    }
+                    self.array_of_tables(k, xs.iter(), &mut arrays)?;
                 }
+                Value::Set(xs) if xs.iter().all(|x| matches!(x, Value::Dict(..))) => {
+                    self.array_of_tables(k, xs.iter(), &mut arrays)?;
+                }
+
                 // Top-level dicts get formatted as tables.
                 Value::Dict(table_inner) => {
                     let table_header = self.push_key(k)?;
@@ -237,6 +269,7 @@ impl Formatter {
                         table_body
                     });
                 }
+
                 // Anything else becomes a top-level key-value.
                 top_level_value => values.push(self.key_value(k, top_level_value)?),
             }

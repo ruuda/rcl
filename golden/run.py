@@ -43,6 +43,7 @@ import os
 import re
 import subprocess
 import sys
+import tomllib
 
 from typing import Iterable, Iterator, List, Optional
 
@@ -85,22 +86,39 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
     match os.path.basename(os.path.dirname(fname)):
         case "error" | "types":
             cmd = ["eval"]
+
         case "error_json":
             cmd = ["eval", "--format=json"]
+
         case "error_raw":
             cmd = ["eval", "--format=raw"]
+
         case "fmt":
             cmd = ["fmt"]
+
         case "json":
             cmd = ["eval", "--format=json"]
+
         case "raw":
             cmd = ["eval", "--format=raw"]
+
         case "rcl":
             cmd = ["eval", "--format=rcl"]
+
         case "toml":
             cmd = ["eval", "--format=toml"]
+            # For TOML, when the test case is not an error, we additionally test
+            # that Python can parse the expected output, because there have been
+            # some cases where RCL outputs something that other parsers reject.
+            if not os.path.basename(fname).startswith("error_"):
+                try:
+                    tomllib.loads("".join(golden_lines))
+                except Exception as err:
+                    raise Exception(f"Invalid TOML in {fname}") from err
+
         case "yaml_stream":
             cmd = ["eval", "--format=yaml-stream"]
+
         case unknown:
             raise ValueError(f"No command-line known for {unknown}.")
 
