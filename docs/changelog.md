@@ -14,6 +14,13 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Next
+
+Unreleased.
+
+ * Fix a compatibility problem in the toml output format. Improve tests and add
+   a fuzzer to rule out similar compatibility problems.
+
 ## 0.1.0
 
 Released 2024-02-26.
