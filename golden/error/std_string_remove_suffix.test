@@ -1,0 +1,14 @@
+"ab".remove_suffix("c")
+
+# output:
+stdin:1:20
+  ╷
+1 │ "ab".remove_suffix("c")
+  ╵                    ^~~
+Error: Cannot remove this suffix. "ab" does not end with "c".
+
+stdin:1:19
+  ╷
+1 │ "ab".remove_suffix("c")
+  ╵                   ^
+In call to method 'String.remove_suffix'.

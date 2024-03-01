@@ -1,0 +1,9 @@
+let strings = [
+  "o_creat",
+  "i\u{0307}stanbul",
+  "bahnhofstraße",
+];
+[for str in strings: str.to_uppercase()]
+
+# output:
+["O_CREAT", "İSTANBUL", "BAHNHOFSTRASSE"]

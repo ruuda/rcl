@@ -1,0 +1,14 @@
+"ab".remove_prefix(0)
+
+# output:
+stdin:1:20
+  ╷
+1 │ "ab".remove_prefix(0)
+  ╵                    ^
+Error: Prefix must be a string.
+
+stdin:1:19
+  ╷
+1 │ "ab".remove_prefix(0)
+  ╵                   ^
+In call to method 'String.remove_prefix'.

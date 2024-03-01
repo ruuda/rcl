@@ -1,0 +1,4 @@
+"ab".remove_suffix("b")
+
+# output:
+"a"
