@@ -91,6 +91,50 @@ evaluation aborts with an error.
 "-42".parse_int()
 ```
 
+## remove_prefix
+
+    String.remove_prefix: (self: String, prefix: String) -> String
+
+Return the string without the given prefix. When `self` does not start with
+`prefix`, this aborts evaluation with an error.
+
+```rcl
+// Evaluates to "example.com".
+"https://example.com".remove_prefix("https://")
+
+// Results in an error.
+"http://example.com".remove_prefix("https://")
+
+// When an error is not desired, you can define this function:
+let remove_prefix = (str, prefix) =>
+  if str.starts_with(prefix):
+    str.remove_prefix(prefix)
+  else
+    str;
+```
+
+## remove_suffix
+
+    String.remove_suffix: (self: String, suffix: String) -> String
+
+Return the string without the given suffix. When `self` does not end with
+`suffix`, this aborts evaluation with an error.
+
+```rcl
+// Evaluates to "example".
+"example.com".remove_suffix(".com")
+
+// Results in an error.
+"example.com".remove_suffix(".org")
+
+// When an error is not desired, you can define this function:
+let remove_suffix = (str, suffix) =>
+  if str.ends_with(suffix):
+    str.remove_suffix(suffix)
+  else
+    str;
+```
+
 ## replace
 
     String.replace: (self: String, needle: String, replacement: String) -> String
@@ -151,4 +195,38 @@ Return whether the string starts with `prefix`.
 
 // Evaluates to false.
 "racecar".starts_with("ace")
+```
+
+## to_lowercase
+
+    String.to_lowercase: (self: String) -> String
+
+Convert the string to lowercase. This is implemented in terms of Rust’s
+[`to_lowercase`](https://doc.rust-lang.org/std/primitive.str.html#method.to_lowercase),
+which defines lowercase in terms of the Unicode derived core property _Lowercase_.
+Beware that Unicode can behave in unexpected ways!
+
+```rcl
+// Evaluates to "o_creat".
+"O_CREAT".to_lowercase()
+
+// Evaluates to false, İ lowercases to i followed by U+0307 Combining Dot Above.
+"İstanbul".to_lowercase() == "istanbul"
+```
+
+## to_uppercase
+
+    String.to_uppercase: (self: String) -> String
+
+Convert the string to uppercase. This is implemented in terms of Rust’s
+[`to_uppercase`](https://doc.rust-lang.org/std/primitive.str.html#method.to_uppercase),
+which defines uppercase according to the Unicode derived core property _Uppercase_.
+Beware that Unicode can behave in unexpected ways!
+
+```rcl
+// Evaluates to "O_CREAT".
+"o_creat".to_uppercase()
+
+// Evaluates to false, ß uppercases to SS instead of ẞ.
+"straße".to_uppercase() == "STRAẞE"
 ```
