@@ -400,6 +400,8 @@ impl<'a> Evaluator<'a> {
                     (Value::String(_), "split") => Some(&stdlib::STRING_SPLIT),
                     (Value::String(_), "split_lines") => Some(&stdlib::STRING_SPLIT_LINES),
                     (Value::String(_), "starts_with") => Some(&stdlib::STRING_STARTS_WITH),
+                    (Value::String(_), "to_lowercase") => Some(&stdlib::STRING_TO_LOWERCASE),
+                    (Value::String(_), "to_uppercase") => Some(&stdlib::STRING_TO_UPPERCASE),
 
                     (Value::Dict(_), "contains") => Some(&stdlib::DICT_CONTAINS),
                     (Value::Dict(_), "except") => Some(&stdlib::DICT_EXCEPT),

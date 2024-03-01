@@ -76,6 +76,8 @@ _root_base = [
                 "split_lines",
                 "starts_with",
                 "std",
+                "to_lowercase",
+                "to_uppercase",
                 "values",
             ),
             suffix=r"\b",

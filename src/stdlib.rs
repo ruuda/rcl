@@ -531,6 +531,28 @@ fn builtin_string_replace(_eval: &mut Evaluator, call: MethodCall) -> Result<Val
 }
 
 builtin_method!(
+    "String.to_lowercase",
+    () -> String,
+    const STRING_TO_LOWERCASE,
+    builtin_string_to_lowercase
+);
+fn builtin_string_to_lowercase(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let string = call.receiver.expect_string();
+    Ok(Value::String(string.to_lowercase().into()))
+}
+
+builtin_method!(
+    "String.to_uppercase",
+    () -> String,
+    const STRING_TO_UPPERCASE,
+    builtin_string_to_uppercase
+);
+fn builtin_string_to_uppercase(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let string = call.receiver.expect_string();
+    Ok(Value::String(string.to_uppercase().into()))
+}
+
+builtin_method!(
     "List.fold",
     (
         seed: Any,

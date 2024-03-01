@@ -29,7 +29,8 @@ fn get_color(token: &Token, token_bytes: &[u8]) -> &'static str {
             // TODO: Only when preceded by a dot, when they are methods.
             b"chars" | b"contains" | b"ends_with" | b"enumerate" | b"except" | b"fold" | b"get"
             | b"group_by" | b"join" | b"key_by" | b"keys" | b"len" | b"parse_int" | b"replace"
-            | b"reverse" | b"split" | b"split_lines" | b"starts_with" | b"std" | b"values" => red,
+            | b"reverse" | b"split" | b"split_lines" | b"starts_with" | b"std"
+            | b"to_lowercase" | b"to_uppercase" | b"values" => red,
             _ => blue,
         },
 
