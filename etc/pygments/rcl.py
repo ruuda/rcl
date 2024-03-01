@@ -70,6 +70,8 @@ _root_base = [
                 "keys",
                 "len",
                 "parse_int",
+                "remove_prefix",
+                "remove_suffix",
                 "replace",
                 "reverse",
                 "split",
