@@ -1,0 +1,9 @@
+let strings = [
+  "O_CREAT",
+  "İstanbul",
+  "BAHNHOFSTRAẞE",
+];
+[for str in strings: str.to_lowercase()]
+
+# output:
+["o_creat", "i̇stanbul", "bahnhofstraße"]

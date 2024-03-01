@@ -531,6 +531,84 @@ fn builtin_string_replace(_eval: &mut Evaluator, call: MethodCall) -> Result<Val
 }
 
 builtin_method!(
+    "String.remove_prefix",
+    (prefix: String) -> String,
+    const STRING_REMOVE_PREFIX,
+    builtin_string_remove_prefix
+);
+fn builtin_string_remove_prefix(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let string = call.receiver.expect_string();
+    let prefix_arg = &call.call.args[0];
+    let prefix = match &prefix_arg.value {
+        Value::String(s) => s.as_ref(),
+        _ => return prefix_arg.span.error("Prefix must be a string.").err(),
+    };
+    match string.strip_prefix(prefix) {
+        Some(s) => Ok(Value::String(s.into())),
+        None => prefix_arg
+            .span
+            .error("Cannot remove this prefix.")
+            .with_body(concat! {
+                format_rcl(&call.receiver).into_owned()
+                " does not start with "
+                format_rcl(&prefix_arg.value).into_owned()
+                "."
+            })
+            .err(),
+    }
+}
+
+builtin_method!(
+    "String.remove_suffix",
+    (suffix: String) -> String,
+    const STRING_REMOVE_SUFFIX,
+    builtin_string_remove_suffix
+);
+fn builtin_string_remove_suffix(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let string = call.receiver.expect_string();
+    let suffix_arg = &call.call.args[0];
+    let suffix = match &suffix_arg.value {
+        Value::String(s) => s.as_ref(),
+        _ => return suffix_arg.span.error("Suffix must be a string.").err(),
+    };
+    match string.strip_suffix(suffix) {
+        Some(s) => Ok(Value::String(s.into())),
+        None => suffix_arg
+            .span
+            .error("Cannot remove this suffix.")
+            .with_body(concat! {
+                format_rcl(&call.receiver).into_owned()
+                " does not end with "
+                format_rcl(&suffix_arg.value).into_owned()
+                "."
+            })
+            .err(),
+    }
+}
+
+builtin_method!(
+    "String.to_lowercase",
+    () -> String,
+    const STRING_TO_LOWERCASE,
+    builtin_string_to_lowercase
+);
+fn builtin_string_to_lowercase(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let string = call.receiver.expect_string();
+    Ok(Value::String(string.to_lowercase().into()))
+}
+
+builtin_method!(
+    "String.to_uppercase",
+    () -> String,
+    const STRING_TO_UPPERCASE,
+    builtin_string_to_uppercase
+);
+fn builtin_string_to_uppercase(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let string = call.receiver.expect_string();
+    Ok(Value::String(string.to_uppercase().into()))
+}
+
+builtin_method!(
     "List.fold",
     (
         seed: Any,

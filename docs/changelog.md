@@ -18,6 +18,8 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased.
 
+ * Add new methods on `String`: `remove_prefix`, `remove_suffix`, `to_lowercase`,
+   `to_uppercase`.
  * Fix a compatibility problem in the toml output format. Improve tests and add
    a fuzzer to rule out similar compatibility problems.
 

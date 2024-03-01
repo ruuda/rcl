@@ -58,6 +58,8 @@
 "keys"
 "len"
 "parse_int"
+"remove_prefix"
+"remove_suffix"
 "replace"
 "reverse"
 "split"
@@ -65,6 +67,8 @@
 "starts_with"
 "std.range"
 "std.read_file_utf8"
+"to_lowercase"
+"to_uppercase"
 "values"
 
 # Builtin types.
