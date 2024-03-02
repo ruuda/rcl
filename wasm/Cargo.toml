@@ -1,0 +1,18 @@
+[package]
+name = "rcl-wasm"
+version = "0.1.0"
+authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
+edition = "2021"
+license = "Apache-2.0"
+description = "WASM entry points for RCL functionality."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies.wasm-bindgen]
+version = "0.2.91"
+default-features = false
+features = ["std"]
+
+[dependencies.rcl]
+path = ".."

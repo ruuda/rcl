@@ -9,7 +9,7 @@ license = "Apache-2.0"
 unicode-width = "0.1.10"
 
 [workspace]
-members = ["fuzz", "pyrcl"]
+members = ["fuzz", "pyrcl", "wasm"]
 
 [profile.release]
 lto = "thin"
