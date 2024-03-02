@@ -19,6 +19,7 @@ syn match rclOperator '>='
 syn match rclOperator '=='
 syn match rclOperator '!='
 syn match rclOperator '=>'
+syn match rclOperator '->'
 syn match rclOperator '|'
 syn match rclOperator '+'
 syn match rclOperator '-'
@@ -46,13 +47,15 @@ syn region  rclFormatTriple  start='f"""' end='"""' skip='\\"\|\\{' contains=rcl
 " needs to end in `[]`.
 syn keyword rclBuiltin chars contains[] ends_with except fold get group_by join key_by keys len parse_int remove_prefix remove_suffix replace reverse split split_lines starts_with std to_lowercase to_uppercase values
 
+syn match   rclType '\<\(Any\|Bool\|Dict\|Int\|List\|Null\|Set\|String\|Void\)\>'
+
 syn cluster rclString contains=rclStringDouble,rclStringTriple,rclFormatDouble,rclFormatTriple
 highlight link rclStringDouble rclString
 highlight link rclStringTriple rclString
 highlight link rclFormatDouble rclString
 highlight link rclFormatTriple rclString
 
-syn cluster rclExpr contains=@rclKeyword,rclOperator,@rclNumber,rclComment,rclBuiltin,@rclString
+syn cluster rclExpr contains=@rclKeyword,rclOperator,@rclNumber,rclComment,rclBuiltin,rclType,@rclString
 
 highlight link rclBoolean     Boolean
 highlight link rclConditional Conditional
@@ -64,6 +67,7 @@ highlight link rclException   Keyword
 highlight link rclComment     Comment
 highlight link rclTodo        Todo
 highlight link rclBuiltin     Function
+highlight link rclType        Type
 highlight link rclString      String
 highlight link rclFloat       Float
 highlight link rclHexadecimal Number

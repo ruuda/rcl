@@ -4,7 +4,9 @@ The `List` type has the following methods.
 
 ## contains
 
-    List.contains: (self: List[T], element: T) -> Bool
+```rcl
+List.contains: (self: List[T], element: T) -> Bool
+```
 
 Return whether the list contains a given element. For example:
 
@@ -16,7 +18,9 @@ Return whether the list contains a given element. For example:
 
 ## enumerate
 
-    List.enumerate: (self: List[T]) -> Dict[Int, T]
+```rcl
+List.enumerate: (self: List[T]) -> Dict[Int, T]
+```
 
 Return a mapping from index to list element. The index is zero-based.
 
@@ -43,7 +47,9 @@ unordered_pairs
 
 ## fold
 
-    List.fold: (self: List[T], seed: U, reduce: (U, T) -> U) -> U
+```rcl
+List.fold: (self: List[T], seed: U, reduce: (U, T) -> U) -> U
+```
 
 Left-fold the function `reduce` over the list, with `seed` as the initial
 accumulator value.
@@ -62,7 +68,9 @@ accumulator value.
 
 ## group_by
 
-    List.group_by: (self: List[T], get_key: T -> U) -> Dict[U, List[T]]
+```rcl
+List.group_by: (self: List[T], get_key: T -> U) -> Dict[U, List[T]]
+```
 
 Group the elements of the list by a key selected by `get_key`. Within groups,
 the original order of elements is preserved.
@@ -91,7 +99,9 @@ foods.group_by(food => food.category)
 
 ## join
 
-    List.join: (self: List[T], separator: String) -> String
+```rcl
+List.join: (self: List[T], separator: String) -> String
+```
 
 Concatenate the elements with the separator in between. This is equivalent to
 using a format string, therefore the list elements must be string formattable.
@@ -109,7 +119,9 @@ using a format string, therefore the list elements must be string formattable.
 
 ## key_by
 
-    List.key_by: (self: List[T], get_key: T -> U) -> Dict[U, T]
+```rcl
+List.key_by: (self: List[T], get_key: T -> U) -> Dict[U, T]
+```
 
 Build a dictionary with the key selected by `get_key` as key, and the list
 elements as values. The keys must be unique. When a key is not unique, this
@@ -139,7 +151,9 @@ replicants.key_by(r => r.generation)
 
 ## len
 
-    List.len: (self: List[T]) -> Int
+```rcl
+List.len: (self: List[T]) -> Int
+```
 
 Return the number of elements in the list. For example:
 
@@ -150,7 +164,9 @@ Return the number of elements in the list. For example:
 
 ## reverse
 
-    List.reverse: (self: List[T]) -> List[T]
+```rcl
+List.reverse: (self: List[T]) -> List[T]
+```
 
 Return the list in reverse.
 

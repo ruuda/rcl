@@ -86,6 +86,23 @@ _root_base = [
         ),
         token.Name.Builtin,
     ),
+    (
+        words(
+            (
+                "Any",
+                "Bool",
+                "Dict",
+                "Int",
+                "List",
+                "Null",
+                "Set",
+                "String",
+                "Void",
+            ),
+            suffix=r"\b",
+        ),
+        token.Keyword.Type,
+    ),
     (r"[_a-z][_a-z0-9-]*", token.Name),
     # There is a dedicated whitespace token, but if we use it, the html output
     # (and console output too) gets very polluted, so make whitespace a regular
