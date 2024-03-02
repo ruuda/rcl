@@ -1,0 +1,17 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>RCL WASM Demo</title>
+    <script src='rcl_bg.js'></script>
+  </head>
+  <body>
+    <script>
+      WebAssembly.instantiateStreaming(
+          fetch("rcl_bg.wasm"),
+          importObject
+      ).then((results) => {
+          console.log(results);
+      });
+    </script>
+  </body>
+</html>
