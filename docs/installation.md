@@ -1,11 +1,36 @@
 # Installation
 
+RCL is written in Rust and builds with [Cargo][cargo]. RCL is easy to build from
+source, but you can also use one of the options below that automate the process.
+
+[cargo]: https://doc.rust-lang.org/cargo/guide/
+
 ## With Cargo
 
 Although Cargo is not a system package manager, if you have it available it’s
 an easy way to try <abbr>RCL</abbr>:
 
-    cargo +1.70.0 install --git https://github.com/ruuda/rcl.git rcl
+    cargo +1.70.0 install \
+      --git https://github.com/ruuda/rcl.git \
+      --branch v0.1.0 \
+      rcl
+
+## As a Nix flake
+
+The repository includes a Nix flake. You can run <abbr>RCL</abbr> with a
+[flake-enabled][flakes] version of [Nix][nix], such as Nix 2.18:
+
+    nix run 'github:ruuda/rcl?ref=v0.1.0' -- --help
+
+[flakes]: https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake
+[nix]:    https://nixos.org/download
+
+The Nix flake also includes the Python module:
+
+    PYTHONPATH=$(nix build github:ruuda/rcl?ref=v0.1.0#pyrcl --print-out-paths)/lib python3
+
+The Nix flake also includes a shell with all the tools needed for development,
+as well as the environment that is tested on <abbr>CI</abbr>.
 
 ## From source
 
@@ -14,16 +39,20 @@ To build from source, clone the repository from one of the two mirrors:
     git clone https://github.com/ruuda/rcl.git
     git clone https://codeberg.org/ruuda/rcl.git
 
-RCL is written in Rust and builds with [Cargo][cargo]. The repository includes a
-`rust-toolchain.toml` file that specifies a compatible Rust version. When Cargo
-is managed by [Rustup][rustup], it will automatically fetch the right toolchain.
-To build:
+Then build with [Cargo][cargo]. The repository includes a `rust-toolchain.toml`
+file that specifies a compatible Rust version. When Cargo is managed by
+[Rustup][rustup], Rustup will automatically fetch the right toolchain.
 
     cargo build --release
 
 Put the binary on your `PATH` to be able to use it system-wide, e.g.:
 
     cp target/release/rcl ~/.local/bin
+
+To build a static binary rather than a dynamically linked one:
+
+    cargo build --release --target x86_64-unknown-linux-musl
+    cp target/x86_64-unknown-linux-musl/release/rcl ~/.local/bin
 
 [cargo]:  https://doc.rust-lang.org/cargo/guide/
 [rustup]: https://rust-lang.github.io/rustup/index.html
@@ -49,19 +78,3 @@ Now you can use the module as any regular one:
 
 It is also possible to build a wheel that can be installed into a virtualenv
 using [Maturin](https://www.maturin.rs/).
-
-## As a Nix flake
-
-The repository includes a Nix flake. It is mainly used to provide a suitable
-environment for local development and CI, but it also includes the application
-itself. You can run <abbr>RCL</abbr> with a [flake-enabled][flakes] version of
-[Nix][nix], such as Nix 2.18:
-
-    nix run github:ruuda/rcl -- --help
-
-[flakes]: https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake
-[nix]:    https://nixos.org/download
-
-The Nix flake also includes the Python module:
-
-    PYTHONPATH=$(nix build github:ruuda/rcl#pyrcl --print-out-paths)/lib python3
