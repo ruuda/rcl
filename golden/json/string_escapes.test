@@ -10,11 +10,15 @@
   // Despite there being a \ before the closing quote, that backslash does not
   // escape it! This is a regression test.
   backslash_before_newline = "\\",
+  // In a regular string, these don't need to be escaped (and } never needs to),
+  // but they can.
+  braces = "\{\}",
 }
 
 # output:
 {
   "backslash_before_newline": "\\",
+  "braces": "{}",
   "json_escapes": "\\/\b\f\n\r\t\n",
   "newline": "\n",
   "quote": "\"",

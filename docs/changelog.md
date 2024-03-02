@@ -20,6 +20,7 @@ Unreleased.
 
  * Add new methods on `String`: `remove_prefix`, `remove_suffix`, `to_lowercase`,
    `to_uppercase`.
+ * Allow `\}` in strings as an escape sequence for `}`.
  * Fix a compatibility problem in the toml output format. Improve tests and add
    a fuzzer to rule out similar compatibility problems.
 

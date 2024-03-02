@@ -98,7 +98,8 @@ let generations = {
 
 Inside strings, `\` initiates an escape sequence. The same escape sequences as
 in json are supported, which includes `\"`, `\\`, `\r`, `\n`, and `\t`.
-Furthermore, `\{` escapes `{` inside format strings.
+Furthermore, `\{` escapes `{` inside format strings. `}` does not need to be
+escaped, but for symmetry `\}` is allowed as an escape for `}`.
 
 A `\u` initiates an escape sequence for an arbitrary Unicode scalar value. It
 can be followed by either exactly 4 hex digits (like in json and Python), or by

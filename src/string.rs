@@ -53,6 +53,9 @@ fn unescape_single(span: Span, ch: u8, output: &mut String) -> Result<()> {
         // but for consistency it can be used in any string literal.
         b'{' => output.push('{'),
 
+        // } never needs to be escaped, but for symmetry with { we allow it.
+        b'}' => output.push('}'),
+
         ch if ch.is_ascii_uppercase() => {
             return span
                 .error("Invalid escape sequence.")
