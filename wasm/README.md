@@ -43,8 +43,11 @@ Generate the Javascript bindings:
 
     wasm-bindgen \
       --out-dir target/web \
-      --browser \
+      --target no-modules \
       --no-typescript \
       target/rcl.wasm
 
-TODO: And now what? How do I call it from a webpage?
+Put everything together:
+
+    cp wasm/index.html target/web
+    python -m http.server --directory target/web

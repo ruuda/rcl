@@ -11,7 +11,7 @@ use rcl::loader::{Loader, VoidFilesystem};
 use rcl::tracer::VoidTracer;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-fn load_impl(input: &str) -> Result<()> {
+fn rcl_load_impl(input: &str) -> Result<()> {
     let mut loader = Loader::new();
     loader.set_filesystem(Box::new(VoidFilesystem));
     let id = loader.load_string(input.to_string());
@@ -24,8 +24,8 @@ fn load_impl(input: &str) -> Result<()> {
 }
 
 #[wasm_bindgen]
-pub fn load(input: &str) -> i32 {
-    match load_impl(input) {
+pub fn rcl_load(input: &str) -> i32 {
+    match rcl_load_impl(input) {
         Ok(()) => return 0,
         Err(..) => return -1,
     }

@@ -2,16 +2,19 @@
   <head>
     <meta charset="utf-8">
     <title>RCL WASM Demo</title>
-    <script src='rcl_bg.js'></script>
+    <script src='/rcl.js' async></script>
+    <script type="module">
+      window.onload = function() {
+        const { rcl_load } = wasm_bindgen;
+        async function run() {
+          await wasm_bindgen();
+          console.log(rcl_load("2 + 2"));
+          console.log(rcl_load("syntax error"));
+        }
+        run();
+      }
+    </script>
   </head>
   <body>
-    <script>
-      WebAssembly.instantiateStreaming(
-          fetch("rcl_bg.wasm"),
-          importObject
-      ).then((results) => {
-          console.log(results);
-      });
-    </script>
   </body>
 </html>
