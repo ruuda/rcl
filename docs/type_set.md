@@ -4,7 +4,9 @@ The `Set` type has the following methods.
 
 ## contains
 
-    Set.contains: (self: Set[T], element: T) -> Bool
+```rcl
+Set.contains: (self: Set[T], element: T) -> Bool
+```
 
 Return whether the set contains a given element. For example:
 
@@ -15,7 +17,9 @@ Return whether the set contains a given element. For example:
 
 ## except
 
-    Set.except: (self: Set[T], element: T) -> Set[T]
+```rcl
+Set.except: (self: Set[T], element: T) -> Set[T]
+```
 
 Return a copy of the set, with the given element omitted. If the element was not
 present in the first place, then the result is identical to the input.
@@ -28,7 +32,9 @@ present in the first place, then the result is identical to the input.
 
 ## group_by
 
-    Set.group_by: (self: Set[T], get_key: T -> U) -> Dict[U, Set[T]]
+```rcl
+Set.group_by: (self: Set[T], get_key: T -> U) -> Dict[U, Set[T]]
+```
 
 Group the elements of the list by a key selected by `get_key`.
 
@@ -56,7 +62,9 @@ foods.group_by(food => food.category)
 
 ## key_by
 
-    Set.key_by: (self: Set[T], get_key: T -> U) -> Dict[U, T]
+```rcl
+Set.key_by: (self: Set[T], get_key: T -> U) -> Dict[U, T]
+```
 
 Build a dictionary with the key selected by `get_key` as key, and the set
 elements as values. The keys must be unique. When a key is not unique, this
@@ -65,7 +73,9 @@ method fails and reports the conflicting values. See also
 
 ## len
 
-    Set.len: (self: Set[T]) -> Int
+```rcl
+Set.len: (self: Set[T]) -> Int
+```
 
 Return the number of elements in the set. For example:
 

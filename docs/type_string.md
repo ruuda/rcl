@@ -4,7 +4,9 @@ The `String` type has the following methods.
 
 ## chars
 
-    String.chars: (self: String) -> List[String]
+```rcl
+String.chars: (self: String) -> List[String]
+```
 
 Return a list of the individual Unicode code points that make up the string. The
 result is a list of single-character strings (where a character is a code point).
@@ -24,7 +26,9 @@ Like Python, <abbr>RCL</abbr> does not have a separate character type.
 
 ## contains
 
-    String.contains: (self: String, needle: String) -> Bool
+```rcl
+String.contains: (self: String, needle: String) -> Bool
+```
 
 Return whether the string contains `needle` as a substring.
 
@@ -38,7 +42,9 @@ Return whether the string contains `needle` as a substring.
 
 ## ends_with
 
-    String.ends_with: (self: String, suffix: String) -> Bool
+```rcl
+String.ends_with: (self: String, suffix: String) -> Bool
+```
 
 Return whether the string ends in `suffix`.
 
@@ -60,7 +66,9 @@ in the right direction.)
 
 ## len
 
-    String.len: (self: String) -> Int
+```rcl
+String.len: (self: String) -> Int
+```
 
 Return the number of Unicode code points that make up the string. This can be
 less than the byte length of the <abbr>UTF-8</abbr> encoding of the string.
@@ -81,7 +89,9 @@ less than the byte length of the <abbr>UTF-8</abbr> encoding of the string.
 
 ## parse_int
 
-    String.parse_int: (self: String) -> Int
+```rcl
+String.parse_int: (self: String) -> Int
+```
 
 Parse the string as a signed integer in base 10. If the input is not an integer,
 evaluation aborts with an error.
@@ -93,7 +103,9 @@ evaluation aborts with an error.
 
 ## remove_prefix
 
-    String.remove_prefix: (self: String, prefix: String) -> String
+```rcl
+String.remove_prefix: (self: String, prefix: String) -> String
+```
 
 Return the string without the given prefix. When `self` does not start with
 `prefix`, this aborts evaluation with an error.
@@ -115,7 +127,9 @@ let remove_prefix = (str, prefix) =>
 
 ## remove_suffix
 
-    String.remove_suffix: (self: String, suffix: String) -> String
+```rcl
+String.remove_suffix: (self: String, suffix: String) -> String
+```
 
 Return the string without the given suffix. When `self` does not end with
 `suffix`, this aborts evaluation with an error.
@@ -137,7 +151,9 @@ let remove_suffix = (str, suffix) =>
 
 ## replace
 
-    String.replace: (self: String, needle: String, replacement: String) -> String
+```rcl
+String.replace: (self: String, needle: String, replacement: String) -> String
+```
 
 Replace all occurrences of `needle` with `replacement`.
 
@@ -149,7 +165,9 @@ Replace all occurrences of `needle` with `replacement`.
 
 ## split
 
-    String.split: (self: String, separator: String) -> List[String]
+```rcl
+String.split: (self: String, separator: String) -> List[String]
+```
 
 Split the string on all occurrences of the separator. If the separator occurs
 multiple times in a row, or at the start or end of the string, this produces
@@ -168,7 +186,9 @@ abort evaluation with an error.
 
 ## split_lines
 
-    String.split_lines: (self: String) -> List[String]
+```rcl
+String.split_lines: (self: String) -> List[String]
+```
 
 Split the string on line endings `\n` and `\r\n`. The line endings themselves
 are not included in the result. The final line ending is optional.
@@ -185,7 +205,9 @@ are not included in the result. The final line ending is optional.
 
 ## starts_with
 
-    String.starts_with: (self: String, prefix: String) -> Bool
+```rcl
+String.starts_with: (self: String, prefix: String) -> Bool
+```
 
 Return whether the string starts with `prefix`.
 
@@ -199,7 +221,9 @@ Return whether the string starts with `prefix`.
 
 ## to_lowercase
 
-    String.to_lowercase: (self: String) -> String
+```rcl
+String.to_lowercase: (self: String) -> String
+```
 
 Convert the string to lowercase. This is implemented in terms of Rust’s
 [`to_lowercase`](https://doc.rust-lang.org/std/primitive.str.html#method.to_lowercase),
@@ -216,7 +240,9 @@ Beware that Unicode can behave in unexpected ways!
 
 ## to_uppercase
 
-    String.to_uppercase: (self: String) -> String
+```rcl
+String.to_uppercase: (self: String) -> String
+```
 
 Convert the string to uppercase. This is implemented in terms of Rust’s
 [`to_uppercase`](https://doc.rust-lang.org/std/primitive.str.html#method.to_uppercase),

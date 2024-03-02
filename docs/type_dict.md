@@ -27,7 +27,9 @@ both sides, the value is taken from the right side.
 
 ## contains
 
-    Dict.contains: (self: Dict[K, V], key: K) -> Bool
+```rcl
+Dict.contains: (self: Dict[K, V], key: K) -> Bool
+```
 
 Return whether the dict contains the given key. For example:
 
@@ -38,7 +40,9 @@ Return whether the dict contains the given key. For example:
 
 ## except
 
-    Dict.except: (self: Dict[K, V], key: K) -> Dict[K, V]
+```rcl
+Dict.except: (self: Dict[K, V], key: K) -> Dict[K, V]
+```
 
 Return a copy of the dictionary, with the given key omitted. If the key was not
 present in the first place, then the result is identical to the input.
@@ -55,7 +59,9 @@ replicant.except("serial")
 
 ## get
 
-    Dict.get: (self: Dict[K, V], key: K, default: V) -> V
+```rcl
+Dict.get: (self: Dict[K, V], key: K, default: V) -> V
+```
 
 If the dict contains the given key, return the associated value. If not, return
 the default value. For example:
@@ -68,7 +74,9 @@ let d = { a = 1, b = 2 };
 
 ## keys
 
-    Dict.keys: (self: Dict[K, V]) -> Set[K]
+```rcl
+Dict.keys: (self: Dict[K, V]) -> Set[K]
+```
 
 Return the keys of the dict as a set.
 
@@ -80,7 +88,9 @@ Return the keys of the dict as a set.
 
 ## len
 
-    Dict.len: (self: Dict[K, V]) -> Int
+```rcl
+Dict.len: (self: Dict[K, V]) -> Int
+```
 
 Return the number of keys in the dict. For example:
 
@@ -91,7 +101,9 @@ Return the number of keys in the dict. For example:
 
 ## values
 
-    Dict.values: (self: Dict[K, V]) -> List[V]
+```rcl
+Dict.values: (self: Dict[K, V]) -> List[V]
+```
 
 Discard the keys, and return only the values stored in the dict. The values are
 returned as a list because the same value may occur multiple times. The order of
