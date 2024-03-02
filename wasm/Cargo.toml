@@ -10,7 +10,7 @@ description = "WASM entry points for RCL functionality."
 crate-type = ["cdylib"]
 
 [dependencies.wasm-bindgen]
-version = "0.2.91"
+version = "=0.2.84"
 default-features = false
 features = ["std"]
 

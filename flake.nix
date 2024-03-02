@@ -129,6 +129,7 @@
                 # cached version that does not depend on our patched pygments.
                 pkgs.python311Packages.black
                 pkgs.binaryen
+                pkgs.wasm-bindgen-cli
                 pkgs.maturin
                 pkgs.rustup
                 pythonEnv

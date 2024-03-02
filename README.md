@@ -192,6 +192,14 @@ Inspect the wasm file to confirm it doesn't contain needless fluff:
 
     wasm-dis target/rcl.wasm
 
+Generate the Javascript bindings:
+
+    wasm-bindgen \
+      --out-dir target/web \
+      --browser \
+      --no-typescript \
+      target/rcl.wasm
+
 TODO: And now what? How do I call it from a webpage?
 
 [binaryen]: https://github.com/WebAssembly/binaryen
