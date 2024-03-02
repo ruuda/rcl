@@ -186,7 +186,7 @@
                 "check-grammar"
                 { buildInputs = [ pkgs.bison ]; }
                 ''
-                bison -Wcounterexamples,error=all ${./src/grammar.y} --output $out
+                bison -Wcounterexamples,error=all ${./etc/bison/grammar.y} --output $out
                 '';
 
               fmtRust = pkgs.runCommand

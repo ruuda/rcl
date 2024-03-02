@@ -120,7 +120,7 @@ Run golden tests:
 
 Check the grammar for ambiguities:
 
-    bison -Werror=all src/grammar.y
+    bison -Werror=all etc/bison/grammar.y
 
 Run unit tests and lints:
 
