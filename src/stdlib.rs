@@ -549,7 +549,7 @@ fn builtin_string_remove_prefix(_eval: &mut Evaluator, call: MethodCall) -> Resu
             .span
             .error("Cannot remove this prefix.")
             .with_body(concat! {
-                format_rcl(&call.receiver).into_owned()
+                format_rcl(call.receiver).into_owned()
                 " does not start with "
                 format_rcl(&prefix_arg.value).into_owned()
                 "."
@@ -577,7 +577,7 @@ fn builtin_string_remove_suffix(_eval: &mut Evaluator, call: MethodCall) -> Resu
             .span
             .error("Cannot remove this suffix.")
             .with_body(concat! {
-                format_rcl(&call.receiver).into_owned()
+                format_rcl(call.receiver).into_owned()
                 " does not end with "
                 format_rcl(&suffix_arg.value).into_owned()
                 "."

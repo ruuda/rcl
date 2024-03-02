@@ -285,7 +285,7 @@ impl Value {
                     indent! { format_rcl(self).into_owned() }
                 });
                 type_.explain_error(Side::Expected, &mut error);
-                return error.err();
+                error.err()
             }
         }
     }
