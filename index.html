@@ -33,6 +33,37 @@
 
     --margin: 2.2rem;
     --margin-small: 1.3rem;
+    --margin-large: 3.3rem;
+    --vsep: var(--margin);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: var(--margin) auto var(--margin);
+    grid-template-areas: "lmargin content rmargin";
+  }
+
+  .span-full, .span-l2, .span-r2 { grid-column: content }
+
+  @media (min-width: 54rem) {
+    html {
+      --vsep: 0;
+    }
+
+    .grid {
+      grid-template-columns: auto 12rem 12rem 12rem 12rem auto;
+      grid-template-areas: "lmargin c1 c2 c3 c4 rmargin";
+    }
+
+    .span-full { grid-column: c1-start / c4-end }
+    .span-l2 { 
+      grid-column: c1-start / c2-end;
+      padding-right: var(--margin);
+    }
+    .span-r2 {
+      grid-column: c3-start / c4-end;
+      padding-left: var(--margin);
+    }
   }
 
   h1 {
@@ -45,7 +76,6 @@
   }
 
   header {
-    padding: var(--margin);
     padding-top: var(--margin-small);
     padding-bottom: var(--margin-small);
     word-spacing: 1rem;
@@ -67,24 +97,18 @@
 
   section {
     overflow: hidden;
-    padding: var(--margin);
     background: radial-gradient(
       farthest-corner at 25% 15%,
       var(--berkeley-blue),
       transparent
     );
     color: #eef;
-    padding-bottom: 3rem;
-    padding-top: 3rem;
+    padding-top: var(--margin-large);
   }
 
   section.alt {
     background: var(--off-white);
     color: var(--text-light);
-  }
-
-  div.feature-block + div.feature-block {
-    margin-top: 3rem;
   }
 
   h1.tagline {
@@ -99,6 +123,10 @@
     font-size: 1.3rem;
     font-weight: 600;
     margin-bottom: 0.2rem;
+  }
+
+  p {
+    margin-bottom: var(--margin-large);
   }
 
   section.alt h2 {
@@ -122,7 +150,7 @@
 
   .code-demo {
     background-color: #272a2f;
-    margin-top: var(--margin);
+    margin-bottom: var(--margin-large);
     margin-right: -2.2rem;
     padding: 1.5rem;
     color: #fff;
@@ -135,69 +163,72 @@
   .code-demo .expr  { font-weight: 600; }
 
   footer {
-    padding: var(--margin);
-    font-size: 0.77rem;
-    opacity: 0.8;
+    padding-top: var(--margin-large);
+    opacity: 0.6;
   }
   </style>
 
 </head>
 <body>
-  <header>
-    <nav>
-    <a href="/"><h1>RCL</h1></a>
-    <a href="https://docs.ruuda.nl/rcl">Docs</a>
-    <a href="https://github.com/ruuda/rcl">GitHub</a>
-    <a href="https://codeberg.org/ruuda/rcl">Codeberg</a>
+  <header class="grid">
+    <nav class="span-full">
+      <a href="/"><h1>RCL</h1></a>
+      <a href="https://docs.ruuda.nl/rcl">Docs</a>
+      <a href="https://github.com/ruuda/rcl">GitHub</a>
+      <a href="https://codeberg.org/ruuda/rcl">Codeberg</a>
     </nav>
   </header>
-  <section>
-    <h1 class="tagline">Make configuration boring again</h1>
-    <p>RCL is a domain-specific language for specifying human-written
-    data with just enough abstraction to avoid repetition.
-    It extends json into a simple functional programming
-    language that resembles Python and Nix.</p>
+  <section class="grid">
+    <div class="span-l2">
+      <h1 class="tagline">Make configuration boring again</h1>
+      <p>RCL is a domain-specific language for specifying human-written
+      data with just enough abstraction to avoid repetition.
+      It extends json into a simple functional programming
+      language that resembles Python and Nix.</p>
+    </div>
   </section>
-  <section class="alt">
-    <div class="feature-block">
+  <section class="grid alt">
+    <div class="feature-block span-l2">
       <h2>Share data between tools</h2>
       <p>Generate configuration for tools that do not natively talk to each other,
       all from a single source of truth.</p>
     </div>
-    <div class="feature-block">
+    <div class="feature-block span-r2">
       <h2>Remove repetition</h2>
       <p>Stop copy-pasting.
       Use variables, list comprehensions, and functions to avoid duplication.
       Bump <span class="cc">ubuntu-20.04</span> to <span class="cc">24.04</span>
       in <em>one</em> place instead of 137.</p>
     </div>
-    <div class="feature-block">
+    <div class="feature-block span-l2">
       <h2>Fight complexity, not tools</h2>
       <p>Spend time building your infrastructure,
       not debugging whitespace issues in your string templates.
       Generate correct yaml, json, and toml.
       </p>
     </div>
-    <div class="feature-block">
+    <div class="feature-block span-r2">
       <h2>Familiar syntax</h2>
       <p>Have you used Python or TypeScript before?
       Then you will find RCL obvious to read and easy to write.
       </p>
     </div>
   </section>
-  <section>
-    <h2>Demo</h2>
-    <p>TODO</p>
-    </p>
+  <section class="grid">
+    <div class="span-full">
+      <h2>Demo</h2>
+      <p>TODO</p>
+    </div>
   </section>
-  <section class="alt">
-    <div class="feature-block">
+  <section class="grid alt">
+    <div class="feature-block span-l2">
       <h2>Built-in json queries</h2>
       <p>Need to get something from a json document,
       but can’t figure out the <span class="cc">jq</span> syntax?
       Try <a href="https://docs.ruuda.nl/rcl/rcl_query/">rcl query</a> instead!
       </p>
-<div class="code-demo"><code>
+    </div>
+    <div class="code-demo span-r2"><code>
 <pre><span class="ident">$</span> curl --silent <wbr/>https://api.vultr.com/v2/regions <wbr
 />| rcl query <wbr/><span class="expr">'input<wbr/>.regions<wbr/>.key_by(<wbr/>r =&gt; r.id)<wbr/>.nrt'</span>
 
@@ -216,8 +247,7 @@
 }
 </pre>
 </code></div>
-    </div>
-    <div class="feature-block">
+    <div class="feature-block span-l2">
       <h2>Free &amp; open source</h2>
       <p>RCL is free/libre software,
       licensed under the Apache 2.0 license.
@@ -226,8 +256,10 @@
       <a href="https://codeberg.org/ruuda/rcl">Codeberg</a>.</p>
     </div>
   </section>
-  <footer>
-    <p>Copyright 2024 <a href="https://ruudvanasseldonk.com">Ruud van Asseldonk</a></p>
+  <footer class="grid">
+    <div class="span-full">
+      <p>Copyright 2024 <a href="https://ruudvanasseldonk.com">Ruud van Asseldonk</a></p>
+    </div>
   </footer>
 </body>
 </html>
