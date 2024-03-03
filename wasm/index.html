@@ -5,11 +5,11 @@
     <script src='/rcl.js' async></script>
     <script type="module">
       window.onload = function() {
-        const { rcl_load } = wasm_bindgen;
+        const { rcl_evaluate } = wasm_bindgen;
         async function run() {
           await wasm_bindgen();
-          console.log(rcl_load("2 + 2"));
-          console.log(rcl_load("syntax error"));
+          console.log(rcl_evaluate("2 + 2"));
+          console.log(rcl_evaluate("syntax error"));
         }
         run();
       }
