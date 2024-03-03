@@ -8,13 +8,44 @@
         const { rcl_evaluate } = wasm_bindgen;
         async function run() {
           await wasm_bindgen();
-          console.log(rcl_evaluate("2 + 2"));
-          console.log(rcl_evaluate("syntax error"));
+          const input_box = document.getElementById("input");
+          const output_box = document.getElementById("output");
+          input_box.addEventListener("input", (evt) => {
+            const input = evt.target.value;
+            console.log(input);
+            var output = "";
+            try {
+              output = rcl_evaluate(input_box.textContent);
+            } catch (err) {
+              output = err;
+            }
+            output_box.textContent = output;
+          });
         }
         run();
       }
     </script>
+    <style>
+      body {
+        padding: 2em;
+      }
+      p {
+        font-family: monospace;
+        padding: 1em;
+        border: 1pt solid #ddd;
+        white-space: pre;
+      }
+    </style>
   </head>
   <body>
+    <h1>RCL Playground</h1>
+    <h2>Input</h2>
+    <p id="input" contenteditable="true" plaintext-only="true">[for x in std.range(0, 3): { id = x, name = f"item-{x}" }]</p>
+    <h2>Output</h2>
+    <p id="output">[
+  {"id": 0, "name": "item-0"},
+  {"id": 1, "name": "item-1"},
+  {"id": 2, "name": "item-2"}
+]</p>
   </body>
 </html>
