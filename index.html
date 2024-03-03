@@ -81,11 +81,6 @@
     padding-top: var(--margin-small);
     padding-bottom: var(--margin-small);
     word-spacing: 1rem;
-    background: radial-gradient(
-      circle at 80% 90%,
-      #3b036354,
-      transparent
-    );
   }
 
   header a, footer a {
@@ -99,11 +94,7 @@
 
   section {
     overflow: hidden;
-    background: radial-gradient(
-      farthest-corner at 25% 15%,
-      var(--berkeley-blue),
-      transparent
-    );
+    background: var(--berkeley-blue);
     color: #eef;
     padding-top: var(--margin-large);
   }
@@ -218,8 +209,12 @@
   </section>
   <section class="grid">
     <div class="span-full">
-      <h2>Demo</h2>
-      <p>TODO</p>
+      <h2>Installation</h2>
+      <p>Build from source with Cargo.<br><br>
+      <code>git clone https://github.com/ruuda/rcl<br>
+      cargo build --release
+      </code>
+      </p>
     </div>
   </section>
   <section class="grid alt">
@@ -232,7 +227,8 @@
     </div>
     <div class="code-demo span-r2"><code>
 <pre><span class="ident">$</span> curl --silent <wbr/>https://api.vultr.com/v2/regions <wbr
-/>| rcl query <wbr/><span class="expr">'input<wbr/>.regions<wbr/>.key_by(<wbr/>r =&gt; r.id)<wbr/>.nrt'</span>
+/>
+| rcl query <wbr/><span class="expr">'input<wbr/>.regions<wbr/>.key_by(<wbr/>r =&gt; r.id)<wbr/>.nrt'</span>
 
 {
   <span class="ident">city</span> = <span class="str">"Tokyo"</span>,
@@ -249,6 +245,11 @@
 }
 </pre>
 </code></div>
+    <div class="feature-block span-l2">
+      <h2>Python integration</h2>
+      <p>Import the Python module and load RCL documents as easily as json.</p>
+      <!-- TODO: Example -->
+    </div>
     <div class="feature-block span-l2">
       <h2>Free &amp; open source</h2>
       <p>RCL is free/libre software,
