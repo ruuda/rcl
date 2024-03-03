@@ -34,7 +34,6 @@
     --margin: 2.2rem;
     --margin-small: 1.3rem;
     --margin-large: 3.3rem;
-    --vsep: var(--margin);
   }
 
   .grid {
@@ -45,17 +44,14 @@
 
   .span-full, .span-l2, .span-r2 { grid-column: content }
 
-  @media (min-width: 54rem) {
-    html {
-      --vsep: 0;
-    }
-
+  @media (min-width: 820px) {
     .grid {
-      grid-template-columns: auto 12rem 12rem 12rem 12rem auto;
+      grid-template-columns: var(--margin) 1fr 1fr 1fr 1fr var(--margin);
       grid-template-areas: "lmargin c1 c2 c3 c4 rmargin";
     }
-
-    .span-full { grid-column: c1-start / c4-end }
+    .span-full {
+      grid-column: c1-start / c4-end
+    }
     .span-l2 { 
       grid-column: c1-start / c2-end;
       padding-right: var(--margin);
@@ -63,6 +59,12 @@
     .span-r2 {
       grid-column: c3-start / c4-end;
       padding-left: var(--margin);
+    }
+  }
+
+  @media (min-width: 950px) {
+    .grid {
+      grid-template-columns: auto 12rem 12rem 12rem 12rem auto;
     }
   }
 
@@ -203,14 +205,14 @@
     <div class="feature-block span-l2">
       <h2>Fight complexity, not tools</h2>
       <p>Spend time building your infrastructure,
-      not debugging whitespace issues in your string templates.
+      not debugging whitespace and escaping issues in your string templates.
       Generate correct yaml, json, and toml.
       </p>
     </div>
     <div class="feature-block span-r2">
       <h2>Familiar syntax</h2>
       <p>Have you used Python or TypeScript before?
-      Then you will find RCL obvious to read and easy to write.
+      Then you will find RCL obvious to read and natural to write.
       </p>
     </div>
   </section>
@@ -223,7 +225,7 @@
   <section class="grid alt">
     <div class="feature-block span-l2">
       <h2>Built-in json queries</h2>
-      <p>Need to get something from a json document,
+      <p>Need to drill down into a json document,
       but can’t figure out the <span class="cc">jq</span> syntax?
       Try <a href="https://docs.ruuda.nl/rcl/rcl_query/">rcl query</a> instead!
       </p>
