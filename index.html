@@ -31,8 +31,8 @@
     font-size: 18px;
     line-height: 1.5;
 
-    --margin: 2.2rem;
     --margin-small: 1.3rem;
+    --margin: 2.2rem;
     --margin-large: 3.3rem;
   }
 
@@ -141,10 +141,20 @@
     display: inline;
   }
 
+  p.arrow {
+    margin-top: -1.1rem;
+    margin-bottom: var(--margin);
+    text-align: center;
+    /* The code is not 100% wide, so the arrow looks better aligned when it's
+       a bit to the left and not truly in the center. */
+    width: 85%;
+  }
+
   .demo code {
     display: block;
     white-space: pre;
     padding: 1rem;
+    margin: -1rem;
   }
 
   .code-demo {
@@ -184,25 +194,54 @@
       data with just enough abstraction to avoid repetition.
       It extends json into a simple functional programming
       language that resembles Python and Nix.</p>
-      <p>To the right is a simplified form of a <a href="https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/record">Terraform configuration</a>
+      <h2>Demo</h2>
+      <p>To the right is a
+      <a href="https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/record">simplified form</a> of a
+      <a href="https://developer.hashicorp.com/terraform/language/syntax/json">Terraform json config</a>
       that defines two DNS records pointing to the same address.
       <strong>This code is editable!</strong>
-      Can you change it to emit the same records for two zones?
-      </p>
+      Can you change it to emit the same records for two zones?</p>
+      <p>Hint: Try uncommenting the <span class="cc">zone_id</span> loop!</p>
+      <noscript>
+      <p><span class="cc">You need to enable Javascript to use the live demo.</span>
+      It runs a WebAssembly version of RCL in your browser.
+      No server ever sees your keystrokes.
+      This is the only script on the page,
+      there are no trackers or other malware.
+      The RCL code is open source,
+      and the scripts on this page are not obfuscated
+      so you can verify them yourself.</p>
+      </noscript>
     </div>
     <div class="span-r2">
-      <p class="demo"><code id="input" contenteditable>let zone_id = 42;
-let base_config = {
+      <p class="demo"><code id="input" contenteditable>let base_config = {
+  zone_id = 42,
   type = "A",
-  value = "93.184.216.34"
+  value = "93.184.216.34",
 };
 {
+  let zone_id = base_config.zone_id;
   // for zone_id in [42, 1337]:
   for subdomain in ["docs", "www"]:
-  f"a_record_{zone_id}_{subdomain}":
+  f"a_record_{subdomain}_{zone_id}":
   base_config | { name = subdomain }
 }</code></p>
-      <p class="demo"><code id="output">Output here</code></p>
+      <p class="arrow">↓</p>
+      <p class="demo"><code id="output">{
+  "a_record_docs_42": {
+    "name": "docs",
+    "type": "A",
+    "value": "93.184.216.34",
+    "zone_id": 42
+  },
+  "a_record_www_42": {
+    "name": "www",
+    "type": "A",
+    "value": "93.184.216.34",
+    "zone_id": 42
+  }
+}
+</code></p>
     </div>
   </section>
   <section class="grid alt">
@@ -235,11 +274,16 @@ let base_config = {
   <section class="grid">
     <div class="span-full">
       <h2>Installation</h2>
-      <p>Build from source with Cargo.<br><br>
+      <p>
+      Currently RCL is not packaged for any system package manager,
+      but it’s written in Rust and has few dependencies,
+      so it is quick and easy to build from source with Cargo.
+      There is no need to pipe arbitrary code from the web into your shell.
+      <br><br>
       <code>git clone https://github.com/ruuda/rcl<br>
-      cargo build --release
-      </code>
-      </p>
+        cargo build --release<br>
+        target/release/rcl --help
+      </code></p>
     </div>
   </section>
   <section class="grid alt">
