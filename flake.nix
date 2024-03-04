@@ -4,7 +4,10 @@
   # Pin to a Nixpkgs version that has the same rustc as in rust-toolchain.toml.
   inputs.nixpkgs.url = "nixpkgs/dfcffbd74fd6f0419370d8240e445252a39f4d10";
 
-  outputs = { self, nixpkgs }:
+  inputs.rust-overlay.url = "github:oxalica/rust-overlay";
+  inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+
+  outputs = { self, nixpkgs, rust-overlay }:
     let
       supportedSystems = [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
       # Ridiculous boilerplate required to make flakes somewhat usable.
@@ -20,7 +23,8 @@
         let
           name = "rcl";
           version = "0.1.0";
-          pkgs = import nixpkgs { inherit system; };
+          overlays = [ rust-overlay.overlays.default ];
+          pkgs = import nixpkgs { inherit overlays system; };
 
           python = pkgs.python311.override {
             packageOverrides = self: super: {
@@ -67,6 +71,17 @@
             ps.pip
             ps.setuptools
           ]);
+
+          # Define a custom toolchain from our toolchain file. For most
+          # derivations we don't use it, we instead use the rustc from Nixpkgs,
+          # to avoid unnecessary fetching/rebuilding. But for WASM, we need a
+          # specific nightly toolchain with support for this target.
+          rustWasm = pkgs.rust-bin.selectLatestNightlyWith (toolchain:
+            toolchain.default.override {
+              extensions = [ "rust-src" ];
+              targets = [ "wasm32-unknown-unknown" ];
+            }
+          );
 
           rustSources = pkgs.lib.sourceFilesBySuffices ./. [
             ".rs"
@@ -119,6 +134,37 @@
               mv $out/lib/libpyrcl.so $out/lib/rcl.so
               cp ${./pyrcl}/rcl.pyi $out/lib/rcl.pyi
               '';
+          };
+
+          rcl-wasm = pkgs.rustPlatform.buildRustPackage rec {
+            inherit version;
+            name = "rcl-wasm";
+            src = rustSources;
+            cargoLock.lockFile = ./Cargo.lock;
+            buildAndTestSubdir = "wasm";
+            doCheck = false; # We already test the non-wasm build.
+            nativeBuildInputs = [ rustWasm pkgs.wasm-bindgen-cli pkgs.binaryen ];
+
+            buildPhase =
+              ''
+              cargo build \
+                --manifest-path wasm/Cargo.toml \
+                --profile=release-wasm \
+                --target=wasm32-unknown-unknown \
+                -Z build-std=std,panic_abort \
+                -Z build-std-features=panic_immediate_abort
+
+              wasm-opt -Oz \
+                target/wasm32-unknown-unknown/release-wasm/rcl_wasm.wasm \
+                --output target/rcl.wasm
+
+              wasm-bindgen \
+                --out-dir $out \
+                --target no-modules \
+                --no-typescript \
+                target/rcl.wasm
+              '';
+            installPhase = "echo 'Skipping default install phase.'";
           };
         in
           rec {
@@ -232,6 +278,7 @@
               inherit rcl pyrcl;
 
               default = rcl;
+              wasm = rcl-wasm;
 
               coverage = pkgs.runCommand
                 "rcl-coverage"

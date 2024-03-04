@@ -3,10 +3,27 @@
 This directory defines a Rust crate that can be compiled to WebAssembly. It is
 intended to power an interactive demo on the webpage.
 
+## Building with Nix
+
+To build the module and bindings with Nix:
+
+    $ nix build .#wasm --out-link result
+    $ ls -l $(realpath result)
+    total 292
+    -r--r--r-- 1 root root 289692 Jan  1  1970 rcl_bg.wasm
+    -r--r--r-- 1 root root   6526 Jan  1  1970 rcl.js
+
+If you don't want to build with Nix, follow the steps below instead.
+
 ## Dependencies
 
 The devshell in the Nix flake includes the required `wasm-pack` and
-[`wasm-opt` from Binaryen][binaryen].
+[`wasm-opt` from Binaryen][binaryen]. You will also need the
+`wasm32-unknown-unknown` target. It is not by default part of
+`rust-toolchain.toml` because it's no use for producing small binaries.
+Add it manually:
+
+    rustup target add wasm32-unknown-unknown
 
 [binaryen]: https://github.com/WebAssembly/binaryen
 
