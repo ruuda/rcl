@@ -38,7 +38,7 @@
 
   .grid {
     display: grid;
-    grid-template-columns: var(--margin) auto var(--margin);
+    grid-template-columns: var(--margin) calc(100% - 2 * var(--margin)) var(--margin);
     grid-template-areas: "lmargin content rmargin";
   }
 
@@ -75,16 +75,13 @@
 
   a {
     text-decoration: none;
+    color: inherit;
   }
 
   header {
     padding-top: var(--margin-small);
     padding-bottom: var(--margin-small);
     word-spacing: 1rem;
-  }
-
-  header a, footer a {
-    color: white;
   }
 
   header h1 {
@@ -122,12 +119,15 @@
     margin-bottom: var(--margin-large);
   }
 
+  section a {
+    font-weight: 600;
+  }
+
   section.alt h2 {
     color: var(--text-lighter);
   }
 
-  section a {
-    font-weight: 600;
+  section.alt a {
     color: var(--berkeley-blue);
   }
 
@@ -139,6 +139,12 @@
     font-family: 'Red Hat Mono', monospace;
     font-size: 0.88rem;
     display: inline;
+  }
+
+  .demo code {
+    display: block;
+    white-space: pre;
+    padding: 1rem;
   }
 
   .code-demo {
@@ -160,7 +166,7 @@
     opacity: 0.6;
   }
   </style>
-
+  <script src="/rcl.js" defer></script>
 </head>
 <body>
   <header class="grid">
@@ -178,6 +184,25 @@
       data with just enough abstraction to avoid repetition.
       It extends json into a simple functional programming
       language that resembles Python and Nix.</p>
+      <p>To the right is a simplified form of a <a href="https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/record">Terraform configuration</a>
+      that defines two DNS records pointing to the same address.
+      <strong>This code is editable!</strong>
+      Can you change it to emit the same records for two zones?
+      </p>
+    </div>
+    <div class="span-r2">
+      <p class="demo"><code id="input" contenteditable>let zone_id = 42;
+let base_config = {
+  type = "A",
+  value = "93.184.216.34"
+};
+{
+  // for zone_id in [42, 1337]:
+  for subdomain in ["docs", "www"]:
+  f"a_record_{zone_id}_{subdomain}":
+  base_config | { name = subdomain }
+}</code></p>
+      <p class="demo"><code id="output">Output here</code></p>
     </div>
   </section>
   <section class="grid alt">
@@ -265,4 +290,25 @@
     </div>
   </footer>
 </body>
+<script>
+  window.onload = function() {
+    const { rcl_evaluate } = wasm_bindgen;
+    async function run() {
+      await wasm_bindgen();
+      const input_box = document.getElementById("input");
+      const output_box = document.getElementById("output");
+      input_box.addEventListener("input", (evt) => {
+        const input = evt.target.value;
+        var output = "";
+        try {
+          output = rcl_evaluate(input_box.textContent);
+        } catch (err) {
+          output = err;
+        }
+        output_box.textContent = output;
+      });
+    }
+    run();
+  }
+</script>
 </html>
