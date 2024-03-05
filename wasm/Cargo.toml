@@ -17,7 +17,7 @@ features = ["std"]
 [dependencies.rcl]
 path = ".."
 
-[dev-dependencies]
+[target.'cfg(wasm)'.dev-dependencies]
 # These crates are needed for the build-std feature. We don't normally need
 # them, RCL does not depend on them, but when we build as part of the Nix flake,
 # all dependencies are fetched from the lockfile ahead of time, so we need to
