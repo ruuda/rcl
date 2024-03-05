@@ -6,7 +6,7 @@
 # A copy of the License has been included in the root of the repository.
 
 # To test this lexer:
-# python -m pygments -x -l etc/pygments/rcl.py:RclLexer examples/tags.rcl
+# python -m pygments -x -l grammar/pygments/rcl.py:RclLexer examples/tags.rcl
 # See also <https://pygments.org/docs/lexerdevelopment/>.
 
 from pygments.lexer import RegexLexer, words

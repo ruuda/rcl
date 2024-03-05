@@ -51,7 +51,7 @@
                   ''
                   # Copy our RCL lexer into the Pygments source tree, next to
                   # the other lexers.
-                  cp ${./etc/pygments/rcl.py} pygments/lexers/rcl.py
+                  cp ${./grammar/pygments/rcl.py} pygments/lexers/rcl.py
 
                   # Regenerate pygments/lexers/_mapping.py, which contains all
                   # supported languages.
@@ -234,7 +234,7 @@
                 "check-grammar"
                 { buildInputs = [ pkgs.bison ]; }
                 ''
-                bison -Wcounterexamples,error=all ${./etc/bison/grammar.y} --output $out
+                bison -Wcounterexamples,error=all ${./grammar/bison/grammar.y} --output $out
                 '';
 
               fmtRust = pkgs.runCommand
