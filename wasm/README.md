@@ -17,11 +17,11 @@ If you don't want to build with Nix, follow the steps below instead.
 
 ## Dependencies
 
-The devshell in the Nix flake includes the required `wasm-pack` and
+The devshell in the Nix flake includes the required `wasm-bindgen` and
 [`wasm-opt` from Binaryen][binaryen]. You will also need the
 `wasm32-unknown-unknown` target. It is not by default part of
-`rust-toolchain.toml` because it's no use for producing small binaries.
-Add it manually:
+`rust-toolchain.toml` because the non-nightly toolchain is of no use for
+producing small binaries. Add it manually:
 
     rustup target add wasm32-unknown-unknown
 
@@ -29,8 +29,7 @@ Add it manually:
 
 ## Building
 
-You will need [`wasm-pack-cli`][wasm-pack-cli] and [
-Build a large-ish binary:
+Build a large-ish binary with the regular toolchain:
 
     cargo build \
       --manifest-path wasm/Cargo.toml
