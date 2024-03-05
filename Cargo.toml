@@ -8,10 +8,18 @@ license = "Apache-2.0"
 [dependencies]
 unicode-width = "0.1.10"
 
+[workspace]
+members = ["fuzz", "pyrcl", "wasm"]
+
 [profile.release]
 lto = "thin"
 panic = "abort"
 strip = true
 
-[workspace]
-members = ["fuzz", "pyrcl"]
+[profile.release-wasm]
+# For wasm, we optimize for size.
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+# Opt-level "z" produces slightly smaller wasm bundles than opt-level "s".
+opt-level = "z"

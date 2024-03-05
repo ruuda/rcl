@@ -15,7 +15,7 @@ use std::{env, path};
 
 use crate::abstraction;
 use crate::ast;
-use crate::cli::{OutputTarget, Target};
+use crate::cli::Target;
 use crate::cst;
 use crate::error::{Error, Result};
 use crate::eval::Evaluator;
@@ -522,6 +522,7 @@ impl Loader {
         }
     }
 
+    #[cfg(unix)]
     fn write_depfile_impl(&self, target_path: &Path, depfile_path: &Path) -> io::Result<()> {
         use std::io::Write;
         use std::os::unix::ffi::OsStrExt;
@@ -539,7 +540,13 @@ impl Loader {
         Ok(())
     }
 
-    pub fn write_depfile(&self, target: &OutputTarget, depfile_path: &str) -> Result<()> {
+    #[cfg(unix)]
+    pub fn write_depfile(
+        &self,
+        target: &crate::cli::OutputTarget,
+        depfile_path: &str,
+    ) -> Result<()> {
+        use crate::cli::OutputTarget;
         // The depfile output path is specified on the CLI, so we resolve it
         // to make it respect --directory.
         let resolved_depfile = self.resolve_cli_output_path(depfile_path);

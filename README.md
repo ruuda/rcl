@@ -164,6 +164,10 @@ Tell Python where to find the shared object, run the interpreter:
     >>> help(rcl.loads)
     >>> rcl.load_file("examples/buckets.rcl")
 
+## Building WASM
+
+See [the readme in the `wasm` directory](wasm/README.md).
+
 ## License
 
 RCL is licensed under the [Apache 2.0][apache2] license. It may be used in

@@ -1,0 +1,36 @@
+[package]
+name = "rcl-wasm"
+version = "0.1.0"
+authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
+edition = "2021"
+license = "Apache-2.0"
+description = "WASM entry points for RCL functionality."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies.wasm-bindgen]
+version = "=0.2.84"
+default-features = false
+features = ["std"]
+
+[dependencies.rcl]
+path = ".."
+
+[dev-dependencies]
+# These crates are needed for the build-std feature. We don't normally need
+# them, RCL does not depend on them, but when we build as part of the Nix flake,
+# all dependencies are fetched from the lockfile ahead of time, so we need to
+# have these crates in the lockfile. See also [1].
+# [1]: https://n8henrie.com/2023/09/compiling-rust-for-the-esp32-with-nix/
+allocator-api2 = "0.2.16"
+compiler_builtins = "0.1.108"
+dlmalloc = "0.2.6"
+fortanix-sgx-abi = "0.5.0"
+getopts = "=0.2.21"
+hermit-abi = "0.3.9"
+r-efi = "4.3.0"
+r-efi-alloc = "1.0.0"
+rustc-demangle = "0.1.23"
+unwinding = "0.2.1"
+wasi = "=0.11.0"
