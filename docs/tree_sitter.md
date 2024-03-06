@@ -23,6 +23,10 @@ Then regenerate the `src/grammar.json`, and generate the other necessary files:
     cd grammar/tree-sitter-rcl
     tree-sitter generate --build
 
+Test the parse tests:
+
+    tree-sitter test
+
 Now we can try to parse a file:
 
     tree-sitter parse ../../examples/tags.rcl
