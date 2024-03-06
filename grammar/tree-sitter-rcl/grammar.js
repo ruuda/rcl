@@ -27,13 +27,23 @@ module.exports = grammar({
     // TODO: Implement the custom lexer to handle string literals.
     string: $ => /"[^"]*"/,
 
+    unop: $ => choice("not", "-"),
+
     _expr: $ => choice(
       $.expr_stmt,
       $._expr_op,
     ),
     expr_stmt: $ => seq($._stmt, ";", repeat($._prefix), $._expr),
 
-    _expr_op: $ => choice($._expr_not_op),
+    _expr_op: $ => choice(
+      $.expr_unop,
+      $._expr_not_op,
+    ),
+
+    expr_unop: $ => choice(
+      seq($.unop, $._expr_not_op),
+      seq($.unop, $.expr_unop),
+    ),
 
     _expr_not_op: $ => choice(
       $._expr_term,

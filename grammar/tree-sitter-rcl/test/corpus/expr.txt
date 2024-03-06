@@ -87,3 +87,33 @@ collection["index"]
   (expr_index
     (ident)
     (string)))
+
+========
+Unop not
+========
+
+not x
+
+---
+
+(source_file
+  (expr_unop
+    (unop)
+    (ident)))
+
+============
+Unop not not
+============
+
+// This is fine without parens.
+not not x
+
+---
+
+(source_file
+  (comment)
+  (expr_unop
+    (unop)
+    (expr_unop
+      (unop)
+      (ident))))
