@@ -1,6 +1,6 @@
-=======================
-Seq expression {} empty
-=======================
+========
+Empty {}
+========
 
 {}
 
@@ -9,29 +9,29 @@ Seq expression {} empty
 (source_file
   (expr_term_braces))
 
-========================
-Seq expression {} idents
-========================
+======
+Idents
+======
 
-{ x, y, z }
-
----
-
-(source_file
-  (expr_term_braces
-    (ident)
-    (ident)
-    (ident)))
-
-=========================================
-Seq expression {} idents (trailing comma)
-=========================================
-
-{ x, y, }
+[
+  CamelCase1337,
+  snake_case,
+  __internal_snake_case,
+  SCREAMING_SNAKE_CASE,
+  kebap-case,
+]
 
 ---
 
 (source_file
-  (expr_term_braces
-    (ident)
-    (ident)))
+  (expr_term_brackets
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))))

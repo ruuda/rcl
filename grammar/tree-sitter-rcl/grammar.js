@@ -72,13 +72,31 @@ module.exports = grammar({
     ),
 
     _seq: $ => choice(
-      $._expr_op,
-      seq($._expr_op, ":", $._expr),
-      seq($.ident, "=", $._expr),
-      // TODO: I need to allow a prefix here. Will the fuzzer find it?
-      seq($._stmt, ";", $._seq),
-      seq("for", $._idents, "in", $._expr, ":", $._seq),
-      seq("if", $._expr, ":", $._seq),
+      $.seq_elem,
+      $.seq_assoc_expr,
+      $.seq_assoc_ident,
+      $.seq_stmt,
+      $.seq_for,
+      $.seq_if,
+    ),
+    seq_elem: $ => $._expr_op,
+    seq_assoc_expr: $ => seq($._expr_op, ":", $._expr),
+    seq_assoc_ident: $ => seq($.ident, "=", $._expr),
+    // TODO: I need to allow a prefix here. Will the fuzzer find it?
+    seq_stmt: $ => seq($._stmt, ";", $._seq),
+    seq_for: $ => seq(
+      "for",
+      field("idents", $._idents),
+      "in",
+      field("collection", $._expr),
+      ":",
+      field("body", $._seq),
+    ),
+    seq_if: $ => seq(
+      "if",
+      field("condition", $._expr),
+      ":",
+      field("body", $._seq),
     ),
 
     // One or more identifiers separated by comma, no trailing comma allowed.
