@@ -4,9 +4,14 @@
   "tree-sitter": [
     {
       "scope": "source.rcl",
-      "file-types": ["rcl"],
+      "file-types": [
+        "rcl"
+      ],
       "injection-regex": "rcl",
-      "highlights": ["queries/highlights.scm"]
+      "highlights": [
+        "queries/highlights.scm"
+      ]
     }
-  ]
+  ],
+  "main": "bindings/node"
 }

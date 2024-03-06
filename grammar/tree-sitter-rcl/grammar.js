@@ -139,8 +139,16 @@ module.exports = grammar({
       $.seq_if,
     ),
     seq_elem: $ => $._expr_op,
-    seq_assoc_expr: $ => seq($._expr_op, ":", $._expr),
-    seq_assoc_ident: $ => seq($.ident, "=", $._expr),
+    seq_assoc_expr: $ => seq(
+      field("field", $._expr_op),
+      ":",
+      field("value", $._expr),
+    ),
+    seq_assoc_ident: $ => seq(
+      field("field", $.ident),
+      "=",
+      field("value", $._expr),
+    ),
     // TODO: I need to allow a prefix here. Will the fuzzer find it?
     seq_stmt: $ => seq($._stmt, ";", $._seq),
     seq_for: $ => seq(
