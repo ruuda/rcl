@@ -71,7 +71,7 @@ module.exports = grammar({
       seq(repeat($._prefix), $._seq, ",", choice(optional($._seqs), repeat($._prefix))),
     ),
 
-    _seq: $ => seq(
+    _seq: $ => choice(
       $._expr_op,
       seq($._expr_op, ":", $._expr),
       seq($.ident, "=", $._expr),

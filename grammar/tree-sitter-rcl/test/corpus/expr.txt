@@ -18,4 +18,20 @@ Seq expression {} idents
 ---
 
 (source_file
-  (TODO))
+  (expr_term_braces
+    (ident)
+    (ident)
+    (ident)))
+
+=========================================
+Seq expression {} idents (trailing comma)
+=========================================
+
+{ x, y, }
+
+---
+
+(source_file
+  (expr_term_braces
+    (ident)
+    (ident)))
