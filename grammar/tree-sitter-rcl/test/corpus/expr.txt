@@ -35,3 +35,55 @@ Idents
       (ident))
     (seq_elem
       (ident))))
+
+==========
+Call empty
+==========
+
+f()
+
+---
+
+(source_file
+  (expr_call
+    (ident)))
+
+===================
+Call trailing comma
+===================
+
+f("x",)
+
+---
+
+(source_file
+  (expr_call
+    (ident)
+    (string)))
+
+======================
+Call no trailing comma
+======================
+
+f("x", y)
+
+---
+
+(source_file
+  (expr_call
+    (ident)
+    (string)
+    (ident)))
+
+=====
+Index
+=====
+
+collection["index"]
+
+---
+
+(source_file
+  (expr_index
+    (ident)
+    (string)))

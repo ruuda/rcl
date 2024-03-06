@@ -5,6 +5,9 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+// The names of the rules here, and the general structure, are modelled after
+// the simpler Bison grammar in //grammar/bison/grammar.y.
+
 module.exports = grammar({
   name: "rcl",
 
@@ -34,13 +37,31 @@ module.exports = grammar({
 
     _expr_not_op: $ => choice(
       $._expr_term,
-      // TODO: Add call, add index.
+      $.expr_call,
+      $.expr_index,
       $.expr_field,
+    ),
+    expr_call: $ => seq(
+      field("function", $._expr_not_op),
+      "(",
+      field("args", optional($._call_args)),
+      ")",
+    ),
+    expr_index: $ => seq(
+      field("collection", $._expr_not_op),
+      "[",
+      field("index", $._expr),
+      "]",
     ),
     expr_field: $ => seq(
       field("inner", $._expr_not_op),
       ".",
       field("field", $.ident),
+    ),
+
+    _call_args: $ => choice(
+      seq(repeat($._prefix), $._expr),
+      seq(repeat($._prefix), $._expr, ",", choice(optional($._call_args), repeat($._prefix))),
     ),
 
     _expr_term: $ => choice(
