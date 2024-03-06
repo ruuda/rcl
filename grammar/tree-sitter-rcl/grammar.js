@@ -24,7 +24,10 @@ module.exports = grammar({
     // TODO: Implement the custom lexer to handle string literals.
     string: $ => /"[^"]*"/,
 
-    _expr: $ => choice($.expr_stmt),
+    _expr: $ => choice(
+      $.expr_stmt,
+      $._expr_op,
+    ),
     expr_stmt: $ => seq($._stmt, ";", repeat($._prefix), $._expr),
 
     _expr_op: $ => choice($._expr_not_op),
@@ -63,9 +66,9 @@ module.exports = grammar({
     // One or more `seq`s with an optional trailing comma. The use site has to
     // wrap it in `optional` as Tree-sitter does not support rules that match
     // the empty string.
-    _seqs: $ => seq(
-      repeat1(seq(repeat($._prefix), $._seq, ",")),
-      optional(seq(",", repeat($._prefix))),
+    _seqs: $ => choice(
+      seq(repeat($._prefix), $._seq),
+      seq(repeat($._prefix), $._seq, ",", choice(optional($._seqs), repeat($._prefix))),
     ),
 
     _seq: $ => seq(

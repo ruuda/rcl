@@ -1,0 +1,21 @@
+=======================
+Seq expression {} empty
+=======================
+
+{}
+
+---
+
+(source_file
+  (expr_term_braces))
+
+========================
+Seq expression {} idents
+========================
+
+{ x, y, z }
+
+---
+
+(source_file
+  (TODO))
