@@ -31,12 +31,19 @@ Now we can try to parse a file:
 
     tree-sitter parse ../../examples/tags.rcl
 
+Even highlight it, after [adding the `rcl/grammar` directory to your Tree-sitter
+per-user configuration][ts-user-config].
+
+    tree-sitter highlight ../../examples/tags.rcl
+
 Compile and test the Rust bindings:
 
     cargo test
 
 Even though `src/grammar.json` is a generated file, we commit it to the
 repository, so the grammar can be used without a complex build process.
+
+[ts-user-config]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
 
 ## Using the grammar
 
