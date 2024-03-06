@@ -8,6 +8,22 @@
 // The names of the rules here, and the general structure, are modelled after
 // the simpler Bison grammar in //grammar/bison/grammar.y.
 
+const binops = {
+  and: "and",
+  or: "or",
+  pipe: "|",
+  star: "*",
+  plus: "+",
+  minus: "-",
+  slash: "/",
+  lt: "<",
+  lt_eq: "<=",
+  gt: ">",
+  gt_eq: ">=",
+  eq: "==",
+  neq: "!=",
+};
+
 module.exports = grammar({
   name: "rcl",
 
@@ -28,6 +44,7 @@ module.exports = grammar({
     string: $ => /"[^"]*"/,
 
     unop: $ => choice("not", "-"),
+    binop: $ => choice(...Object.values(binops)),
 
     _expr: $ => choice(
       $.expr_stmt,
@@ -38,12 +55,23 @@ module.exports = grammar({
     _expr_op: $ => choice(
       $.expr_unop,
       $._expr_not_op,
+      ...Object.keys(binops).map(op => $[`expr_binop_${op}`]),
     ),
 
     expr_unop: $ => choice(
       seq($.unop, $._expr_not_op),
       seq($.unop, $.expr_unop),
     ),
+
+    // Because RCL does not have operator precedence, every binary operator
+    // gets its own rule in the grammar.
+    ...Object.fromEntries(Object.entries(binops).map(name_op => [
+      `expr_binop_${name_op[0]}`,
+      $ => seq(
+        $._expr_not_op,
+        repeat1(seq(field("binop", name_op[1]), $._expr_not_op)),
+      ),
+    ])),
 
     _expr_not_op: $ => choice(
       $._expr_term,

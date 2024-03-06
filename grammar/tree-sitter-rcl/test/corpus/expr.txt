@@ -117,3 +117,48 @@ not not x
     (expr_unop
       (unop)
       (ident))))
+
+=========
+Binop and
+=========
+
+x and y
+
+---
+
+(source_file
+  (expr_binop_and
+    (ident)
+    (ident)))
+
+=============
+Binop and and
+=============
+
+x and y and z
+
+---
+
+(source_file
+  (expr_binop_and
+    (ident)
+    (ident)
+    (ident)))
+
+============
+Binop and or
+============
+
+// Mixing operators without parens is an error.
+x and y or z
+
+---
+
+(source_file
+  (comment)
+  (expr_binop_and
+    (ident)
+    (ERROR
+      (ident)
+      (ident))
+    (ident)))
