@@ -32,18 +32,18 @@ fuzz_target!(|input: &str| {
     let id = loader.load_string(input.to_string());
     let rcl_tree = loader.get_cst(id);
 
-    // Step 3: Compare.
-    // It would be nice to do a deep comparison, but as a first step, when the
-    // grammar is still in progress, we can check that RCL can parse iff TS can
-    // parse. TODO: extend to deeper comparison.
-    match rcl_tree {
-        Ok(..) => assert!(
+    // Step 3: Compare. If RCL accepts, then Tree-sitter also has to accept.
+    // The other way around we don't enforce, Tree-sitter is generally more
+    // lenient, and that is acceptable as it solves a different use case.
+    // For example, due to its fused lexer and parser, it will allow keywords
+    // as identifiers in places where they are unambiguous. We also don't have
+    // to be as strict about rejecting ambiguous operator precedence in TS, it's
+    // better even if the parser is lenient because then highlighting at least
+    // still works.
+    if rcl_tree.is_ok() {
+        assert!(
             !ts_tree.root_node().has_error(),
             "RCL accepted but Tree-sitter rejected.",
-        ),
-        Err(..) => assert!(
-            ts_tree.root_node().has_error(),
-            "RCL rejected but Tree-sitter accepted.",
-        ),
+        );
     }
 });
