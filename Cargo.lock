@@ -345,6 +345,8 @@ dependencies = [
  "rcl",
  "serde_json",
  "toml",
+ "tree-sitter",
+ "tree-sitter-rcl",
 ]
 
 [[package]]
@@ -542,7 +544,7 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-rcl"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "cc",
  "tree-sitter",
