@@ -1,7 +1,8 @@
 # Tree-sitter
 
 The repository includes a [Tree-sitter][tree-sitter] grammar at
-`grammar/tree-sitter-rcl`.
+`grammar/tree-sitter-rcl`. This chapter is about hacking on the grammar.
+For editors that support this grammar, see [the syntax highlighting chapter](syntax_highlighting.md).
 
 [tree-sitter]: https://tree-sitter.github.io/tree-sitter/
 
