@@ -1,6 +1,10 @@
 # Syntax highlighting
 
-The repository ships with basic syntax definitions for the applications below.
+Definitions for syntax coloring are available for the applications below.
+
+## Emacs
+
+See <https://github.com/qezz/rcl-mode>.
 
 ## Pygments
 
