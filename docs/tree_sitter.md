@@ -16,7 +16,7 @@ If you get Tree-sitter from the Nix development environment, make sure to set
 `CC` to a compiler provided by Nix as well. Without this, the resulting shared
 object links against a `libstdc++.so.6` that cannot be located.
 
-    export CC="$NIX_CC/bin/gcc"
+    export CC="$NIX_CC/bin/gcc" CXX="$NIX_CC/bin/g++"
 
 Then regenerate the `src/grammar.json`, and generate the other necessary files:
 
