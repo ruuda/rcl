@@ -43,6 +43,11 @@ module.exports = grammar({
     // TODO: Implement the custom lexer to handle string literals.
     string: $ => /"[^"]*"/,
 
+    number: $ => choice($.num_binary, $.num_hexadecimal, $.num_decimal),
+    num_binary: $ => /0b[01_]*/,
+    num_hexadecimal: $ => /0x[0-9a-fA-F_]*/,
+    num_decimal: $ => /(0|[1-9][0-9_]*)(\.[0-9][0-9_]*)?([eE][-+]?[0-9][0-9_]*)?/,
+
     unop: $ => choice("not", "-"),
     binop: $ => choice(...Object.values(binops)),
 
@@ -107,6 +112,7 @@ module.exports = grammar({
       $.expr_term_brackets,
       $.expr_term_parens,
       $.string,
+      $.number,
       $.ident,
     ),
     expr_term_braces:   $ => seq("{", optional($._seqs), "}"),

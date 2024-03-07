@@ -162,3 +162,54 @@ x and y or z
       (ident)
       (ident))
     (ident)))
+
+==============
+Number decimal
+==============
+
+[0, 10, 1_0, 0.1, 0.1_0, 1e12]
+
+---
+
+(source_file
+  (expr_term_brackets
+    (seq_elem (number (num_decimal)))
+    (seq_elem (number (num_decimal)))
+    (seq_elem (number (num_decimal)))
+    (seq_elem (number (num_decimal)))
+    (seq_elem (number (num_decimal)))
+    (seq_elem (number (num_decimal)))))
+
+======================
+Number invalid decimal
+======================
+
+00
+
+---
+
+(source_file
+  (number (num_decimal))
+  (ERROR (num_decimal)))
+
+=============
+Number binary
+=============
+
+0b11_00
+
+---
+
+(source_file
+  (number (num_binary)))
+
+==================
+Number hexadecimal
+==================
+
+0xff_01
+
+---
+
+(source_file
+  (number (num_hexadecimal)))
