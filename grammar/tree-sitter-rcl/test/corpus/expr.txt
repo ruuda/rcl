@@ -218,3 +218,55 @@ Number hexadecimal
 
 (source_file
   (number (num_hexadecimal)))
+
+==================
+Function no parens
+==================
+
+x => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args (ident))
+    (string)))
+
+=====================================
+Function with parens, 1 arg, no comma
+=====================================
+
+(x) => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args (ident))
+    (string)))
+
+==================================
+Function with parens, 1 arg, comma
+==================================
+
+(x,) => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args (ident))
+    (string)))
+
+==================================
+Function with parens, 2 args
+==================================
+
+(x, y) => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args (ident) (ident))
+    (string)))

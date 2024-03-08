@@ -58,9 +58,24 @@ module.exports = grammar({
     expr_stmt: $ => seq($._stmt, ";", repeat($._prefix), $._expr),
 
     _expr_op: $ => choice(
+      $.expr_function,
       $.expr_unop,
       $.expr_binop,
       $._expr_not_op,
+    ),
+
+    expr_function: $ => seq(
+      field("args", $.function_args),
+      "=>",
+      field("body", $._expr),
+    ),
+
+    function_args: $ => choice(
+      $.ident,
+      seq("(", ")"),
+      // The precedence here must be higher than of a `(ident)`-expression to
+      // resolve the ambiguity.
+      prec(2, seq("(", $.ident, repeat(seq(",", $.ident)), optional(","), ")")),
     ),
 
     expr_unop: $ => choice(
@@ -107,7 +122,8 @@ module.exports = grammar({
     _expr_term: $ => choice(
       $.expr_term_braces,
       $.expr_term_brackets,
-      $.expr_term_parens,
+      // The precedence here is lower than of function args.
+      prec(1, $.expr_term_parens),
       $.string,
       $.number,
       $.ident,
