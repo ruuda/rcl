@@ -270,3 +270,13 @@ Function with parens, 2 args
   (expr_function
     (function_args (ident) (ident))
     (string)))
+
+=====================================
+Not a function but parenthesized expr
+=====================================
+
+(x)
+
+---
+
+(source_file (expr_term_parens (ident)))

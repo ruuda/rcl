@@ -13,6 +13,10 @@ module.exports = grammar({
 
   word: $ => $.ident,
 
+  conflicts: $ => [
+    [ $.function_args, $._expr_term ],
+  ],
+
   rules: {
     source_file: $ => seq(repeat($._prefix), $._expr),
 
@@ -73,9 +77,7 @@ module.exports = grammar({
     function_args: $ => choice(
       $.ident,
       seq("(", ")"),
-      // The precedence here must be higher than of a `(ident)`-expression to
-      // resolve the ambiguity.
-      prec(2, seq("(", $.ident, repeat(seq(",", $.ident)), optional(","), ")")),
+      seq("(", $.ident, repeat(seq(",", $.ident)), optional(","), ")"),
     ),
 
     expr_unop: $ => choice(
@@ -122,15 +124,14 @@ module.exports = grammar({
     _expr_term: $ => choice(
       $.expr_term_braces,
       $.expr_term_brackets,
-      // The precedence here is lower than of function args.
-      prec(1, $.expr_term_parens),
+      $.expr_term_parens,
       $.string,
       $.number,
       $.ident,
     ),
     expr_term_braces:   $ => seq("{", optional($._seqs), "}"),
     expr_term_brackets: $ => seq("[", optional($._seqs), "]"),
-    expr_term_parens:   $ => seq("(", optional($._seqs), ")"),
+    expr_term_parens:   $ => seq("(", $._expr, ")"),
 
     _stmt: $ => seq(choice($.stmt_let)),
     stmt_let: $ => seq(
