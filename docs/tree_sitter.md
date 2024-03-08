@@ -46,7 +46,15 @@ repository, so the grammar can be used without a complex build process.
 
 [ts-user-config]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
 
-## Using the grammar
+## Queries
 
-TODO: This part is also not clear to me! Can we point Helix or Neovim at the
-directory and just expect it to work?
+The Tree-sitter queries for highlighting are editor-specific, because editors
+look for different scopes.
+
+ * [Neovim supported scopes](https://neovim.io/doc/user/treesitter#treesitter-highlight)
+ * [Helix supported scopes](https://docs.helix-editor.com/themes.html#syntax-highlighting)
+
+## Using the parser
+
+See the [syntax highlighting chapter](syntax_highlighting.md) for how to put the
+parser to use.

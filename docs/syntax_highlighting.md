@@ -35,8 +35,35 @@ your Helix configuation directory at `runtime/queries/rcl/highlights.scm`.
 
 ## Neovim
 
-Neovim should be able to use [the Tree-sitter grammar](#tree-sitter), though I
-haven't yet looked into how.
+Neovim can use [the Tree-sitter grammar](#tree-sitter) through the
+[nvim-treesitter][nvim-ts] plugin. Clone the `rcl` repository, and add the
+following to your `init.lua`:
+
+```lua
+local parser_config = require "nvim-treesitter.parsers".get_parser_configs()
+parser_config.rcl = {
+  install_info = {
+    url = "/checkout/rcl/grammar/tree-sitter-rcl",
+    files = {},
+    generate_requires_npm = false,
+    requires_generate_from_grammar = true,
+  }
+}
+```
+
+If you haven’t done so already, configure nvim-treesitter, including [enabling
+syntax highlighting][nvim-ts-highlight]. Run `:TSInstall rcl` to compile the
+parser and put the shared object on the runtimepath, and copy the highlight
+query into the `queries` subdirectory:
+
+```
+cp /checkout/rcl/grammar/tree-sitter-rcl/queries/highlights_nvim.scm /pasers-path/queries/rcl/highlights.scm
+```
+
+Then `:set filetype=rcl` on a buffer to highlight as <abbr>RCL</abbr>.
+
+[nvim-ts]: https://github.com/nvim-treesitter/nvim-treesitter
+[nvim-ts-highlight]: https://github.com/nvim-treesitter/nvim-treesitter/blob/57205313dda0ac82ac69e21d5e2a80f3297c14cc/README.md#highlight
 
 ## Pygments
 
