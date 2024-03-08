@@ -3,6 +3,8 @@
   "if"
   "in"
   "let"
+  (unop_keyword)
+  (binop_keyword)
 ] @keyword
 
 (comment) @comment

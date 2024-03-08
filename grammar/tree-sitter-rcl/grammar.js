@@ -8,22 +8,6 @@
 // The names of the rules here, and the general structure, are modelled after
 // the simpler Bison grammar in //grammar/bison/grammar.y.
 
-const binops = {
-  and: "and",
-  or: "or",
-  pipe: "|",
-  star: "*",
-  plus: "+",
-  minus: "-",
-  slash: "/",
-  lt: "<",
-  lt_eq: "<=",
-  gt: ">",
-  gt_eq: ">=",
-  eq: "==",
-  neq: "!=",
-};
-
 module.exports = grammar({
   name: "rcl",
 
@@ -48,8 +32,24 @@ module.exports = grammar({
     num_hexadecimal: $ => /0x[0-9a-fA-F_]*/,
     num_decimal: $ => /(0|[1-9][0-9_]*)(\.[0-9][0-9_]*)?([eE][-+]?[0-9][0-9_]*)?/,
 
-    unop: $ => choice("not", "-"),
-    binop: $ => choice(...Object.values(binops)),
+    unop_keyword: $ => choice("not"),
+    binop_keyword: $ => choice("and", "or"),
+
+    unop: $ => choice($.unop_keyword, "-"),
+    binop: $ => choice(
+      $.binop_keyword,
+      "|",
+      "*",
+      "+",
+      "-",
+      "/",
+      "<",
+      "<=",
+      ">",
+      ">=",
+      "==",
+      "!=",
+    ),
 
     _expr: $ => choice(
       $.expr_stmt,
@@ -59,8 +59,8 @@ module.exports = grammar({
 
     _expr_op: $ => choice(
       $.expr_unop,
+      $.expr_binop,
       $._expr_not_op,
-      ...Object.keys(binops).map(op => $[`expr_binop_${op}`]),
     ),
 
     expr_unop: $ => choice(
@@ -68,15 +68,12 @@ module.exports = grammar({
       seq($.unop, $.expr_unop),
     ),
 
-    // Because RCL does not have operator precedence, every binary operator
-    // gets its own rule in the grammar.
-    ...Object.fromEntries(Object.entries(binops).map(name_op => [
-      `expr_binop_${name_op[0]}`,
-      $ => seq(
-        $._expr_not_op,
-        repeat1(seq(field("binop", name_op[1]), $._expr_not_op)),
-      ),
-    ])),
+    // In the parser in RCL, arbitrary combinations of binops without parens
+    // are not allowed, they must be the same. But even though that error is
+    // implemented in the parser, it is more akin to a logic error, and it's
+    // only disallowed to force code to be unambiguous for humans. For this
+    // parser, nothing prevents us from just parsing it.
+    expr_binop: $ => seq($._expr_not_op, repeat1(seq($.binop, $._expr_not_op))),
 
     _expr_not_op: $ => choice(
       $._expr_term,

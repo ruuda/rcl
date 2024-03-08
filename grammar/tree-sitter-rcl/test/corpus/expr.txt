@@ -98,7 +98,7 @@ not x
 
 (source_file
   (expr_unop
-    (unop)
+    (unop (unop_keyword))
     (ident)))
 
 ============
@@ -113,9 +113,9 @@ not not x
 (source_file
   (comment)
   (expr_unop
-    (unop)
+    (unop (unop_keyword))
     (expr_unop
-      (unop)
+      (unop (unop_keyword))
       (ident))))
 
 =========
@@ -127,8 +127,9 @@ x and y
 ---
 
 (source_file
-  (expr_binop_and
+  (expr_binop
     (ident)
+    (binop (binop_keyword))
     (ident)))
 
 =============
@@ -140,27 +141,31 @@ x and y and z
 ---
 
 (source_file
-  (expr_binop_and
+  (expr_binop
     (ident)
+    (binop (binop_keyword))
     (ident)
+    (binop (binop_keyword))
     (ident)))
 
 ============
 Binop and or
 ============
 
-// Mixing operators without parens is an error.
-x and y or z
+// Mixing operators without parens is an error in RCL,
+// but allowed by the Tree-sitter paser.
+x and y + z
 
 ---
 
 (source_file
   (comment)
-  (expr_binop_and
+  (comment)
+  (expr_binop
     (ident)
-    (ERROR
-      (ident)
-      (ident))
+    (binop (binop_keyword))
+    (ident)
+    (binop)
     (ident)))
 
 ==============
