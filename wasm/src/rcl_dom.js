@@ -11,7 +11,14 @@ function append_span(node, class_, text) {
   } else {
     const span = document.createElement("span");
     span.className = class_;
-    span.append(text);
+    // In error messages we use box drawing characters, but Chromium
+    // does not display the long one in the correct weight, so replace
+    // it with a normal pipe, which renders better.
+    span.append(
+      (class_ === "error") || (class_ === "warning")
+      ? text.replace("│", "|")
+      : text
+    );
     node.appendChild(span);
   }
 }
