@@ -171,6 +171,12 @@
   .code-demo .str   { color: #ff7e7e; }
   .code-demo .expr  { font-weight: 600; }
 
+  code span.error { font-weight: 600; color: #ff7e7e; }
+  code span.warning { font-weight: 600; color: #ffd07e; }
+  code span.string { color: #ff7e7e; }
+  code span.field { color: #ffd07e; }
+  code span.number { color: #4ccae5; }
+
   footer {
     padding-top: var(--margin-large);
     opacity: 0.6;
@@ -227,7 +233,7 @@
   base_config | { name = subdomain }
 }</code></p>
       <p class="arrow">↓</p>
-      <p class="demo"><code id="output">{
+      <p class="demo" id="output"><code>{
   "a_record_docs_42": {
     "name": "docs",
     "type": "A",
@@ -343,13 +349,9 @@
       const output_box = document.getElementById("output");
       input_box.addEventListener("input", (evt) => {
         const input = evt.target.value;
-        var output = "";
-        try {
-          output = rcl_evaluate(input_box.textContent);
-        } catch (err) {
-          output = err;
-        }
-        output_box.textContent = output;
+        const out_node = document.createElement("code");
+        rcl_evaluate(input_box.textContent, out_node);
+        output_box.replaceChild(out_node, output_box.firstChild);
       });
     }
     run();
