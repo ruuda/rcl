@@ -158,19 +158,16 @@
   }
 
   .code-demo {
-    background-color: #272a2f;
+    background-color: var(--oxford-blue);
     margin-bottom: var(--margin-large);
     margin-right: -2.2rem;
     padding: 1.5rem;
     color: #fff;
-    border-top-left-radius: 0.5rem;
-    border-bottom-left-radius: 0.5rem;
+    border-top-left-radius: 0.3rem;
+    border-bottom-left-radius: 0.3rem;
   }
 
-  .code-demo .ident { color: #ffd07e; }
-  .code-demo .str   { color: #ff7e7e; }
-  .code-demo .expr  { font-weight: 600; }
-
+  code span.highlight  { font-weight: 600; }
   code span.error { font-weight: 600; color: #ff7e7e; }
   code span.warning { font-weight: 600; color: #ffd07e; }
   code span.string { color: #ff7e7e; }
@@ -301,21 +298,21 @@
       </p>
     </div>
     <div class="code-demo span-r2"><code>
-<pre><span class="ident">$</span> curl --silent <wbr/>https://api.vultr.com/v2/regions <wbr
+<pre><span class="field">$</span> curl --silent <wbr/>https://api.vultr.com/v2/regions <wbr
 />
-| rcl query <wbr/><span class="expr">'input<wbr/>.regions<wbr/>.key_by(<wbr/>r =&gt; r.id)<wbr/>.nrt'</span>
+| rcl query <wbr/><span class="highlight">'input<wbr/>.regions<wbr/>.key_by(<wbr/>r =&gt; r.id)<wbr/>.nrt'</span>
 
 {
-  <span class="ident">city</span> = <span class="str">"Tokyo"</span>,
-  <span class="ident">continent</span> = <span class="str">"Asia"</span>,
-  <span class="ident">country</span> = <span class="str">"JP"</span>,
-  <span class="ident">id</span> = <span class="str">"nrt"</span>,
-  <span class="ident">options</span> = [
-    <span class="str">"ddos_protection"</span>,
-    <span class="str">"block_storage_high_perf"</span>,
-    <span class="str">"block_storage_storage_opt"</span>,
-    <span class="str">"load_balancers"</span>,
-    <span class="str">"kubernetes"</span>,
+  <span class="field">city</span> = <span class="string">"Tokyo"</span>,
+  <span class="field">continent</span> = <span class="string">"Asia"</span>,
+  <span class="field">country</span> = <span class="string">"JP"</span>,
+  <span class="field">id</span> = <span class="string">"nrt"</span>,
+  <span class="field">options</span> = [
+    <span class="string">"ddos_protection"</span>,
+    <span class="string">"block_storage_high_perf"</span>,
+    <span class="string">"block_storage_storage_opt"</span>,
+    <span class="string">"load_balancers"</span>,
+    <span class="string">"kubernetes"</span>,
   ],
 }
 </pre>
