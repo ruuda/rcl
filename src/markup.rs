@@ -31,7 +31,8 @@ pub enum Markup {
     // These are meant for syntax highlighting.
     Builtin,
     Comment,
-    Identifier,
+    Escape,
+    Field,
     Keyword,
     Number,
     String,
@@ -78,15 +79,16 @@ impl MarkupMode {
 /// Return the ANSI escape code to switch to style `markup`.
 pub fn switch_ansi(markup: Markup) -> &'static str {
     let reset = "\x1b[0m";
+    let bold_blue = "\x1b[34;1m";
+    let bold_green = "\x1b[32;1m";
     let bold_red = "\x1b[31;1m";
     let bold_yellow = "\x1b[33;1m";
-    let bold_blue = "\x1b[34;1m";
-    let red = "\x1b[31m";
-    let green = "\x1b[32m";
     let blue = "\x1b[34m";
-    let magenta = "\x1b[35m";
     let cyan = "\x1b[36m";
+    let magenta = "\x1b[35m";
+    let red = "\x1b[31m";
     let white = "\x1b[37m";
+    let yellow = "\x1b[33m";
 
     match markup {
         Markup::None => reset,
@@ -96,10 +98,11 @@ pub fn switch_ansi(markup: Markup) -> &'static str {
         Markup::Highlight => white,
         Markup::Builtin => red,
         Markup::Comment => white,
-        Markup::Identifier => blue,
-        Markup::Keyword => green,
+        Markup::Field => blue,
+        Markup::Keyword => bold_green,
         Markup::Number => cyan,
         Markup::String => red,
+        Markup::Escape => yellow,
         Markup::Type => magenta,
     }
 }

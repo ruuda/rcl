@@ -23,6 +23,7 @@ Unreleased.
  * Allow `\}` in strings as an escape sequence for `}`.
  * Fix a compatibility problem in the toml output format. Improve tests and add
    a fuzzer to rule out similar compatibility problems.
+ * Output of `rcl format` is now colored when printing to a terminal.
 
 ## 0.1.0
 

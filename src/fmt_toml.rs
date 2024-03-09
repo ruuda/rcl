@@ -93,7 +93,7 @@ impl Formatter {
     fn push_key<'a>(&mut self, key: &'a Value) -> Result<Doc<'a>> {
         self.path.push(PathElement::Key(key.clone()));
         match key {
-            Value::String(k_str) => Ok(self.key(k_str).with_markup(Markup::Identifier)),
+            Value::String(k_str) => Ok(self.key(k_str).with_markup(Markup::Field)),
             _ => self.error("To export as TOML, keys must be strings."),
         }
     }

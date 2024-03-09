@@ -52,6 +52,7 @@ impl Formatter {
 
     fn string<'a>(&self, s: &str) -> Doc<'a> {
         let mut into = String::with_capacity(s.len());
+        // TODO: Escape into a Doc so we can highlight escape sequences.
         escape_json(s, &mut into);
         concat! { "\"" into "\"" }
     }
@@ -87,7 +88,7 @@ impl Formatter {
             match k {
                 Value::String(k_str) => {
                     self.path.push(PathElement::Key(k.clone()));
-                    elements.push(self.string(k_str).with_markup(Markup::Identifier))
+                    elements.push(self.string(k_str).with_markup(Markup::Field))
                 }
                 // TODO: Include information about the encountered type.
                 _ => return self.error("To export as json, keys must be strings."),

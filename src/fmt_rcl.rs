@@ -65,11 +65,11 @@ pub fn dict<'a>(vs: impl Iterator<Item = (&'a Value, &'a Value)>) -> Doc<'a> {
         match k {
             // Format as identifier if we can, or as string if we have to.
             Value::String(k_str) if is_identifier(k_str) => {
-                elements.push(Doc::from(k_str.as_ref()).with_markup(Markup::Identifier));
+                elements.push(Doc::from(k_str.as_ref()).with_markup(Markup::Field));
                 elements.push(" = ".into());
             }
             Value::String(k_str) => {
-                elements.push(string(k_str).with_markup(Markup::Identifier));
+                elements.push(string(k_str).with_markup(Markup::Field));
                 elements.push(": ".into());
             }
             _not_string => {

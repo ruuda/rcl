@@ -12,6 +12,7 @@
 
 use crate::cst::{Expr, NonCode, Prefixed, Seq, Stmt, StringPart, Type};
 use crate::lexer::{QuoteStyle, StringPrefix};
+use crate::markup::Markup;
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
 use crate::source::Span;
 use crate::string;
@@ -85,7 +86,7 @@ impl<'a> Formatter<'a> {
                     result.push(Doc::HardBreak);
                 }
                 NonCode::LineComment(span) => {
-                    result.push(self.span(*span));
+                    result.push(self.span(*span).with_markup(Markup::Comment));
                     result.push(Doc::HardBreak);
                 }
                 NonCode::Shebang(span) => {
@@ -100,26 +101,26 @@ impl<'a> Formatter<'a> {
 
     /// Format a `"` or `f"` quoted string or format string.
     fn string_double(&self, open: &'static str, parts: &[StringPart]) -> Doc<'a> {
-        let mut result = vec![open.into()];
+        let mut result = vec![Doc::str(open).with_markup(Markup::String)];
 
         for part in parts {
             match part {
                 StringPart::String(span) => {
-                    result.push(self.raw_span(*span));
+                    result.push(self.raw_span(*span).with_markup(Markup::String));
                 }
                 StringPart::Escape(span, _esc) => {
-                    result.push(self.span(*span));
+                    result.push(self.span(*span).with_markup(Markup::Escape));
                 }
                 StringPart::Hole(_span, expr) => {
                     // TODO: Add soft breaks around the hole contents?
-                    result.push("{".into());
+                    result.push(Doc::str("{").with_markup(Markup::Escape));
                     result.push(self.expr(expr));
-                    result.push("}".into());
+                    result.push(Doc::str("}").with_markup(Markup::Escape));
                 }
             }
         }
 
-        result.push("\"".into());
+        result.push(Doc::str("\"").with_markup(Markup::String));
 
         Doc::Concat(result)
     }
@@ -142,16 +143,19 @@ impl<'a> Formatter<'a> {
             n_trailing_spaces += 1;
         }
 
-        out.push(line.into());
+        if !line.is_empty() {
+            out.push(Doc::str(line).with_markup(Markup::String));
+        }
+
         for _ in 0..n_trailing_spaces {
-            out.push(r"\u0020".into());
+            out.push(Doc::str(r"\u0020").with_markup(Markup::Escape));
         }
     }
 
     /// Format a `"""` or `f"""` quoted string or format string.
     fn string_triple(&self, open: &'static str, parts: &[StringPart]) -> Doc<'a> {
         let n_strip = string::count_common_leading_spaces(self.input, parts);
-        let mut result = vec![open.into()];
+        let mut result = vec![Doc::str(open).with_markup(Markup::String)];
 
         for (i, part) in parts.iter().enumerate() {
             match part {
@@ -170,22 +174,22 @@ impl<'a> Formatter<'a> {
                     // without creating trailing whitespace.
                     match parts.get(i + 1) {
                         Some(StringPart::String(..)) => self.push_string_line(line, &mut result),
-                        _ => result.push(line.into()),
+                        _ => result.push(Doc::from(line).with_markup(Markup::String)),
                     }
                 }
                 StringPart::Escape(span, _esc) => {
-                    result.push(self.span(*span));
+                    result.push(self.span(*span).with_markup(Markup::Escape));
                 }
                 StringPart::Hole(_span, expr) => {
                     // TODO: Add soft breaks around the hole contents?
-                    result.push("{".into());
+                    result.push(Doc::str("{").with_markup(Markup::Escape));
                     result.push(self.expr(expr));
-                    result.push("}".into());
+                    result.push(Doc::str("}").with_markup(Markup::Escape));
                 }
             }
         }
 
-        result.push("\"\"\"".into());
+        result.push(Doc::str("\"\"\"").with_markup(Markup::String));
 
         flush_indent! { Doc::Concat(result) }
     }
@@ -215,7 +219,8 @@ impl<'a> Formatter<'a> {
                 ..
             } => {
                 let mut result: Vec<Doc<'a>> = Vec::new();
-                result.push("let ".into());
+                result.push(Doc::str("let").with_markup(Markup::Keyword));
+                result.push(" ".into());
                 result.push(self.span(*ident));
                 if let Some(t) = type_ {
                     result.push(": ".into());
@@ -230,7 +235,7 @@ impl<'a> Formatter<'a> {
                 condition, message, ..
             } => {
                 concat! {
-                    "assert"
+                    Doc::str("assert").with_markup(Markup::Keyword)
                     group! {
                         indent! {
                             Doc::Sep
@@ -244,7 +249,11 @@ impl<'a> Formatter<'a> {
                 }
             }
             Stmt::Trace { message, .. } => {
-                concat! { "trace " self.expr(message) ";" }
+                concat! {
+                    Doc::str("trace").with_markup(Markup::Keyword)
+                    " "
+                    self.expr(message) ";"
+                }
             }
         }
     }
@@ -265,7 +274,7 @@ impl<'a> Formatter<'a> {
             Expr::Import { path, .. } => {
                 group! {
                     concat! {
-                        "import"
+                        Doc::str("import").with_markup(Markup::Keyword)
                         indent! {
                             Doc::Sep
                             self.non_code(&path.prefix)
@@ -340,14 +349,16 @@ impl<'a> Formatter<'a> {
 
             Expr::NumHexadecimal(span) => {
                 // Normalize A-F to a-f.
-                span.resolve(self.input).to_ascii_lowercase().into()
+                Doc::string(span.resolve(self.input).to_ascii_lowercase())
+                    .with_markup(Markup::Number)
             }
 
-            Expr::NumBinary(span) => self.span(*span),
+            Expr::NumBinary(span) => self.span(*span).with_markup(Markup::Number),
 
             Expr::NumDecimal(span) => {
                 // Normalize exponent E to e.
-                span.resolve(self.input).to_ascii_lowercase().into()
+                Doc::string(span.resolve(self.input).to_ascii_lowercase())
+                    .with_markup(Markup::Number)
             }
 
             Expr::Var(span) => self.span(*span),
@@ -369,11 +380,13 @@ impl<'a> Formatter<'a> {
             } => {
                 group! {
                     flush_indent! {
-                        "if " self.expr(condition) ":"
+                        Doc::str("if").with_markup(Markup::Keyword)
+                        " "
+                        self.expr(condition) ":"
                         Doc::Sep
                         indent! { self.prefixed_expr(then_body) }
                         Doc::Sep
-                        "else"
+                        Doc::str("else").with_markup(Markup::Keyword)
                         Doc::Sep
                         indent! { self.prefixed_expr(else_body) }
                     }
@@ -527,12 +540,17 @@ impl<'a> Formatter<'a> {
             Seq::Elem { value, .. } => (self.expr(value), ","),
 
             Seq::AssocExpr { field, value, .. } => {
-                (concat! { self.expr(field) ": " self.expr(value) }, ",")
+                // TODO: Special-case an inner string for markup?
+                (
+                    concat! { self.expr(field).with_markup(Markup::Field) ": " self.expr(value) },
+                    ",",
+                )
             }
 
-            Seq::AssocIdent { field, value, .. } => {
-                (concat! { self.span(*field) " = " self.expr(value) }, ",")
-            }
+            Seq::AssocIdent { field, value, .. } => (
+                concat! { self.span(*field).with_markup(Markup::Field) " = " self.expr(value) },
+                ",",
+            ),
 
             Seq::Stmt { stmt, body, .. } => {
                 let (body_doc, sep) = self.seq(&body.inner);
@@ -553,7 +571,8 @@ impl<'a> Formatter<'a> {
             } => {
                 let (body_doc, sep) = self.seq(&body.inner);
                 let result = concat! {
-                    "for "
+                    Doc::str("for").with_markup(Markup::Keyword)
+                    " "
                     // TODO: This does not use a proper sep, which means we
                     // cannot break this over multiple lines. But maybe that's
                     // okay.
@@ -561,7 +580,9 @@ impl<'a> Formatter<'a> {
                         idents.iter().map(|ident| self.span(*ident)),
                         ", ".into(),
                     )
-                    " in "
+                    " "
+                    Doc::str("in").with_markup(Markup::Keyword)
+                    " "
                     self.expr(collection)
                     ":"
                     Doc::Sep
@@ -576,7 +597,8 @@ impl<'a> Formatter<'a> {
             } => {
                 let (body_doc, sep) = self.seq(&body.inner);
                 let result = concat! {
-                    "if "
+                    Doc::str("if").with_markup(Markup::Keyword)
+                    " "
                     self.expr(condition)
                     ":"
                     Doc::Sep
