@@ -32,23 +32,21 @@ pub trait Tracer {
 /// Tracer that writes messages to stderr.
 pub struct StderrTracer {
     config: pprint::Config,
+    markup: MarkupMode,
 }
 
 impl StderrTracer {
     pub fn new(markup: Option<MarkupMode>) -> StderrTracer {
         let stderr = std::io::stderr();
-        let config = pprint::Config {
+        StderrTracer {
+            config: pprint::Config { width: 80 },
             markup: markup.unwrap_or_else(|| MarkupMode::default_for_fd(&stderr)),
-            width: 80,
-        };
-        StderrTracer { config }
+        }
     }
 }
 
 impl Tracer for StderrTracer {
     fn trace(&mut self, inputs: &Inputs, span: Span, message: &Value) {
-        use std::io::Write;
-
         let doc = concat! {
             highlight_span(inputs, span, Markup::Trace)
             Doc::from("Trace:").with_markup(Markup::Trace)
@@ -59,7 +57,7 @@ impl Tracer for StderrTracer {
         };
         let doc_str = doc.println(&self.config);
         let mut out = std::io::stderr().lock();
-        let res = out.write_all(doc_str.as_bytes());
+        let res = doc_str.write_bytes(self.markup, &mut out);
         if res.is_err() {
             // If we fail to print to stderr, there is no point in printing an
             // error, just exit then.

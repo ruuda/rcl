@@ -7,11 +7,14 @@
 
 //! Utilities for dealing with color and other markup.
 
-use std::io::IsTerminal;
+use std::io::{IsTerminal, Write};
 
 /// A markup hint, used to apply color and other markup to output.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Markup {
+    /// No special markup applied, default formatting.
+    None,
+
     /// Used for error message reporting, styled in bold.
     Error,
     /// Used for error message reporting, styled in bold.
@@ -70,19 +73,10 @@ impl MarkupMode {
             MarkupMode::None
         }
     }
-
-    /// Output the markup required to switch from the `from` style to the `to` style.
-    pub fn get_switch(&self, from: Option<Markup>, to: Option<Markup>) -> &'static str {
-        debug_assert_ne!(from, to, "Should not switch if from and to are the same.");
-        match self {
-            MarkupMode::None => "",
-            MarkupMode::Ansi => switch_ansi(from, to),
-        }
-    }
 }
 
-/// Return the ANSI escape code to switch from style `from` to style `to`.
-pub fn switch_ansi(_from: Option<Markup>, to: Option<Markup>) -> &'static str {
+/// Return the ANSI escape code to switch to style `markup`.
+pub fn switch_ansi(markup: Markup) -> &'static str {
     let reset = "\x1b[0m";
     let bold_red = "\x1b[31;1m";
     let bold_yellow = "\x1b[33;1m";
@@ -94,11 +88,8 @@ pub fn switch_ansi(_from: Option<Markup>, to: Option<Markup>) -> &'static str {
     let cyan = "\x1b[36m";
     let white = "\x1b[37m";
 
-    let to = match to {
-        None => return reset,
-        Some(m) => m,
-    };
-    match to {
+    match markup {
+        Markup::None => reset,
         Markup::Error => bold_red,
         Markup::Warning => bold_yellow,
         Markup::Trace => bold_blue,
@@ -110,5 +101,90 @@ pub fn switch_ansi(_from: Option<Markup>, to: Option<Markup>) -> &'static str {
         Markup::Number => cyan,
         Markup::String => red,
         Markup::Type => magenta,
+    }
+}
+
+/// A string pieced together from fragments that have markup.
+pub struct MarkupString<'a> {
+    fragments: Vec<(&'a str, Markup)>,
+}
+
+impl<'a> MarkupString<'a> {
+    pub fn new() -> MarkupString<'a> {
+        MarkupString {
+            fragments: Vec::new(),
+        }
+    }
+
+    /// Append a new fragment.
+    pub fn push(&mut self, fragment: &'a str, markup: Markup) {
+        debug_assert!(!fragment.is_empty(), "Should not push empty fragments.");
+        self.fragments.push((fragment, markup));
+    }
+
+    /// Return the current number of fragments.
+    pub fn num_fragments(&self) -> usize {
+        self.fragments.len()
+    }
+
+    /// Return whether the string is empty.
+    pub fn is_empty(&self) -> bool {
+        self.fragments.is_empty()
+    }
+
+    /// Drop fragments, restore to the given previous length.
+    pub fn truncate(&mut self, num_fragments: usize) {
+        self.fragments.truncate(num_fragments)
+    }
+
+    /// Remove all spaces at the end.
+    pub fn trim_spaces_end(&mut self) {
+        while let Some((fragment, _markup)) = self.fragments.last_mut() {
+            let f_trimmed = fragment.trim_end_matches(' ');
+            if f_trimmed.is_empty() {
+                self.fragments.pop();
+            } else {
+                *fragment = f_trimmed;
+                break;
+            }
+        }
+    }
+
+    /// Append the string to a regular `String`, discarding all markup.
+    pub fn write_string_no_markup(&self, out: &mut String) {
+        for (frag_str, _markup) in self.fragments.iter() {
+            out.push_str(frag_str);
+        }
+    }
+
+    /// Write the string to a writer, discarding all markup.
+    pub fn write_bytes_no_markup(&self, out: &mut dyn Write) -> std::io::Result<()> {
+        for (frag_str, _markup) in self.fragments.iter() {
+            out.write_all(frag_str.as_bytes())?
+        }
+        Ok(())
+    }
+
+    /// Write the string to a writer, using ANSI escape codes for markup.
+    pub fn write_bytes_ansi(&self, out: &mut dyn Write) -> std::io::Result<()> {
+        let mut markup = Markup::None;
+
+        for (frag_str, frag_markup) in self.fragments.iter() {
+            if markup != *frag_markup {
+                out.write_all(switch_ansi(*frag_markup).as_bytes())?;
+                markup = *frag_markup;
+            }
+            out.write_all(frag_str.as_bytes())?;
+        }
+
+        Ok(())
+    }
+
+    /// Write the string to a write with the given markup mode.
+    pub fn write_bytes(&self, mode: MarkupMode, out: &mut dyn Write) -> std::io::Result<()> {
+        match mode {
+            MarkupMode::None => self.write_bytes_no_markup(out),
+            MarkupMode::Ansi => self.write_bytes_ansi(out),
+        }
     }
 }
