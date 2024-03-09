@@ -318,9 +318,26 @@ impl<'a> Doc<'a> {
                 Mode::Tall => printer.raw_newline(),
                 Mode::Wide => unreachable!("RawBreak forces Tall mode."),
             },
-            Doc::Concat(children) => children.iter().fold(PrintResult::Fits, |r, doc| {
-                doc.print_to(printer, mode).max(r)
-            }),
+            Doc::Concat(children) => match mode {
+                // If we print in wide mode and we overflow, don't bother to
+                // print the remainder because we will retry in tall mode anyway.
+                Mode::Wide => {
+                    for child in children.iter() {
+                        match child.print_to(printer, Mode::Wide) {
+                            PrintResult::Overflow => return PrintResult::Overflow,
+                            PrintResult::Fits => continue,
+                        }
+                    }
+                    PrintResult::Fits
+                }
+                Mode::Tall => {
+                    let mut result = PrintResult::Fits;
+                    for child in children.iter() {
+                        result = child.print_to(printer, Mode::Tall).max(result);
+                    }
+                    result
+                }
+            },
             Doc::Group(inner) => {
                 if inner.is_forced_tall() {
                     debug_assert!(matches!(mode, Mode::Tall));
