@@ -192,7 +192,7 @@ impl Formatter {
 
     /// Format a dict as (top-level) table body.
     fn table<'a>(&mut self, vs: impl Iterator<Item = (&'a Value, &'a Value)>) -> Result<Doc<'a>> {
-        let mut doc = Doc::empty();
+        let mut doc = Doc::Empty;
         for (k, v) in vs {
             doc = doc + self.key_value(k, v)?;
         }

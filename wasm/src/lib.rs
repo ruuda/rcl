@@ -8,7 +8,6 @@
 use rcl::error::Result;
 use rcl::eval::Evaluator;
 use rcl::loader::{Loader, VoidFilesystem};
-use rcl::markup::MarkupMode;
 use rcl::pprint;
 use rcl::tracer::VoidTracer;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -28,7 +27,8 @@ fn rcl_evaluate_impl<'a>(
     let full_span = loader.get_span(id);
     // TODO: Make output format configurable.
     let json = rcl::fmt_json::format_json(full_span, &value)?;
-    Ok(json.println(print_cfg))
+    // TODO: Print to colored DOM nodes.
+    Ok(json.println(print_cfg).to_string_no_markup())
 }
 
 #[wasm_bindgen]
@@ -37,14 +37,13 @@ pub fn rcl_evaluate(input: &str) -> std::result::Result<String, String> {
     let cfg = pprint::Config {
         // TODO: Make this configurable.
         width: 60,
-        markup: MarkupMode::None,
     };
     match rcl_evaluate_impl(&mut loader, &cfg, input) {
         Ok(string) => Ok(string),
         Err(err) => {
             let inputs = loader.as_inputs();
             let err_doc = err.report(&inputs);
-            Err(err_doc.println(&cfg))
+            Err(err_doc.println(&cfg).to_string_no_markup())
         }
     }
 }

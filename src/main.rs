@@ -6,13 +6,14 @@
 // A copy of the License has been included in the root of the repository.
 
 use std::io::Write;
+use std::path::Path;
 
 use rcl::cli::{
     self, Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, OutputTarget, StyleOptions,
 };
 use rcl::error::{Error, Result};
 use rcl::loader::{Loader, SandboxMode};
-use rcl::markup::MarkupMode;
+use rcl::markup::{MarkupMode, MarkupString};
 use rcl::pprint::{self, Doc};
 use rcl::runtime::{self, Value};
 use rcl::source::{DocId, Span};
@@ -25,8 +26,8 @@ struct App {
 }
 
 impl App {
-    fn print_string(&self, out: &mut dyn Write, data: String) {
-        let res = out.write_all(data.as_bytes());
+    fn print_string(&self, mode: MarkupMode, data: MarkupString, out: &mut dyn Write) {
+        let res = data.write_bytes(mode, out);
         if res.is_err() {
             // If we fail to print to stdout/stderr, there is no point in
             // printing an error, just exit then.
@@ -35,25 +36,39 @@ impl App {
     }
 
     /// Write a string to a file.
-    fn print_to_file(&self, out_path: &str, data: String) -> Result<()> {
+    fn print_to_file_impl(
+        &self,
+        mode: MarkupMode,
+        data: MarkupString,
+        out_path: &Path,
+    ) -> std::io::Result<()> {
+        let f = std::fs::File::open(out_path)?;
+        let mut w = std::io::BufWriter::new(f);
+        data.write_bytes(mode, &mut w)
+    }
+
+    /// Write a string to a file.
+    fn print_to_file(&self, mode: MarkupMode, data: MarkupString, out_path: &str) -> Result<()> {
         let out_path = self.loader.resolve_cli_output_path(out_path);
-        std::fs::write(&out_path, data).map_err(|err| {
-            // The concat! macro is not exported, we'll make do with a vec here.
-            let parts = vec![
-                "Failed to write to file '".into(),
-                Doc::highlight(out_path.to_string_lossy().as_ref()).into_owned(),
-                "': ".into(),
-                err.to_string().into(),
-            ];
-            Error::new(Doc::Concat(parts)).into()
-        })
+
+        self.print_to_file_impl(mode, data, out_path.as_ref())
+            .map_err(|err| {
+                // The concat! macro is not exported, we'll make do with a vec here.
+                let parts = vec![
+                    "Failed to write to file '".into(),
+                    Doc::highlight(out_path.to_string_lossy().as_ref()).into_owned(),
+                    "': ".into(),
+                    err.to_string().into(),
+                ];
+                Error::new(Doc::Concat(parts)).into()
+            })
     }
 
     fn print_doc_target(
         &self,
         output: OutputTarget,
         style_opts: &StyleOptions,
-        doc: pprint::Doc,
+        doc: Doc,
     ) -> Result<()> {
         let stdout = std::io::stdout();
         let markup = match output {
@@ -67,33 +82,30 @@ impl App {
         };
         let cfg = pprint::Config {
             width: style_opts.width,
-            markup,
         };
         let result = doc.println(&cfg);
         match output {
             OutputTarget::Stdout => {
                 let mut out = stdout.lock();
-                self.print_string(&mut out, result);
+                self.print_string(markup, result, &mut out);
             }
             OutputTarget::File(fname) => {
-                self.print_to_file(&fname, result)?;
+                self.print_to_file(markup, result, &fname)?;
             }
         };
         Ok(())
     }
 
-    fn print_doc_stderr(&self, doc: pprint::Doc) {
+    fn print_doc_stderr(&self, doc: Doc) {
         let stderr = std::io::stderr();
-        let cfg = pprint::Config {
-            markup: self
-                .opts
-                .markup
-                .unwrap_or_else(|| MarkupMode::default_for_fd(&stderr)),
-            width: 80,
-        };
+        let markup = self
+            .opts
+            .markup
+            .unwrap_or_else(|| MarkupMode::default_for_fd(&stderr));
+        let cfg = pprint::Config { width: 80 };
         let result = doc.println(&cfg);
         let mut out = stderr.lock();
-        self.print_string(&mut out, result);
+        self.print_string(markup, result, &mut out);
     }
 
     pub fn print_value(

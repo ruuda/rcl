@@ -16,7 +16,7 @@
 //!
 //! [wadler2003]: https://homepages.inf.ed.ac.uk/wadler/papers/prettier/prettier.pdf
 
-use crate::markup::{Markup, MarkupMode};
+use crate::markup::{Markup, MarkupString};
 use crate::pprint::printer::{PrintResult, Printer};
 
 /// Whether to format a node in wide mode or tall mode.
@@ -31,9 +31,6 @@ pub struct Config {
     /// The pretty printer will try to avoid creating lines longer than `width`
     /// columns, but this is not always possible.
     pub width: u32,
-
-    /// How to output color and other markup hints.
-    pub markup: MarkupMode,
 }
 
 /// A document tree that can be pretty-printed.
@@ -93,6 +90,9 @@ pub struct Config {
 /// a `Doc::Group`.
 #[derive(Clone, Debug)]
 pub enum Doc<'a> {
+    /// An empty fragment, the unit for `+`.
+    Empty,
+
     /// A string slice to be spliced into the output.
     Str { content: &'a str, width: u32 },
 
@@ -146,18 +146,15 @@ pub enum Doc<'a> {
 }
 
 impl<'a> Doc<'a> {
-    /// Construct an empty document.
-    pub fn empty() -> Doc<'a> {
-        // We pick concat of empty vec over str of empty string, so that when
-        // this later gets concatenated with something else, it disappears.
-        // An empty string would stick around as a node unless we added logic to
-        // omit it during concat.
-        Doc::Concat(Vec::new())
-    }
-
     /// Construct a new document fragment from a string slice.
     pub fn str(value: &'a str) -> Doc<'a> {
         use unicode_width::UnicodeWidthStr;
+        debug_assert!(
+            !value.is_empty(),
+            // coverage:off -- Error not expected to be hit.
+            "Should not construct empty Doc with `Doc::str`.",
+            // coverage:on
+        );
         debug_assert!(
             !value.contains('\n'),
             // coverage:off -- Error not expected to be hit.
@@ -203,6 +200,12 @@ impl<'a> Doc<'a> {
     /// Construct a new document fragment from an owned string.
     pub fn string(value: String) -> Doc<'a> {
         use unicode_width::UnicodeWidthStr;
+        debug_assert!(
+            !value.is_empty(),
+            // coverage:off -- Error not expected to be hit.
+            "Should not construct empty doc with `Doc::string`.",
+            // coverage:on
+        );
         debug_assert!(
             !value.contains('\n'),
             // coverage:off -- Error not expected to be hit.
@@ -252,6 +255,7 @@ impl<'a> Doc<'a> {
     /// Clone all strings and make them owned.
     pub fn into_owned(self) -> Doc<'static> {
         match self {
+            Doc::Empty => Doc::Empty,
             Doc::Str { content, width } => Doc::String {
                 content: content.to_string(),
                 width,
@@ -289,8 +293,9 @@ impl<'a> Doc<'a> {
     }
 
     /// Print the document to the given printer.
-    fn print_to(&self, printer: &mut Printer, mode: Mode) -> PrintResult {
+    fn print_to(&'a self, printer: &mut Printer<'a>, mode: Mode) -> PrintResult {
         match self {
+            Doc::Empty => PrintResult::Fits,
             Doc::Str { content, width } => printer.push_str(content, *width),
             Doc::String { content, width } => printer.push_str(content, *width),
             Doc::WhenTall { content, width } => match mode {
@@ -299,7 +304,7 @@ impl<'a> Doc<'a> {
             },
             Doc::Sep => match mode {
                 Mode::Tall => printer.newline(),
-                Mode::Wide => printer.push_char(' '),
+                Mode::Wide => printer.push_str(" ", 1),
             },
             Doc::SoftBreak => match mode {
                 Mode::Tall => printer.newline(),
@@ -313,9 +318,26 @@ impl<'a> Doc<'a> {
                 Mode::Tall => printer.raw_newline(),
                 Mode::Wide => unreachable!("RawBreak forces Tall mode."),
             },
-            Doc::Concat(children) => children.iter().fold(PrintResult::Fits, |r, doc| {
-                doc.print_to(printer, mode).max(r)
-            }),
+            Doc::Concat(children) => match mode {
+                // If we print in wide mode and we overflow, don't bother to
+                // print the remainder because we will retry in tall mode anyway.
+                Mode::Wide => {
+                    for child in children.iter() {
+                        match child.print_to(printer, Mode::Wide) {
+                            PrintResult::Overflow => return PrintResult::Overflow,
+                            PrintResult::Fits => continue,
+                        }
+                    }
+                    PrintResult::Fits
+                }
+                Mode::Tall => {
+                    let mut result = PrintResult::Fits;
+                    for child in children.iter() {
+                        result = child.print_to(printer, Mode::Tall).max(result);
+                    }
+                    result
+                }
+            },
             Doc::Group(inner) => {
                 if inner.is_forced_tall() {
                     debug_assert!(matches!(mode, Mode::Tall));
@@ -354,8 +376,11 @@ impl<'a> Doc<'a> {
     }
 
     /// Pretty-print the document. Ensure the document ends in a newline.
-    pub fn println(&self, config: &Config) -> String {
-        let mut printer = Printer::new(config);
+    pub fn println<'s>(&'s self, config: &'s Config) -> MarkupString<'a>
+    where
+        's: 'a,
+    {
+        let mut printer: Printer<'a> = Printer::new(config);
         self.print_to(&mut printer, Mode::Tall);
         printer.flush_newline();
         printer.into_inner()
@@ -364,13 +389,21 @@ impl<'a> Doc<'a> {
 
 impl<'a> From<&'a str> for Doc<'a> {
     fn from(value: &'a str) -> Doc<'a> {
-        Doc::str(value)
+        if value.is_empty() {
+            Doc::Empty
+        } else {
+            Doc::str(value)
+        }
     }
 }
 
 impl<'a> From<String> for Doc<'a> {
     fn from(value: String) -> Doc<'a> {
-        Doc::string(value)
+        if value.is_empty() {
+            Doc::Empty
+        } else {
+            Doc::string(value)
+        }
     }
 }
 
@@ -386,6 +419,8 @@ impl<'a> std::ops::Add<Doc<'a>> for Doc<'a> {
         // as the call that produced the doc, and then it can statically resolve
         // everything.
         match (self, that) {
+            (Doc::Empty, y) => y,
+            (x, Doc::Empty) => x,
             (Doc::Concat(xs), y) if xs.is_empty() => y,
             (x, Doc::Concat(ys)) if ys.is_empty() => x,
             (Doc::Concat(mut xs), Doc::Concat(mut ys)) => {
@@ -410,7 +445,7 @@ macro_rules! doc_concat {
     { $($fragment:expr)* } => {
         {
             #[allow(unused_mut)]
-            let mut result = crate::pprint::Doc::empty();
+            let mut result = crate::pprint::Doc::Empty;
             $( result = result + $fragment.into(); )*
             result
         }
@@ -444,7 +479,8 @@ pub(crate) use flush_indent;
 /// This is a separate module to be able to hide some of the printer internals
 /// from the [`Doc::println`] implementation.
 mod printer {
-    use super::{Config, Markup, MarkupMode};
+    use super::Config;
+    use crate::markup::{Markup, MarkupString};
 
     /// Whether printing in a particular mode fitted or not.
     ///
@@ -465,9 +501,9 @@ mod printer {
     }
 
     /// Helper for pretty-printing documents that tracks indentation state.
-    pub struct Printer {
+    pub struct Printer<'a> {
         /// Buffer where we place the output.
-        out: String,
+        out: MarkupString<'a>,
 
         /// Target width that we should try to not exceed.
         width: u32,
@@ -482,39 +518,35 @@ mod printer {
         needs_indent: bool,
 
         /// The currently applied markup.
-        markup: Option<Markup>,
-
-        /// How to apply markup.
-        markup_mode: MarkupMode,
+        markup: Markup,
     }
 
-    impl Printer {
+    impl<'a> Printer<'a> {
         /// Create a new printer with the given line width target.
         pub fn new(config: &Config) -> Printer {
             Printer {
-                out: String::new(),
+                out: MarkupString::new(),
                 width: config.width,
                 line_width: 0,
                 indent: 0,
                 needs_indent: true,
-                markup: None,
-                markup_mode: config.markup,
+                markup: Markup::None,
             }
         }
 
         /// Return the result string printed to the printer.
-        pub fn into_inner(self) -> String {
+        pub fn into_inner(self) -> MarkupString<'a> {
             self.out
         }
 
         /// Execute `f` against this printer. If the result was too wide, roll back.
-        pub fn try_<F: FnOnce(&mut Printer) -> PrintResult>(&mut self, f: F) -> PrintResult {
-            let len = self.out.len();
+        pub fn try_<F: FnOnce(&mut Printer<'a>) -> PrintResult>(&mut self, f: F) -> PrintResult {
+            let fragment_len = self.out.num_fragments();
             let line_width = self.line_width;
             let needs_indent = self.needs_indent;
             let result = f(self);
             if result.is_overflow() {
-                self.out.truncate(len);
+                self.out.truncate(fragment_len);
                 self.line_width = line_width;
                 self.needs_indent = needs_indent;
             }
@@ -522,7 +554,10 @@ mod printer {
         }
 
         /// Execute `f` under increased indentation width.
-        pub fn indented<F: FnOnce(&mut Printer) -> PrintResult>(&mut self, f: F) -> PrintResult {
+        pub fn indented<F: FnOnce(&mut Printer<'a>) -> PrintResult>(
+            &mut self,
+            f: F,
+        ) -> PrintResult {
             self.indent += 2;
             let result = f(self);
             self.indent -= 2;
@@ -530,20 +565,15 @@ mod printer {
         }
 
         /// Execute `f` with markup applied.
-        pub fn with_markup<F: FnOnce(&mut Printer) -> PrintResult>(
+        pub fn with_markup<F: FnOnce(&mut Printer<'a>) -> PrintResult>(
             &mut self,
             markup: Markup,
             f: F,
         ) -> PrintResult {
             let prev = self.markup;
-            let next = Some(markup);
-            let switch_on = self.markup_mode.get_switch(prev, next);
-            let switch_off = self.markup_mode.get_switch(next, prev);
-            self.out.push_str(switch_on);
-            self.markup = next;
+            self.markup = markup;
             let result = f(self);
             self.markup = prev;
-            self.out.push_str(switch_off);
             result
         }
 
@@ -559,7 +589,7 @@ mod printer {
             let mut n_left = self.indent as usize;
             while n_left > 0 {
                 let n = n_left.min(spaces.len());
-                self.out.push_str(&spaces[..n]);
+                self.out.push(&spaces[..n], Markup::None);
                 n_left -= n;
             }
 
@@ -576,7 +606,8 @@ mod printer {
             }
         }
 
-        pub fn push_str(&mut self, value: &str, width: u32) -> PrintResult {
+        pub fn push_str(&mut self, value: &'a str, width: u32) -> PrintResult {
+            debug_assert!(!value.is_empty(), "Should not push empty strs.");
             debug_assert!(
                 !value.contains('\n'),
                 // coverage:off -- Error not expected to be hit.
@@ -584,16 +615,8 @@ mod printer {
                 // coverage:on
             );
             self.write_indent();
-            self.out.push_str(value);
+            self.out.push(value, self.markup);
             self.line_width += width;
-            self.fits()
-        }
-
-        pub fn push_char(&mut self, ch: char) -> PrintResult {
-            debug_assert_ne!(ch, '\n', "Use `newline` to push a newline instead.");
-            self.write_indent();
-            self.out.push(ch);
-            self.line_width += 1;
             self.fits()
         }
 
@@ -614,9 +637,9 @@ mod printer {
             // not emitting space after e.g. a multi-line `let` binding. We work
             // around this hack in string literals by escaping trailing spaces,
             // which is arguably better anyway for visibility.
-            self.out.truncate(self.out.trim_end_matches(' ').len());
+            self.out.trim_spaces_end();
 
-            self.out.push('\n');
+            self.out.push("\n", Markup::None);
             self.line_width = 0;
             self.needs_indent = true;
             // For the print result, we measure until the end of the line, so a
@@ -649,13 +672,11 @@ mod printer {
 
 #[cfg(test)]
 mod test {
-    use super::{Config, Doc, MarkupMode};
+    use super::{Config, Doc};
 
     fn print_width(doc: &Doc, width: u32) -> String {
-        doc.println(&Config {
-            width,
-            markup: MarkupMode::None,
-        })
+        let config = Config { width };
+        doc.println(&config).to_string_no_markup()
     }
 
     #[test]

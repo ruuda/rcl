@@ -6,7 +6,6 @@ use libfuzzer_sys::fuzz_target;
 use rcl::error::Result;
 use rcl::eval::Evaluator;
 use rcl::loader::{Loader, VoidFilesystem};
-use rcl::markup::MarkupMode;
 use rcl::pprint;
 use rcl::runtime::Value;
 use rcl::source::Span;
@@ -108,8 +107,7 @@ fn run_fmt(loader: &mut Loader, input: &str, cfg: &pprint::Config) -> Result<Str
     let id = loader.load_string(input.to_string());
     let cst = loader.get_cst(id)?;
     let doc = rcl::fmt_cst::format_expr(input, &cst);
-    let result = doc.println(cfg);
-    Ok(result)
+    Ok(doc.println(cfg).to_string_no_markup())
 }
 
 /// Run the formatter twice and check for idempotency.
@@ -138,13 +136,13 @@ fn fuzz_eval_json_idempotent(loader: &mut Loader, input: &str, cfg: pprint::Conf
     let full_span = loader.get_span(doc_1);
     let json = rcl::fmt_json::format_json(full_span, &val_1)?;
 
-    let out_1 = json.println(&cfg);
+    let out_1 = json.println(&cfg).to_string_no_markup();
     let doc_2 = loader.load_string(out_1);
     let val_2 = loader.evaluate(&mut type_env, &mut value_env, doc_2, &mut tracer)?;
 
     let full_span = loader.get_span(doc_2);
     let json = rcl::fmt_json::format_json(full_span, &val_2)?;
-    let out_2 = json.println(&cfg);
+    let out_2 = json.println(&cfg).to_string_no_markup();
 
     assert_eq!(
         loader.get_doc(doc_2).data,
@@ -161,7 +159,7 @@ fn fuzz_eval_json_idempotent(loader: &mut Loader, input: &str, cfg: pprint::Conf
 fn fuzz_eval_json_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
     let (full_span, value) = eval(loader, input)?;
     let json_doc = rcl::fmt_json::format_json(full_span, &value)?;
-    let json_str = json_doc.println(&cfg);
+    let json_str = json_doc.println(&cfg).to_string_no_markup();
     match serde_json::from_str::<serde_json::Value>(&json_str[..]) {
         Ok(..) => Ok(()),
         Err(err) => panic!("RCL output should be parseable, but got {err:?}"),
@@ -174,7 +172,7 @@ fn fuzz_eval_json_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -
 fn fuzz_eval_toml_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
     let (full_span, value) = eval(loader, input)?;
     let toml_doc = rcl::fmt_toml::format_toml(full_span, &value)?;
-    let toml_str = toml_doc.println(&cfg);
+    let toml_str = toml_doc.println(&cfg).to_string_no_markup();
     match toml::from_str::<toml::Value>(&toml_str[..]) {
         Ok(..) => Ok(()),
         Err(err) => panic!("RCL output should be parseable, but got {err:?}"),
@@ -182,10 +180,7 @@ fn fuzz_eval_toml_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -
 }
 
 fn fuzz_main(loader: &mut Loader, input: Input) -> Result<()> {
-    let mut cfg = pprint::Config {
-        width: 80,
-        markup: MarkupMode::None,
-    };
+    let mut cfg = pprint::Config { width: 80 };
     match input.mode {
         Mode::Lex => {
             let doc = loader.load_string(input.data.to_string());
@@ -237,10 +232,7 @@ fuzz_target!(|input: Input| {
     if let Err(err) = result {
         let inputs = loader.as_inputs();
         let err_doc = err.report(&inputs);
-        let cfg = pprint::Config {
-            width: 80,
-            markup: MarkupMode::Ansi,
-        };
+        let cfg = pprint::Config { width: 80 };
         let _ = err_doc.println(&cfg);
     }
 });
