@@ -676,9 +676,7 @@ mod test {
 
     fn print_width(doc: &Doc, width: u32) -> String {
         let config = Config { width };
-        let mut out = String::new();
-        doc.println(&config).write_string_no_markup(&mut out);
-        out
+        doc.println(&config).to_string_no_markup()
     }
 
     #[test]

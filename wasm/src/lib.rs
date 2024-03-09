@@ -28,9 +28,7 @@ fn rcl_evaluate_impl<'a>(
     // TODO: Make output format configurable.
     let json = rcl::fmt_json::format_json(full_span, &value)?;
     // TODO: Print to colored DOM nodes.
-    let mut out = String::new();
-    json.println(print_cfg).write_string_no_markup(&mut out);
-    Ok(out)
+    Ok(json.println(print_cfg).to_string_no_markup())
 }
 
 #[wasm_bindgen]
@@ -45,9 +43,7 @@ pub fn rcl_evaluate(input: &str) -> std::result::Result<String, String> {
         Err(err) => {
             let inputs = loader.as_inputs();
             let err_doc = err.report(&inputs);
-            let mut err_str = String::new();
-            err_doc.println(&cfg).write_string_no_markup(&mut err_str);
-            Err(err_str)
+            Err(err_doc.println(&cfg).to_string_no_markup())
         }
     }
 }

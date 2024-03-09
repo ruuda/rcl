@@ -107,6 +107,8 @@ pub fn switch_ansi(markup: Markup) -> &'static str {
 /// A string pieced together from fragments that have markup.
 pub struct MarkupString<'a> {
     fragments: Vec<(&'a str, Markup)>,
+    // TODO: We could keep track of the length, then to_string could preallocate
+    // a buffer of the right size.
 }
 
 impl<'a> MarkupString<'a> {
@@ -151,10 +153,18 @@ impl<'a> MarkupString<'a> {
     }
 
     /// Append the string to a regular `String`, discarding all markup.
+    #[inline]
     pub fn write_string_no_markup(&self, out: &mut String) {
         for (frag_str, _markup) in self.fragments.iter() {
             out.push_str(frag_str);
         }
+    }
+
+    /// Append the string to a regular `String`, discarding all markup.
+    pub fn to_string_no_markup(&self) -> String {
+        let mut out = String::new();
+        self.write_string_no_markup(&mut out);
+        out
     }
 
     /// Write the string to a writer, discarding all markup.
