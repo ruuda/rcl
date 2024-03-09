@@ -70,7 +70,7 @@ impl<'a> Formatter<'a> {
     /// only one soft break.
     pub fn soft_break_if_not_empty<T>(&self, elems: &[T]) -> Doc<'a> {
         if elems.is_empty() {
-            Doc::empty()
+            Doc::Empty
         } else {
             Doc::SoftBreak
         }
@@ -499,7 +499,7 @@ impl<'a> Formatter<'a> {
                 // but only rarely are there multiple seqs in the collection.
                 // If there is suffix noncode, then we need the separator before
                 // it, otherwise we would output a syntax error.
-                _ if elements.len() == 1 && suffix.is_empty() => Doc::empty(),
+                _ if elements.len() == 1 && suffix.is_empty() => Doc::Empty,
                 _ if is_last => Doc::tall(sep_str),
                 _ => Doc::str(sep_str),
             };

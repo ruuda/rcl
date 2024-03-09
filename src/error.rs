@@ -201,7 +201,7 @@ impl Error {
         // TODO: Find a prettier way to report the value path of an error.
         // For now this will do.
         if self.path.is_empty() {
-            return Doc::empty();
+            return Doc::Empty;
         }
         let mut path_doc = vec![Doc::from("in value"), Doc::HardBreak];
         for elem in self.path.iter().rev() {

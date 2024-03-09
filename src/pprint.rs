@@ -90,6 +90,9 @@ pub struct Config {
 /// a `Doc::Group`.
 #[derive(Clone, Debug)]
 pub enum Doc<'a> {
+    /// An empty fragment, the unit for `+`.
+    Empty,
+
     /// A string slice to be spliced into the output.
     Str { content: &'a str, width: u32 },
 
@@ -143,18 +146,15 @@ pub enum Doc<'a> {
 }
 
 impl<'a> Doc<'a> {
-    /// Construct an empty document.
-    pub fn empty() -> Doc<'a> {
-        // We pick concat of empty vec over str of empty string, so that when
-        // this later gets concatenated with something else, it disappears.
-        // An empty string would stick around as a node unless we added logic to
-        // omit it during concat.
-        Doc::Concat(Vec::new())
-    }
-
     /// Construct a new document fragment from a string slice.
     pub fn str(value: &'a str) -> Doc<'a> {
         use unicode_width::UnicodeWidthStr;
+        debug_assert!(
+            !value.is_empty(),
+            // coverage:off -- Error not expected to be hit.
+            "Should not construct empty Doc with `Doc::str`.",
+            // coverage:on
+        );
         debug_assert!(
             !value.contains('\n'),
             // coverage:off -- Error not expected to be hit.
@@ -200,6 +200,12 @@ impl<'a> Doc<'a> {
     /// Construct a new document fragment from an owned string.
     pub fn string(value: String) -> Doc<'a> {
         use unicode_width::UnicodeWidthStr;
+        debug_assert!(
+            !value.is_empty(),
+            // coverage:off -- Error not expected to be hit.
+            "Should not construct empty doc with `Doc::string`.",
+            // coverage:on
+        );
         debug_assert!(
             !value.contains('\n'),
             // coverage:off -- Error not expected to be hit.
@@ -249,6 +255,7 @@ impl<'a> Doc<'a> {
     /// Clone all strings and make them owned.
     pub fn into_owned(self) -> Doc<'static> {
         match self {
+            Doc::Empty => Doc::Empty,
             Doc::Str { content, width } => Doc::String {
                 content: content.to_string(),
                 width,
@@ -288,6 +295,7 @@ impl<'a> Doc<'a> {
     /// Print the document to the given printer.
     fn print_to(&'a self, printer: &mut Printer<'a>, mode: Mode) -> PrintResult {
         match self {
+            Doc::Empty => PrintResult::Fits,
             Doc::Str { content, width } => printer.push_str(content, *width),
             Doc::String { content, width } => printer.push_str(content, *width),
             Doc::WhenTall { content, width } => match mode {
@@ -364,13 +372,21 @@ impl<'a> Doc<'a> {
 
 impl<'a> From<&'a str> for Doc<'a> {
     fn from(value: &'a str) -> Doc<'a> {
-        Doc::str(value)
+        if value.is_empty() {
+            Doc::Empty
+        } else {
+            Doc::str(value)
+        }
     }
 }
 
 impl<'a> From<String> for Doc<'a> {
     fn from(value: String) -> Doc<'a> {
-        Doc::string(value)
+        if value.is_empty() {
+            Doc::Empty
+        } else {
+            Doc::string(value)
+        }
     }
 }
 
@@ -386,6 +402,8 @@ impl<'a> std::ops::Add<Doc<'a>> for Doc<'a> {
         // as the call that produced the doc, and then it can statically resolve
         // everything.
         match (self, that) {
+            (Doc::Empty, y) => y,
+            (x, Doc::Empty) => x,
             (Doc::Concat(xs), y) if xs.is_empty() => y,
             (x, Doc::Concat(ys)) if ys.is_empty() => x,
             (Doc::Concat(mut xs), Doc::Concat(mut ys)) => {
@@ -410,7 +428,7 @@ macro_rules! doc_concat {
     { $($fragment:expr)* } => {
         {
             #[allow(unused_mut)]
-            let mut result = crate::pprint::Doc::empty();
+            let mut result = crate::pprint::Doc::Empty;
             $( result = result + $fragment.into(); )*
             result
         }
@@ -572,6 +590,7 @@ mod printer {
         }
 
         pub fn push_str(&mut self, value: &'a str, width: u32) -> PrintResult {
+            debug_assert!(!value.is_empty(), "Should not push empty strs.");
             debug_assert!(
                 !value.contains('\n'),
                 // coverage:off -- Error not expected to be hit.
