@@ -5,6 +5,10 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+// Needed to silence the `module = ...` attribute in the extern import,
+// due to limitations in wasm-bindgen.
+#![allow(unused_variables)]
+
 use rcl::error::Result;
 use rcl::eval::Evaluator;
 use rcl::loader::{Loader, VoidFilesystem};
@@ -17,6 +21,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 extern "C" {
     pub type Node;
 
+    #[wasm_bindgen(module = "rcl_dom.js")]
     fn append_span(node: &Node, class: &str, text: &str);
 }
 

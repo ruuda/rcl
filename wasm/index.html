@@ -3,7 +3,7 @@
     <meta charset="utf-8">
     <title>RCL WASM Demo</title>
     <script src='/rcl.js' async></script>
-    <script type="module">
+    <script>
       window.onload = function() {
         const { rcl_evaluate } = wasm_bindgen;
         async function run() {
@@ -12,14 +12,9 @@
           const output_box = document.getElementById("output");
           input_box.addEventListener("input", (evt) => {
             const input = evt.target.value;
-            console.log(input);
-            var output = "";
-            try {
-              output = rcl_evaluate(input_box.textContent);
-            } catch (err) {
-              output = err;
-            }
-            output_box.textContent = output;
+            const out_node = document.createElement("code");
+            rcl_evaluate(input_box.textContent, out_node);
+            output_box.replaceChild(out_node, output_box.firstChild);
           });
         }
         run();
@@ -35,6 +30,10 @@
         border: 1pt solid #ddd;
         white-space: pre;
       }
+      code .error { font-weight: bold; color: red; }
+      code .warning { font-weight: bold; color: darkgoldenrod; }
+      code .field { color: blue; }
+      code .string { color: cyan; }
     </style>
   </head>
   <body>
@@ -42,10 +41,10 @@
     <h2>Input</h2>
     <p id="input" contenteditable="true" plaintext-only="true">[for x in std.range(0, 3): { id = x, name = f"item-{x}" }]</p>
     <h2>Output</h2>
-    <p id="output">[
+    <p id="output"><code>[
   {"id": 0, "name": "item-0"},
   {"id": 1, "name": "item-1"},
   {"id": 2, "name": "item-2"}
-]</p>
+]</code></p>
   </body>
 </html>
