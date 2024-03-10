@@ -45,12 +45,15 @@
 
   .span-full, .span-l2, .span-r2 { grid-column: content }
 
-  @media (min-width: 820px) {
+  @media (min-width: 600px) {
     html {
       --margin: 3.2rem;
       --margin-large: 4rem;
       --bullet-distance: -1.2rem;
     }
+  }
+
+  @media (min-width: 820px) {
     .grid {
       grid-template-columns: var(--margin) 1fr 1fr 1fr 1fr var(--margin);
       grid-template-areas: "lmargin c1 c2 c3 c4 rmargin";
@@ -68,9 +71,15 @@
     }
   }
 
-  @media (min-width: 950px) {
+  @media (min-width: 1000px) {
     .grid {
       grid-template-columns: auto 12rem 12rem 12rem 12rem auto;
+    }
+  }
+
+  @media (min-width: 1200px) {
+    html {
+      font-size: 20px;
     }
   }
 
