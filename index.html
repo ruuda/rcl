@@ -32,8 +32,9 @@
     line-height: 1.5;
 
     --margin-small: 1.3rem;
-    --margin: 2.2rem;
-    --margin-large: 3.3rem;
+    --margin: 2.5rem;
+    --margin-large: 3.2rem;
+    --bullet-distance: -1.0rem;
   }
 
   .grid {
@@ -45,6 +46,11 @@
   .span-full, .span-l2, .span-r2 { grid-column: content }
 
   @media (min-width: 820px) {
+    html {
+      --margin: 3.2rem;
+      --margin-large: 4rem;
+      --bullet-distance: -1.2rem;
+    }
     .grid {
       grid-template-columns: var(--margin) 1fr 1fr 1fr 1fr var(--margin);
       grid-template-areas: "lmargin c1 c2 c3 c4 rmargin";
@@ -106,16 +112,28 @@
     font-size: 2.5rem;
     line-height: 2.4rem;
     font-weight: 700;
-    margin-bottom: 1.7rem;
+    margin-bottom: 2rem;
+  }
+
+  ul li {
+    position: relative;
+    list-style-type: none;
+  }
+
+  ul li:before {
+    color: #ffffff66;
+    position: absolute;
+    left: var(--bullet-distance);
+    content: '•';
   }
 
   h2 {
     font-size: 1.3rem;
-    font-weight: 600;
+    font-weight: 400;
     margin-bottom: 0.2rem;
   }
 
-  p {
+  p, ul {
     margin-bottom: var(--margin-large);
   }
 
@@ -157,6 +175,12 @@
     margin: -1rem;
   }
 
+  code:focus-visible {
+    outline: none;
+    margin-left: calc(-1rem - 2pt);
+    border-left: 2pt solid var(--oxford-blue);
+  }
+
   .code-demo {
     background-color: var(--oxford-blue);
     margin-bottom: var(--margin-large);
@@ -192,59 +216,22 @@
   </header>
   <section class="grid">
     <div class="span-l2">
-      <h1 class="tagline">Make configuration boring again</h1>
+      <h1 class="tagline">Make<br>configuration<br>boring again</h1>
+    </div>
+    <div class="span-l2">
       <p>RCL is a domain-specific language for specifying human-written
       data with just enough abstraction to avoid repetition.
       It extends json into a simple functional programming
       language that resembles Python and Nix.</p>
-      <h2>Demo</h2>
-      <p>To the right is a
-      <a href="https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/record">simplified form</a> of a
-      <a href="https://developer.hashicorp.com/terraform/language/syntax/json">Terraform json config</a>
-      that defines two DNS records pointing to the same address.
-      <strong>This code is editable!</strong>
-      Can you change it to emit the same records for two zones?</p>
-      <p>Hint: Try uncommenting the <span class="cc">zone_id</span> loop!</p>
-      <noscript>
-      <p><span class="cc">You need to enable Javascript to use the live demo.</span>
-      It runs a WebAssembly version of RCL in your browser.
-      No server ever sees your keystrokes.
-      This is the only script on the page,
-      there are no trackers or other malware.
-      The RCL code is open source,
-      and the scripts on this page are not obfuscated
-      so you can verify them yourself.</p>
-      </noscript>
     </div>
     <div class="span-r2">
-      <p class="demo"><code id="input" contenteditable>let base_config = {
-  zone_id = 42,
-  type = "A",
-  value = "93.184.216.34",
-};
-{
-  let zone_id = base_config.zone_id;
-  // for zone_id in [42, 1337]:
-  for subdomain in ["docs", "www"]:
-  f"a_record_{subdomain}_{zone_id}":
-  base_config | { name = subdomain }
-}</code></p>
-      <p class="arrow">↓</p>
-      <p class="demo" id="output"><code>{
-  "a_record_docs_42": {
-    "name": "docs",
-    "type": "A",
-    "value": "93.184.216.34",
-    "zone_id": 42
-  },
-  "a_record_www_42": {
-    "name": "www",
-    "type": "A",
-    "value": "93.184.216.34",
-    "zone_id": 42
-  }
-}
-</code></p>
+      <ul>
+        <li>Imports, variables, functions</li>
+        <li>List comprehensions</li>
+        <li>Assertions, gradual types</li>
+        <li>Friendly and familiar syntax</li>
+        <li>Export to json, yaml, toml, and more</li>
+      </ul>
     </div>
   </section>
   <section class="grid alt">
@@ -276,15 +263,72 @@
   </section>
   <section class="grid">
     <div class="span-full">
+      <h2>Demo</h2>
+      <p>Below is a
+      <a href="https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/record">simplified form</a> of a
+      <a href="https://developer.hashicorp.com/terraform/language/syntax/json">Terraform json config</a>
+      that defines two DNS records pointing to the same address.
+      <strong>This code is editable.</strong>
+      How would you change it to emit records for multiple zones?
+      Try uncommenting the <span class="cc">zone_id</span> loop.</p>
+      <noscript>
+      <p><span class="cc">You need to enable Javascript to use the live demo.</span>
+      It runs a WebAssembly version of RCL in your browser.
+      No server ever sees your keystrokes.
+      This is the only script on the page,
+      there are no trackers or other malware.
+      The RCL code is open source,
+      and the scripts on this page are not obfuscated
+      so you can verify them yourself.</p>
+      </noscript>
+    </div>
+    <div class="span-l2">
+      <p class="demo"><code id="input" contenteditable>let base_config = {
+  zone_id = 42,
+  type = "A",
+  value = "93.184.216.34",
+};
+{
+  let zone_id = base_config.zone_id;
+  // for zone_id in [42, 1337]:
+  for subdomain in ["docs", "www"]:
+  f"a_record_{subdomain}_{zone_id}":
+  base_config | { name = subdomain }
+}</code></p>
+    </div>
+  <div class="span-r2">
+    <!--<p class="arrow">↓</p>-->
+      <p class="demo" id="output"><code>{
+  "a_record_docs_42": {
+    "name": "docs",
+    "type": "A",
+    "value": "93.184.216.34",
+    "zone_id": 42
+  },
+  "a_record_www_42": {
+    "name": "www",
+    "type": "A",
+    "value": "93.184.216.34",
+    "zone_id": 42
+  }
+}
+</code></p>
+    </div>
+  </section>
+  <section class="grid">
+    <div class="span-full">
       <h2>Installation</h2>
       <p>
-      Currently RCL is not packaged for any system package manager,
-      but it’s written in Rust and has few dependencies,
+      RCL is written in Rust and has few dependencies,
       so it is quick and easy to build from source with Cargo.
       There is no need to pipe arbitrary code from the web into your shell.
       <br><br>
-      <code>git clone https://github.com/ruuda/rcl<br>
+      <code>
+        <span class="field">$</span>
+        git clone https://github.com/ruuda/rcl<br>
+        <span class="field">$</span>
         cargo build --release<br>
+        <span class="field">$</span>
         target/release/rcl --help
       </code></p>
     </div>
