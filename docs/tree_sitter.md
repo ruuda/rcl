@@ -51,8 +51,9 @@ repository, so the grammar can be used without a complex build process.
 The Tree-sitter queries for highlighting are editor-specific, because editors
 look for different scopes.
 
- * [Neovim supported scopes](https://neovim.io/doc/user/treesitter#treesitter-highlight)
  * [Helix supported scopes](https://docs.helix-editor.com/themes.html#syntax-highlighting)
+ * [Neovim supported scopes](https://neovim.io/doc/user/treesitter#treesitter-highlight)
+ * [Tree-sitter <abbr>CLI</abbr> supported scopes](https://github.com/tree-sitter/tree-sitter/blob/v0.22.1/highlight/README.md)
 
 ## Using the parser
 

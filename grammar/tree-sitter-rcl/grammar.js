@@ -18,7 +18,7 @@ module.exports = grammar({
   ],
 
   rules: {
-    source_file: $ => seq(repeat($._prefix), $._expr),
+    source_file: $ => seq(repeat($._prefix), $._expr, repeat($._prefix)),
 
     // A blank is whitespace with two or more newlines. This token is distinct
     // from the regular whitespace, that Tree-sitter by default allows anywhere.

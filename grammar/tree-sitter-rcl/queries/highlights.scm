@@ -8,9 +8,9 @@
 ] @keyword
 
 (comment) @comment
-(number) @constant.numeric
+(number) @number
 (string) @string
-(string_escape) @string.escape
+(string_escape) @string.special
 
 (seq_assoc_expr field: (string) @property)
 (seq_assoc_ident field: (ident) @property)
