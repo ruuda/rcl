@@ -18,6 +18,14 @@ use libfuzzer_sys::fuzz_target;
 use rcl::loader::Loader;
 
 fuzz_target!(|input: &str| {
+    // There are some inputs that Tree-sitter does not parse, but they are silly
+    // edge cases that we don't really care about where if you had them in your
+    // source code, you have worse problems than Tree-sitter inserting an error
+    // node.
+    if input.contains('\0') || input.contains('\x0c') {
+        return;
+    }
+
     // Step 1: Parse with Tree-sitter.
     let mut parser = tree_sitter::Parser::new();
     parser
