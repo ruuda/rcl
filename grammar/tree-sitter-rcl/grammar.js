@@ -28,8 +28,23 @@ module.exports = grammar({
 
     ident: $ => /[_A-Za-z][-_A-Za-z0-9]*/,
 
-    // TODO: Implement the custom lexer to handle string literals.
-    string: $ => /"[^"]*"/,
+    _string: $ => choice($.string_double, $.string_triple),
+    string_escape: $ => choice(
+      /\\./,
+      /\\u[0-9a-fA-F]{4}/,
+      seq("\\u{", /[0-9a-fA-F]*/, "}"),
+    ),
+    _string_char: $ => /[^\\"]/,
+    string_double: $ => seq(
+      "\"",
+      repeat(choice($._string_char, $.string_escape)),
+      "\"",
+    ),
+    string_triple: $ => seq(
+      "\"\"\"",
+      repeat(choice($._string_char, $.string_escape)),
+      "\"\"\"",
+    ),
 
     number: $ => choice($.num_binary, $.num_hexadecimal, $.num_decimal),
     num_binary: $ => /0b[01_]*/,
@@ -125,7 +140,7 @@ module.exports = grammar({
       $.expr_term_braces,
       $.expr_term_brackets,
       $.expr_term_parens,
-      $.string,
+      $._string,
       $.number,
       $.ident,
     ),

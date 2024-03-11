@@ -1,0 +1,49 @@
+=====
+Empty
+=====
+
+""
+
+---
+
+(source_file (string_double))
+
+=====
+Basic
+=====
+
+"foobar"
+
+---
+
+(source_file (string_double))
+
+========================
+Escape unicode no braces
+========================
+
+"foo\u001abar"
+
+---
+
+(source_file (string_double (string_escape)))
+
+=====================
+Escape unicode braces
+=====================
+
+"foo\u{1f574}bar"
+
+---
+
+(source_file (string_double (string_escape)))
+
+============
+Escape quote
+============
+
+"foo\"bar"
+
+---
+
+(source_file (string_double (string_escape)))

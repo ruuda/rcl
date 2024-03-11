@@ -59,7 +59,7 @@ f("x",)
 (source_file
   (expr_call
     (ident)
-    (string)))
+    (string_double)))
 
 ======================
 Call no trailing comma
@@ -72,7 +72,7 @@ f("x", y)
 (source_file
   (expr_call
     (ident)
-    (string)
+    (string_double)
     (ident)))
 
 =====
@@ -86,7 +86,7 @@ collection["index"]
 (source_file
   (expr_index
     (ident)
-    (string)))
+    (string_double)))
 
 ========
 Unop not
@@ -230,7 +230,7 @@ x => "a"
 (source_file
   (expr_function
     (function_args (ident))
-    (string)))
+    (string_double)))
 
 =====================================
 Function with parens, 1 arg, no comma
@@ -243,7 +243,7 @@ Function with parens, 1 arg, no comma
 (source_file
   (expr_function
     (function_args (ident))
-    (string)))
+    (string_double)))
 
 ==================================
 Function with parens, 1 arg, comma
@@ -256,7 +256,7 @@ Function with parens, 1 arg, comma
 (source_file
   (expr_function
     (function_args (ident))
-    (string)))
+    (string_double)))
 
 ==================================
 Function with parens, 2 args
@@ -269,7 +269,7 @@ Function with parens, 2 args
 (source_file
   (expr_function
     (function_args (ident) (ident))
-    (string)))
+    (string_double)))
 
 =====================================
 Not a function but parenthesized expr
