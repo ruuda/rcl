@@ -42,7 +42,7 @@ module.exports = grammar({
     ),
     string_triple: $ => seq(
       "\"\"\"",
-      repeat(choice($._string_char, $.string_escape)),
+      repeat(choice($._string_char, $.string_escape, "\"")),
       "\"\"\"",
     ),
 

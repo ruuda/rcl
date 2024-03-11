@@ -47,3 +47,18 @@ Escape quote
 ---
 
 (source_file (string (string_double (string_escape))))
+
+=============
+Triple quoted
+=============
+
+"""
+Foo "bar"
+""Two doesn't end the string""
+Escaped \""" does not either.
+But three does:
+"""
+
+---
+
+(source_file (string (string_triple (string_escape))))
