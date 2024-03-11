@@ -18,7 +18,11 @@ module.exports = grammar({
   ],
 
   rules: {
-    source_file: $ => seq(repeat($._prefix), $._expr, repeat($._prefix)),
+    source_file: $ => seq(
+      repeat($._prefix),
+      $._expr,
+      repeat($._prefix)
+    ),
 
     // A blank is whitespace with two or more newlines. This token is distinct
     // from the regular whitespace, that Tree-sitter by default allows anywhere.
@@ -27,7 +31,8 @@ module.exports = grammar({
     // places, so we just omit it.
     // blank: $ => /[ \t\r\f]*\n[ \t\r\f]*\n[ \t\r\n\f]*/,
     comment: $ => /\/\/[^\n]*\n/,
-    _prefix: $ => $.comment,
+    shebang: $ => /#![^\n]*\n/,
+    _prefix: $ => choice($.comment, $.shebang),
 
     ident: $ => /[_A-Za-z][-_A-Za-z0-9]*/,
 
