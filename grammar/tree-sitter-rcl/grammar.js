@@ -22,9 +22,12 @@ module.exports = grammar({
 
     // A blank is whitespace with two or more newlines. This token is distinct
     // from the regular whitespace, that Tree-sitter by default allows anywhere.
-    blank: $ => /[ \t\r\f]*\n[ \t\r\f]*\n[ \t\r\n\f]*/,
+    // Though if we do include this token, then yes we get the node, but for
+    // syntax highlighting we don't really care and it breaks parsing in other
+    // places, so we just omit it.
+    // blank: $ => /[ \t\r\f]*\n[ \t\r\f]*\n[ \t\r\n\f]*/,
     comment: $ => /\/\/[^\n]*\n/,
-    _prefix: $ => choice($.blank, $.comment),
+    _prefix: $ => $.comment,
 
     ident: $ => /[_A-Za-z][-_A-Za-z0-9]*/,
 
