@@ -62,3 +62,33 @@ But three does:
 ---
 
 (source_file (string (string_triple (string_escape))))
+
+===============
+f-string single
+===============
+
+f"Part \{ <- escape { "real hole" } end"
+
+---
+
+(source_file
+  (string
+    (fstring_double
+      (string_escape)
+      (string_hole
+        (string (string_double))))))
+
+===============
+f-string triple
+===============
+
+f"""
+Answer: {42}.
+"""
+
+---
+
+(source_file
+  (string
+    (fstring_triple
+      (string_hole (number (num_decimal))))))

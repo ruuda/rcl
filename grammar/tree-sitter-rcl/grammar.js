@@ -28,21 +28,41 @@ module.exports = grammar({
 
     ident: $ => /[_A-Za-z][-_A-Za-z0-9]*/,
 
-    string: $ => choice($.string_double, $.string_triple),
+    string: $ => choice(
+      $.fstring_double,
+      $.fstring_triple,
+      $.string_double,
+      $.string_triple,
+    ),
     string_escape: $ => choice(
       /\\./,
       /\\u[0-9a-fA-F]{4}/,
       seq("\\u{", /[0-9a-fA-F]*/, "}"),
     ),
-    _string_char: $ => /[^\\"]/,
+    string_hole: $ => seq(
+      "{",
+      repeat($._prefix), $._expr, repeat($._prefix),
+      "}"
+    ),
+    _string_char: $ => /[^\\{"]/,
     string_double: $ => seq(
       "\"",
-      repeat(choice($._string_char, $.string_escape)),
+      repeat(choice($._string_char, $.string_escape, "{")),
       "\"",
     ),
     string_triple: $ => seq(
       "\"\"\"",
-      repeat(choice($._string_char, $.string_escape, "\"")),
+      repeat(choice($._string_char, $.string_escape, "\"", "{")),
+      "\"\"\"",
+    ),
+    fstring_double: $ => seq(
+      "f\"",
+      repeat(choice($._string_char, $.string_escape, $.string_hole)),
+      "\"",
+    ),
+    fstring_triple: $ => seq(
+      "f\"\"\"",
+      repeat(choice($._string_char, $.string_escape, $.string_hole, "\"")),
       "\"\"\"",
     ),
 
