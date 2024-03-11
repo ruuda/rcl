@@ -6,7 +6,7 @@ Empty
 
 ---
 
-(source_file (string_double))
+(source_file (string (string_double)))
 
 =====
 Basic
@@ -16,7 +16,7 @@ Basic
 
 ---
 
-(source_file (string_double))
+(source_file (string (string_double)))
 
 ========================
 Escape unicode no braces
@@ -26,7 +26,7 @@ Escape unicode no braces
 
 ---
 
-(source_file (string_double (string_escape)))
+(source_file (string (string_double (string_escape))))
 
 =====================
 Escape unicode braces
@@ -36,7 +36,7 @@ Escape unicode braces
 
 ---
 
-(source_file (string_double (string_escape)))
+(source_file (string (string_double (string_escape))))
 
 ============
 Escape quote
@@ -46,4 +46,4 @@ Escape quote
 
 ---
 
-(source_file (string_double (string_escape)))
+(source_file (string (string_double (string_escape))))

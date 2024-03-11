@@ -28,7 +28,7 @@ module.exports = grammar({
 
     ident: $ => /[_A-Za-z][-_A-Za-z0-9]*/,
 
-    _string: $ => choice($.string_double, $.string_triple),
+    string: $ => choice($.string_double, $.string_triple),
     string_escape: $ => choice(
       /\\./,
       /\\u[0-9a-fA-F]{4}/,
@@ -140,7 +140,7 @@ module.exports = grammar({
       $.expr_term_braces,
       $.expr_term_brackets,
       $.expr_term_parens,
-      $._string,
+      $.string,
       $.number,
       $.ident,
     ),

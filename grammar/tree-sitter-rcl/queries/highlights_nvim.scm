@@ -9,10 +9,7 @@
 
 (comment) @comment
 (number) @number
-[
-  (string_double)
-  (string_triple)
-] @string
+(string) @string
 (string_escape) @string.escape
 
 (seq_assoc_expr field: (string) @property)
