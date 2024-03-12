@@ -164,8 +164,12 @@ module.exports = grammar({
     ),
 
     _call_args: $ => choice(
+      repeat1($._prefix),
+      seq($._call_args_inner, optional(","), repeat($._prefix)),
+    ),
+    _call_args_inner: $ => choice(
       seq(repeat($._prefix), $._expr),
-      seq(repeat($._prefix), $._expr, ",", choice(optional($._call_args), repeat($._prefix))),
+      seq($._call_args_inner, ",", repeat($._prefix), $._expr),
     ),
 
     _expr_term: $ => choice(

@@ -48,6 +48,21 @@ f()
   (expr_call
     (ident)))
 
+==================
+Call empty comment
+==================
+
+f(
+  // Empty
+)
+
+---
+
+(source_file
+  (expr_call
+    (ident)
+    (comment)))
+
 ===================
 Call trailing comma
 ===================
