@@ -153,6 +153,7 @@ module.exports = grammar({
     expr_index: $ => seq(
       field("collection", $._expr_not_op),
       "[",
+      optional($._prefix),
       field("index", $._expr),
       "]",
     ),

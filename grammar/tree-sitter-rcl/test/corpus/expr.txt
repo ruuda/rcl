@@ -88,6 +88,23 @@ collection["index"]
     (ident)
     (string (string_double))))
 
+==================
+Index with comment
+==================
+
+collection[
+  // A comment
+  "index"
+]
+
+---
+
+(source_file
+  (expr_index
+    (ident)
+    (comment)
+    (string (string_double))))
+
 ========
 Unop not
 ========
