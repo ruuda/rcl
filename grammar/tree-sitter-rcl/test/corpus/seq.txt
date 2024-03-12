@@ -6,8 +6,19 @@ Empty
 
 ---
 
-(source_file
-  (expr_term_braces))
+(source_file (expr_term_braces))
+
+==================
+Empty with comment
+==================
+
+[
+  // Empty
+]
+
+---
+
+(source_file (expr_term_brackets (comment)))
 
 ======
 Idents

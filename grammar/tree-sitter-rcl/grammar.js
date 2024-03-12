@@ -206,8 +206,12 @@ module.exports = grammar({
     // wrap it in `optional` as Tree-sitter does not support rules that match
     // the empty string.
     _seqs: $ => choice(
+      repeat1($._prefix),
+      seq($._seqs_inner, optional(","), repeat($._prefix)),
+    ),
+    _seqs_inner: $ => choice(
       seq(repeat($._prefix), $._seq),
-      seq(repeat($._prefix), $._seq, ",", choice(optional($._seqs), repeat($._prefix))),
+      seq($._seqs_inner, ",", repeat($._prefix), $._seq),
     ),
 
     _seq: $ => choice(
