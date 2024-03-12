@@ -180,13 +180,26 @@ module.exports = grammar({
     expr_term_brackets: $ => seq("[", optional($._seqs), "]"),
     expr_term_parens:   $ => seq("(", $._expr, ")"),
 
-    _stmt: $ => seq(choice($.stmt_let)),
+    _stmt: $ => choice($.stmt_let, $.stmt_assert, $.stmt_trace),
     stmt_let: $ => seq(
       "let",
       field("ident", $.ident),
       "=",
       repeat($._prefix),
       field("value", $._expr),
+    ),
+    stmt_assert: $ => seq(
+      "assert",
+      repeat($._prefix),
+      field("condition", $._expr),
+      ",",
+      repeat($._prefix),
+      field("message", $._expr),
+    ),
+    stmt_trace: $ => seq(
+      "trace",
+      repeat($._prefix),
+      field("message", $._expr),
     ),
 
     // One or more `seq`s with an optional trailing comma. The use site has to
