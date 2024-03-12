@@ -22,7 +22,11 @@ fuzz_target!(|input: &str| {
     // edge cases that we don't really care about where if you had them in your
     // source code, you have worse problems than Tree-sitter inserting an error
     // node.
-    if input.contains('\0') || input.contains('\x0c') {
+    if input
+        .as_bytes()
+        .iter()
+        .any(|b| matches!(b, 0 | 0x0c | 0xff))
+    {
         return;
     }
 
