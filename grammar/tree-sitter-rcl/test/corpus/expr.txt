@@ -280,3 +280,13 @@ Not a function but parenthesized expr
 ---
 
 (source_file (expr_term_parens (ident)))
+
+======
+Import
+======
+
+import "foo.rcl"
+
+---
+
+(source_file (expr_import (string (string_double))))

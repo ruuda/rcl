@@ -1,6 +1,7 @@
 [
   "for"
   "if"
+  "import"
   "in"
   "let"
   (unop_keyword)

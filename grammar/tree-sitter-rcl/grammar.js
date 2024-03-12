@@ -105,11 +105,14 @@ module.exports = grammar({
     expr_stmt: $ => seq($._stmt, ";", repeat($._prefix), $._expr),
 
     _expr_op: $ => choice(
+      $.expr_import,
       $.expr_function,
       $.expr_unop,
       $.expr_binop,
       $._expr_not_op,
     ),
+
+    expr_import: $ => seq("import", $._expr),
 
     expr_function: $ => seq(
       field("args", $.function_args),
