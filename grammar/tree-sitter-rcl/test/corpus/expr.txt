@@ -303,6 +303,35 @@ Function with parens, 2 args
     (function_args (ident) (ident))
     (string (string_double))))
 
+====================
+Function with 0 args
+====================
+
+() => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args)
+    (string (string_double))))
+
+================================
+Function with 0 args and comment
+================================
+
+(
+  // A comment inside the empty argument list.
+) => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args
+      (comment))
+    (string (string_double))))
+
 =====================================
 Not a function but parenthesized expr
 =====================================

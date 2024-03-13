@@ -123,6 +123,7 @@ module.exports = grammar({
     function_args: $ => choice(
       $.ident,
       seq("(", ")"),
+      seq("(", repeat($._prefix), ")"),
       seq("(", $.ident, repeat(seq(",", $.ident)), optional(","), ")"),
     ),
 
