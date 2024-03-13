@@ -24,6 +24,8 @@ Unreleased.
  * Fix a compatibility problem in the toml output format. Improve tests and add
    a fuzzer to rule out similar compatibility problems.
  * Output of `rcl format` is now colored when printing to a terminal.
+ * The repository now includes a Tree-sitter grammar. This brings syntax
+   highlighting to Helix and Neovim.
 
 ## 0.1.0
 
