@@ -92,3 +92,13 @@ Answer: {42}.
   (string
     (fstring_triple
       (string_hole (number (num_decimal))))))
+
+==========================
+String with comment inside
+==========================
+
+" // A comment inside a string is not a comment. "
+
+---
+
+(source_file (string (string_double)))

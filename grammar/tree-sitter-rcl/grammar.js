@@ -37,55 +37,56 @@ module.exports = grammar({
       $.string_double,
       $.string_triple,
     ),
-    string_escape: $ => choice(
-      token.immediate(/\\./),
-      token.immediate(/\\u[0-9a-fA-F]{4}/),
-      seq(
-        token.immediate("\\u{"),
-        token.immediate(/[0-9a-fA-F]*/),
-        token.immediate("}"),
+    string_escape: $ => token.immediate(seq(
+      "\\",
+      choice(
+        /[^u]/,
+        /u[0-9a-fA-F]{4}/,
+        /u\{[0-9a-fA-F]*\}/,
       ),
-    ),
-    string_hole: $ => seq(token.immediate("{"), $._expr, "}"),
-    _string_char: $ => token.immediate(/[^\\{"]/),
+    )),
+    string_hole: $ => seq("{", $._expr, "}"),
+    // Note, the prec 1 is crucial here. It ensures that string fragments have
+    // higher precedence than comments and whitespace. Without it, the immediate
+    // doesn't work and we can get comments inside strings.
+    _string_char: $ => token.immediate(prec(1, /[^\\"]+/)),
+    _fstring_char: $ => token.immediate(prec(1, /[^\\{"]+/)),
 
     string_double: $ => seq(
       "\"",
       repeat(choice(
         $._string_char,
         $.string_escape,
-        token.immediate("{"),
       )),
-      token.immediate("\""),
+      "\"",
     ),
     string_triple: $ => seq(
       "\"\"\"",
       repeat(choice(
         $._string_char,
         $.string_escape,
-        token.immediate("\""),
-        token.immediate("{"),
+        "\"",
       )),
-      token.immediate("\"\"\""),
+      "\"\"\"",
     ),
     fstring_double: $ => seq(
       "f\"",
       repeat(choice(
-        $._string_char,
+        $._fstring_char,
         $.string_escape,
         $.string_hole,
       )),
-      token.immediate("\""),
+      "\"",
     ),
     fstring_triple: $ => seq(
       "f\"\"\"",
       repeat(choice(
-        $._string_char,
+        $._fstring_char,
         $.string_escape,
         $.string_hole,
-        token.immediate("\""),
+        "\"",
       )),
-      token.immediate("\"\"\""),
+      "\"\"\"",
     ),
 
     number: $ => choice($.num_binary, $.num_hexadecimal, $.num_decimal),
