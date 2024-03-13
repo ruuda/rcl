@@ -89,9 +89,31 @@
             "Cargo.toml"
           ];
 
+          treeSitterSources = pkgs.lib.sourceFilesBySuffices ./grammar/tree-sitter-rcl [
+            ".json"
+            "Cargo.toml"
+            "grammar.js"
+          ];
+
           pythonSources = pkgs.lib.sourceFilesBySuffices ./. [ ".py" ".pyi" ];
 
           goldenSources = ./golden;
+
+          treeSitterRcl = pkgs.stdenv.mkDerivation {
+            pname = "tree-sitter-rcl";
+            inherit version;
+            src = treeSitterSources;
+            nativeBuildInputs = [ pkgs.nodejs pkgs.tree-sitter ];
+            buildPhase = "tree-sitter generate";
+            installPhase =
+            ''
+            mkdir -p $out/bindings
+            mkdir -p $out
+            cp -r bindings/rust $out/bindings
+            cp -r src $out
+            cp Cargo.toml $out
+            '';
+          };
 
           rcl = pkgs.rustPlatform.buildRustPackage rec {
             inherit name version;
@@ -278,7 +300,7 @@
             };
 
             packages = {
-              inherit rcl pyrcl;
+              inherit rcl pyrcl treeSitterRcl;
 
               default = rcl;
               wasm = rcl-wasm;
