@@ -53,6 +53,23 @@ let i: Dict[Int, Null] = q; i
       value: (ident))
     (ident)))
 
+============
+Apply 0 args
+============
+
+let i: Void[] = q; i
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_let
+      ident: (ident)
+      type:
+        (type_apply name: (type_term (ident)))
+      value: (ident))
+    (ident)))
+
 ===============
 Function 0 args
 ===============

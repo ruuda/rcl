@@ -270,7 +270,7 @@ module.exports = grammar({
     type_apply: $ => seq(
       field("name", $.type_term),
       "[",
-      field("args", $._types),
+      optional(field("args", $._types)),
       "]",
     ),
     type_function: $ => seq(
