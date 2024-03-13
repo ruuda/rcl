@@ -144,7 +144,4 @@ types
   | type_expr ',' type_expr
   ;
 
-type_term
-  : IDENT
-  | STRING
-  ;
+type_term: IDENT;

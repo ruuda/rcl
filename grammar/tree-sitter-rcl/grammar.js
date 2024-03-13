@@ -199,6 +199,7 @@ module.exports = grammar({
     stmt_let: $ => seq(
       "let",
       field("ident", $.ident),
+      optional(seq(":", field("type", $._type_expr))),
       "=",
       field("value", $._expr),
     ),
@@ -258,6 +259,32 @@ module.exports = grammar({
     ),
 
     // One or more identifiers separated by comma, no trailing comma allowed.
-    _idents: $=> seq($.ident, repeat(seq(",", $.ident))),
+    _idents: $ => seq($.ident, repeat(seq(",", $.ident))),
+
+    _type_expr: $ => choice(
+      $.type_term,
+      $.type_apply,
+      $.type_function,
+    ),
+    type_term: $ => $.ident,
+    type_apply: $ => seq(
+      field("name", $.type_term),
+      "[",
+      field("args", $._types),
+      "]",
+    ),
+    type_function: $ => seq(
+      "(",
+      optional(field("args", $._types)),
+      ")",
+      "->",
+      field("result", $._type_expr),
+    ),
+
+    _types: $ => seq(
+      $._type_expr,
+      repeat(seq(",", $._type_expr)),
+      optional(","),
+    ),
   }
 });
