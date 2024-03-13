@@ -17,3 +17,5 @@
 
 (seq_assoc_expr field: (string) @property)
 (seq_assoc_ident field: (ident) @property)
+
+(type_term) @type
