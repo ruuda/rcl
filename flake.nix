@@ -91,6 +91,7 @@
 
           treeSitterSources = pkgs.lib.sourceFilesBySuffices ./grammar/tree-sitter-rcl [
             ".json"
+            ".txt"
             "Cargo.toml"
             "grammar.js"
           ];
@@ -104,15 +105,26 @@
             inherit version;
             src = treeSitterSources;
             nativeBuildInputs = [ pkgs.nodejs pkgs.tree-sitter ];
+            doCheck = true;
             buildPhase = "tree-sitter generate";
+            checkPhase =
+              ''
+              # Tree sitter wants to write to ~/.config by default, but that
+              # does not exist in the sandbox. Give it a directory to write to.
+              mkdir tree-sitter-home
+              export TREE_SITTER_DIR=tree-sitter-home
+              export TREE_SITTER_LIBDIR=tree-sitter-home
+              tree-sitter generate --build
+              tree-sitter test
+              '';
             installPhase =
-            ''
-            mkdir -p $out/bindings
-            mkdir -p $out
-            cp -r bindings/rust $out/bindings
-            cp -r src $out
-            cp Cargo.toml $out
-            '';
+              ''
+              mkdir -p $out/bindings
+              mkdir -p $out
+              cp -r bindings/rust $out/bindings
+              cp -r src $out
+              cp Cargo.toml $out
+              '';
           };
 
           rcl = pkgs.rustPlatform.buildRustPackage rec {
