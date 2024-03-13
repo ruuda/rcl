@@ -1,15 +1,15 @@
-[
-  "for"
-  "if"
-  "import"
-  "in"
-  "let"
-  (unop_keyword)
-  (binop_keyword)
-] @keyword
+["for" "in"] @keyword.control.repeat
+["assert" "trace"] @keyword.exception
+["if"] @keyword.control.conditional
+["import"] @keyword.control.import
+["let"] @keyword.storage.let
+(unop_keyword) @keyword.operator
+(binop_keyword) @keyword.operator
 
 (comment) @comment
 (number) @constant.numeric
+(bool) @constant.builtin.boolean
+(null) @constant.builtin
 
 (string) @string
 (string_escape) @string.special

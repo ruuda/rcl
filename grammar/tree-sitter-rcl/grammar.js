@@ -94,6 +94,9 @@ module.exports = grammar({
     num_hexadecimal: $ => /0x[0-9a-fA-F_]*/,
     num_decimal: $ => /(0|[1-9][0-9_]*)(\.[0-9][0-9_]*)?([eE][-+]?[0-9][0-9_]*)?/,
 
+    "null": $ => "null",
+    bool: $ => choice("true", "false"),
+
     unop_keyword: $ => choice("not"),
     binop_keyword: $ => choice("and", "or"),
 
@@ -190,6 +193,8 @@ module.exports = grammar({
       $.string,
       $.number,
       $.ident,
+      $.bool,
+      $["null"],
     ),
     expr_term_braces:   $ => seq("{", optional($._seqs), "}"),
     expr_term_brackets: $ => seq("[", optional($._seqs), "]"),
