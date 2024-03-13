@@ -92,6 +92,7 @@
           treeSitterSources = pkgs.lib.sourceFilesBySuffices ./grammar/tree-sitter-rcl [
             ".json"
             ".txt"
+            ".scm"
             "Cargo.toml"
             "grammar.js"
           ];
@@ -119,13 +120,25 @@
               '';
             installPhase =
               ''
-              mkdir -p $out/bindings
-              mkdir -p $out
-              cp -r bindings/rust $out/bindings
-              cp -r src $out
-              cp Cargo.toml $out
+              mkdir -p $out/lib
+              cp tree-sitter-home/rcl.so $out/lib
+
+              mkdir -p $out/dev/bindings
+              cp -r bindings/rust $out/dev/bindings
+              cp -r src     $out/dev
+              cp -r queries $out/dev
+              cp Cargo.toml $out/dev
               '';
           };
+
+          rustSourcesAll = pkgs.runCommand "rcl-src-all" {}
+            ''
+            mkdir -p $out/grammar/tree-sitter-rcl/src/tree_sitter
+            cp -r ${treeSitterRcl}/dev/src/{parser.c,node-types.json} $out/grammar/tree-sitter-rcl/src
+            cp -r ${treeSitterRcl}/dev/src/tree_sitter/parser.h $out/grammar/tree-sitter-rcl/src/tree_sitter/parser.h
+            cp -r ${treeSitterRcl}/dev/queries $out/grammar/tree-sitter-rcl
+            cp -r ${rustSources}/* $out
+            '';
 
           rcl = pkgs.rustPlatform.buildRustPackage rec {
             inherit name version;
@@ -244,7 +257,7 @@
               fuzzers = pkgs.rustPlatform.buildRustPackage rec {
                 name = "rcl-fuzzers";
                 inherit version;
-                src = rustSources;
+                src = rustSourcesAll;
                 cargoLock.lockFile = ./Cargo.lock;
                 buildAndTestSubdir = "fuzz";
               };
