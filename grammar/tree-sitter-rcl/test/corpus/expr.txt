@@ -322,3 +322,18 @@ import "foo.rcl"
 ---
 
 (source_file (expr_import (string (string_double))))
+
+===================
+Import with comment
+===================
+
+import
+  // The file to import.
+  "foo.rcl"
+
+---
+
+(source_file
+  (expr_import
+    (comment)
+    (string (string_double))))

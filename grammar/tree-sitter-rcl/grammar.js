@@ -112,7 +112,7 @@ module.exports = grammar({
       $._expr_not_op,
     ),
 
-    expr_import: $ => seq("import", $._expr),
+    expr_import: $ => seq("import", repeat($._prefix), $._expr),
 
     expr_function: $ => seq(
       field("args", $.function_args),
