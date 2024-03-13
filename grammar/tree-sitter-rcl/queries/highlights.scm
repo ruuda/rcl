@@ -1,6 +1,6 @@
 ["for" "in"] @keyword
 ["assert" "trace"] @keyword
-["if"] @keyword
+["if" "else"] @keyword
 ["import"] @keyword
 ["let"] @keyword
 (unop_keyword) @keyword

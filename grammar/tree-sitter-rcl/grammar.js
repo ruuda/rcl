@@ -124,6 +124,7 @@ module.exports = grammar({
 
     _expr_op: $ => choice(
       $.expr_import,
+      $.expr_if,
       $.expr_function,
       $.expr_unop,
       $.expr_binop,
@@ -131,6 +132,15 @@ module.exports = grammar({
     ),
 
     expr_import: $ => seq("import", $._expr),
+
+    expr_if: $ => seq(
+      "if",
+      field("condition", $._expr),
+      ":",
+      field("then", $._expr),
+      "else",
+      field("else", $._expr),
+    ),
 
     expr_function: $ => seq(
       field("args", $.function_args),

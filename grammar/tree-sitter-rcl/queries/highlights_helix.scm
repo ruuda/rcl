@@ -1,6 +1,6 @@
 ["for" "in"] @keyword.control.repeat
 ["assert" "trace"] @keyword.exception
-["if"] @keyword.control.conditional
+["if" "else"] @keyword.control.conditional
 ["import"] @keyword.control.import
 ["let"] @keyword.storage.let
 (unop_keyword) @keyword.operator

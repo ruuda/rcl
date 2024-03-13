@@ -366,3 +366,17 @@ import
   (expr_import
     (comment)
     (string (string_double))))
+
+===========
+Conditional
+===========
+
+if true: null else false
+
+---
+
+(source_file
+  (expr_if
+    condition: (bool)
+    then: (null)
+    else: (bool)))
