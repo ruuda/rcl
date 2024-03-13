@@ -13,26 +13,21 @@ module.exports = grammar({
 
   word: $ => $.ident,
 
+  extras: $ => [
+    $.comment,
+    $.shebang,
+    /[\s\x0c]/,
+  ],
+
   conflicts: $ => [
     [ $.function_args, $._expr_term ],
   ],
 
   rules: {
-    source_file: $ => seq(
-      repeat($._prefix),
-      $._expr,
-      repeat($._prefix)
-    ),
+    source_file: $ => $._expr,
 
-    // A blank is whitespace with two or more newlines. This token is distinct
-    // from the regular whitespace, that Tree-sitter by default allows anywhere.
-    // Though if we do include this token, then yes we get the node, but for
-    // syntax highlighting we don't really care and it breaks parsing in other
-    // places, so we just omit it.
-    // blank: $ => /[ \t\r\f]*\n[ \t\r\f]*\n[ \t\r\n\f]*/,
     comment: $ => /\/\/[^\n]*\n/,
     shebang: $ => /#![^\n]*\n/,
-    _prefix: $ => choice($.comment, $.shebang),
 
     ident: $ => /[_A-Za-z][-_A-Za-z0-9]*/,
 
@@ -43,35 +38,54 @@ module.exports = grammar({
       $.string_triple,
     ),
     string_escape: $ => choice(
-      /\\./,
-      /\\u[0-9a-fA-F]{4}/,
-      seq("\\u{", /[0-9a-fA-F]*/, "}"),
+      token.immediate(/\\./),
+      token.immediate(/\\u[0-9a-fA-F]{4}/),
+      seq(
+        token.immediate("\\u{"),
+        token.immediate(/[0-9a-fA-F]*/),
+        token.immediate("}"),
+      ),
     ),
-    string_hole: $ => seq(
-      "{",
-      repeat($._prefix), $._expr, repeat($._prefix),
-      "}"
-    ),
-    _string_char: $ => /[^\\{"]/,
+    string_hole: $ => seq(token.immediate("{"), $._expr, "}"),
+    _string_char: $ => token.immediate(/[^\\{"]/),
+
     string_double: $ => seq(
       "\"",
-      repeat(choice($._string_char, $.string_escape, "{")),
-      "\"",
+      repeat(choice(
+        $._string_char,
+        $.string_escape,
+        token.immediate("{"),
+      )),
+      token.immediate("\""),
     ),
     string_triple: $ => seq(
       "\"\"\"",
-      repeat(choice($._string_char, $.string_escape, "\"", "{")),
-      "\"\"\"",
+      repeat(choice(
+        $._string_char,
+        $.string_escape,
+        token.immediate("\""),
+        token.immediate("{"),
+      )),
+      token.immediate("\"\"\""),
     ),
     fstring_double: $ => seq(
       "f\"",
-      repeat(choice($._string_char, $.string_escape, $.string_hole)),
-      "\"",
+      repeat(choice(
+        $._string_char,
+        $.string_escape,
+        $.string_hole,
+      )),
+      token.immediate("\""),
     ),
     fstring_triple: $ => seq(
       "f\"\"\"",
-      repeat(choice($._string_char, $.string_escape, $.string_hole, "\"")),
-      "\"\"\"",
+      repeat(choice(
+        $._string_char,
+        $.string_escape,
+        $.string_hole,
+        token.immediate("\""),
+      )),
+      token.immediate("\"\"\""),
     ),
 
     number: $ => choice($.num_binary, $.num_hexadecimal, $.num_decimal),
@@ -102,7 +116,7 @@ module.exports = grammar({
       $.expr_stmt,
       $._expr_op,
     ),
-    expr_stmt: $ => seq($._stmt, ";", repeat($._prefix), $._expr),
+    expr_stmt: $ => seq($._stmt, ";", $._expr),
 
     _expr_op: $ => choice(
       $.expr_import,
@@ -112,7 +126,7 @@ module.exports = grammar({
       $._expr_not_op,
     ),
 
-    expr_import: $ => seq("import", repeat($._prefix), $._expr),
+    expr_import: $ => seq("import", $._expr),
 
     expr_function: $ => seq(
       field("args", $.function_args),
@@ -123,7 +137,6 @@ module.exports = grammar({
     function_args: $ => choice(
       $.ident,
       seq("(", ")"),
-      seq("(", repeat($._prefix), ")"),
       seq("(", $.ident, repeat(seq(",", $.ident)), optional(","), ")"),
     ),
 
@@ -154,7 +167,6 @@ module.exports = grammar({
     expr_index: $ => seq(
       field("collection", $._expr_not_op),
       "[",
-      optional($._prefix),
       field("index", $._expr),
       "]",
     ),
@@ -164,13 +176,10 @@ module.exports = grammar({
       field("field", $.ident),
     ),
 
-    _call_args: $ => choice(
-      repeat1($._prefix),
-      seq($._call_args_inner, optional(","), repeat($._prefix)),
-    ),
+    _call_args: $ => seq($._call_args_inner, optional(",")),
     _call_args_inner: $ => choice(
-      seq(repeat($._prefix), $._expr),
-      seq($._call_args_inner, ",", repeat($._prefix), $._expr),
+      $._expr,
+      seq($._call_args_inner, ",", $._expr),
     ),
 
     _expr_term: $ => choice(
@@ -190,33 +199,26 @@ module.exports = grammar({
       "let",
       field("ident", $.ident),
       "=",
-      repeat($._prefix),
       field("value", $._expr),
     ),
     stmt_assert: $ => seq(
       "assert",
-      repeat($._prefix),
       field("condition", $._expr),
       ",",
-      repeat($._prefix),
       field("message", $._expr),
     ),
     stmt_trace: $ => seq(
       "trace",
-      repeat($._prefix),
       field("message", $._expr),
     ),
 
     // One or more `seq`s with an optional trailing comma. The use site has to
     // wrap it in `optional` as Tree-sitter does not support rules that match
     // the empty string.
-    _seqs: $ => choice(
-      repeat1($._prefix),
-      seq($._seqs_inner, optional(","), repeat($._prefix)),
-    ),
+    _seqs: $ => seq($._seqs_inner, optional(",")),
     _seqs_inner: $ => choice(
-      seq(repeat($._prefix), $._seq),
-      seq($._seqs_inner, ",", repeat($._prefix), $._seq),
+      $._seq,
+      seq($._seqs_inner, ",", $._seq),
     ),
 
     _seq: $ => choice(
@@ -238,7 +240,6 @@ module.exports = grammar({
       "=",
       field("value", $._expr),
     ),
-    // TODO: I need to allow a prefix here. Will the fuzzer find it?
     seq_stmt: $ => seq($._stmt, ";", $._seq),
     seq_for: $ => seq(
       "for",

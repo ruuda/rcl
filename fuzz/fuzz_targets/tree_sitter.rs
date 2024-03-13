@@ -18,18 +18,10 @@ use libfuzzer_sys::fuzz_target;
 use rcl::loader::Loader;
 
 fuzz_target!(|input: &str| {
-    // There are some inputs that Tree-sitter does not parse, but they are silly
-    // edge cases that we don't really care about where if you had them in your
-    // source code, you have worse problems than Tree-sitter inserting an error
-    // node. There are also cases with code points outside of ASCII that we
-    // should care about in some places, but it's hard without parsing to say
-    // if they are in an allowed or non-allowed place. So for now, we only fuzz
-    // ASCII inputs.
-    if input
-        .as_bytes()
-        .iter()
-        .any(|b| matches!(b, 0 | 0x0c | 0x80..=0xff))
-    {
+    // Tree-sitter does not handle null bytes, but if you have null bytes in
+    // your input, you have worse problems than your syntax highlighting being
+    // off, so we don't care much about such inputs.
+    if input.as_bytes().contains(&0) {
         return;
     }
 
