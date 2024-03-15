@@ -142,7 +142,7 @@
     margin-bottom: 0.5rem;
   }
 
-  p, ul {
+  p, pre, ul {
     margin-bottom: var(--margin-large);
   }
 
@@ -165,7 +165,6 @@
   code, pre {
     font-family: 'Red Hat Mono', monospace;
     font-size: 0.88rem;
-    display: inline;
   }
 
   p.arrow {
@@ -200,9 +199,16 @@
     border-bottom-left-radius: 0.3rem;
   }
 
+  .code-demo pre {
+    margin-bottom: 0
+  }
+
   code span.highlight  { font-weight: 600; }
   code span.error { font-weight: 600; color: #ff7e7e; }
   code span.warning { font-weight: 600; color: #ffd07e; }
+  code span.keyword { font-weight: 600; color: #dbb400; }
+  code span.comment { font-style: italic; opacity: 0.6; }
+  code span.type { color: #f2de00; }
   code span.string { color: #ff7e7e; }
   code span.field { color: #ffd07e; }
   code span.number { color: #4ccae5; }
@@ -232,20 +238,21 @@
       language that resembles Python and Nix.</p>
     </div>
     <div class="span-r2">
-<code><pre>
-{
-  features = [
-    // Comments,
-    "Imports, variables, functions",
-    "Assertions",
-    for collection in ["List", "Dict", "Set"]:
-    f"{collection} comprehensions",
+      <pre><code>{
+  <span class="field">features</span> = [
+    <span class="comment">// Comments,</span>
+    <span class="string">"Imports, variables, functions"</span>,
+    <span class="keyword">assert</span> true, <span class="string">"Assertions"</span>;
+    <span class="keyword">for</span> collection <span class="keyword">in</span> [
+      <span class="string">"List"</span>,
+      <span class="string">"Dict"</span>,
+      <span class="string">"Set"</span>,
+    ]:
+    <span class="string">f"{</span>collection<span class="string">} comprehensions"</span>,
   ],
-  let types: String = "gradual, enforced";
-  syntax = { "json-superset", "python-like" },
-  export-formats = "json, yaml, toml, and more",
-}
-</pre></code>
+  <span class="keyword">let</span> types: <span class="type">String</span> = <span class="string">"gradual"</span>;
+  <span class="field">export-to</span> = <span class="string">"json, yaml, toml, ..."</span>,
+}</code></pre>
     </div>
   </section>
   <section class="grid alt">
@@ -355,8 +362,7 @@
       Try <a href="https://docs.ruuda.nl/rcl/rcl_query/">rcl query</a> instead!
       </p>
     </div>
-    <div class="code-demo span-r2"><code>
-<pre><span class="field">$</span> curl --silent <wbr/>https://api.vultr.com/v2/regions <wbr
+    <div class="code-demo span-r2"><pre><code><span class="field">$</span> curl --silent <wbr/>https://api.vultr.com/v2/regions <wbr
 />
 | rcl query <wbr/><span class="highlight">'input<wbr/>.regions<wbr/>.key_by(<wbr/>r =&gt; r.id)<wbr/>.nrt'</span>
 
@@ -373,8 +379,7 @@
     <span class="string">"kubernetes"</span>,
   ],
 }
-</pre>
-</code></div>
+</code></pre></div>
     <div class="feature-block span-l2">
       <h2>Python integration</h2>
       <p>Import the Python module and load RCL documents as easily as json.</p>
