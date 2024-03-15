@@ -14,9 +14,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Next
+## 0.2.0
 
-Unreleased.
+Released 2024-03-15.
 
  * Add new methods on `String`: `remove_prefix`, `remove_suffix`, `to_lowercase`,
    `to_uppercase`.
