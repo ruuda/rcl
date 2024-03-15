@@ -226,21 +226,26 @@
   <section class="grid">
     <div class="span-l2">
       <h1 class="tagline">Make<br>configuration<br>boring again</h1>
-    </div>
-    <div class="span-l2">
       <p>RCL is a domain-specific language for specifying human-written
       data with just enough abstraction to avoid repetition.
       It extends json into a simple functional programming
       language that resembles Python and Nix.</p>
     </div>
     <div class="span-r2">
-      <ul>
-        <li>Imports, variables, functions</li>
-        <li>List comprehensions</li>
-        <li>Assertions, gradual types</li>
-        <li>Friendly and familiar syntax</li>
-        <li>Export to json, yaml, toml, and more</li>
-      </ul>
+<code><pre>
+{
+  features = [
+    // Comments,
+    "Imports, variables, functions",
+    "Assertions",
+    for collection in ["List", "Dict", "Set"]:
+    f"{collection} comprehensions",
+  ],
+  let types: String = "gradual, enforced";
+  syntax = { "json-superset", "python-like" },
+  export-formats = "json, yaml, toml, and more",
+}
+</pre></code>
     </div>
   </section>
   <section class="grid alt">
