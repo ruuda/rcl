@@ -280,6 +280,10 @@ pub enum Expr {
     },
 
     /// A binary operator.
+    // TODO: We might also break up the binop into a true binary operator with
+    // two sides, e.g. `<=` and `==`, and into n-ary operators that can be
+    // repeated such as `+` and `*`. The latter would have a vec of args while
+    // the former would have just the two sides.
     BinOp {
         // TODO: How to handle noncode in binops? It is somewhat reasonable to
         // expect people to write

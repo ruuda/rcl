@@ -1,0 +1,43 @@
+===
+Let
+===
+
+let x = y; x
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_let
+      ident: (ident)
+      value: (ident))
+    (ident)))
+
+======
+Assert
+======
+
+assert p == q, r; s
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_assert
+      condition: (expr_binop (ident) (binop) (ident))
+      message: (ident))
+    (ident)))
+
+=====
+Trace
+=====
+
+trace p; q
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_trace
+      message: (ident))
+    (ident)))

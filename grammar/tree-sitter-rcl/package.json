@@ -1,0 +1,17 @@
+{
+  "// 1": "This file is only here to make `tree-sitter highlight` work,",
+  "// 2": "we don't use a JS package manager, so the file is otherwise empty.",
+  "tree-sitter": [
+    {
+      "scope": "source.rcl",
+      "file-types": [
+        "rcl"
+      ],
+      "injection-regex": "rcl",
+      "highlights": [
+        "queries/highlights.scm"
+      ]
+    }
+  ],
+  "main": "bindings/node"
+}

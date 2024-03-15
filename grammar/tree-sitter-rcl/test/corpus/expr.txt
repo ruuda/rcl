@@ -1,0 +1,382 @@
+========
+Empty {}
+========
+
+{}
+
+---
+
+(source_file
+  (expr_term_braces))
+
+======
+Idents
+======
+
+[
+  CamelCase1337,
+  snake_case,
+  __internal_snake_case,
+  SCREAMING_SNAKE_CASE,
+  kebap-case,
+]
+
+---
+
+(source_file
+  (expr_term_brackets
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))))
+
+==========
+Call empty
+==========
+
+f()
+
+---
+
+(source_file
+  (expr_call
+    (ident)))
+
+==================
+Call empty comment
+==================
+
+f(
+  // Empty
+)
+
+---
+
+(source_file
+  (expr_call
+    (ident)
+    (comment)))
+
+===================
+Call trailing comma
+===================
+
+f("x",)
+
+---
+
+(source_file
+  (expr_call
+    (ident)
+    (string (string_double))))
+
+======================
+Call no trailing comma
+======================
+
+f("x", y)
+
+---
+
+(source_file
+  (expr_call
+    (ident)
+    (string (string_double))
+    (ident)))
+
+=====
+Index
+=====
+
+collection["index"]
+
+---
+
+(source_file
+  (expr_index
+    (ident)
+    (string (string_double))))
+
+==================
+Index with comment
+==================
+
+collection[
+  // A comment
+  "index"
+]
+
+---
+
+(source_file
+  (expr_index
+    (ident)
+    (comment)
+    (string (string_double))))
+
+========
+Unop not
+========
+
+not x
+
+---
+
+(source_file
+  (expr_unop
+    (unop (unop_keyword))
+    (ident)))
+
+============
+Unop not not
+============
+
+// This is fine without parens.
+not not x
+
+---
+
+(source_file
+  (comment)
+  (expr_unop
+    (unop (unop_keyword))
+    (expr_unop
+      (unop (unop_keyword))
+      (ident))))
+
+=========
+Binop and
+=========
+
+x and y
+
+---
+
+(source_file
+  (expr_binop
+    (ident)
+    (binop (binop_keyword))
+    (ident)))
+
+=============
+Binop and and
+=============
+
+x and y and z
+
+---
+
+(source_file
+  (expr_binop
+    (ident)
+    (binop (binop_keyword))
+    (ident)
+    (binop (binop_keyword))
+    (ident)))
+
+============
+Binop and or
+============
+
+// Mixing operators without parens is an error in RCL,
+// but allowed by the Tree-sitter paser.
+x and y + z
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (expr_binop
+    (ident)
+    (binop (binop_keyword))
+    (ident)
+    (binop)
+    (ident)))
+
+==============
+Number decimal
+==============
+
+[0, 10, 1_0, 0.1, 0.1_0, 1e12]
+
+---
+
+(source_file
+  (expr_term_brackets
+    (seq_elem (number (num_decimal)))
+    (seq_elem (number (num_decimal)))
+    (seq_elem (number (num_decimal)))
+    (seq_elem (number (num_decimal)))
+    (seq_elem (number (num_decimal)))
+    (seq_elem (number (num_decimal)))))
+
+======================
+Number invalid decimal
+======================
+
+00
+
+---
+
+(source_file
+  (number (num_decimal))
+  (ERROR (num_decimal)))
+
+=============
+Number binary
+=============
+
+0b11_00
+
+---
+
+(source_file
+  (number (num_binary)))
+
+==================
+Number hexadecimal
+==================
+
+0xff_01
+
+---
+
+(source_file
+  (number (num_hexadecimal)))
+
+==================
+Function no parens
+==================
+
+x => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args (ident))
+    (string (string_double))))
+
+=====================================
+Function with parens, 1 arg, no comma
+=====================================
+
+(x) => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args (ident))
+    (string (string_double))))
+
+==================================
+Function with parens, 1 arg, comma
+==================================
+
+(x,) => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args (ident))
+    (string (string_double))))
+
+==================================
+Function with parens, 2 args
+==================================
+
+(x, y) => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args (ident) (ident))
+    (string (string_double))))
+
+====================
+Function with 0 args
+====================
+
+() => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args)
+    (string (string_double))))
+
+================================
+Function with 0 args and comment
+================================
+
+(
+  // A comment inside the empty argument list.
+) => "a"
+
+---
+
+(source_file
+  (expr_function
+    (function_args
+      (comment))
+    (string (string_double))))
+
+=====================================
+Not a function but parenthesized expr
+=====================================
+
+(x)
+
+---
+
+(source_file (expr_term_parens (ident)))
+
+======
+Import
+======
+
+import "foo.rcl"
+
+---
+
+(source_file (expr_import (string (string_double))))
+
+===================
+Import with comment
+===================
+
+import
+  // The file to import.
+  "foo.rcl"
+
+---
+
+(source_file
+  (expr_import
+    (comment)
+    (string (string_double))))
+
+===========
+Conditional
+===========
+
+if true: null else false
+
+---
+
+(source_file
+  (expr_if
+    condition: (bool)
+    then: (null)
+    else: (bool)))

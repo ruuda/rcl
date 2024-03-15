@@ -89,9 +89,56 @@
             "Cargo.toml"
           ];
 
+          treeSitterSources = pkgs.lib.sourceFilesBySuffices ./grammar/tree-sitter-rcl [
+            ".json"
+            ".txt"
+            ".scm"
+            "Cargo.toml"
+            "grammar.js"
+          ];
+
           pythonSources = pkgs.lib.sourceFilesBySuffices ./. [ ".py" ".pyi" ];
 
           goldenSources = ./golden;
+
+          treeSitterRcl = pkgs.stdenv.mkDerivation {
+            pname = "tree-sitter-rcl";
+            inherit version;
+            src = treeSitterSources;
+            nativeBuildInputs = [ pkgs.nodejs pkgs.tree-sitter ];
+            doCheck = true;
+            buildPhase = "tree-sitter generate";
+            checkPhase =
+              ''
+              # Tree sitter wants to write to ~/.config by default, but that
+              # does not exist in the sandbox. Give it a directory to write to.
+              mkdir tree-sitter-home
+              export TREE_SITTER_DIR=tree-sitter-home
+              export TREE_SITTER_LIBDIR=tree-sitter-home
+              tree-sitter generate --build
+              tree-sitter test
+              '';
+            installPhase =
+              ''
+              mkdir -p $out/lib
+              cp tree-sitter-home/rcl.so $out/lib
+
+              mkdir -p $out/dev/bindings
+              cp -r bindings/rust $out/dev/bindings
+              cp -r src     $out/dev
+              cp -r queries $out/dev
+              cp Cargo.toml $out/dev
+              '';
+          };
+
+          rustSourcesAll = pkgs.runCommand "rcl-src-all" {}
+            ''
+            mkdir -p $out/grammar/tree-sitter-rcl/src/tree_sitter
+            cp -r ${treeSitterRcl}/dev/src/{parser.c,node-types.json} $out/grammar/tree-sitter-rcl/src
+            cp -r ${treeSitterRcl}/dev/src/tree_sitter/parser.h $out/grammar/tree-sitter-rcl/src/tree_sitter/parser.h
+            cp -r ${treeSitterRcl}/dev/queries $out/grammar/tree-sitter-rcl
+            cp -r ${rustSources}/* $out
+            '';
 
           rcl = pkgs.rustPlatform.buildRustPackage rec {
             inherit name version;
@@ -169,15 +216,18 @@
         in
           rec {
             devShells.default = pkgs.mkShell {
+              name = "rcl";
               nativeBuildInputs = [
                 # For consistency we could take `python.pkgs.black`, but it
                 # rebuilds half the Python universe, so instead we take the
                 # cached version that does not depend on our patched pygments.
                 pkgs.python311Packages.black
                 pkgs.binaryen
-                pkgs.wasm-bindgen-cli
                 pkgs.maturin
+                pkgs.nodejs  # Required for tree-sitter.
                 pkgs.rustup
+                pkgs.tree-sitter
+                pkgs.wasm-bindgen-cli
                 pythonEnv
               ];
 
@@ -207,7 +257,7 @@
               fuzzers = pkgs.rustPlatform.buildRustPackage rec {
                 name = "rcl-fuzzers";
                 inherit version;
-                src = rustSources;
+                src = rustSourcesAll;
                 cargoLock.lockFile = ./Cargo.lock;
                 buildAndTestSubdir = "fuzz";
               };
@@ -275,7 +325,7 @@
             };
 
             packages = {
-              inherit rcl pyrcl;
+              inherit rcl pyrcl treeSitterRcl;
 
               default = rcl;
               wasm = rcl-wasm;

@@ -1,0 +1,69 @@
+=====
+Empty
+=====
+
+{}
+
+---
+
+(source_file (expr_term_braces))
+
+==================
+Empty with comment
+==================
+
+[
+  // Empty
+]
+
+---
+
+(source_file (expr_term_brackets (comment)))
+
+======
+Idents
+======
+
+{ x, y, z }
+
+---
+
+(source_file
+  (expr_term_braces
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))))
+
+=======================
+Idents (trailing comma)
+=======================
+
+{ x, y, }
+
+---
+
+(source_file
+  (expr_term_braces
+    (seq_elem
+      (ident))
+    (seq_elem
+      (ident))))
+
+==========
+For single
+==========
+
+{ for x in y: z }
+
+---
+
+(source_file
+  (expr_term_braces
+    (seq_for
+      (ident)
+      (ident)
+      (seq_elem
+        (ident)))))

@@ -1,0 +1,104 @@
+=====
+Empty
+=====
+
+""
+
+---
+
+(source_file (string (string_double)))
+
+=====
+Basic
+=====
+
+"foobar"
+
+---
+
+(source_file (string (string_double)))
+
+========================
+Escape unicode no braces
+========================
+
+"foo\u001abar"
+
+---
+
+(source_file (string (string_double (string_escape))))
+
+=====================
+Escape unicode braces
+=====================
+
+"foo\u{1f574}bar"
+
+---
+
+(source_file (string (string_double (string_escape))))
+
+============
+Escape quote
+============
+
+"foo\"bar"
+
+---
+
+(source_file (string (string_double (string_escape))))
+
+=============
+Triple quoted
+=============
+
+"""
+Foo "bar"
+""Two doesn't end the string""
+Escaped \""" does not either.
+But three does:
+"""
+
+---
+
+(source_file (string (string_triple (string_escape))))
+
+===============
+f-string single
+===============
+
+f"Part \{ <- escape { "real hole" } end"
+
+---
+
+(source_file
+  (string
+    (fstring_double
+      (string_escape)
+      (string_hole
+        (string (string_double))))))
+
+===============
+f-string triple
+===============
+
+f"""
+Answer: {42}.
+"""
+
+---
+
+(source_file
+  (string
+    (fstring_triple
+      (string_hole (number (num_decimal))))))
+
+==========================
+String with comment inside
+==========================
+
+" // A comment inside a string is not a comment. "
+
+---
+
+(source_file (string (string_double)))

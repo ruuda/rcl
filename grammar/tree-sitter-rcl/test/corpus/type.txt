@@ -1,0 +1,128 @@
+====
+Term
+====
+
+let i: Int = q; i
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_let
+      ident: (ident)
+      type: (type_term (ident))
+      value: (ident))
+    (ident)))
+
+===========
+Apply 1 arg
+===========
+
+let i: List[Int] = q; i
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_let
+      ident: (ident)
+      type:
+        (type_apply
+          name: (type_term (ident))
+          args: (type_term (ident)))
+      value: (ident))
+    (ident)))
+
+============
+Apply 2 args
+============
+
+let i: Dict[Int, Null] = q; i
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_let
+      ident: (ident)
+      type:
+        (type_apply
+          name: (type_term (ident))
+          args: (type_term (ident))
+          args: (type_term (ident)))
+      value: (ident))
+    (ident)))
+
+============
+Apply 0 args
+============
+
+let i: Void[] = q; i
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_let
+      ident: (ident)
+      type:
+        (type_apply name: (type_term (ident)))
+      value: (ident))
+    (ident)))
+
+===============
+Function 0 args
+===============
+
+let i: () -> Int = q; i
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_let
+      ident: (ident)
+      type:
+        (type_function
+          result: (type_term (ident)))
+      value: (ident))
+    (ident)))
+
+==============
+Function 1 arg
+==============
+
+let i: (Bool) -> Int = q; i
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_let
+      ident: (ident)
+      type:
+        (type_function
+          args: (type_term (ident))
+          result: (type_term (ident)))
+      value: (ident))
+    (ident)))
+
+===============
+Function 2 args
+===============
+
+let i: (Bool, Int) -> Int = q; i
+
+---
+
+(source_file
+  (expr_stmt
+    (stmt_let
+      ident: (ident)
+      type:
+        (type_function
+          args: (type_term (ident))
+          args: (type_term (ident))
+          result: (type_term (ident)))
+      value: (ident))
+    (ident)))
