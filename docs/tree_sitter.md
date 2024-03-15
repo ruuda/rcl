@@ -41,9 +41,6 @@ Compile and test the Rust bindings:
 
     cargo test
 
-Even though `src/grammar.json` is a generated file, we commit it to the
-repository, so the grammar can be used without a complex build process.
-
 [ts-user-config]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
 
 ## Queries
