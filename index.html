@@ -202,6 +202,51 @@
     font-size: 0.88rem;
   }
 
+  .demo {
+    margin: -1.1rem;
+    display: grid;
+    grid-template-columns: subgrid;
+    background-color: #00000066;
+    border: 1px solid #ffffff44;
+    border-radius: 0.2rem;
+    margin-bottom: 1.2rem;
+    overflow: hidden;
+  }
+
+  .demo .span-l2, .demo .span-r2 {
+    padding: 0;
+    overflow-x: auto;
+  }
+
+  .demo .span-r2 {
+    border-left: 1px solid #ffffff44;
+  }
+
+  .demo .span-l2 {
+    border: 3px solid transparent;
+  }
+  .demo .span-l2:has(code:focus-visible) {
+    border: 3px solid #ffffff44;
+  }
+  .demo pre code:focus-visible {
+    outline: none;
+  }
+
+  .demo pre {
+    width: min-content;
+    /* The regular margin is a bit much for the snippet,
+       instead apply the small margin twice. */
+    padding: var(--margin-small);
+    margin-bottom: var(--margin-small);
+  }
+
+  .demo pre code {
+    display: block;
+    padding-top: var(--margin-small);
+    padding-left: var(--margin-small);
+    padding-right: 1.5rem;
+  }
+
   p.arrow {
     margin-top: -1.1rem;
     margin-bottom: var(--margin);
@@ -209,19 +254,6 @@
     /* The code is not 100% wide, so the arrow looks better aligned when it's
        a bit to the left and not truly in the center. */
     width: 85%;
-  }
-
-  .demo code {
-    display: block;
-    white-space: pre;
-    padding: 1rem;
-    margin: -1rem;
-  }
-
-  code:focus-visible {
-    outline: none;
-    margin-left: calc(-1rem - 2pt);
-    border-left: 2pt solid var(--oxford-blue);
   }
 
   .code-demo {
@@ -238,7 +270,7 @@
     margin-bottom: 0
   }
 
-  code span.highlight  { font-weight: 600; }
+  code span.highlight { font-weight: 600; }
   code span.error { font-weight: 600; color: var(--syn-error); }
   code span.warning { font-weight: 600; color: var(--syn-accent); }
   code span.keyword { font-weight: 600; color: var(--syn-light-blue); }
@@ -363,8 +395,9 @@
       so you can verify them yourself.</p>
       </noscript>
     </div>
+    <div class="span-full demo">
     <div class="span-l2">
-      <p class="demo"><code id="input" contenteditable>let base_config = {
+      <pre><code id="input" contenteditable>let base_config = {
   zone_id = 42,
   type = "A",
   value = "93.184.216.34",
@@ -375,11 +408,11 @@
   for subdomain in ["docs", "www"]:
   f"a_record_{subdomain}_{zone_id}":
   base_config | { name = subdomain }
-}</code></p>
+}</code></pre>
     </div>
   <div class="span-r2">
     <!--<p class="arrow">↓</p>-->
-      <p class="demo" id="output"><code>{
+    <pre id="output"><code>{
   <span class="field">"a_record_docs_42"</span>: {
     <span class="field">"name"</span>: <span class="string">"docs"</span>,
     <span class="field">"type"</span>: <span class="string">"A"</span>,
@@ -393,8 +426,8 @@
     <span class="field">"zone_id"</span>: <span class="number">42</span>
   }
 }
-</code></p>
-    </div>
+</code></pre>
+    </div></div>
   </section>
   <section class="grid">
     <div class="span-full">
