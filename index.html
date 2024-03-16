@@ -27,6 +27,8 @@
     --syn-red: #ff7e7e;
     --syn-blue: #4ccae5;
     --syn-light-blue: #81baf7;
+
+    --link-blue: #4ccae577;
   }
 
   html {
@@ -174,7 +176,9 @@
   }
 
   section a {
-    font-weight: 600;
+    border-bottom: 3pt solid var(--link-blue);
+    line-height: 1rem;
+    display: inline-block;
   }
 
   section.alt h2 {
@@ -325,7 +329,7 @@
       <h2>Built-in json queries</h2>
       <p>Need to drill down into a json document,
       but can’t figure out the <span class="cc">jq</span> syntax?
-      Try <a href="https://docs.ruuda.nl/rcl/rcl_query/">rcl query</a> instead.
+      Try <a href="https://docs.ruuda.nl/rcl/rcl_query/"><span class="cc">rcl query</span></a> instead.
       Scroll down for an example.
       </p>
     </div>
@@ -334,13 +338,13 @@
       <p>You can always export json from the command line
       and load it into your program.
       For Python we can skip that intermediate stage:
-      <span class="cc">rcl.loads</span> is a drop-in replacement
-      for <span class="cc">json.loads</span>.
+      <a href="https://docs.ruuda.nl/rcl/python_bindings/#loads"><span class="cc">rcl.loads</span></a>
+      is a drop-in replacement for <span class="cc">json.loads</span>.
     </div>
   </section>
   <section class="grid">
     <div class="span-full">
-      <h2>Demo</h2>
+      <h2>Try it yourself</h2>
       <p>Below is a
       <a href="https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/record">simplified form</a> of a
       <a href="https://developer.hashicorp.com/terraform/language/syntax/json">Terraform json config</a>
