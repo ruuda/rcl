@@ -165,6 +165,17 @@
     color: var(--berkeley-blue);
   }
 
+  p.warning {
+    color: var(--berkeley-blue);
+    background-color: var(--syn-yellow);
+    padding: var(--margin-small);
+    border-radius: 0.2rem;
+  }
+
+  p.warning strong {
+    margin-right: 0.2rem;
+  }
+
   span.cc {
     font-weight: 600;
   }
@@ -262,10 +273,14 @@
   <span class="field">export-to</span> = <span class="string">"json, yaml, toml, ..."</span>,
 }</code></pre>
     </div>
+    <div class="span-full">
+      <p class="warning"><strong>Note!</strong> RCL is a hobby project without stability promise.
+      It is usable and useful, but also experimental and incomplete.</p>
+    </div>
   </section>
   <section class="grid alt">
     <div class="feature-block span-l2">
-      <h2>Share and consolidate</h2>
+      <h2>Connect anything</h2>
       <p>Generate configuration for tools that do not natively talk to each other,
       all from a single source of truth.</p>
     </div>
@@ -288,6 +303,22 @@
       <p>Have you used Python or TypeScript before?
       Then you will find RCL obvious to read and natural to write.
       </p>
+    </div>
+    <div class="feature-block span-l2">
+      <h2>Built-in json queries</h2>
+      <p>Need to drill down into a json document,
+      but can’t figure out the <span class="cc">jq</span> syntax?
+      Try <a href="https://docs.ruuda.nl/rcl/rcl_query/">rcl query</a> instead.
+      Scroll down for an example.
+      </p>
+    </div>
+    <div class="feature-block span-r2">
+      <h2>Python module</h2>
+      <p>You can always export json from the command line
+      and load it into your program.
+      For Python we can skip that intermediate stage:
+      <span class="cc">rcl.loads</span> is a drop-in replacement
+      for <span class="cc">json.loads</span>.
     </div>
   </section>
   <section class="grid">
@@ -363,13 +394,6 @@
     </div>
   </section>
   <section class="grid alt">
-    <div class="feature-block span-l2">
-      <h2>Built-in json queries</h2>
-      <p>Need to drill down into a json document,
-      but can’t figure out the <span class="cc">jq</span> syntax?
-      Try <a href="https://docs.ruuda.nl/rcl/rcl_query/">rcl query</a> instead!
-      </p>
-    </div>
     <div class="code-demo span-r2"><pre><code><span class="field">$</span> curl --silent <wbr/>https://api.vultr.com/v2/regions <wbr
 />
 | rcl query <wbr/><span class="highlight">'input<wbr/>.regions<wbr/>.key_by(<wbr/>r =&gt; r.id)<wbr/>.nrt'</span>
@@ -388,11 +412,6 @@
   ],
 }
 </code></pre></div>
-    <div class="feature-block span-l2">
-      <h2>Python integration</h2>
-      <p>Import the Python module and load RCL documents as easily as json.</p>
-      <!-- TODO: Example -->
-    </div>
     <div class="feature-block span-l2">
       <h2>Free &amp; open source</h2>
       <p>RCL is free/libre software,
