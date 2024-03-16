@@ -246,18 +246,19 @@
     </div>
     <div class="span-r2">
       <pre><code>{
+  <span class="comment">// A silly snippet to show some</span>
+  <span class="comment">// features in a limited space.</span>
+  <span class="keyword">let</span> data: <span class="type">List</span>[<span class="type">String</span>] =
+    <span class="keyword">import</span> <span class="string">"data.rcl"</span>;
+  <span class="keyword">let</span> f = () => [<span class="string">"List"</span>, <span class="string">"Dict"</span>, <span class="string">"Set"</span>];
+  <span class="keyword">assert</span>
+    data.contains(<span class="string">"Assertions"</span>),
+    <span class="string">"Assertions are supported"</span>;
   <span class="field">features</span> = [
-    <span class="comment">// Comments,</span>
-    <span class="string">"Imports, variables, functions"</span>,
-    <span class="keyword">assert</span> true, <span class="string">"Assertions"</span>;
-    <span class="keyword">for</span> collection <span class="keyword">in</span> [
-      <span class="string">"List"</span>,
-      <span class="string">"Dict"</span>,
-      <span class="string">"Set"</span>,
-    ]:
+    <span class="keyword">for</span> d <span class="keyword">in</span> data: d,
+    <span class="keyword">for</span> collection <span class="keyword">in</span> f():
     <span class="string">f"{</span>collection<span class="string">} comprehensions"</span>,
   ],
-  <span class="keyword">let</span> types: <span class="type">String</span> = <span class="string">"gradual"</span>;
   <span class="field">export-to</span> = <span class="string">"json, yaml, toml, ..."</span>,
 }</code></pre>
     </div>
