@@ -11,6 +11,24 @@
     margin: 0;
     padding: 0;
     border-spacing: 0;
+  }
+
+  html {
+    background-color: var(--oxford-blue);
+    color: #fff;
+    font-family: 'Red Hat Text', sans-serif;
+    font-optical-sizing: auto;
+    font-size: 18px;
+    line-height: 1.5;
+
+    --margin-small: 1.3rem;
+    --margin: 2.5rem;
+    --margin-large: 3.2rem;
+    --bullet-distance: -1.0rem;
+    --outset: -0.5rem;
+    --hsep: 1px;
+    --vsep: 0px;
+
     /* Colors: https://coolors.co/000f29-033563-f5e5b8-7b0d1e-9f2042 */
     --oxford-blue: #000f29ff;
     --berkeley-blue: #033563ff;
@@ -29,20 +47,7 @@
     --syn-light-blue: #81baf7;
 
     --link-blue: #4ccae577;
-  }
-
-  html {
-    background-color: var(--oxford-blue);
-    color: #fff;
-    font-family: 'Red Hat Text', sans-serif;
-    font-optical-sizing: auto;
-    font-size: 18px;
-    line-height: 1.5;
-
-    --margin-small: 1.3rem;
-    --margin: 2.5rem;
-    --margin-large: 3.2rem;
-    --bullet-distance: -1.0rem;
+    --outline: #ffffff44;
   }
 
   .grid {
@@ -64,6 +69,7 @@
       --margin: 3.2rem;
       --margin-large: 4rem;
       --bullet-distance: -1.2rem;
+      --outset: -1.2rem;
     }
     .narrow {
       display: none;
@@ -71,6 +77,11 @@
   }
 
   @media (min-width: 820px) {
+    html {
+      /* The separator rotates 90 degrees now. */
+      --hsep: 0px;
+      --vsep: 1px;
+    }
     .xnarrow, .narrow {
       display: inline;
     }
@@ -203,14 +214,25 @@
   }
 
   .demo {
-    margin: -1.1rem;
+    margin-left: var(--outset);
+    margin-right: var(--outset);
+    margin-top: -1rem;
+    margin-bottom: 0;
     display: grid;
     grid-template-columns: subgrid;
     background-color: #00000066;
-    border: 1px solid #ffffff44;
+    border: 1px solid var(--outline);
     border-radius: 0.2rem;
-    margin-bottom: 1.2rem;
     overflow: hidden;
+  }
+
+  .demo h3 {
+    font-weight: inherit;
+    font-size: 0.8rem;
+    color: var(--outline);
+    padding: 0.5rem;
+    padding-left: 1.2rem;
+    border-bottom: 1px solid var(--outline);
   }
 
   .demo .span-l2, .demo .span-r2 {
@@ -219,14 +241,17 @@
   }
 
   .demo .span-r2 {
-    border-left: 1px solid #ffffff44;
+    /* This switches between top and left depending on the viewport width,
+       see the media query elsewhere. */
+    border-top: var(--hsep) solid var(--outline);
+    border-left: var(--vsep) solid var(--outline);
   }
 
   .demo .span-l2 {
     border: 3px solid transparent;
   }
   .demo .span-l2:has(code:focus-visible) {
-    border: 3px solid #ffffff44;
+    border: 3px solid var(--outline);
   }
   .demo pre code:focus-visible {
     outline: none;
@@ -396,6 +421,9 @@
       </noscript>
     </div>
     <div class="span-full demo">
+    <div class="span-full">
+      <h3>rcl evaluate --format=json</h3>
+    </div>
     <div class="span-l2">
       <pre><code id="input" contenteditable>let base_config = {
   zone_id = 42,
