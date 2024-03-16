@@ -52,15 +52,27 @@
 
   .span-full, .span-l2, .span-r2 { grid-column: content }
 
+  @media (min-width: 500px) {
+    .xnarrow {
+      display: none;
+    }
+  }
+
   @media (min-width: 600px) {
     html {
       --margin: 3.2rem;
       --margin-large: 4rem;
       --bullet-distance: -1.2rem;
     }
+    .narrow {
+      display: none;
+    }
   }
 
   @media (min-width: 820px) {
+    .xnarrow, .narrow {
+      display: inline;
+    }
     .grid {
       grid-template-columns: var(--margin) 1fr 1fr 1fr 1fr var(--margin);
       grid-template-areas: "lmargin c1 c2 c3 c4 rmargin";
@@ -78,7 +90,16 @@
     }
   }
 
+  @media (min-width: 910px) {
+    .xnarrow {
+      display: none;
+    }
+  }
+
   @media (min-width: 1000px) {
+    .narrow {
+      display: none;
+    }
     .grid {
       grid-template-columns: auto 12rem 12rem 12rem 12rem auto;
     }
@@ -252,9 +273,13 @@
       <pre><code>{
   <span class="comment">// A silly snippet to show some</span>
   <span class="comment">// features in a limited space.</span>
-  <span class="keyword">let</span> data: <span class="type">List</span>[<span class="type">String</span>] =
-    <span class="keyword">import</span> <span class="string">"data.rcl"</span>;
-  <span class="keyword">let</span> f = () => [<span class="string">"List"</span>, <span class="string">"Dict"</span>, <span class="string">"Set"</span>];
+  <span class="keyword">let</span> data: <span class="type">List</span>[<span class="type">String</span>] = <span class="narrow">
+    </span><span class="keyword">import</span> <span class="string">"data.rcl"</span>;
+  <span class="keyword">let</span> f = () => [<span class="xnarrow">
+    </span><span class="string">"List"</span>, <span class="xnarrow">
+    </span><span class="string">"Dict"</span>, <span class="xnarrow">
+    </span><span class="string">"Set"</span><span class="xnarrow">
+  </span>];
   <span class="keyword">assert</span>
     data.contains(<span class="string">"Assertions"</span>),
     <span class="string">"Assertions are supported"</span>;
