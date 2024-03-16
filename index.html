@@ -19,7 +19,7 @@
     font-family: 'Red Hat Text', sans-serif;
     font-optical-sizing: auto;
     font-size: 18px;
-    line-height: 1.5;
+    line-height: 1.55;
 
     --margin-small: 1.3rem;
     --margin: 2.5rem;
@@ -71,7 +71,13 @@
       --bullet-distance: -1.2rem;
       --outset: -1.2rem;
     }
-    .narrow {
+    .narrow, .wxnarrow {
+      display: none;
+    }
+  }
+
+  @media (min-width: 710px) {
+    .wnarrow {
       display: none;
     }
   }
@@ -164,16 +170,22 @@
     margin-bottom: 2rem;
   }
 
+  .p-ul {
+    margin-top: var(--margin);
+    margin-bottom: 1em;
+  }
+
   ul li {
     position: relative;
     list-style-type: none;
   }
 
   ul li:before {
-    color: #ffffff66;
+    /* color: #ffffff66; */
     position: absolute;
     left: var(--bullet-distance);
     content: '•';
+    opacity: 0.4;
   }
 
   h2 {
@@ -186,10 +198,11 @@
     margin-bottom: var(--margin-large);
   }
 
-  section a {
-    border-bottom: 3pt solid var(--link-blue);
-    line-height: 1rem;
-    display: inline-block;
+  section a, footer a {
+    text-decoration-line: underline;
+    text-decoration-skip-ink: none;
+    text-decoration-color: var(--link-blue);
+    text-decoration-thickness: 3pt;
   }
 
   section.alt h2 {
@@ -210,7 +223,7 @@
 
   code, pre {
     font-family: 'Red Hat Mono', monospace;
-    font-size: 0.88rem;
+    font-size: 0.8rem;
   }
 
   .demo {
@@ -269,30 +282,6 @@
     display: block;
     padding-top: var(--margin-small);
     padding-left: var(--margin-small);
-    padding-right: 1.5rem;
-  }
-
-  p.arrow {
-    margin-top: -1.1rem;
-    margin-bottom: var(--margin);
-    text-align: center;
-    /* The code is not 100% wide, so the arrow looks better aligned when it's
-       a bit to the left and not truly in the center. */
-    width: 85%;
-  }
-
-  .code-demo {
-    background-color: var(--oxford-blue);
-    margin-bottom: var(--margin-large);
-    margin-right: -2.2rem;
-    padding: 1.5rem;
-    color: #fff;
-    border-top-left-radius: 0.3rem;
-    border-bottom-left-radius: 0.3rem;
-  }
-
-  .code-demo pre {
-    margin-bottom: 0
   }
 
   code span.highlight { font-weight: 600; }
@@ -308,6 +297,7 @@
   footer {
     padding-top: var(--margin-large);
     opacity: 0.6;
+    font-size: 0.8rem;
   }
   </style>
   <script src="/rcl.js" defer></script>
@@ -439,7 +429,6 @@
 }</code></pre>
     </div>
   <div class="span-r2">
-    <!--<p class="arrow">↓</p>-->
     <pre id="output"><code>{
   <span class="field">"a_record_docs_42"</span>: {
     <span class="field">"name"</span>: <span class="string">"docs"</span>,
@@ -459,26 +448,19 @@
   </section>
   <section class="grid">
     <div class="span-full">
-      <h2>Installation</h2>
-      <p>
-      RCL is written in Rust and has few dependencies,
-      so it is quick and easy to build from source with Cargo.
-      There is no need to pipe arbitrary code from the web into your shell.
-      <br><br>
-      <code>
-        <span class="field">$</span>
-        git clone https://github.com/ruuda/rcl<br>
-        <span class="field">$</span>
-        cargo build --release<br>
-        <span class="field">$</span>
-        target/release/rcl --help
-      </code></p>
+      <h2>Intuitive json queries</h2>
+      <p>Below is a query that returns the details of the
+      <span class="cc">nrt</span> region in Vultr.
+      This query is editable.
+      Can you change the query to return the ids of all regions where the
+      <span class="cc">block_storage_high_perf</span> option is available?
+      Scroll down for some hints.</p>
     </div>
-  </section>
-  <section class="grid alt">
-    <div class="code-demo span-r2"><pre><code><span class="field">$</span> curl --silent <wbr/>https://api.vultr.com/v2/regions <wbr
-/>
-| rcl query <wbr/><span class="highlight">'input<wbr/>.regions<wbr/>.key_by(<wbr/>r =&gt; r.id)<wbr/>.nrt'</span>
+    <div class="span-full demo">
+    <div class="span-full"><pre><code><span class="field">$</span> curl --silent <br class="wxnarrow"
+    >https://api.vultr.com/v2/regions <br class="wnarrow"
+    ><span class="field">|</span> rcl query
+<span class="highlight">'input.regions.key_by(r =&gt; r.id).nrt'</span>
 
 {
   <span class="field">city</span> = <span class="string">"Tokyo"</span>,
@@ -493,14 +475,78 @@
     <span class="string">"kubernetes"</span>,
   ],
 }
-</code></pre></div>
+</code></pre>
+      </div>
+    </div>
+    <div class="span-full">
+      <p class="p-ul">Some ideas to get you started:</p>
+      <ul>
+        <li>Change the query to just <span class="cc">input</span>.
+        What does the input look like?</li>
+        <li>Wrap <span class="cc">input.regions</span> in a
+        <a href="https://docs.ruuda.nl/rcl/syntax/#comprehensions">list comprehension</a>.</li>
+        <li>Use <span class="cc">if</span> to filter elements.</li>
+        <li>Use <a href="https://docs.ruuda.nl/rcl/type_list/#contains">the <span class="cc">List.contains</span> method</a>
+        to check if a list contains a particular element.</li>
+      </ul>
+    </div>
+  </section>
+  <section class="grid alt">
+    <div class="span-full">
+      <h2>Installation</h2>
+      <p>
+      RCL is written in Rust and has few dependencies,
+      so it is quick and easy to build from source with Cargo.
+      There is no need to pipe arbitrary code from the web into your shell.
+      <br><br>
+      <code>
+        <span class="number">$</span>
+        git clone https://github.com/ruuda/rcl<br>
+        <span class="number">$</span>
+        cargo build --release<br>
+        <span class="number">$</span>
+        target/release/rcl --help
+      </code></p>
+    </div>
     <div class="feature-block span-l2">
+      <h2>Further resources</h2>
+      <ul>
+        <li><a href="https://docs.ruuda.nl/rcl/syntax_highlighting/">Set up syntax highlighting</a></li>
+        <li><a href="https://docs.ruuda.nl/rcl/tutorial/">Check out the tutorial</a></li>
+        <li><a href="https://docs.ruuda.nl/rcl/">Check out the documentation</a></li>
+        <li><a href="https://github.com/ruuda/rcl">GitHub repository</a>, <a href="https://codeberg.org/ruuda/rcl">Codeberg repository</a></li>
+      </ul>
+    </div>
+    <div class="feature-block span-r2">
       <h2>Free &amp; open source</h2>
       <p>RCL is free/libre software,
       licensed under the Apache 2.0 license.
-      The source code is available on
+      The project is developed in the open
+      and the source code is available on
       <a href="https://github.com/ruuda/rcl">GitHub</a> and
       <a href="https://codeberg.org/ruuda/rcl">Codeberg</a>.</p>
+    </div>
+    <div class="span-full">
+      <h2>Support RCL</h2>
+      <p>One thing that prevents RCL from being useful to more people
+      is the lack of widespread syntax highlighting support,
+      in particular on platforms such as GitHub.
+      Highlighting is not
+      <a href="https://groups.google.com/g/golang-nuts/c/hJHCAaiL0so/m/kG3BHV6QFfIJ">juvenile</a>,
+      it’s a basic need.
+      Even if the highlighter exists,
+      platforms and editors do not accept contributions for any random toy language
+      — rightfully so.
+      If RCL is useful to you,
+      the best thing you can do to help move this forward
+      is to
+      <a href="https://github.com/github-linguist/linguist/blob/4ac734c15a96f9e16fd12330d0cb8de82274f700/CONTRIBUTING.md#adding-an-extension-to-a-language">use
+      RCL publicly in a GitHub repository</a>
+      to demonstrate traction.
+      Use it seriously of course, please don’t game the metric.<br><br>
+      Other things you can help with are getting RCL packaged for your favorite package manager,
+      and developing syntax highlighting for your editor if it is not yet supported.
+      </p>
     </div>
   </section>
   <footer class="grid">
