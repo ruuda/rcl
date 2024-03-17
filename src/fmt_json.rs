@@ -85,12 +85,11 @@ impl Formatter {
                 elements.push(",".into());
                 elements.push(Doc::Sep);
             }
+            self.path.push(PathElement::Key(k.clone()));
             match k {
                 Value::String(k_str) => {
-                    self.path.push(PathElement::Key(k.clone()));
                     elements.push(self.string(k_str).with_markup(Markup::Field))
                 }
-                // TODO: Include information about the encountered type.
                 _ => return self.error("To export as json, keys must be strings."),
             };
             elements.push(": ".into());

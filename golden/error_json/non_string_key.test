@@ -8,4 +8,6 @@ stdin:1:1
   ╷
 1 │ {
   ╵ ^
+in value
+at key 1
 Error: To export as json, keys must be strings.
