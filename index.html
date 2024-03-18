@@ -416,7 +416,7 @@
       <h3>rcl evaluate --format=json</h3>
     </div>
     <div class="span-l2">
-      <pre><code id="input" contenteditable spellcheck="false">let base_config = {
+      <pre><code id="input" spellcheck="false">let base_config = {
   zone_id = 42,
   type = "A",
   value = "93.184.216.34",
@@ -559,18 +559,45 @@
 <script>
   window.onload = function() {
     const { rcl_evaluate } = wasm_bindgen;
-    async function run() {
-      await wasm_bindgen();
-      const input_box = document.getElementById("input");
-      const output_box = document.getElementById("output");
-      input_box.addEventListener("input", (evt) => {
-        const input = evt.target.value;
-        const out_node = document.createElement("code");
-        rcl_evaluate(input_box.textContent, out_node);
-        output_box.replaceChild(out_node, output_box.firstChild);
-      });
+    var loadingPromise = null;
+    var isLoaded = false;
+
+    async function ensureInitialized() {
+      if (loadingPromise === null) loadingPromise = wasm_bindgen();
+      await loadingPromise;
+      isLoaded = true;
     }
-    run();
+
+    async function onInput(inBox, outBox, evt) {
+      // If the user started typing but the wasm module is still loading,
+      // give some feedback about that.
+      if (!isLoaded) {
+        const msgNode = document.createElement("code");
+        msgNode.textContent = "Loading WASM module ...";
+        outBox.replaceChild(msgNode, outBox.firstChild);
+      }
+
+      const input = evt.target.value;
+      const outNode = document.createElement("code");
+      await ensureInitialized();
+      rcl_evaluate(inBox.textContent, outNode);
+      outBox.replaceChild(outNode, outBox.firstChild);
+    }
+
+    const inBox = document.getElementById("input");
+    const outBox = document.getElementById("output");
+
+    // Don't allow editing the examples before the page is fully loaded, because
+    // then we miss edit events.
+    inBox.contentEditable = true;
+
+    // We don't load the wasm module instantly. If somebody opens the page but
+    // doesn't try to edit the example, we don't have to load the module. The
+    // flip side is that there is a small delay when you start editing. We can
+    // mitigate that somewhat by starting the load already when focus lands in
+    // the editable area.
+    inBox.addEventListener("focus", () => ensureInitialized());
+    inBox.addEventListener("input", (evt) => onInput(inBox, outBox, evt));
   }
 </script>
 </html>
