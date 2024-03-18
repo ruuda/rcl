@@ -578,6 +578,10 @@
     var jsonPromise = null;
     var jsonValue = null;
 
+    const maxLen = 4000;
+    // TODO: Infer from window width.
+    const printWidth = 40;
+
     async function ensureWasmInitialized() {
       if (wasmLoaded) return;
       if (wasmPromise === null) wasmPromise = wasm_bindgen();
@@ -609,7 +613,7 @@
       const input = evt.target.value;
       const outNode = document.createElement("code");
       await ensureWasmInitialized();
-      rcl_evaluate_json(inBox.textContent, outNode);
+      rcl_evaluate_json(inBox.textContent, outNode, printWidth, maxLen);
       outBox.replaceChild(outNode, outBox.firstChild);
     }
 
@@ -627,7 +631,7 @@
       const query = evt.target.value;
       const outNode = document.createElement("code");
       const input = await ensureJsonValue();
-      rcl_evaluate_query(input, inBox.textContent, outNode);
+      rcl_evaluate_query(input, inBox.textContent, outNode, printWidth, maxLen);
       outBox.replaceChild(outNode, outBox.firstChild);
     }
 
