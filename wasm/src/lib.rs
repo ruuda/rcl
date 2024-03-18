@@ -14,6 +14,7 @@ use rcl::eval::Evaluator;
 use rcl::loader::{Loader, VoidFilesystem};
 use rcl::markup::Markup;
 use rcl::pprint::{self, Doc};
+use rcl::runtime::Value;
 use rcl::tracer::VoidTracer;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -23,6 +24,13 @@ extern "C" {
 
     #[wasm_bindgen(module = "rcl_dom.js")]
     fn append_span(node: &Node, class: &str, text: &str);
+}
+
+// A way for JS to hold on to an RCL value in the Rust heap.
+#[wasm_bindgen]
+pub struct ValueRef {
+    #[wasm_bindgen(skip)]
+    pub value: Value,
 }
 
 /// Return the class name for a markup span in the output.
@@ -62,7 +70,11 @@ fn pprint_doc(doc: Doc, out_node: &Node) {
     append_span(out_node, markup_class(markup), &buffer);
 }
 
-fn rcl_evaluate_impl<'a>(loader: &'a mut Loader, input: &'a str, out_node: &Node) -> Result<()> {
+fn rcl_evaluate_json_impl<'a>(
+    loader: &'a mut Loader,
+    input: &'a str,
+    out_node: &Node,
+) -> Result<()> {
     loader.set_filesystem(Box::new(VoidFilesystem));
     let id = loader.load_string(input.to_string());
     let mut tracer = VoidTracer;
@@ -78,12 +90,30 @@ fn rcl_evaluate_impl<'a>(loader: &'a mut Loader, input: &'a str, out_node: &Node
 }
 
 #[wasm_bindgen]
-pub fn rcl_evaluate(input: &str, out_node: &Node) {
+pub fn rcl_evaluate_json(input: &str, out_node: &Node) {
     let mut loader = Loader::new();
-    let result = rcl_evaluate_impl(&mut loader, input, out_node);
+    let result = rcl_evaluate_json_impl(&mut loader, input, out_node);
     if let Err(err) = result {
         let inputs = loader.as_inputs();
         let err_doc = err.report(&inputs);
         pprint_doc(err_doc, out_node);
     }
+}
+
+fn rcl_evaluate_value_impl(input: &str) -> Result<Value> {
+    let mut loader = Loader::new();
+    loader.set_filesystem(Box::new(VoidFilesystem));
+    let id = loader.load_string(input.to_string());
+    let mut tracer = VoidTracer;
+    let mut evaluator = Evaluator::new(&mut loader, &mut tracer);
+    let mut type_env = rcl::typecheck::prelude();
+    let mut value_env = rcl::runtime::prelude();
+    let value = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
+    Ok(value)
+}
+
+#[wasm_bindgen]
+pub fn rcl_evaluate_value(input: &str) -> ValueRef {
+    let value = rcl_evaluate_value_impl(input).expect("Input should be known good.");
+    ValueRef { value }
 }
