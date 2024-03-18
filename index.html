@@ -593,13 +593,18 @@
 
     async function ensureJsonValue() {
       if (jsonValue !== null) return jsonValue;
-      if (jsonPromise === null) jsonPromise = fetch("/vultr.json");
+      if (jsonPromise === null) jsonPromise = fetch("/vultr.json").then(r => r.text());
 
       const wasm = ensureWasmInitialized();
       const json = await jsonPromise;
       await wasm;
 
-      jsonValue = rcl_evaluate_query_value(await json.text());
+      // We have to check again that the value is still null, because we may
+      // not be the first task to wait for the json response.
+      if (jsonValue === null) {
+        jsonValue = rcl_evaluate_query_value(json);
+      }
+
       return jsonValue;
     }
 
