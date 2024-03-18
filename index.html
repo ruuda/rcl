@@ -567,11 +567,16 @@
 </body>
 <script>
   window.onload = function() {
-    const { rcl_evaluate } = wasm_bindgen;
+    const {
+      rcl_evaluate_json,
+      rcl_evaluate_query_value,
+      rcl_evaluate_query,
+    } = wasm_bindgen;
+
     var wasmPromise = null;
-    var wasmLoaded= false;
+    var wasmLoaded = false;
     var jsonPromise = null;
-    var jsonLoaded = false;
+    var jsonValue = null;
 
     async function ensureWasmInitialized() {
       if (wasmLoaded) return;
@@ -580,14 +585,19 @@
       wasmLoaded = true;
     }
 
-    async function ensureJsonInitialized() {
-      if (jsonLoaded) return;
+    async function ensureJsonValue() {
+      if (jsonValue !== null) return jsonValue;
       if (jsonPromise === null) jsonPromise = fetch("/vultr.json");
-      await jsonPromise;
-      jsonLoaded = true;
+
+      const wasm = ensureWasmInitialized();
+      const json = await jsonPromise;
+      await wasm;
+
+      jsonValue = rcl_evaluate_query_value(await json.text());
+      return jsonValue;
     }
 
-    async function onInput(inBox, outBox, evt) {
+    async function onInputEvaluate(inBox, outBox, evt) {
       // If the user started typing but the wasm module is still loading,
       // give some feedback about that.
       if (!wasmLoaded) {
@@ -599,7 +609,25 @@
       const input = evt.target.value;
       const outNode = document.createElement("code");
       await ensureWasmInitialized();
-      rcl_evaluate(inBox.textContent, outNode);
+      rcl_evaluate_json(inBox.textContent, outNode);
+      outBox.replaceChild(outNode, outBox.firstChild);
+    }
+
+    async function onInputQuery(inBox, outBox, evt) {
+      // If the user started typing but the wasm module or data is still loading,
+      // give some feedback about that.
+      if (jsonValue === null) {
+        const msgNode = document.createElement("code");
+        msgNode.textContent = wasmLoaded
+          ? "Loading JSON data ..."
+          : "Loading WASM module ...";
+        outBox.replaceChild(msgNode, outBox.firstChild);
+      }
+
+      const query = evt.target.value;
+      const outNode = document.createElement("code");
+      const input = await ensureJsonValue();
+      rcl_evaluate_query(input, inBox.textContent, outNode);
       outBox.replaceChild(outNode, outBox.firstChild);
     }
 
@@ -617,13 +645,10 @@
     // mitigate that somewhat by starting the load already when focus lands in
     // the editable area.
     in1.addEventListener("focus", () => ensureWasmInitialized());
-    in1.addEventListener("input", (evt) => onInput(in1, out1, evt));
+    in1.addEventListener("input", (evt) => onInputEvaluate(in1, out1, evt));
 
-    in2.addEventListener("focus", () => {
-      ensureWasmInitialized();
-      ensureJsonInitialized();
-    });
-    in2.addEventListener("input", (evt) => onInput(in2, out2, evt));
+    in2.addEventListener("focus", () => ensureJsonValue());
+    in2.addEventListener("input", (evt) => onInputQuery(in2, out2, evt));
   }
 </script>
 </html>
