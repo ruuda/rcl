@@ -249,7 +249,7 @@
     border-bottom: 1px solid var(--outline);
   }
 
-  .demo .span-l2, .demo .span-r2 {
+  .demo .span-l2, .demo .span-r2, .demo .span-full {
     padding: 0;
     overflow-x: auto;
   }
@@ -271,13 +271,15 @@
     outline: none;
   }
 
-  #in2 {
-    /* Compensate for the transparent border. */
-    margin-left: -3px;
-    margin-right: -3px;
+  .focus-marker:has(#in2) {
+    margin-left: -0.4em;
+    margin-right: 0.8rem;
+    border-radius: 0.25rem;
   }
   #in2:before, #in2:after {
     content: "'";
+    display: inline-block;
+    padding: 0.2em;
   }
 
   .demo pre {
@@ -470,8 +472,7 @@
     <div class="span-full"><pre><code><span class="field">$</span> curl --silent <br class="wxnarrow"
     >https://api.vultr.com/v2/regions <br class="wnarrow"
     ><span class="field">|</span> rcl query
-<div class="focus-marker"><span id="in2" spellcheck="false" class="highlight">input.regions.key_by(r =&gt; r.id).nrt</span></div>
-</code><div id="out2"><code>{
+<div class="focus-marker"><span id="in2" spellcheck="false" class="highlight">input.regions.key_by(r =&gt; r.id).nrt</span></div></code><div id="out2"><code>{
   <span class="field">city</span> = <span class="string">"Tokyo"</span>,
   <span class="field">continent</span> = <span class="string">"Asia"</span>,
   <span class="field">country</span> = <span class="string">"JP"</span>,
