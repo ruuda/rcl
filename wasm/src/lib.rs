@@ -26,13 +26,6 @@ extern "C" {
     fn append_span(node: &Node, class: &str, text: &str);
 }
 
-// A way for JS to hold on to an RCL value in the Rust heap.
-#[wasm_bindgen]
-pub struct ValueRef {
-    #[wasm_bindgen(skip)]
-    pub value: Value,
-}
-
 /// Return the class name for a markup span in the output.
 fn markup_class(markup: Markup) -> &'static str {
     match markup {
@@ -113,7 +106,45 @@ fn rcl_evaluate_value_impl(input: &str) -> Result<Value> {
 }
 
 #[wasm_bindgen]
-pub fn rcl_evaluate_value(input: &str) -> ValueRef {
+pub fn rcl_evaluate_query_value(input: &str) -> *mut Value {
     let value = rcl_evaluate_value_impl(input).expect("Input should be known good.");
-    ValueRef { value }
+    // The js on the page calls this once and then holds on to the value for
+    // the remainder of the page. We leak it intentionally here.
+    Box::leak(Box::new(value)) as *mut Value
+}
+
+fn rcl_evaluate_query_impl<'a>(
+    loader: &'a mut Loader,
+    input: &'a Value,
+    query: &'a str,
+    out_node: &Node,
+) -> Result<()> {
+    loader.set_filesystem(Box::new(VoidFilesystem));
+    let id = loader.load_string(query.to_string());
+    let mut tracer = VoidTracer;
+    let mut evaluator = Evaluator::new(loader, &mut tracer);
+    let mut type_env = rcl::typecheck::prelude();
+    let mut value_env = rcl::runtime::prelude();
+
+    // Provide the value that we previously set in the environment.
+    type_env.push("input".into(), rcl::typecheck::type_any().clone());
+    value_env.push("input".into(), input.clone());
+
+    let value = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
+    let doc = rcl::fmt_rcl::format_rcl(&value);
+    pprint_doc(doc, out_node);
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub fn rcl_evaluate_query(input: *const Value, query: &str, out_node: &Node) {
+    // Safety: We assume here that the caller passes the result of evaluate_query_value.
+    let input_val: &Value = unsafe { &(*input) };
+    let mut loader = Loader::new();
+    let result = rcl_evaluate_query_impl(&mut loader, input_val, query, out_node);
+    if let Err(err) = result {
+        let inputs = loader.as_inputs();
+        let err_doc = err.report(&inputs);
+        pprint_doc(err_doc, out_node);
+    }
 }
