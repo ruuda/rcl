@@ -261,18 +261,27 @@
     border-left: var(--vsep) solid var(--outline);
   }
 
-  .demo .span-l2 {
+  .focus-marker {
     border: 3px solid transparent;
   }
-  .demo .span-l2:has(code:focus-visible) {
+  .focus-marker:has(code:focus-visible), .focus-marker:has(span:focus-visible) {
     border: 3px solid var(--outline);
   }
-  .demo pre code:focus-visible {
+  .focus-marker code:focus-visible, .focus-marker span:focus-visible {
     outline: none;
   }
 
+  #in2 {
+    /* Compensate for the transparent border. */
+    margin-left: -3px;
+    margin-right: -3px;
+  }
+  #in2:before, #in2:after {
+    content: "'";
+  }
+
   .demo pre {
-    width: min-content;
+    min-width: min-content;
     /* The regular margin is a bit much for the snippet,
        instead apply the small margin twice. */
     padding: var(--margin-small);
@@ -415,8 +424,8 @@
     <div class="span-full">
       <h3>rcl evaluate --format=json</h3>
     </div>
-    <div class="span-l2">
-      <pre><code id="input" spellcheck="false">let base_config = {
+    <div class="span-l2 focus-marker">
+      <pre><code id="in1" spellcheck="false">let base_config = {
   zone_id = 42,
   type = "A",
   value = "93.184.216.34",
@@ -430,7 +439,7 @@
 }</code></pre>
     </div>
   <div class="span-r2">
-    <pre id="output"><code>{
+    <pre id="out1"><code>{
   <span class="field">"a_record_docs_42"</span>: {
     <span class="field">"name"</span>: <span class="string">"docs"</span>,
     <span class="field">"type"</span>: <span class="string">"A"</span>,
@@ -461,9 +470,8 @@
     <div class="span-full"><pre><code><span class="field">$</span> curl --silent <br class="wxnarrow"
     >https://api.vultr.com/v2/regions <br class="wnarrow"
     ><span class="field">|</span> rcl query
-<span class="highlight">'input.regions.key_by(r =&gt; r.id).nrt'</span>
-
-{
+<div class="focus-marker"><span id="in2" spellcheck="false" class="highlight">input.regions.key_by(r =&gt; r.id).nrt</span></div>
+</code><div id="out2"><code>{
   <span class="field">city</span> = <span class="string">"Tokyo"</span>,
   <span class="field">continent</span> = <span class="string">"Asia"</span>,
   <span class="field">country</span> = <span class="string">"JP"</span>,
@@ -476,7 +484,7 @@
     <span class="string">"kubernetes"</span>,
   ],
 }
-</code></pre>
+</code></code></pre>
       </div>
     </div>
     <div class="span-full">
@@ -559,19 +567,29 @@
 <script>
   window.onload = function() {
     const { rcl_evaluate } = wasm_bindgen;
-    var loadingPromise = null;
-    var isLoaded = false;
+    var wasmPromise = null;
+    var wasmLoaded= false;
+    var jsonPromise = null;
+    var jsonLoaded = false;
 
-    async function ensureInitialized() {
-      if (loadingPromise === null) loadingPromise = wasm_bindgen();
-      await loadingPromise;
-      isLoaded = true;
+    async function ensureWasmInitialized() {
+      if (wasmLoaded) return;
+      if (wasmPromise === null) wasmPromise = wasm_bindgen();
+      await wasmPromise;
+      wasmLoaded = true;
+    }
+
+    async function ensureJsonInitialized() {
+      if (jsonLoaded) return;
+      if (jsonPromise === null) jsonPromise = fetch("/vultr.json");
+      await jsonPromise;
+      jsonLoaded = true;
     }
 
     async function onInput(inBox, outBox, evt) {
       // If the user started typing but the wasm module is still loading,
       // give some feedback about that.
-      if (!isLoaded) {
+      if (!wasmLoaded) {
         const msgNode = document.createElement("code");
         msgNode.textContent = "Loading WASM module ...";
         outBox.replaceChild(msgNode, outBox.firstChild);
@@ -579,25 +597,32 @@
 
       const input = evt.target.value;
       const outNode = document.createElement("code");
-      await ensureInitialized();
+      await ensureWasmInitialized();
       rcl_evaluate(inBox.textContent, outNode);
       outBox.replaceChild(outNode, outBox.firstChild);
     }
 
-    const inBox = document.getElementById("input");
-    const outBox = document.getElementById("output");
+    // Note, in1, in2, out1, out2 are all available as local variables because
+    // they have an id in the DOM. No need for getElementById any more.
 
     // Don't allow editing the examples before the page is fully loaded, because
     // then we miss edit events.
-    inBox.contentEditable = true;
+    in1.contentEditable = true;
+    in2.contentEditable = true;
 
     // We don't load the wasm module instantly. If somebody opens the page but
     // doesn't try to edit the example, we don't have to load the module. The
     // flip side is that there is a small delay when you start editing. We can
     // mitigate that somewhat by starting the load already when focus lands in
     // the editable area.
-    inBox.addEventListener("focus", () => ensureInitialized());
-    inBox.addEventListener("input", (evt) => onInput(inBox, outBox, evt));
+    in1.addEventListener("focus", () => ensureWasmInitialized());
+    in1.addEventListener("input", (evt) => onInput(in1, out1, evt));
+
+    in2.addEventListener("focus", () => {
+      ensureWasmInitialized();
+      ensureJsonInitialized();
+    });
+    in2.addEventListener("input", (evt) => onInput(in2, out2, evt));
   }
 </script>
 </html>
