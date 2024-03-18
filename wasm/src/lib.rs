@@ -45,25 +45,45 @@ fn markup_class(markup: Markup) -> &'static str {
     }
 }
 
+struct PrintConfig {
+    /// The width for formatting.
+    width: u32,
+    /// After how many bytes to stop outputting.
+    max_len: u32,
+}
+
 /// Pretty-print a document, append it as DOM nodes.
-fn pprint_doc(doc: Doc, out_node: &Node) {
-    // TODO: Make the print width configurable.
-    let cfg = pprint::Config { width: 60 };
-    let markup_string = doc.println(&cfg);
+fn pprint_doc(cfg: &PrintConfig, doc: Doc, out_node: &Node) {
+    let pprint_cfg = pprint::Config { width: cfg.width };
+    let markup_string = doc.println(&pprint_cfg);
     let mut markup = Markup::None;
     let mut buffer = String::new();
+    let mut n_written = 0_u32;
     for (f_str, f_markup) in markup_string.fragments.iter() {
         if markup != *f_markup {
             append_span(out_node, markup_class(markup), &buffer);
             buffer.clear();
             markup = *f_markup;
         }
+        n_written += f_str.len() as u32;
+        if n_written > cfg.max_len {
+            break;
+        }
         buffer.push_str(f_str);
     }
     append_span(out_node, markup_class(markup), &buffer);
+
+    if n_written > cfg.max_len {
+        append_span(
+            out_node,
+            "warning",
+            "...\nTruncated output to keep your browser fast.",
+        );
+    }
 }
 
 fn rcl_evaluate_json_impl<'a>(
+    cfg: &PrintConfig,
     loader: &'a mut Loader,
     input: &'a str,
     out_node: &Node,
@@ -76,20 +96,23 @@ fn rcl_evaluate_json_impl<'a>(
     let mut value_env = rcl::runtime::prelude();
     let value = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
     let full_span = loader.get_span(id);
-    // TODO: Make output format configurable.
     let doc = rcl::fmt_json::format_json(full_span, &value)?;
-    pprint_doc(doc, out_node);
+    pprint_doc(cfg, doc, out_node);
     Ok(())
 }
 
 #[wasm_bindgen]
-pub fn rcl_evaluate_json(input: &str, out_node: &Node) {
+pub fn rcl_evaluate_json(input: &str, out_node: &Node, out_width: u32, max_len: u32) {
     let mut loader = Loader::new();
-    let result = rcl_evaluate_json_impl(&mut loader, input, out_node);
+    let cfg = PrintConfig {
+        width: out_width,
+        max_len,
+    };
+    let result = rcl_evaluate_json_impl(&cfg, &mut loader, input, out_node);
     if let Err(err) = result {
         let inputs = loader.as_inputs();
         let err_doc = err.report(&inputs);
-        pprint_doc(err_doc, out_node);
+        pprint_doc(&cfg, err_doc, out_node);
     }
 }
 
@@ -114,6 +137,7 @@ pub fn rcl_evaluate_query_value(input: &str) -> *mut Value {
 }
 
 fn rcl_evaluate_query_impl<'a>(
+    cfg: &'a PrintConfig,
     loader: &'a mut Loader,
     input: &'a Value,
     query: &'a str,
@@ -132,19 +156,29 @@ fn rcl_evaluate_query_impl<'a>(
 
     let value = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
     let doc = rcl::fmt_rcl::format_rcl(&value);
-    pprint_doc(doc, out_node);
+    pprint_doc(cfg, doc, out_node);
     Ok(())
 }
 
 #[wasm_bindgen]
-pub fn rcl_evaluate_query(input: *const Value, query: &str, out_node: &Node) {
+pub fn rcl_evaluate_query(
+    input: *const Value,
+    query: &str,
+    out_node: &Node,
+    out_width: u32,
+    max_len: u32,
+) {
     // Safety: We assume here that the caller passes the result of evaluate_query_value.
     let input_val: &Value = unsafe { &(*input) };
+    let cfg = PrintConfig {
+        width: out_width,
+        max_len,
+    };
     let mut loader = Loader::new();
-    let result = rcl_evaluate_query_impl(&mut loader, input_val, query, out_node);
+    let result = rcl_evaluate_query_impl(&cfg, &mut loader, input_val, query, out_node);
     if let Err(err) = result {
         let inputs = loader.as_inputs();
         let err_doc = err.report(&inputs);
-        pprint_doc(err_doc, out_node);
+        pprint_doc(&cfg, err_doc, out_node);
     }
 }
