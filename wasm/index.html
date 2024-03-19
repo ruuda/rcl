@@ -5,7 +5,11 @@
     <script src='/rcl.js' async></script>
     <script>
       window.onload = function() {
-        const { rcl_evaluate } = wasm_bindgen;
+        const {
+          rcl_evaluate_json,
+          rcl_evaluate_query_value,
+          rcl_evaluate_query,
+        } = wasm_bindgen;
         async function run() {
           await wasm_bindgen();
           const input_box = document.getElementById("input");
@@ -13,7 +17,9 @@
           input_box.addEventListener("input", (evt) => {
             const input = evt.target.value;
             const out_node = document.createElement("code");
-            rcl_evaluate(input_box.textContent, out_node);
+            const out_width = 60;
+            const max_len = 5000;
+            rcl_evaluate_json(input_box.textContent, out_node, out_width, max_len);
             output_box.replaceChild(out_node, output_box.firstChild);
           });
         }
