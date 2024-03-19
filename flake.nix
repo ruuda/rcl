@@ -190,7 +190,12 @@
             cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "wasm";
             doCheck = false; # We already test the non-wasm build.
-            nativeBuildInputs = [ rustWasm pkgs.wasm-bindgen-cli pkgs.binaryen ];
+            nativeBuildInputs = [
+              pkgs.binaryen
+              pkgs.esbuild
+              pkgs.wasm-bindgen-cli
+              rustWasm
+            ];
 
             buildPhase =
               ''
@@ -210,6 +215,9 @@
                 --target no-modules \
                 --no-typescript \
                 target/rcl.wasm
+
+              cat ${./wasm/src/rcl_dom.js} $out/rcl.js | esbuild --minify > $out/bundle.js
+              mv $out/bundle.js $out/rcl.js
               '';
             installPhase = "echo 'Skipping default install phase.'";
           };
@@ -223,6 +231,7 @@
                 # cached version that does not depend on our patched pygments.
                 pkgs.python311Packages.black
                 pkgs.binaryen
+                pkgs.esbuild
                 pkgs.maturin
                 pkgs.nodejs  # Required for tree-sitter.
                 pkgs.rustup

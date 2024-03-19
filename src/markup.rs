@@ -109,7 +109,7 @@ pub fn switch_ansi(markup: Markup) -> &'static str {
 
 /// A string pieced together from fragments that have markup.
 pub struct MarkupString<'a> {
-    fragments: Vec<(&'a str, Markup)>,
+    pub fragments: Vec<(&'a str, Markup)>,
     // TODO: We could keep track of the length, then to_string could preallocate
     // a buffer of the right size.
 }

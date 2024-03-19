@@ -63,6 +63,11 @@ Generate the Javascript bindings:
       --no-typescript \
       target/rcl.wasm
 
+Concatenate the required source files (“bundling”) and minify them if desired:
+
+    cat wasm/src/rcl_dom.js target/web/rcl.js | esbuild --minify > target/web/bundle.js
+    mv target/web/{bundle,rcl}.js
+
 Put everything together:
 
     cp wasm/index.html target/web
