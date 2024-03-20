@@ -38,7 +38,6 @@ pub fn format_type(type_: &Type) -> Doc {
             format_types("[", [(None, &element_type.type_)], "]")
         },
 
-        // The function type.
         Type::Function(func) => concat! {
             format_types(
                 "(",
@@ -51,6 +50,18 @@ pub fn format_type(type_: &Type) -> Doc {
             " -> "
             format_type(&func.result.type_)
         },
+
+        Type::Union(union) => {
+            let mut parts = Vec::new();
+            for t in &union.elements {
+                if !parts.is_empty() {
+                    parts.push(Doc::Sep);
+                    parts.push("| ".into());
+                }
+                parts.push(format_type(&t.type_));
+            }
+            group! { indent! { Doc::Concat(parts) } }
+        }
     }
 }
 
