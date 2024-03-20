@@ -55,6 +55,9 @@ pub enum Type {
 
     /// A function.
     Function(Rc<Function>),
+
+    /// The union of multiple types.
+    Union(Rc<Union>),
 }
 
 impl Type {
@@ -82,6 +85,7 @@ impl Type {
             Type::List(..) => "List",
             Type::Set(..) => "Set",
             Type::Function(..) => "Function",
+            Type::Union(..) => "Union",
         }
     }
 }
@@ -316,6 +320,68 @@ impl Function {
     }
 }
 
+/// The elements of a `Union` type.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct Union {
+    // TODO: Ensure the elements are sorted and deduplicated on just type,
+    // meeting the sources if we have multiple.
+    // TODO: Enforce that none of the elements are unions, you need to flatten those.
+    pub elements: Vec<SourcedType>,
+}
+
+impl Union {
+    /// Is this union a subtype of a different union?
+    pub fn is_subtype_of_union(self: &Rc<Self>, other: &Rc<Union>) -> TypeDiff<Rc<Union>> {
+        // There are many things we could do here, both to optimize and to give
+        // more precise static type errors. But what is always correct to do is
+        // to say "we don’t know, defer to runtime check". Some ideas for
+        // optimizations: we could represent primitive types as a set, and check
+        // for subset.
+        TypeDiff::Defer(other.clone())
+    }
+
+    /// Is this union a subtype of a particular type?
+    ///
+    /// We can statically confirm that `self` is a subtype of `other` if all its
+    /// members are a subtype. We can also rule out that `self` is a subtype of
+    /// `other` if all of its members are not a subtype of `other`. If we have
+    /// mixed results, then we defer to runtime.
+    pub fn is_subtype_of(self: &Rc<Self>, other: &SourcedType) -> TypeDiff<SourcedType> {
+        if let Type::Union(_) = &other.type_ {
+            // See also `is_subtype_of_union`, if that implementation gets more
+            // advanced, we should call it here.
+            return TypeDiff::Defer(other.clone());
+        }
+
+        let mut all_ok = true;
+        let mut all_error = true;
+        for candidate in self.elements.iter() {
+            match candidate.is_subtype_of(other) {
+                TypeDiff::Ok(..) => all_error = false,
+                TypeDiff::Error(..) => all_ok = false,
+                TypeDiff::Defer(..) => {
+                    all_ok = false;
+                    all_error = false;
+                }
+            }
+        }
+
+        if all_ok {
+            // If all of the candidates are a subtype, then the entire union is
+            // a subtype. We could meet all the candidates and that might be a
+            // more precise type than the expected type, but it's also expensive
+            // to do, so we just return the expected type as the upper bound.
+            TypeDiff::Ok(other.clone())
+        } else if all_error {
+            unimplemented!("TODO: Make a TypeDiff::Union error variant.");
+        } else {
+            // If we can neither confirm nor deny statically, then we need to
+            // check at runtime.
+            TypeDiff::Defer(other.clone())
+        }
+    }
+}
+
 /// What side to explain the source of a type for.
 pub enum Side {
     Expected,
@@ -507,6 +573,42 @@ impl SourcedType {
                         }
                         TypeDiff::Error(err) => TypeDiff::Error(err),
                     }
+                }
+            }
+            (Type::Union(u1), Type::Union(u2)) => match u1.is_subtype_of_union(u2) {
+                TypeDiff::Ok(..) => TypeDiff::Ok(self.clone()),
+                TypeDiff::Defer(u) => {
+                    let styp = SourcedType {
+                        type_: Type::Union(u),
+                        source: Source::None,
+                    };
+                    TypeDiff::Defer(styp)
+                }
+                TypeDiff::Error(err) => TypeDiff::Error(err),
+            },
+            (Type::Union(u1), _) => u1.is_subtype_of(other),
+            (_, Type::Union(u2)) => {
+                // This is the reverse case of `Union::is_subtype_of`. We
+                // already know that `self` is not a union. If `self` is a
+                // subtype of *any* element of `u2`, then it is a subtype.
+                // If it is not a subtype of any, then it's certainly an error.
+                let mut all_error = true;
+                for candidate in u2.elements.iter() {
+                    match self.is_subtype_of(candidate) {
+                        TypeDiff::Ok(t) => return TypeDiff::Ok(t),
+                        TypeDiff::Error(..) => continue,
+                        TypeDiff::Defer(..) => all_error = false,
+                    }
+                }
+                if all_error {
+                    unimplemented!("TODO: Add a TypeDiff::Union error variant.");
+                } else {
+                    // If we can't prove statically that it's a subtype or error,
+                    // defer to runtime. Possibly the checks above ruled out some
+                    // error cases that we no longer need to check, and that
+                    // enable returning a more precise type. But for now, just
+                    // clone the expected type; it's cheaper too.
+                    TypeDiff::Defer(other.clone())
                 }
             }
 
