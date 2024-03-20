@@ -88,7 +88,16 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
                         })
                         .err()
                 },
-                // TODO: Add Union if we go the generic route.
+                "Union" => {
+                    span
+                        .error("Expected a concrete type, but found uninstantiated union type.")
+                        .with_help(concat! {
+                            "'" Doc::highlight("Union") "' without type parameters cannot be used directly."
+                            Doc::SoftBreak
+                            "Specify types to union, e.g. '" Doc::highlight("Union[Int, Null]") "'."
+                        })
+                        .err()
+                }
                 _ => span.error("Unknown type.").err(),
             }
         }
@@ -173,9 +182,24 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<
                 .err(),
         },
         "Union" => {
-            let union = Union {
-                elements: args.iter().cloned().collect(),
+            let elements = match args.len() {
+                0 => {
+                    return name_span
+                        .error("A union type cannot be empty.")
+                        .with_help("Use 'Void' for a type with no values.")
+                        .err()
+                }
+                1 => {
+                    return name_span
+                        .error("A union type must have more than one element.")
+                        .with_help(
+                            "A union of a single type is equivalent to just that type itself.",
+                        )
+                        .err()
+                }
+                _ => args.iter().cloned().collect(),
             };
+            let union = Union { elements };
             Ok(Type::Union(Rc::new(union)))
         }
 
