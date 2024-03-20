@@ -21,7 +21,7 @@ use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::type_diff::{report_type_mismatch, Typed};
 use crate::type_source::Source;
-use crate::types::{Dict, Function, FunctionArg, Side, SourcedType, Type};
+use crate::types::{Dict, Function, FunctionArg, Side, SourcedType, Type, Union};
 
 pub type Env = crate::env::Env<SourcedType>;
 
@@ -88,6 +88,7 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
                         })
                         .err()
                 },
+                // TODO: Add Union if we go the generic route.
                 _ => span.error("Unknown type.").err(),
             }
         }
@@ -171,6 +172,13 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<
                 })
                 .err(),
         },
+        "Union" => {
+            let union = Union {
+                elements: args.iter().cloned().collect(),
+            };
+            Ok(Type::Union(Rc::new(union)))
+        }
+
         _ => name_span.error("Unknown generic type.").err(),
     }
 }

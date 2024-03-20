@@ -72,12 +72,13 @@
 "values"
 
 # Builtin types.
+"Any"
 "Bool"
 "Dict"
-"Any"
 "Int"
 "List"
 "Null"
 "Set"
 "String"
+"Union"
 "Void"
