@@ -37,8 +37,11 @@ pub fn format_type(type_: &Type) -> Doc {
             Doc::from("Set").with_markup(Markup::Type)
             format_types("[", [(None, &element_type.type_)], "]")
         },
+        Type::Union(union) => concat! {
+            Doc::from("Union").with_markup(Markup::Type)
+            format_types("[", union.elements.iter().map(|st| (None, &st.type_)), "]")
+        },
 
-        // The function type.
         Type::Function(func) => concat! {
             format_types(
                 "(",
@@ -152,6 +155,15 @@ impl<'a> DiffFormatter<'a> {
                 let err_doc = concat! { "<E" self.errors.len().to_string() ">" };
                 err_doc.with_markup(Markup::Error)
             }
+            Mismatch::UnionActual {
+                expected: _,
+                actual,
+            } => concat! {
+                // The expected type is redundant, we don't use it when
+                // formatting inner errors.
+                Doc::from("Union").with_markup(Markup::Type)
+                Self::format_types("[", actual.iter(), "]", |m| self.format_mismatch(m))
+            },
             Mismatch::List(element) => concat! {
                 Doc::from("List").with_markup(Markup::Type)
                 Self::format_types("[", [element.as_ref()], "]", |t| self.format_type_diff(t))
