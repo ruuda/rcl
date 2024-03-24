@@ -353,18 +353,18 @@ impl Union {
             return TypeDiff::Defer(other.clone());
         }
 
-        let mut all_ok = true;
-        let mut all_error = true;
+        let mut n_ok: u32 = 0;
+        let mut errors = Vec::new();
+
         for candidate in self.elements.iter() {
             match candidate.is_subtype_of(other) {
-                TypeDiff::Ok(..) => all_error = false,
-                TypeDiff::Error(..) => all_ok = false,
-                TypeDiff::Defer(..) => {
-                    all_ok = false;
-                    all_error = false;
-                }
+                TypeDiff::Ok(..) => n_ok += 1,
+                TypeDiff::Error(err) => errors.push(err),
+                TypeDiff::Defer(..) => {}
             }
         }
+        let all_ok = n_ok == self.elements.len() as u32;
+        let all_error = errors.len() == self.elements.len();
 
         if all_ok {
             // If all of the candidates are a subtype, then the entire union is
@@ -373,7 +373,10 @@ impl Union {
             // to do, so we just return the expected type as the upper bound.
             TypeDiff::Ok(other.clone())
         } else if all_error {
-            unimplemented!("TODO: Make a TypeDiff::Union error variant.");
+            TypeDiff::Error(Mismatch::UnionActual {
+                actual: errors,
+                expected: other.clone(),
+            })
         } else {
             // If we can neither confirm nor deny statically, then we need to
             // check at runtime.
