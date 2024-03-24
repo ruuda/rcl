@@ -14,6 +14,13 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Next
+
+Unreleased.
+
+ * Add union types.
+ * The webassembly module can now output colored spans.
+
 ## 0.2.0
 
 Released 2024-03-15.
