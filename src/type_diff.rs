@@ -22,6 +22,12 @@ pub enum Mismatch {
         actual: SourcedType,
     },
 
+    /// The actual type is a union, and none of the elements are a subtype of `U`.
+    UnionActual {
+        expected: SourcedType,
+        actual: Vec<Mismatch>,
+    },
+
     /// Both sides are a list, but the element type has an issue.
     List(Box<TypeDiff<SourcedType>>),
 
@@ -108,6 +114,8 @@ impl<T> TypeDiff<T> {
                 }
                 error.err()
             }
+            // TODO: Add special case for when the nested diff found a union
+            // but expected something else.
             TypeDiff::Error(diff) => {
                 // If the error is nested somewhere inside a type, then we
                 // resort to a more complex format where we first print the
