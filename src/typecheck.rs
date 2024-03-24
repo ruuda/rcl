@@ -15,7 +15,7 @@
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, Ident, Seq, Stmt, Type as AType, UnOp, Yield};
-use crate::error::{IntoError, Result};
+use crate::error::{Error, IntoError, Result};
 use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
@@ -46,6 +46,20 @@ fn get_primitive_type(name: &str) -> Option<Type> {
     }
 }
 
+fn error_uninstantiated_generic(
+    span: Span,
+    type_name: &'static str,
+    elem_name: &'static str,
+    example: &'static str,
+) -> Error {
+    span.error("Expected a concrete type, but found uninstantiated generic type.")
+        .with_help(concat! {
+            "'" Doc::highlight(type_name) "' without type parameters cannot be used directly."
+            Doc::SoftBreak
+            "Specify " elem_name " type, e.g. '" Doc::highlight(example) "'."
+        })
+}
+
 /// Parse a type expression.
 fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
     match expr {
@@ -58,36 +72,26 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
                 return Ok(styp);
             }
             match name.as_ref() {
-                "Dict" => {
-                    span
-                        .error("Expected a concrete type, but found uninstantiated generic type.")
-                        .with_help(concat! {
-                            "'" Doc::highlight("Dict") "' without type parameters cannot be used directly."
-                            Doc::SoftBreak
-                            "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Int]") "'."
-                        })
-                        .err()
-                },
+                "Dict" => error_uninstantiated_generic(
+                    *span,
+                    "Dict",
+                    "a key and value",
+                    "Dict[String, Int]",
+                )
+                .err(),
                 "List" => {
-                    span
-                        .error("Expected a concrete type, but found uninstantiated generic type.")
-                        .with_help(concat! {
-                            "'" Doc::highlight("List") "' without type parameters cannot be used directly."
-                            Doc::SoftBreak
-                            "Specify an element type, e.g. '" Doc::highlight("List[String]") "'."
-                        })
-                        .err()
-                },
+                    error_uninstantiated_generic(*span, "List", "an element", "List[String]").err()
+                }
                 "Set" => {
-                    span
-                        .error("Expected a concrete type, but found uninstantiated generic type.")
-                        .with_help(concat! {
-                            "'" Doc::highlight("Set") "' without type parameters cannot be used directly."
-                            Doc::SoftBreak
-                            "Specify an element type, e.g. '" Doc::highlight("Set[String]") "'."
-                        })
-                        .err()
-                },
+                    error_uninstantiated_generic(*span, "Set", "an element", "Set[String]").err()
+                }
+                "Collection" => error_uninstantiated_generic(
+                    *span,
+                    "Collection",
+                    "an element",
+                    "Collection[String]",
+                )
+                .err(),
                 _ => span.error("Unknown type.").err(),
             }
         }
@@ -132,6 +136,11 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
 
 /// Evaluate type constructor application (generic instantiation).
 fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<Type> {
+    let err_collection = |msg: &'static str| {
+        name_span
+            .error(concat! { msg args.len().to_string() "." })
+            .err()
+    };
     match name {
         "Dict" => match args {
             [tk, tv] => {
@@ -141,35 +150,23 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<
                 };
                 Ok(Type::Dict(Rc::new(dict)))
             }
-            // TODO: We can point at the excess or missing arg for a
-            // friendlier error, but better to do that in a general way
-            // when we add arbitrary type contructors to `types::Type`.
-            _ => name_span
-                .error(concat! {
-                    "Type 'Dict' takes two type parameters (key and value), but got "
-                    args.len().to_string() "."
-                })
-                .err(),
+            _ => err_collection("Type 'Dict' takes two type parameters (key and value), but got "),
         },
         "List" => match args {
             [te] => Ok(Type::List(Rc::new(te.clone()))),
-            // TODO: As above for dict, we can do a better job of the error.
-            _ => name_span
-                .error(concat! {
-                    "Type 'List' takes one type parameter (the element type), but got "
-                    args.len().to_string() "."
-                })
-                .err(),
+            _ => {
+                err_collection("Type 'List' takes one type parameter (the element type), but got ")
+            }
         },
         "Set" => match args {
             [te] => Ok(Type::Set(Rc::new(te.clone()))),
-            // TODO: As above for dict, we can do a better job of the error.
-            _ => name_span
-                .error(concat! {
-                    "Type 'Set' takes one type parameter (the element type), but got "
-                    args.len().to_string() "."
-                })
-                .err(),
+            _ => err_collection("Type 'Set' takes one type parameter (the element type), but got "),
+        },
+        "Collection" => match args {
+            [te] => Ok(Type::Collection(Rc::new(te.clone()))),
+            _ => err_collection(
+                "Type 'Collection' takes one type parameter (the element type), but got ",
+            ),
         },
         _ => name_span.error("Unknown generic type.").err(),
     }
@@ -265,7 +262,7 @@ impl<'a> TypeChecker<'a> {
                 let mut is_error = false;
                 // If we have a requirement on the element type, extract it.
                 let mut seq_type = match &expected.type_ {
-                    Type::Set(t) => SeqType::TypedSet {
+                    Type::Set(t) | Type::Collection(t) => SeqType::TypedSet {
                         set_source: expected.clone(),
                         elem_super: t.as_ref().clone(),
                         elem_infer: SourcedType::void(expr_span),
@@ -320,7 +317,7 @@ impl<'a> TypeChecker<'a> {
                 // This follows the same structure as `BraceLit`, see comments above.
                 let mut is_error = false;
                 let mut seq_type = match &expected.type_ {
-                    Type::List(t) => SeqType::TypedList {
+                    Type::List(t) | Type::Collection(t) => SeqType::TypedList {
                         elem_super: t.as_ref().clone(),
                         elem_infer: SourcedType::void(expr_span),
                     },

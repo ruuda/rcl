@@ -37,6 +37,10 @@ pub fn format_type(type_: &Type) -> Doc {
             Doc::from("Set").with_markup(Markup::Type)
             format_types("[", [(None, &element_type.type_)], "]")
         },
+        Type::Collection(element_type) => concat! {
+            Doc::from("Collection").with_markup(Markup::Type)
+            format_types("[", [(None, &element_type.type_)], "]")
+        },
 
         // The function type.
         Type::Function(func) => concat! {
@@ -158,6 +162,10 @@ impl<'a> DiffFormatter<'a> {
             },
             Mismatch::Set(element) => concat! {
                 Doc::from("Set").with_markup(Markup::Type)
+                Self::format_types("[", [element.as_ref()], "]", |t| self.format_type_diff(t))
+            },
+            Mismatch::Collection(element) => concat! {
+                Doc::from("Collection").with_markup(Markup::Type)
                 Self::format_types("[", [element.as_ref()], "]", |t| self.format_type_diff(t))
             },
             Mismatch::Dict(key, value) => concat! {
