@@ -601,7 +601,15 @@ impl SourcedType {
                     }
                 }
                 if all_error {
-                    unimplemented!("TODO: Add a TypeDiff::Union error variant.");
+                    // TODO: There should be better ways of reporting this.
+                    // If we expect e.g. `Union[List[T], Set[T]]`, and we have
+                    // a `List[U]`, then normally we would report an inner
+                    // mismatch inside List and an Atom on T and U, but with the
+                    // union we throw away all of those.
+                    TypeDiff::Error(Mismatch::Atom {
+                        expected: other.clone(),
+                        actual: self.clone(),
+                    })
                 } else {
                     // If we can't prove statically that it's a subtype or error,
                     // defer to runtime. Possibly the checks above ruled out some
