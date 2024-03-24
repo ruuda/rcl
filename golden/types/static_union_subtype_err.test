@@ -1,0 +1,5 @@
+let a0: Union[Null, Int] = "neither";
+a0
+
+# output:
+TODO

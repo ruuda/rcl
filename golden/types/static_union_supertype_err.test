@@ -1,0 +1,6 @@
+let a0: Union[Null, Int] = null;
+let b0: String = a0;
+b0
+
+# output:
+null
