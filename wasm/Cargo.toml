@@ -9,6 +9,10 @@ description = "WASM entry points for RCL functionality."
 [lib]
 crate-type = ["cdylib"]
 
+[dependencies]
+tree-sitter-highlight = "0.20.1"
+tree-sitter-rcl = { path = "../grammar/tree-sitter-rcl" }
+
 [dependencies.wasm-bindgen]
 version = "=0.2.84"
 default-features = false

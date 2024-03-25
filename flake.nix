@@ -186,7 +186,7 @@
           rcl-wasm = pkgs.rustPlatform.buildRustPackage rec {
             inherit version;
             name = "rcl-wasm";
-            src = rustSources;
+            src = rustSourcesAll;
             cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "wasm";
             doCheck = false; # We already test the non-wasm build.
@@ -212,7 +212,7 @@
 
               wasm-bindgen \
                 --out-dir $out \
-                --target no-modules \
+                --target web \
                 --no-typescript \
                 target/rcl.wasm
 

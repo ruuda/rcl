@@ -16,6 +16,7 @@ use rcl::markup::Markup;
 use rcl::pprint::{self, Doc};
 use rcl::runtime::Value;
 use rcl::tracer::VoidTracer;
+use tree_sitter_highlight::{HighlightConfiguration, HighlightEvent, Highlighter};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]
@@ -181,4 +182,85 @@ pub fn rcl_evaluate_query(
         let err_doc = err.report(&inputs);
         pprint_doc(&cfg, err_doc, out_node);
     }
+}
+
+// The scopes in the highlight query that need reporting, and then after that,
+// in the same order, the markup to apply to those scopes.
+const SCOPE_NAMES: [&str; 8] = [
+    "keyword",
+    "comment",
+    "number",
+    "constant",
+    "string",
+    "string.special",
+    "property",
+    "type",
+];
+const SCOPE_MARKUPS: [Markup; 8] = [
+    Markup::Keyword,
+    Markup::Comment,
+    Markup::Number,
+    Markup::Keyword,
+    Markup::String,
+    Markup::Error,
+    Markup::Field,
+    Markup::Type,
+];
+
+#[wasm_bindgen]
+pub fn rcl_highlight_init() -> *mut HighlightConfiguration {
+    let injections_query = "";
+    let locals_query = "";
+    let mut config = HighlightConfiguration::new(
+        tree_sitter_rcl::language(),
+        tree_sitter_rcl::HIGHLIGHTS_QUERY,
+        injections_query,
+        locals_query,
+    )
+    .expect("Failed to initialize highlighter.");
+    config.configure(&SCOPE_NAMES);
+
+    Box::leak(Box::new(config)) as *mut HighlightConfiguration
+}
+
+#[wasm_bindgen]
+pub fn rcl_highlight(config: *const HighlightConfiguration, input: &str, out_node: &Node) {
+    // Safety: We assume here that the caller passes the result of rcl_init_highlighter.
+    let config: &HighlightConfiguration = unsafe { &(*config) };
+
+    let mut highlighter = Highlighter::new();
+    let cancellation_flag = None;
+    let injection_callback = |span: &str| None;
+    let events = highlighter
+        .highlight(
+            config,
+            input.as_bytes(),
+            cancellation_flag,
+            injection_callback,
+        )
+        .expect("Failed to highlight.");
+
+    let mut markup = Markup::None;
+    let mut buffer = String::new();
+
+    for event_result in events {
+        // Errors at this level should not happen, if the document contains
+        // invalid syntax, that is a node that would be highlighted as error.
+        match event_result.expect("Failed to highlight") {
+            HighlightEvent::HighlightStart(h) => {
+                append_span(out_node, markup_class(markup), &buffer);
+                buffer.clear();
+                markup = SCOPE_MARKUPS[h.0];
+            }
+            HighlightEvent::Source { start, end } => {
+                buffer.push_str(&input[start..end]);
+            }
+            HighlightEvent::HighlightEnd => {
+                append_span(out_node, markup_class(markup), &buffer);
+                buffer.clear();
+                markup = Markup::None;
+            }
+        }
+    }
+    append_span(out_node, markup_class(markup), &buffer);
 }
