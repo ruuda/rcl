@@ -329,14 +329,9 @@ impl App {
                 let doc = self.loader.load_cli_target(&fname)?;
                 let tokens = self.loader.get_tokens(doc)?;
                 let data = self.loader.get_doc(doc).data;
-                let mut stdout = std::io::stdout().lock();
-                // TODO: Make this based on the pretty-printer.
-                let res = rcl::highlight::highlight(&mut stdout, &tokens, data);
-                if res.is_err() {
-                    // If we fail to print to stdout, there is no point in printing
-                    // an error, just exit then.
-                    std::process::exit(1);
-                }
+                let result = rcl::highlight::highlight(&tokens, data);
+                let mut out = std::io::stdout().lock();
+                self.print_string(MarkupMode::Ansi, result, &mut out);
                 Ok(())
             }
 
