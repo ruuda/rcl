@@ -573,6 +573,7 @@
       rcl_evaluate_json,
       rcl_evaluate_query_value,
       rcl_evaluate_query,
+      rcl_highlight,
     } = wasm_bindgen;
 
     var wasmPromise = null;
@@ -608,7 +609,7 @@
       return jsonValue;
     }
 
-    async function onInputEvaluate(inBox, outBox, evt) {
+    async function onInputEvaluate(inBox, outBox) {
       // If the user started typing but the wasm module is still loading,
       // give some feedback about that.
       if (!wasmLoaded) {
@@ -617,7 +618,6 @@
         outBox.replaceChild(msgNode, outBox.firstChild);
       }
 
-      const input = evt.target.value;
       const outNode = document.createElement("code");
       await ensureWasmInitialized();
       rcl_evaluate_json(inBox.textContent, outNode, printWidth, maxLen);
@@ -642,6 +642,19 @@
       outBox.replaceChild(outNode, outBox.firstChild);
     }
 
+    async function onInputHighlight(inBox, outBox) {
+      const outNode = document.createElement("code");
+
+      if (!wasmLoaded) {
+        // If the user started typing but the wasm module is still loading, then
+        // we don't highlight for now. Instant feedback is more important.
+        outNode.textContent = inBox.textContent;
+      } else {
+        rcl_highlight(inBox.textContent, outNode);
+      }
+      outBox.replaceChild(outNode, outBox.firstChild);
+    }
+
     // Note, in1, in2, out1, out2 are all available as local variables because
     // they have an id in the DOM. No need for getElementById any more.
 
@@ -656,7 +669,8 @@
     // mitigate that somewhat by starting the load already when focus lands in
     // the editable area.
     in1.addEventListener("focus", () => ensureWasmInitialized());
-    in1.addEventListener("input", (evt) => onInputEvaluate(in1, out1, evt));
+    in1.addEventListener("input", (evt) => onInputEvaluate(in1, out1));
+    // FIXME in1.addEventListener("input", (evt) => onInputHighlight(in1, shadow1));
 
     in2.addEventListener("focus", () => ensureJsonValue());
     in2.addEventListener("input", (evt) => onInputQuery(in2, out2, evt));
