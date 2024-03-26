@@ -304,6 +304,16 @@
   code span.field { color: var(--syn-accent); }
   code span.number { color: var(--syn-blue); }
 
+  .edit-contain {
+    position: relative;
+  }
+  .edit-front {
+    position: absolute;
+    top: 0;
+    caret-color: #fff;
+    color: transparent;
+  }
+
   footer {
     padding-top: var(--margin-large);
     opacity: 0.6;
@@ -424,8 +434,10 @@
     <div class="span-full">
       <h3>rcl evaluate --format=json</h3>
     </div>
-    <div class="span-l2 focus-marker">
-      <pre><code id="in1" spellcheck="false">let base_config = {
+    <div class="span-l2 focus-marker edit-contain">
+      <!-- TODO: Add syntax highlighted initial input -->
+      <pre class="edit-back" id="shadow1"><code>Hi</code></pre>
+      <pre class="edit-front"><code id="in1" spellcheck="false">let base_config = {
   zone_id = 42,
   type = "A",
   value = "93.184.216.34",
@@ -453,7 +465,7 @@
     <span class="field">"zone_id"</span>: <span class="number">42</span>
   }
 }
-</code></pre>
+  </code></pre>
     </div></div>
   </section>
   <section class="grid">
@@ -667,7 +679,7 @@
     // the editable area.
     in1.addEventListener("focus", () => ensureWasmInitialized());
     in1.addEventListener("input", (evt) => onInputEvaluate(in1, out1));
-    // FIXME in1.addEventListener("input", (evt) => onInputHighlight(in1, shadow1));
+    in1.addEventListener("input", (evt) => onInputHighlight(in1, shadow1));
 
     in2.addEventListener("focus", () => ensureJsonValue());
     in2.addEventListener("input", (evt) => onInputQuery(in2, out2, evt));
