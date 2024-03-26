@@ -11,12 +11,12 @@
 
 use rcl::error::Result;
 use rcl::eval::Evaluator;
+use rcl::highlight::highlight;
 use rcl::loader::{Loader, VoidFilesystem};
-use rcl::markup::Markup;
+use rcl::markup::{Markup, MarkupString};
 use rcl::pprint::{self, Doc};
 use rcl::runtime::Value;
 use rcl::tracer::VoidTracer;
-use tree_sitter_highlight::{HighlightConfiguration, HighlightEvent, Highlighter};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]
@@ -53,10 +53,8 @@ struct PrintConfig {
     max_len: u32,
 }
 
-/// Pretty-print a document, append it as DOM nodes.
-fn pprint_doc(cfg: &PrintConfig, doc: Doc, out_node: &Node) {
-    let pprint_cfg = pprint::Config { width: cfg.width };
-    let markup_string = doc.println(&pprint_cfg);
+/// Output the marked-up strings as spans into the output DOM node.
+fn print_markup(max_len: u32, markup_string: &MarkupString, out_node: &Node) {
     let mut markup = Markup::None;
     let mut buffer = String::new();
     let mut n_written = 0_u32;
@@ -67,20 +65,27 @@ fn pprint_doc(cfg: &PrintConfig, doc: Doc, out_node: &Node) {
             markup = *f_markup;
         }
         n_written += f_str.len() as u32;
-        if n_written > cfg.max_len {
+        if n_written > max_len {
             break;
         }
         buffer.push_str(f_str);
     }
     append_span(out_node, markup_class(markup), &buffer);
 
-    if n_written > cfg.max_len {
+    if n_written > max_len {
         append_span(
             out_node,
             "warning",
             "...\nTruncated output to keep your browser fast.",
         );
     }
+}
+
+/// Pretty-print a document, append it as DOM nodes.
+fn pprint_doc(cfg: &PrintConfig, doc: Doc, out_node: &Node) {
+    let pprint_cfg = pprint::Config { width: cfg.width };
+    let markup_string = doc.println(&pprint_cfg);
+    print_markup(cfg.max_len, &markup_string, out_node);
 }
 
 fn rcl_evaluate_json_impl<'a>(
@@ -184,83 +189,27 @@ pub fn rcl_evaluate_query(
     }
 }
 
-// The scopes in the highlight query that need reporting, and then after that,
-// in the same order, the markup to apply to those scopes.
-const SCOPE_NAMES: [&str; 8] = [
-    "keyword",
-    "comment",
-    "number",
-    "constant",
-    "string",
-    "string.special",
-    "property",
-    "type",
-];
-const SCOPE_MARKUPS: [Markup; 8] = [
-    Markup::Keyword,
-    Markup::Comment,
-    Markup::Number,
-    Markup::Keyword,
-    Markup::String,
-    Markup::Error,
-    Markup::Field,
-    Markup::Type,
-];
-
-#[wasm_bindgen]
-pub fn rcl_highlight_init() -> *mut HighlightConfiguration {
-    let injections_query = "";
-    let locals_query = "";
-    let mut config = HighlightConfiguration::new(
-        tree_sitter_rcl::language(),
-        tree_sitter_rcl::HIGHLIGHTS_QUERY,
-        injections_query,
-        locals_query,
-    )
-    .expect("Failed to initialize highlighter.");
-    config.configure(&SCOPE_NAMES);
-
-    Box::leak(Box::new(config)) as *mut HighlightConfiguration
+fn rcl_highlight_impl(loader: &mut Loader, input: &str, out_node: &Node) -> Result<()> {
+    loader.set_filesystem(Box::new(VoidFilesystem));
+    let id = loader.load_string(input.to_string());
+    let tokens = loader.get_tokens(id)?;
+    let result = highlight(&tokens, loader.get_doc(id).data);
+    // For highlighting input, not output, it should not be so easy to
+    // accidentally create a very long document, so the input is big,
+    // it's probably intentional, then let's use a "big" limit.
+    let max_len = 128 * 4096;
+    print_markup(max_len, &result, out_node);
+    Ok(())
 }
 
 #[wasm_bindgen]
-pub fn rcl_highlight(config: *const HighlightConfiguration, input: &str, out_node: &Node) {
-    // Safety: We assume here that the caller passes the result of rcl_init_highlighter.
-    let config: &HighlightConfiguration = unsafe { &(*config) };
+pub fn rcl_highlight(input: &str, out_node: &Node) {
+    let mut loader = Loader::new();
+    let result = rcl_highlight_impl(&mut loader, input, out_node);
 
-    let mut highlighter = Highlighter::new();
-    let cancellation_flag = None;
-    let injection_callback = |span: &str| None;
-    let events = highlighter
-        .highlight(
-            config,
-            input.as_bytes(),
-            cancellation_flag,
-            injection_callback,
-        )
-        .expect("Failed to highlight.");
-
-    let mut markup = Markup::None;
-    let mut buffer = String::new();
-
-    for event_result in events {
-        // Errors at this level should not happen, if the document contains
-        // invalid syntax, that is a node that would be highlighted as error.
-        match event_result.expect("Failed to highlight") {
-            HighlightEvent::HighlightStart(h) => {
-                append_span(out_node, markup_class(markup), &buffer);
-                buffer.clear();
-                markup = SCOPE_MARKUPS[h.0];
-            }
-            HighlightEvent::Source { start, end } => {
-                buffer.push_str(&input[start..end]);
-            }
-            HighlightEvent::HighlightEnd => {
-                append_span(out_node, markup_class(markup), &buffer);
-                buffer.clear();
-                markup = Markup::None;
-            }
-        }
+    // In case of an error in the lexer (e.g. unbalanced brackets), we should
+    // still put the input text in the output node, we just don't highlight it.
+    if let Err(..) = result {
+        append_span(out_node, "text", input)
     }
-    append_span(out_node, markup_class(markup), &buffer);
 }
