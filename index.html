@@ -345,14 +345,14 @@
   <span class="comment">// features in a limited space.</span>
   <span class="keyword">let</span> data: <span class="type">List</span>[<span class="type">String</span>] = <span class="narrow">
     </span><span class="keyword">import</span> <span class="string">"data.rcl"</span>;
+  <span class="keyword">assert</span>
+    data.contains(<span class="string">"Assertions"</span>),
+    <span class="string">"Assertions are supported"</span>;
   <span class="keyword">let</span> f = () => [<span class="xnarrow">
     </span><span class="string">"List"</span>, <span class="xnarrow">
     </span><span class="string">"Dict"</span>, <span class="xnarrow">
     </span><span class="string">"Set"</span><span class="xnarrow">
   </span>];
-  <span class="keyword">assert</span>
-    data.contains(<span class="string">"Assertions"</span>),
-    <span class="string">"Assertions are supported"</span>;
   <span class="field">features</span> = [
     <span class="keyword">for</span> d <span class="keyword">in</span> data: d,
     <span class="keyword">for</span> collection <span class="keyword">in</span> f():
