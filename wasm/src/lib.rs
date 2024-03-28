@@ -16,6 +16,7 @@ use rcl::loader::{Loader, VoidFilesystem};
 use rcl::markup::{Markup, MarkupString};
 use rcl::pprint::{self, Doc};
 use rcl::runtime::Value;
+use rcl::source::Span;
 use rcl::tracer::VoidTracer;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -189,27 +190,131 @@ pub fn rcl_evaluate_query(
     }
 }
 
-fn rcl_highlight_impl(loader: &mut Loader, input: &str, out_node: &Node) -> Result<()> {
+/// An edit to transform a string `before` into `after`.
+///
+/// An edit consists of a _delete_ followed by an _insert_:
+///
+/// * Delete `before[off..del]`.
+/// * Insert `after[off..ins]` at `before[off]`.
+struct Edit {
+    off: usize,
+    /// The first index in `before` that is no longer part of the delete.
+    del: usize,
+    /// The first index in `after` that is no longer part of the insert.
+    ins: usize,
+}
+
+impl Edit {
+    /// Transform a span to move with the edit.
+    #[inline(always)]
+    fn apply(&self, span: Span) -> Span {
+        if span.end() <= self.off {
+            // Still before the edit, nothing to change here.
+            return span;
+        }
+
+        if span.start() >= self.del {
+            // The span is entirely after the edit, we only need to move it.
+            return Span::new(
+                span.doc(),
+                span.start() + self.ins - self.del,
+                span.end() + self.ins - self.del,
+            );
+        }
+
+        if span.end() > self.del {
+            // The delete starts in this span but extends across, so we truncate
+            // this span.
+            return Span::new(span.doc(), span.start(), self.del);
+        }
+
+        if span.start() > self.off {
+            // The delete starts before this span, but ends inside.
+            return Span::new(span.doc(), self.del, span.end() + self.ins - self.del);
+        }
+
+        // The delete lies entirely within this span.
+        Span::new(span.doc(), span.start(), span.end() + self.ins - self.del)
+    }
+}
+
+/// Returns the range that has changed from `before` to `after`.
+///
+/// Returns `(off, ins, del)` such that `before[..off] == after[..off]`, and
+/// then we either copy `ins` bytes from `after[off..]`, or skip `del` bytes
+/// from `before[off..]`, and then we copy the remainder from `before`.
+fn get_changes(before: &str, after: &str) -> Edit {
+    let off = after
+        .as_bytes()
+        .iter()
+        .zip(before.as_bytes())
+        .take_while(|(cx, cy)| *cx == *cy)
+        .count();
+
+    // After the prefix, there is a new piece of this length:
+    let insert_len = after.len() - off;
+
+    // But the new piece might not be entirely new, it might share a suffix
+    // with the old input.
+    let suffix_len = after
+        .as_bytes()
+        .iter()
+        .rev()
+        .zip(before.as_bytes().iter().rev())
+        .take_while(|(cx, cy)| *cx == *cy)
+        .count()
+        .min(insert_len);
+
+    let insert_len = insert_len - suffix_len;
+    let delete_len = before.len() - (off + suffix_len);
+
+    Edit {
+        off,
+        del: off + delete_len,
+        ins: off + insert_len,
+    }
+}
+
+/// Run the lexer, apply syntax highlighting, output into `out_node`.
+///
+/// It might happen that the lexer fails with a parse error. In particular, this
+/// happens on unbalanced brackets and unclosed strings. If we don't highlight
+/// at all if the input contains an error, that’s not a great user experience.
+/// As a hack to improve that a little, we also accept a known-good input. If
+/// lexing fails, we take the known-good input and use unstyled tokens for the
+/// changes.
+///
+/// Returns whether the current input is good (and could be used as a known-good
+/// input for a next input).
+#[wasm_bindgen]
+pub fn rcl_highlight(input: &str, good_input: &str, out_node: &Node) -> bool {
+    let mut loader = Loader::new();
     loader.set_filesystem(Box::new(VoidFilesystem));
+
     let id = loader.load_string(input.to_string());
-    let tokens = loader.get_tokens(id)?;
+    let mut is_good = true;
+
+    let tokens = match loader.get_tokens(id) {
+        Ok(ts) => ts,
+        Err(..) => {
+            is_good = false;
+            let id_good = loader.load_string(good_input.to_string());
+            let mut tokens = loader.get_tokens(id_good).expect("Good input is lexable.");
+            let edit = get_changes(good_input, input);
+            for (_token, span) in tokens.iter_mut() {
+                *span = edit.apply(*span);
+            }
+            tokens
+        }
+    };
+
     let result = highlight(&tokens, loader.get_doc(id).data);
+
     // For highlighting input, not output, it should not be so easy to
     // accidentally create a very long document, so the input is big,
     // it's probably intentional, then let's use a "big" limit.
     let max_len = 128 * 4096;
     print_markup(max_len, &result, out_node);
-    Ok(())
-}
 
-#[wasm_bindgen]
-pub fn rcl_highlight(input: &str, out_node: &Node) {
-    let mut loader = Loader::new();
-    let result = rcl_highlight_impl(&mut loader, input, out_node);
-
-    // In case of an error in the lexer (e.g. unbalanced brackets), we should
-    // still put the input text in the output node, we just don't highlight it.
-    if let Err(..) = result {
-        append_span(out_node, "text", input)
-    }
+    is_good
 }
