@@ -678,8 +678,11 @@
     // mitigate that somewhat by starting the load already when focus lands in
     // the editable area.
     in1.addEventListener("focus", () => ensureWasmInitialized());
-    in1.addEventListener("input", (evt) => onInputEvaluate(in1, out1));
+    // As for typing, we first handle the input event for highlighting, and only
+    // after that we compute the result. Evaluate takes ~3ms but highlighting
+    // only ~0.3ms, and the delay in when text appears seems noticeable.
     in1.addEventListener("input", (evt) => onInputHighlight(in1, shadow1));
+    in1.addEventListener("input", (evt) => onInputEvaluate(in1, out1));
 
     in2.addEventListener("focus", () => ensureJsonValue());
     in2.addEventListener("input", (evt) => onInputQuery(in2, out2, evt));
