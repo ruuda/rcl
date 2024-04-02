@@ -214,7 +214,7 @@ impl Edit {
             return span;
         }
 
-        if span.start() >= self.del {
+        if span.start() > self.del {
             // The span is entirely after the edit, we only need to move it.
             return Span::new(
                 span.doc(),
@@ -223,19 +223,27 @@ impl Edit {
             );
         }
 
-        if span.end() > self.del {
-            // The delete starts in this span but extends across, so we truncate
-            // this span.
-            return Span::new(span.doc(), span.start(), self.del);
+        if span.start() >= self.off && span.end() <= self.del {
+            // The delete covers this span entirely, we zero it out.
+            return Span::new(span.doc(), self.off, self.off);
         }
 
-        if span.start() > self.off {
+        if span.start() <= self.off && span.end() >= self.del {
+            // The delete lies entirely within this span.
+            return Span::new(span.doc(), span.start(), span.end() + self.ins - self.del);
+        }
+
+        if span.start() <= self.off && span.end() <= self.del {
+            // The delete covers the end of this span but not the start.
+            return Span::new(span.doc(), span.start(), self.off);
+        }
+
+        if span.start() >= self.off && span.end() >= self.del {
             // The delete starts before this span, but ends inside.
-            return Span::new(span.doc(), self.del, span.end() + self.ins - self.del);
+            return Span::new(span.doc(), self.off, span.end() + self.ins - self.del);
         }
 
-        // The delete lies entirely within this span.
-        Span::new(span.doc(), span.start(), span.end() + self.ins - self.del)
+        unreachable!("The above cases are exhaustive.");
     }
 }
 
@@ -362,4 +370,69 @@ mod wasm_test {
         apply_edit(edit, &mut spans);
         assert_eq!(spans, expected_);
     }
+
+    #[test]
+    fn edit_apply_insert_inner() {
+        let edit = get_edit("AAAABBBBCCCC", "AAAABBVVBBCCCC");
+        let mut spans = [Span::new(D, 0, 4), Span::new(D, 4, 8), Span::new(D, 8, 12)];
+        let expected_ = [
+            Span::new(D, 0, 4),
+            Span::new(D, 4, 10),
+            Span::new(D, 10, 14),
+        ];
+        apply_edit(edit, &mut spans);
+        assert_eq!(spans, expected_);
+    }
+
+    #[test]
+    fn edit_apply_insert_boundary() {
+        // An insert between two spans extends the start of the span following
+        // the insert, not the end of the one before it.
+        let edit = get_edit("AAAABBBBCCCC", "AAAAVVBBBBCCCC");
+        assert_eq!(
+            edit,
+            Edit {
+                off: 4,
+                del: 4,
+                ins: 6,
+            }
+        );
+        let mut spans = [Span::new(D, 0, 4), Span::new(D, 4, 8), Span::new(D, 8, 12)];
+        let expected_ = [
+            Span::new(D, 0, 4),
+            Span::new(D, 4, 10),
+            Span::new(D, 10, 14),
+        ];
+        apply_edit(edit, &mut spans);
+        assert_eq!(spans, expected_);
+    }
+
+    #[test]
+    fn edit_apply_replace_inner() {
+        let edit = get_edit("AAAABBBBCCCC", "AAAABXXBCCCC");
+        let mut spans = [Span::new(D, 0, 4), Span::new(D, 4, 8), Span::new(D, 8, 12)];
+        let expected_ = [Span::new(D, 0, 4), Span::new(D, 4, 8), Span::new(D, 8, 12)];
+        apply_edit(edit, &mut spans);
+        assert_eq!(spans, expected_);
+    }
+
+    #[test]
+    fn edit_apply_replace_exact() {
+        let edit = get_edit("AAAABBBBCCCC", "AAAA----CCCC");
+        let mut spans = [Span::new(D, 0, 4), Span::new(D, 4, 8), Span::new(D, 8, 12)];
+        let expected_ = [Span::new(D, 0, 4), Span::new(D, 4, 4), Span::new(D, 4, 12)];
+        apply_edit(edit, &mut spans);
+        assert_eq!(spans, expected_);
+    }
+
+    #[test]
+    fn edit_apply_replace_outer() {
+        let edit = get_edit("AAAABBBBCCCC", "AAA<---->CCC");
+        let mut spans = [Span::new(D, 0, 4), Span::new(D, 4, 8), Span::new(D, 8, 12)];
+        let expected_ = [Span::new(D, 0, 3), Span::new(D, 3, 3), Span::new(D, 3, 12)];
+        apply_edit(edit, &mut spans);
+        assert_eq!(spans, expected_);
+    }
+
+    // TODO: Write a fuzz test for this part.
 }
