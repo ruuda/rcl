@@ -293,6 +293,8 @@ fn get_edit(before: &str, after: &str) -> Edit {
 /// input for a next input).
 #[wasm_bindgen]
 pub fn rcl_highlight(input: &str, good_input: &str, out_node: &Node) -> bool {
+    use rcl::lexer::Token;
+
     let mut loader = Loader::new();
     loader.set_filesystem(Box::new(VoidFilesystem));
 
@@ -305,10 +307,19 @@ pub fn rcl_highlight(input: &str, good_input: &str, out_node: &Node) -> bool {
             is_good = false;
             let id_good = loader.load_string(good_input.to_string());
             let mut tokens = loader.get_tokens(id_good).expect("Good input is lexable.");
+
             let edit = get_edit(good_input, input);
             for (_token, span) in tokens.iter_mut() {
                 *span = edit.apply(*span);
             }
+
+            if edit.off == good_input.len() {
+                // Inserts modify the span after where the insert starts. If we
+                // append to the document, there is no such span, so this case
+                // needs special handling.
+                tokens.push((Token::Space, Span::new(id_good, edit.off, edit.ins)));
+            }
+
             tokens
         }
     };
