@@ -649,6 +649,8 @@
       outBox.replaceChild(outNode, outBox.firstChild);
     }
 
+    var goodInput = in1.textContent;
+
     async function onInputHighlight(inBox, outBox) {
       const outNode = document.createElement("code");
 
@@ -657,7 +659,9 @@
         // we don't highlight for now. Instant feedback is more important.
         outNode.textContent = inBox.textContent;
       } else {
-        rcl_highlight(inBox.textContent, outNode);
+        const newInput = inBox.textContent;
+        const wasGood = rcl_highlight(newInput, goodInput, outNode);
+        if (wasGood) goodInput = newInput;
       }
       outBox.replaceChild(outNode, outBox.firstChild);
     }
