@@ -196,6 +196,7 @@ pub fn rcl_evaluate_query(
 ///
 /// * Delete `before[off..del]`.
 /// * Insert `after[off..ins]` at `before[off]`.
+#[derive(Eq, PartialEq, Debug)]
 struct Edit {
     off: usize,
     /// The first index in `before` that is no longer part of the delete.
@@ -239,11 +240,7 @@ impl Edit {
 }
 
 /// Returns the range that has changed from `before` to `after`.
-///
-/// Returns `(off, ins, del)` such that `before[..off] == after[..off]`, and
-/// then we either copy `ins` bytes from `after[off..]`, or skip `del` bytes
-/// from `before[off..]`, and then we copy the remainder from `before`.
-fn get_changes(before: &str, after: &str) -> Edit {
+fn get_edit(before: &str, after: &str) -> Edit {
     let off = after
         .as_bytes()
         .iter()
@@ -300,7 +297,7 @@ pub fn rcl_highlight(input: &str, good_input: &str, out_node: &Node) -> bool {
             is_good = false;
             let id_good = loader.load_string(good_input.to_string());
             let mut tokens = loader.get_tokens(id_good).expect("Good input is lexable.");
-            let edit = get_changes(good_input, input);
+            let edit = get_edit(good_input, input);
             for (_token, span) in tokens.iter_mut() {
                 *span = edit.apply(*span);
             }
@@ -317,4 +314,52 @@ pub fn rcl_highlight(input: &str, good_input: &str, out_node: &Node) -> bool {
     print_markup(max_len, &result, out_node);
 
     is_good
+}
+
+#[cfg(test)]
+mod wasm_test {
+    use super::{get_edit, Edit};
+    use rcl::source::{DocId, Span};
+    const D: DocId = DocId(0);
+
+    fn apply_edit(edit: Edit, spans: &mut [Span]) {
+        for span in spans.iter_mut() {
+            *span = edit.apply(*span);
+        }
+    }
+
+    #[test]
+    fn edit_apply_delete_inner() {
+        let edit = get_edit("AAAABBBBCCCC", "AAAABBCCCC");
+        let mut spans = [Span::new(D, 0, 4), Span::new(D, 4, 8), Span::new(D, 8, 12)];
+        let expected_ = [Span::new(D, 0, 4), Span::new(D, 4, 6), Span::new(D, 6, 10)];
+        apply_edit(edit, &mut spans);
+        assert_eq!(spans, expected_);
+    }
+
+    #[test]
+    fn edit_apply_delete_entire() {
+        let edit = get_edit("AAAABBBBCCCC", "AAAACCCC");
+        let mut spans = [Span::new(D, 0, 4), Span::new(D, 4, 8), Span::new(D, 8, 12)];
+        let expected_ = [Span::new(D, 0, 4), Span::new(D, 4, 4), Span::new(D, 4, 8)];
+        apply_edit(edit, &mut spans);
+        assert_eq!(spans, expected_);
+    }
+
+    #[test]
+    fn edit_apply_delete_across() {
+        let edit = get_edit("AAAABBBBCCCC", "AABBCCCC");
+        assert_eq!(
+            edit,
+            Edit {
+                off: 2,
+                del: 6,
+                ins: 2
+            }
+        );
+        let mut spans = [Span::new(D, 0, 4), Span::new(D, 4, 8), Span::new(D, 8, 12)];
+        let expected_ = [Span::new(D, 0, 2), Span::new(D, 2, 4), Span::new(D, 4, 8)];
+        apply_edit(edit, &mut spans);
+        assert_eq!(spans, expected_);
+    }
 }
