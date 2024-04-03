@@ -53,6 +53,7 @@ fn get_markup(token: &Token) -> Markup {
         | Token::KwFalse
         | Token::KwFor
         | Token::KwIf
+        | Token::KwImport
         | Token::KwIn
         | Token::KwLet
         | Token::KwNot
