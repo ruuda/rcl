@@ -708,13 +708,36 @@
       outBox.replaceChild(outNode, outBox.firstChild);
     }
 
+    function onInputStripHtml(inBox) {
+      inBox.normalize();
+      const text = inBox.textContent;
+      var didEdit = false;
+      inBox.childNodes.forEach((child) => {
+        if (child.nodeType !== Node.TEXT_NODE) {
+          inBox.removeChild(child);
+          didEdit = true;
+        }
+      });
+      if (didEdit) {
+        inBox.textContent = text;
+      }
+    }
+
     // Note, in1, in2, out1, out2 are all available as local variables because
     // they have an id in the DOM. No need for getElementById any more.
 
     // Don't allow editing the examples before the page is fully loaded, because
-    // then we miss edit events.
-    in1.contentEditable = true;
-    in2.contentEditable = true;
+    // then we miss edit events. In Chromium we can prevent markup but Firefox
+    // does not yet support it.
+    try {
+      in1.contentEditable = "plaintext-only";
+      in2.contentEditable = "plaintext-only";
+    } catch {
+      in1.contentEditable = true;
+      in2.contentEditable = true;
+      in1.addEventListener("input", (evt) => onInputStripHtml(in1));
+      in2.addEventListener("input", (evt) => onInputStripHtml(in2));
+    }
 
     // We don't load the wasm module instantly. If somebody opens the page but
     // doesn't try to edit the example, we don't have to load the module. The
