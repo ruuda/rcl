@@ -241,8 +241,17 @@
     font-size: 0.8rem;
     color: var(--outline);
     padding: 0.5rem;
-    padding-left: 1.2rem;
+    padding-left: 0.8rem;
     border-bottom: 1px solid var(--outline);
+  }
+
+  .demo > div {
+    position: relative;
+  }
+
+  .demo h3.label {
+    border-bottom: none;
+    position: absolute;
   }
 
   .demo .span-l2, .demo .span-r2, .demo .span-full {
@@ -446,7 +455,7 @@
       <h3>rcl evaluate --format=json</h3>
     </div>
     <div class="span-l2 focus-marker edit-contain">
-      <!-- TODO: Add syntax highlighted initial input -->
+      <h3 class="label">input</h3>
       <pre class="edit-back" id="shadow1"><code>{
   <span class="keyword">let</span> <span class="field">tld</span> = <span class="string">"com"</span>;
   <span class="comment">// for tld in ["com", "net"]:</span>
@@ -473,6 +482,7 @@
 }</code></pre>
     </div>
   <div class="span-r2">
+    <h3 class="label">output</h3>
     <pre id="out1"><code>{
   <span class="field">"a_record_docs_example_com"</span>: {
     <span class="field">"domain"</span>: <span class="string">"example.com"</span>,
