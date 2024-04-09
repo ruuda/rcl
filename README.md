@@ -1,4 +1,4 @@
-# Ruud’s Configuration Language
+# The RCL Configuration Language
 
 Ruud’s Configuration Language, RCL for short, is a domain-specific language
 optimized for specifying human-written data with just enough abstraction
@@ -32,8 +32,10 @@ module, with an interface similar to the `json` module.
 
 ## Getting started
 
-See [the manual](https://docs.ruuda.nl/rcl/) for more information. The most
-useful chapters to get started:
+There are examples and a browser-based interactive demo at
+[rcl-lang.org](https://rcl-lang.org). For more detailed information,
+[the manual](https://docs.ruuda.nl/rcl/) is the best resource.
+The most useful chapters to get started:
 
  * [Installation](https://docs.ruuda.nl/rcl/installation/)
  * [Tutorial](https://docs.ruuda.nl/rcl/tutorial/)
