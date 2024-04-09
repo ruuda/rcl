@@ -369,7 +369,8 @@
   <section class="grid alt">
     <div class="feature-block span-l2">
       <h2>Connect anything</h2>
-      <p>Generate configuration for tools that do not natively talk to each other,
+      <p>Generate json, yaml, toml, or other text-based configuration
+      for tools that do not natively talk to each other,
       all from a single source of truth.</p>
     </div>
     <div class="feature-block span-r2">
@@ -412,14 +413,23 @@
   <section class="grid">
     <div class="span-full">
       <h2>Try it yourself</h2>
-      <p>Below is a
+      <p>Suppose we run a webserver that serves both
+      <span class="cc">www.example.com</span> and
+      <span class="cc">docs.example.com</span>.
+      We have to create two very similar DNS records pointing to that server’s address.
+      One way to manage those is with Terraform/OpenTofu.
+      The output below is a
       <a href="https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/record">simplified form</a>
-      of a Terraform/OpenTofu
+      of a
       <a href="https://opentofu.org/docs/language/syntax/json/">json config</a>
-      that defines two DNS records pointing to the same address.
-      <strong>This code is editable.</strong>
-      How would you change it to emit records for multiple zones?
-      Try uncommenting the <span class="cc">zone_id</span> loop.</p>
+      that defines the records.
+      <br><br>
+      <strong>The input code is editable.</strong>
+      How would you change it to emit records for
+      <span class="cc">www.example.net</span> and
+      <span class="cc">docs.example.net</span>
+      in addition to <span class="cc">example.com</span>?
+      Try uncommenting the <span class="cc">tld</span> loop.</p>
       <noscript>
       <p><span class="cc">You need to enable Javascript to use the live demo.</span>
       It runs a WebAssembly version of RCL in your browser.
@@ -437,47 +447,47 @@
     </div>
     <div class="span-l2 focus-marker edit-contain">
       <!-- TODO: Add syntax highlighted initial input -->
-      <pre class="edit-back" id="shadow1"><code><span class="keyword">let</span> <span class="field">base_config</span> = {
-  <span class="field">zone_id</span> = <span class="number">42</span>,
-  <span class="field">type</span> = <span class="string">"A"</span>,
-  <span class="field">value</span> = <span class="string">"93.184.216.34"</span>,
-};
-{
-  <span class="keyword">let</span> <span class="field">zone_id</span> = <span class="field">base_config</span>.<span class="field">zone_id</span>;
-  <span class="comment">// for zone_id in [42, 1337]:</span>
+      <pre class="edit-back" id="shadow1"><code>{
+  <span class="keyword">let</span> <span class="field">tld</span> = <span class="string">"com"</span>;
+  <span class="comment">// for tld in ["com", "net"]:</span>
   <span class="keyword">for</span> <span class="field">subdomain</span> <span class="keyword">in</span> [<span class="string">"docs"</span>, <span class="string">"www"</span>]:
-  <span class="string">f"a_record_</span><span class="escape">{</span><span class="field">subdomain</span><span class="escape">}</span><span class="string">_</span><span class="escape">{</span><span class="field">zone_id</span><span class="escape">}</span><span class="string">"</span>:
-  <span class="field">base_config</span> | { <span class="field">name</span> = <span class="field">subdomain</span> }
+  <span class="string">f"a_record_</span><span class="escape">{</span><span class="field">subdomain</span><span class="escape">}</span><span class="string">_example_</span><span class="escape">{</span><span class="field">tld</span><span class="escape">}</span><span class="string">"</span>:
+  {
+    <span class="field">domain</span> = <span class="string">"example.com"</span>,
+    <span class="field">name</span> = <span class="field">subdomain</span>,
+    <span class="field">type</span> = <span class="string">"A"</span>,
+    <span class="field">value</span> = <span class="string">"93.184.216.34"</span>,
+  }
 }</code></pre>
-      <pre class="edit-front"><code id="in1" spellcheck="false">let base_config = {
-  zone_id = 42,
-  type = "A",
-  value = "93.184.216.34",
-};
-{
-  let zone_id = base_config.zone_id;
-  // for zone_id in [42, 1337]:
+      <pre class="edit-front"><code id="in1" spellcheck="false">{
+  let tld = "com";
+  // for tld in ["com", "net"]:
   for subdomain in ["docs", "www"]:
-  f"a_record_{subdomain}_{zone_id}":
-  base_config | { name = subdomain }
+  f"a_record_{subdomain}_example_{tld}":
+  {
+    domain = "example.com",
+    name = subdomain,
+    type = "A",
+    value = "93.184.216.34",
+  }
 }</code></pre>
     </div>
   <div class="span-r2">
     <pre id="out1"><code>{
-  <span class="field">"a_record_docs_42"</span>: {
+  <span class="field">"a_record_docs_example_com"</span>: {
+    <span class="field">"domain"</span>: <span class="string">"example.com"</span>,
     <span class="field">"name"</span>: <span class="string">"docs"</span>,
     <span class="field">"type"</span>: <span class="string">"A"</span>,
-    <span class="field">"value"</span>: <span class="string">"93.184.216.34"</span>,
-    <span class="field">"zone_id"</span>: <span class="number">42</span>
+    <span class="field">"value"</span>: <span class="string">"93.184.216.34"</span>
   },
-  <span class="field">"a_record_www_42"</span>: {
+  <span class="field">"a_record_www_example_com"</span>: {
+    <span class="field">"domain"</span>: <span class="string">"example.com"</span>,
     <span class="field">"name"</span>: <span class="string">"www"</span>,
     <span class="field">"type"</span>: <span class="string">"A"</span>,
-    <span class="field">"value"</span>: <span class="string">"93.184.216.34"</span>,
-    <span class="field">"zone_id"</span>: <span class="number">42</span>
+    <span class="field">"value"</span>: <span class="string">"93.184.216.34"</span>
   }
 }
-  </code></pre>
+</code></pre>
     </div></div>
   </section>
   <section class="grid">
