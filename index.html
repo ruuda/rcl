@@ -431,24 +431,7 @@
       <a href="https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/record">simplified form</a>
       of a
       <a href="https://opentofu.org/docs/language/syntax/json/">json config</a>
-      that defines the records.
-      <br><br>
-      <strong>The input code is editable.</strong>
-      How would you change it to emit records for
-      <span class="cc">www.example.net</span> and
-      <span class="cc">docs.example.net</span>
-      in addition to <span class="cc">example.com</span>?
-      Try uncommenting the <span class="cc">tld</span> loop.</p>
-      <noscript>
-      <p><span class="cc">You need to enable Javascript to use the live demo.</span>
-      It runs a WebAssembly version of RCL in your browser.
-      No server ever sees your keystrokes.
-      This is the only script on the page,
-      there are no trackers or other malware.
-      The RCL code is open source,
-      and the scripts on this page are not obfuscated
-      so you can verify them yourself.</p>
-      </noscript>
+      that defines the records.</p>
     </div>
     <div class="span-full demo">
     <div class="span-full">
@@ -499,16 +482,33 @@
 }
 </code></pre>
     </div></div>
+    <div class="span-full">
+      <p class="p-ul"><strong>The input above is editable.</strong>
+      How would you change it to emit records for
+      <span class="cc">www.example.net</span> and
+      <span class="cc">docs.example.net</span>
+      in addition to <span class="cc">example.com</span>?
+      Try uncommenting the <span class="cc">tld</span> loop.
+      <noscript>
+        <br><br>
+        <strong>You need to enable Javascript to use the live demo.</strong>
+        It runs a WebAssembly version of RCL in your browser.
+        No server ever sees your keystrokes.
+        This is the only script on the page,
+        there are no trackers or other malware.
+        The RCL code is open source,
+        and the scripts on this page are not obfuscated
+        so you can verify them yourself.
+        </noscript>
+      </p>
+    </div>
   </section>
   <section class="grid">
     <div class="span-full">
       <h2>Intuitive json queries</h2>
-      <p>Below is a query that returns the details of the
-      <span class="cc">nrt</span> region in a cloud provider.
-      This query is editable.
-      Can you change the query to return the ids of all regions where the
-      <span class="cc">block_storage_high_perf</span> option is available?
-      Scroll down for some hints.</p>
+      <p>Suppose a cloud provider has an API that returns all the regions it
+      supports, and you want to know the details of the region with id
+      <span class="cc">nrt</span>. Below is a query that does this.</p>
     </div>
     <div class="span-full demo">
     <div class="span-full"><pre><code><span class="field">$</span> curl --silent <br class="wxnarrow"
@@ -531,7 +531,10 @@
       </div>
     </div>
     <div class="span-full">
-      <p class="p-ul">Some ideas to get you started:</p>
+      <p class="p-ul">The above query is editable.
+      Can you change the query to return the ids of all regions where the
+      <span class="cc">block_storage_high_perf</span> option is available?
+      Some ideas to get you started:</p>
       <ul>
         <li>Change the query to just <span class="cc">input</span>.
         What does the input look like?</li>
