@@ -723,6 +723,31 @@
       }
     }
 
+    // By default, the tab key moves focus, but after observing others try to
+    // use the webpage, every single one of them tried to press tab to indent
+    // and got confused by the single jump. So hijack the tab to act as indent
+    // instead.
+    function onKeyDown(evt) {
+      if (evt.code === "Tab") {
+        // Don't move focus.
+        evt.preventDefault();
+
+        // Insert two spaces. If the selection has a length, we could indent
+        // every line, but that starts to get fancy, we are not building a text
+        // editor here!
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const node = document.createTextNode("  ");
+        range.insertNode(node);
+        selection.collapseToEnd();
+
+        // After editing the selection, the `input` even does not trigger,
+        // do that manually.
+        const inputEvent = new Event("input");
+        evt.target.dispatchEvent(inputEvent);
+      }
+    }
+
     // Note, in1, in2, out1, out2 are all available as local variables because
     // they have an id in the DOM. No need for getElementById any more.
 
@@ -750,9 +775,11 @@
     // only ~0.3ms, and the delay in when text appears seems noticeable.
     in1.addEventListener("input", (evt) => onInputHighlight(in1, shadow1));
     in1.addEventListener("input", (evt) => onInputEvaluate(in1, out1));
+    in1.addEventListener("keydown", onKeyDown);
 
     in2.addEventListener("focus", () => ensureJsonValue());
     in2.addEventListener("input", (evt) => onInputQuery(in2, out2, evt));
+    in2.addEventListener("keydown", onKeyDown);
   }
 </script>
 </html>
