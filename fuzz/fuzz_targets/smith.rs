@@ -20,10 +20,13 @@
 
 #![no_main]
 
+use std::fmt::Formatter;
+
 use arbitrary::{Arbitrary, Unstructured};
 use libfuzzer_sys::fuzz_target;
-use rcl::loader::Loader;
-use std::fmt::Formatter;
+use rcl::eval::Evaluator;
+use rcl::loader::{Loader, VoidFilesystem};
+use rcl::tracer::VoidTracer;
 
 // TODO: Deduplicate these between various sources ...
 /// Names of built-in variables and methods.
@@ -61,6 +64,8 @@ const BUILTINS: &[&str] = &[
 const BUILTIN_TYPES: &[&str] = &[
     "Any", "Bool", "Dict", "Int", "List", "Null", "Set", "String", "Union", "Void",
 ];
+
+const LITERALS: &[&str] = &["true", "false", "null"];
 
 /// Return a copy of the nth element of the array, clamping to the last.
 pub fn nth<S: ToString>(xs: &[S], n: u8) -> Option<String> {
@@ -160,6 +165,8 @@ define_ops! {
     0x55 => ExprIf,
     /// Replace the top 2 elements with `for ... in {0}: {1}`.
     0x56 => ExprFor,
+    /// Replace the top element with an import expression.
+    0x57 => ExprImport,
 
     /// Render the program, run the evaluator on it.
     0xef => CheckEval,
@@ -214,27 +221,21 @@ impl<'a> ProgramBuilder<'a> {
     /// Join elements from a stack with separators and surround them with open/close tokens.
     ///
     /// This is used to build lists and dicts, function calls, etc.
-    fn join(
-        n: u8,
-        from: &mut Vec<String>,
-        mut into: String,
-        open: char,
-        sep_even: &'static str,
-        sep_odd: &'static str,
-        close: char,
-    ) -> String {
-        into.push(open);
+    ///
+    /// The 4 characters are open, sep_even, sep_odd, close.
+    fn join(n: u8, from: &mut Vec<String>, mut into: String, chars: &[u8; 4]) -> String {
+        into.push(chars[0] as char);
         for i in 0..n {
             match from.pop() {
                 None => break,
                 Some(t) => {
-                    let sep = if i % 2 == 0 { sep_even } else { sep_odd };
+                    let sep = if i % 2 == 0 { chars[1] } else { chars[2] };
                     into.push_str(&t);
-                    into.push_str(sep);
+                    into.push(sep as char);
                 }
             }
         }
-        into.push(close);
+        into.push(chars[3] as char);
         into
     }
 
@@ -280,15 +281,7 @@ impl<'a> ProgramBuilder<'a> {
             }
             Op::TypeApply => {
                 let constructor = self.type_stack.pop().unwrap_or("List".into());
-                let applied = ProgramBuilder::join(
-                    n,
-                    &mut self.type_stack,
-                    constructor,
-                    '[',
-                    ", ",
-                    ", ",
-                    ']',
-                );
+                let applied = ProgramBuilder::join(n, &mut self.type_stack, constructor, b"[,,]");
                 self.type_stack.push(applied);
             }
 
@@ -308,6 +301,72 @@ impl<'a> ProgramBuilder<'a> {
             Op::ExprPushBinary => {
                 let k = self.take_u64(n);
                 self.expr_stack.push(format!("0b{k:b}"));
+            }
+            Op::ExprPushLiteral => {
+                self.expr_stack.push(nth(LITERALS, n).unwrap());
+            }
+
+            Op::ExprWrapParens => {
+                if let Some(t) = self.expr_stack.last_mut() {
+                    t.insert(0, '(');
+                    t.push(')');
+                }
+            }
+            Op::ExprList => {
+                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"[,,]");
+                self.expr_stack.push(result);
+            }
+            Op::ExprSet => {
+                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"{,,}");
+                self.expr_stack.push(result);
+            }
+            Op::ExprDictColon => {
+                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"{:,}");
+                self.expr_stack.push(result);
+            }
+            Op::ExprDictRecord => {
+                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"{=,}");
+                self.expr_stack.push(result);
+            }
+            Op::ExprCall => {
+                let function = match self.expr_stack.pop() {
+                    Some(f) => f,
+                    None => return true,
+                };
+                let applied = ProgramBuilder::join(n, &mut self.type_stack, function, b"(,,)");
+                self.expr_stack.push(applied);
+            }
+            Op::ExprFunction => {
+                let body = match self.expr_stack.pop() {
+                    Some(b) => b,
+                    None => return true,
+                };
+                let mut res = ProgramBuilder::join(n, &mut self.type_stack, String::new(), b"(,,)");
+                res.push_str("=>");
+                res.push_str(&body);
+                self.expr_stack.push(res);
+            }
+            Op::ExprField => {
+                // Reuse the join function, which then adds surrounding space,
+                // but we can cut that off afterwards. Could be more efficient,
+                // but this is simpler.
+                let mut res = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b" .. ");
+                res.pop();
+                res.remove(0);
+                self.expr_stack.push(res);
+            }
+            Op::ExprFormatString => {
+                // TODO: Respect `n`, *actually* make a format string.
+                let mut s = self.expr_stack.pop().unwrap_or("".into());
+                s.insert(0, '"');
+                s.push('"');
+                self.expr_stack.push(s);
+            }
+
+            Op::ExprImport => {
+                let mut s = self.expr_stack.pop().unwrap_or("\"\"".into());
+                s.insert_str(0, "import ");
+                self.expr_stack.push(s);
             }
 
             _ => return true,
@@ -363,13 +422,12 @@ impl std::fmt::Debug for SynthesizedProgram {
 }
 
 fuzz_target!(|input: SynthesizedProgram| {
-    let len = input.program.len();
     let mut loader = Loader::new();
+    loader.set_filesystem(Box::new(VoidFilesystem));
     let doc = loader.load_string(input.program);
-    let mut env = rcl::typecheck::prelude();
-    let res = loader.get_typechecked_ast(&mut env, doc);
-
-    if len > 10 {
-        assert!(res.is_err());
-    }
+    let mut tracer = VoidTracer;
+    let mut evaluator = Evaluator::new(&mut loader, &mut tracer);
+    let mut type_env = rcl::typecheck::prelude();
+    let mut value_env = rcl::runtime::prelude();
+    let _ = evaluator.eval_doc(&mut type_env, &mut value_env, doc);
 });
