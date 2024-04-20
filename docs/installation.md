@@ -5,29 +5,19 @@ source, but you can also use one of the options below that automate the process.
 
 [cargo]: https://doc.rust-lang.org/cargo/guide/
 
-## With Cargo
-
-Although Cargo is not a system package manager, if you have it available it’s
-an easy way to try <abbr>RCL</abbr>:
-
-    cargo +1.70.0 install \
-      --git https://github.com/ruuda/rcl.git \
-      --branch v0.1.0 \
-      rcl
-
 ## As a Nix flake
 
 The repository includes a Nix flake. You can run <abbr>RCL</abbr> with a
 [flake-enabled][flakes] version of [Nix][nix], such as Nix 2.18:
 
-    nix run 'github:ruuda/rcl?ref=v0.1.0' -- --help
+    nix run 'github:ruuda/rcl?ref=v0.2.0' -- --help
 
 [flakes]: https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake
 [nix]:    https://nixos.org/download
 
 The Nix flake also includes the Python module:
 
-    PYTHONPATH=$(nix build github:ruuda/rcl?ref=v0.1.0#pyrcl --print-out-paths)/lib python3
+    PYTHONPATH=$(nix build github:ruuda/rcl?ref=v0.2.0#pyrcl --print-out-paths)/lib python3
 
 The Nix flake also includes a shell with all the tools needed for development,
 as well as the environment that is tested on <abbr>CI</abbr>.
