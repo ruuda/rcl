@@ -23,6 +23,43 @@
 use libfuzzer_sys::fuzz_target;
 use rcl::loader::Loader;
 
+// TODO: Deduplicate these between various sources ...
+/// Names of built-in variables and methods.
+const BUILTINS: &[&str] = &[
+    // Methods
+    "chars",
+    "contains",
+    "ends_with",
+    "enumerate",
+    "except",
+    "fold",
+    "get",
+    "group_by",
+    "join",
+    "key_by",
+    "keys",
+    "len",
+    "parse_int",
+    "remove_prefix",
+    "remove_suffix",
+    "replace",
+    "reverse",
+    "split",
+    "split_lines",
+    "starts_with",
+    "to_lowercase",
+    "to_uppercase",
+    "values",
+    // Stdlib and its functions
+    "range",
+    "read_file_utf8",
+    "std",
+];
+
+const BUILTIN_TYPES: &[&str] = &[
+    "Any", "Bool", "Dict", "Int", "List", "Null", "Set", "String", "Union", "Void",
+];
+
 macro_rules! define_ops {
     { $(#[doc = $doc:expr] $opcode:expr => $name:ident,)+ } => {
         /// An opcode for our little source builder language.
@@ -47,19 +84,21 @@ macro_rules! define_ops {
 }
 
 define_ops! {
-    /// Add a fresh identifier to the identifier stack, from the fuzz input.
-    0x00 => IdentPushInput,
-    /// Push the name of a builtin method or value to the identifier stack.
-    0x01 => IdentPushBuiltin,
     /// Remove the top of the identifier stack.
-    0x02 => IdentPop,
+    0x00 => IdentPop,
+    /// Add a fresh identifier to the identifier stack, from the fuzz input.
+    0x01 => IdentPushInput,
+    /// Push the name of a builtin method or value to the identifier stack.
+    0x02 => IdentPushBuiltin,
 
+    /// Remove the top of the type stack.
+    0x10 => TypePop,
     /// Add a fresh name to the type stack, from the fuzz input.
-    0x10 => TypePushInput,
+    0x11 => TypePushInput,
     /// Add the name of a builtin type to the identifier stack.
-    0x11 => TypePushBuiltin,
+    0x12 => TypePushBuiltin,
     /// Treat the top as a type constructor, and apply it to _n_ other elements.
-    0x12 => TypeApply,
+    0x13 => TypeApply,
 
     /// Push an identifier from the identifier stack onto the expression stack.
     0x20 => ExprPushIdent,
@@ -117,21 +156,135 @@ define_ops! {
     // TODO: Extend with all the same evaluation modes as the `main` fuzzer.
 }
 
-fn parse_program(input: &[u8]) -> Vec<(Op, u8)> {
-    let mut instructions = Vec::with_capacity(input.len() / 2);
+struct ProgramBuilder<'a> {
+    ident_stack: Vec<String>,
+    type_stack: Vec<String>,
+    expr_stack: Vec<String>,
 
-    for i in (0..instructions.len()).step_by(2) {
-        match parse_op(input[i]) {
-            Some(op) => instructions.push((op, input[i + 1])),
-            // Skip over unknown instructions. Or would it be better to exit the
-            // fuzzer early? Hmm ...
-            None => continue,
+    input: &'a [u8],
+    head: usize,
+    tail: usize,
+}
+
+impl<'a> ProgramBuilder<'a> {
+    pub fn new(input: &'a [u8]) -> ProgramBuilder<'a> {
+        ProgramBuilder {
+            ident_stack: Vec::new(),
+            type_stack: Vec::new(),
+            expr_stack: Vec::new(),
+            input,
+            head: 0,
+            tail: input.len(),
         }
     }
 
-    instructions
+    /// Consume a string from the end of the input.
+    fn take_str(&mut self, len: u8) -> &str {
+        let n = self.tail.min(len as usize);
+        let start = self.tail - n;
+        let bytes = &self.input[start..self.tail];
+        self.tail = start;
+        std::str::from_utf8(bytes).ok().unwrap_or("")
+    }
+
+    /// Join elements from a stack with separators and surround them with open/close tokens.
+    ///
+    /// This is used to build lists and dicts, function calls, etc.
+    fn join(
+        n: u8,
+        from: &mut Vec<String>,
+        mut into: String,
+        open: char,
+        sep_even: &'static str,
+        sep_odd: &'static str,
+        close: char,
+    ) -> String {
+        into.push(open);
+        for i in 0..n {
+            match from.pop() {
+                None => break,
+                Some(t) => {
+                    let sep = if i % 2 == 0 { sep_even } else { sep_odd };
+                    into.push_str(&t);
+                    into.push_str(sep);
+                }
+            }
+        }
+        into.push(close);
+        into
+    }
+
+    /// Execute a single instruction if possible. Returns whether we can execute more.
+    pub fn execute_instruction(&mut self) -> bool {
+        // We need at least one opcode and one argument.
+        if self.head + 2 >= self.tail {
+            return false;
+        }
+
+        let op_byte = self.input[self.head];
+        let n = self.input[self.head + 1];
+        self.head += 2;
+
+        let op = match parse_op(op_byte) {
+            None => return true,
+            Some(op) => op,
+        };
+
+        // In reproduce mode (but not while fuzzing), print the program as we execute it.
+        #[cfg(fuzzing_repro)]
+        println!("{op:?}, {n}");
+
+        match op {
+            Op::IdentPop => {
+                self.ident_stack.pop();
+            }
+            Op::IdentPushInput => {
+                let arg = self.take_str(n).into();
+                self.ident_stack.push(arg);
+            }
+            Op::IdentPushBuiltin => {
+                let i = (BUILTINS.len() - 1).min(n as usize);
+                self.ident_stack.push(BUILTINS[i].into());
+            }
+
+            Op::TypePop => {
+                self.type_stack.pop();
+            }
+            Op::TypePushInput => {
+                let arg = self.take_str(n).into();
+                self.type_stack.push(arg);
+            }
+            Op::TypePushBuiltin => {
+                let i = (BUILTIN_TYPES.len() - 1).min(n as usize);
+                self.type_stack.push(BUILTIN_TYPES[i].into());
+            }
+            Op::TypeApply => {
+                let constructor = self.type_stack.pop().unwrap_or("List".into());
+                let applied = ProgramBuilder::join(
+                    n,
+                    &mut self.type_stack,
+                    constructor,
+                    '[',
+                    ", ",
+                    ", ",
+                    ']',
+                );
+                self.type_stack.push(applied);
+            }
+
+            _ => return true,
+        }
+
+        true
+    }
 }
 
 fuzz_target!(|input: &[u8]| {
-    let _instructions = parse_program(input);
+    let mut builder = ProgramBuilder::new(input);
+    let mut has_more = true;
+    while has_more {
+        has_more = builder.execute_instruction();
+    }
+    assert!(builder.type_stack.len() < 5);
+    assert!(builder.ident_stack.len() < 5);
 });
