@@ -330,16 +330,6 @@ pub struct Union {
 }
 
 impl Union {
-    /// Is this union a subtype of a different union?
-    pub fn is_subtype_of_union(self: &Rc<Self>, other: &Rc<Union>) -> TypeDiff<Rc<Union>> {
-        // There are many things we could do here, both to optimize and to give
-        // more precise static type errors. But what is always correct to do is
-        // to say "we don’t know, defer to runtime check". Some ideas for
-        // optimizations: we could represent primitive types as a set, and check
-        // for subset.
-        TypeDiff::Defer(other.clone())
-    }
-
     /// Is this union a subtype of a particular type?
     ///
     /// We can statically confirm that `self` is a subtype of `other` if all its
@@ -348,8 +338,8 @@ impl Union {
     /// mixed results, then we defer to runtime.
     pub fn is_subtype_of(self: &Rc<Self>, other: &SourcedType) -> TypeDiff<SourcedType> {
         if let Type::Union(_) = &other.type_ {
-            // See also `is_subtype_of_union`, if that implementation gets more
-            // advanced, we should call it here.
+            // For now, union/union typechecks are out of scope, we defer to a
+            // runtime check.
             return TypeDiff::Defer(other.clone());
         }
 
@@ -578,17 +568,6 @@ impl SourcedType {
                     }
                 }
             }
-            (Type::Union(u1), Type::Union(u2)) => match u1.is_subtype_of_union(u2) {
-                TypeDiff::Ok(..) => TypeDiff::Ok(self.clone()),
-                TypeDiff::Defer(u) => {
-                    let styp = SourcedType {
-                        type_: Type::Union(u),
-                        source: Source::None,
-                    };
-                    TypeDiff::Defer(styp)
-                }
-                TypeDiff::Error(err) => TypeDiff::Error(err),
-            },
             (Type::Union(u1), _) => u1.is_subtype_of(other),
             (_, Type::Union(u2)) => {
                 // This is the reverse case of `Union::is_subtype_of`. We
