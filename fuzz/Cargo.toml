@@ -45,6 +45,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "smith"
+path = "fuzz_targets/smith.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "string_len"
 path = "fuzz_targets/string_len.rs"
 test = false
