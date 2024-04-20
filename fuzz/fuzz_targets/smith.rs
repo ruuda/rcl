@@ -60,6 +60,16 @@ const BUILTIN_TYPES: &[&str] = &[
     "Any", "Bool", "Dict", "Int", "List", "Null", "Set", "String", "Union", "Void",
 ];
 
+/// Return a copy of the nth element of the array, clamping to the last.
+pub fn nth<S: ToString>(xs: &[S], n: u8) -> Option<String> {
+    if xs.is_empty() {
+        None
+    } else {
+        let i = (xs.len() - 1).min(n as usize);
+        Some(xs[i].to_string())
+    }
+}
+
 macro_rules! define_ops {
     { $(#[doc = $doc:expr] $opcode:expr => $name:ident,)+ } => {
         /// An opcode for our little source builder language.
@@ -102,16 +112,14 @@ define_ops! {
 
     /// Push an identifier from the identifier stack onto the expression stack.
     0x20 => ExprPushIdent,
-    /// Push an identifier from the identifier stack, wrapped in quotes.
-    0x21 => ExprPushIdentString,
     /// Push an integer in decimal form onto the expression stack.
-    0x22 => ExprPushDecimal,
+    0x21 => ExprPushDecimal,
     /// Push an integer in hexadecimal form onto the expression stack.
-    0x23 => ExprPushHexadecimal,
+    0x22 => ExprPushHexadecimal,
     /// Push an integer in binary form onto the expression stack.
-    0x24 => ExprPushBinary,
+    0x23 => ExprPushBinary,
     /// Push one of `true`, `false`, `null`.
-    0x25 => ExprPushLiteral,
+    0x24 => ExprPushLiteral,
 
     /// Wrap the top of the expression stack in `()`.
     0x30 => ExprWrapParens,
@@ -129,7 +137,7 @@ define_ops! {
     0x36 => ExprFunction,
     /// Join the top _n_ elements with a `.` in between.
     0x37 => ExprField,
-    /// Combine the top _2n + 1_ elements into an f-string.
+    /// Combine the top _2n + 1_ elements into a string or f-string.
     0x38 => ExprFormatString,
     /// Prepend an unary operator to the element a the top.
     0x39 => ExprUnop,
@@ -185,6 +193,16 @@ impl<'a> ProgramBuilder<'a> {
         let bytes = &self.input[start..self.tail];
         self.tail = start;
         std::str::from_utf8(bytes).ok().unwrap_or("")
+    }
+
+    /// Consume `len` bytes (or fewer if we run out, and at most 8) for a `u64`.
+    fn take_u64(&mut self, len: u8) -> u64 {
+        let n = self.tail.min(len as usize).min(8);
+        let start = self.tail - n;
+        let mut out = [0u8; 8];
+        out[..n].copy_from_slice(&self.input[start..self.tail]);
+        self.tail = start;
+        u64::from_le_bytes(out)
     }
 
     /// Join elements from a stack with separators and surround them with open/close tokens.
@@ -243,8 +261,7 @@ impl<'a> ProgramBuilder<'a> {
                 self.ident_stack.push(arg);
             }
             Op::IdentPushBuiltin => {
-                let i = (BUILTINS.len() - 1).min(n as usize);
-                self.ident_stack.push(BUILTINS[i].into());
+                self.ident_stack.push(nth(BUILTINS, n).unwrap());
             }
 
             Op::TypePop => {
@@ -255,8 +272,7 @@ impl<'a> ProgramBuilder<'a> {
                 self.type_stack.push(arg);
             }
             Op::TypePushBuiltin => {
-                let i = (BUILTIN_TYPES.len() - 1).min(n as usize);
-                self.type_stack.push(BUILTIN_TYPES[i].into());
+                self.type_stack.push(nth(BUILTIN_TYPES, n).unwrap());
             }
             Op::TypeApply => {
                 let constructor = self.type_stack.pop().unwrap_or("List".into());
@@ -272,6 +288,24 @@ impl<'a> ProgramBuilder<'a> {
                 self.type_stack.push(applied);
             }
 
+            Op::ExprPushIdent => {
+                if let Some(ident) = nth(&self.ident_stack[..], n) {
+                    self.expr_stack.push(ident);
+                }
+            }
+            Op::ExprPushDecimal => {
+                let k = self.take_u64(n);
+                self.expr_stack.push(k.to_string());
+            }
+            Op::ExprPushHexadecimal => {
+                let k = self.take_u64(n);
+                self.expr_stack.push(format!("0x{k:x}"));
+            }
+            Op::ExprPushBinary => {
+                let k = self.take_u64(n);
+                self.expr_stack.push(format!("0b{k:b}"));
+            }
+
             _ => return true,
         }
 
@@ -285,6 +319,8 @@ fuzz_target!(|input: &[u8]| {
     while has_more {
         has_more = builder.execute_instruction();
     }
-    assert!(builder.type_stack.len() < 5);
-    assert!(builder.ident_stack.len() < 5);
+
+    if let Some(x) = builder.expr_stack.get(8) {
+        assert!(x.contains('['));
+    }
 });
