@@ -1,0 +1,9 @@
+// This exercises the code path of checking that a non-union is a subtype
+// of a union, but for at least one of the union elements, we need a runtime
+// check.
+let x: List[Any] = [];
+let y: Union[List[Int], List[String]] = x;
+y
+
+# output:
+[]
