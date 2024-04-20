@@ -447,6 +447,11 @@ impl std::fmt::Debug for SynthesizedProgram {
 }
 
 fuzz_target!(|input: SynthesizedProgram| {
+    // In repro mode, also print the input when it doesn't fail, so we have a
+    // way to spy at what programs the fuzzer is discovering.
+    #[cfg(fuzzing_repro)]
+    println!("{input:?}");
+
     let mut loader = Loader::new();
     loader.set_filesystem(Box::new(VoidFilesystem));
     let doc = loader.load_string(input.program);
