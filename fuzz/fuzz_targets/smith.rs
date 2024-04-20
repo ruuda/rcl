@@ -20,8 +20,10 @@
 
 #![no_main]
 
+use arbitrary::{Arbitrary, Unstructured};
 use libfuzzer_sys::fuzz_target;
 use rcl::loader::Loader;
+use std::fmt::Formatter;
 
 // TODO: Deduplicate these between various sources ...
 /// Names of built-in variables and methods.
@@ -78,7 +80,7 @@ macro_rules! define_ops {
         /// _width_ argument, also called _n_ below. The meaning of this argument
         /// differs per instruction. For some it's an index into one of the stacks,
         /// for some it's the length of data to pull from the end of the input.
-        #[derive(Debug)]
+        #[derive(Copy, Clone, Debug)]
         #[repr(u8)]
         enum Op {
             $( #[doc = $doc] $name = $opcode ),+
@@ -169,6 +171,9 @@ struct ProgramBuilder<'a> {
     type_stack: Vec<String>,
     expr_stack: Vec<String>,
 
+    /// A trace of the executed instructions.
+    trace: Vec<(Op, u8)>,
+
     input: &'a [u8],
     head: usize,
     tail: usize,
@@ -180,6 +185,7 @@ impl<'a> ProgramBuilder<'a> {
             ident_stack: Vec::new(),
             type_stack: Vec::new(),
             expr_stack: Vec::new(),
+            trace: Vec::with_capacity(input.len() / 2),
             input,
             head: 0,
             tail: input.len(),
@@ -248,9 +254,7 @@ impl<'a> ProgramBuilder<'a> {
             Some(op) => op,
         };
 
-        // In reproduce mode (but not while fuzzing), print the program as we execute it.
-        #[cfg(fuzzing_repro)]
-        println!("{op:?}, {n}");
+        self.trace.push((op, n));
 
         match op {
             Op::IdentPop => {
@@ -311,16 +315,61 @@ impl<'a> ProgramBuilder<'a> {
 
         true
     }
+
+    /// Return the final synthesized RCL expression and a trace of what executed.
+    fn into_program(mut self) -> SynthesizedProgram {
+        SynthesizedProgram {
+            trace: self.trace,
+            program: self.expr_stack.pop().unwrap_or("".into()),
+        }
+    }
 }
 
-fuzz_target!(|input: &[u8]| {
-    let mut builder = ProgramBuilder::new(input);
-    let mut has_more = true;
-    while has_more {
-        has_more = builder.execute_instruction();
-    }
+/// The output of running the program builder.
+struct SynthesizedProgram {
+    trace: Vec<(Op, u8)>,
+    program: String,
+}
 
-    if let Some(x) = builder.expr_stack.get(8) {
-        assert!(x.contains('['));
+// To control the `Debug` output in the libfuzzer_sys crate,
+// it demands an `Arbitrary` instance, even though we have our own way of
+// consuming the buffer. Fortunately we can get access to the underlying buffer.
+impl<'a> Arbitrary<'a> for SynthesizedProgram {
+    fn arbitrary(_: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        unreachable!("Only arbitrary_take_rest is used.");
+    }
+    fn arbitrary_take_rest(u: Unstructured<'a>) -> arbitrary::Result<Self> {
+        let mut builder = ProgramBuilder::new(u.take_rest());
+
+        let mut has_more = true;
+        while has_more {
+            has_more = builder.execute_instruction();
+        }
+
+        Ok(builder.into_program())
+    }
+}
+
+impl std::fmt::Debug for SynthesizedProgram {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "╭──────╴ Opcode (hex)")?;
+        writeln!(f, "│  ╭───╴ Argument (hex)")?;
+        writeln!(f, "│  │  ╭╴ Operation, argument (decimal)")?;
+        for (op, n) in &self.trace {
+            writeln!(f, "{:02x} {:02x} {:?}, {}", *op as u8, n, op, n)?;
+        }
+        writeln!(f, "-->\n{}", self.program)
+    }
+}
+
+fuzz_target!(|input: SynthesizedProgram| {
+    let len = input.program.len();
+    let mut loader = Loader::new();
+    let doc = loader.load_string(input.program);
+    let mut env = rcl::typecheck::prelude();
+    let res = loader.get_typechecked_ast(&mut env, doc);
+
+    if len > 10 {
+        assert!(res.is_err());
     }
 });
