@@ -363,6 +363,31 @@ impl<'a> ProgramBuilder<'a> {
                 self.expr_stack.push(s);
             }
 
+            Op::ExprLet => {
+                let ident = nth(&self.ident_stack[..], n);
+                let value = self.expr_stack.pop();
+                let body = self.expr_stack.pop();
+                match (ident, value, body) {
+                    (Some(ident), Some(value), Some(body)) => {
+                        self.expr_stack
+                            .push(format!("let {ident} = {value}; {body}"));
+                    }
+                    _ => return true,
+                }
+            }
+            Op::ExprTypedLet => {
+                let ident = nth(&self.ident_stack[..], n);
+                let type_ = self.type_stack.pop();
+                let value = self.expr_stack.pop();
+                let body = self.expr_stack.pop();
+                match (ident, type_, value, body) {
+                    (Some(ident), Some(type_), Some(value), Some(body)) => {
+                        self.expr_stack
+                            .push(format!("let {ident}: {type_} = {value}; {body}"));
+                    }
+                    _ => return true,
+                }
+            }
             Op::ExprImport => {
                 let mut s = self.expr_stack.pop().unwrap_or("\"\"".into());
                 s.insert_str(0, "import ");
