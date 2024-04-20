@@ -393,6 +393,29 @@ impl<'a> ProgramBuilder<'a> {
                     _ => return true,
                 }
             }
+            Op::ExprFor => {
+                let collection = self.expr_stack.pop();
+                let body = self.expr_stack.pop();
+                match (collection, body) {
+                    (Some(collection), Some(body)) => {
+                        let mut result = "for ".to_string();
+                        for i in 0..n {
+                            let m = self.take_u64(1) as u8;
+                            if let Some(ident) = nth(&self.ident_stack[..], m) {
+                                if i > 0 {
+                                    result.push_str(", ");
+                                }
+                                result.push_str(&ident);
+                            }
+                        }
+                        result.push_str(" in ");
+                        result.push_str(&collection);
+                        result.push(':');
+                        result.push_str(&body);
+                    }
+                    _ => return true,
+                }
+            }
             Op::ExprImport => {
                 let mut s = self.expr_stack.pop().unwrap_or("\"\"".into());
                 s.insert_str(0, "import ");
