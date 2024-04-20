@@ -262,8 +262,13 @@ impl<'a> ProgramBuilder<'a> {
                 self.ident_stack.pop();
             }
             Op::IdentPushInput => {
-                let arg = self.take_str(n).into();
-                self.ident_stack.push(arg);
+                let arg: String = self.take_str(n).into();
+                // Temp hack; if we allow punctuation, the fuzzer is just going
+                // to mutate this and not the instructions. But at some point we
+                // do want a way for exotic values to get in here ...
+                if arg.as_bytes().iter().all(|b| b.is_ascii_alphanumeric()) {
+                    self.ident_stack.push(arg);
+                }
             }
             Op::IdentPushBuiltin => {
                 self.ident_stack.push(nth(BUILTINS, n).unwrap());
