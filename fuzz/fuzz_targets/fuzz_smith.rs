@@ -21,11 +21,12 @@
 #![no_main]
 
 use libfuzzer_sys::{fuzz_mutator, fuzz_target};
-use nanorand::{Rng, WyRand};
 use rcl::eval::Evaluator;
 use rcl::loader::{Loader, VoidFilesystem};
 use rcl::tracer::VoidTracer;
 use rcl_fuzz::smith::SynthesizedProgram;
+use tinyrand::wyrand::Wyrand;
+use tinyrand::{RandRange, Seeded};
 
 fuzz_target!(|input: SynthesizedProgram| {
     // In repro mode, also print the input when it doesn't fail, so we have a
@@ -47,16 +48,26 @@ struct Mutator<'a> {
     data: &'a mut [u8],
     size: usize,
     max_size: usize,
-    rng: WyRand,
+    rng: Wyrand,
 }
 
 impl<'a> Mutator<'a> {
+    /// Generate a uniform random byte.
+    fn gen_byte(&mut self) -> u8 {
+        self.rng.next_range(0..0x100_u16) as u8
+    }
+
     /// Return the byte offset of an arbitrary instruction in the buffer.
-    fn gen_instruction_index(&mut self) -> usize {
+    fn gen_instruction_index(&mut self) -> Option<usize> {
         // Subtract 1 so we are sure to have an index of a full 2-byte instruction,
         // not a trailing 1-byte leftover.
         let i = std::cmp::min(self.size - 1, self.max_size - 1) / 2;
-        self.rng.generate_range(0..i) * 2
+
+        if i == 0 {
+            None
+        } else {
+            Some(self.rng.next_range(0..i) * 2)
+        }
     }
 
     /// Return an arbitrary index into the data buffer.
@@ -68,10 +79,10 @@ impl<'a> Mutator<'a> {
         // small mutation). We should have more luck deleting in e.g. a string
         // at the end.
         let n = std::cmp::min(self.size, self.max_size);
-        match self.rng.generate_range(0..3) {
+        match self.rng.next_range(0..3_u16) {
             0 => n - 1,
-            1 => self.rng.generate_range((n / 2)..n),
-            2 => self.rng.generate_range(0..n),
+            1 => self.rng.next_range((n / 2)..n),
+            2 => self.rng.next_range(0..n),
             _ => unreachable!(),
         }
     }
@@ -79,7 +90,7 @@ impl<'a> Mutator<'a> {
     /// Generate a random valid opcode.
     fn gen_opcode(&mut self) -> u8 {
         loop {
-            let opcode: u8 = self.rng.generate();
+            let opcode = self.gen_byte();
             if rcl_fuzz::smith::parse_opcode(opcode).is_some() {
                 return opcode;
             }
@@ -90,32 +101,44 @@ impl<'a> Mutator<'a> {
     fn gen_argument(&mut self) -> u8 {
         // We bias the argument towards smaller numbers, because often they are
         // lengths or indexes into the stack, and those are all small.
-        match self.rng.generate_range(0..4) {
+        match self.rng.next_range(0..4_u16) {
             0 => 0,
             1 => 1,
-            2 => self.rng.generate_range(0..10),
-            3 => self.rng.generate(),
+            2 => self.rng.next_range(0..10_u16) as u8,
+            3 => self.gen_byte(),
             _ => unreachable!(),
         }
     }
 
     fn mutate(&mut self) {
-        match self.rng.generate_range(0..9) {
-            0 => self.insert_instruction(),
-            1 => self.remove_instruction(),
-            2 => self.replace_instruction(),
-            3 => self.swap_instructions(),
-            4 => self.increment_argument(),
-            5 => self.decrement_argument(),
-            6 => self.replace_argument(),
-            7 => self.append_byte(),
-            8 => self.remove_byte(),
-            _ => unreachable!(),
+        // Some mutations don't succeed. For example, if the input is 1 bytes,
+        // we can't generate an instruction index. So try up to 8 times to get
+        // a working mutation.
+        for _ in 0..8 {
+            let mutation = match self.rng.next_range(0..9_u16) {
+                0 => self.insert_instruction(),
+                1 => self.remove_instruction(),
+                2 => self.replace_instruction(),
+                3 => self.swap_instructions(),
+                4 => self.increment_argument(),
+                5 => self.decrement_argument(),
+                6 => self.replace_argument(),
+                7 => self.append_byte(),
+                8 => self.remove_byte(),
+                _ => unreachable!(),
+            };
+            if mutation.is_some() {
+                break;
+            }
         }
     }
 
-    fn insert_instruction(&mut self) {
-        let i = self.gen_instruction_index();
+    fn insert_instruction(&mut self) -> Option<()> {
+        if self.size + 2 >= self.max_size {
+            return None;
+        }
+
+        let i = self.gen_instruction_index().unwrap_or(0);
 
         // Move everything behind the insertion place one instruction ahead.
         self.data.copy_within(i..self.data.len() - 2, i + 2);
@@ -124,69 +147,86 @@ impl<'a> Mutator<'a> {
         self.data[i] = self.gen_opcode();
         self.data[i + 1] = self.gen_argument();
         self.size += 2;
+
+        Some(())
     }
 
-    fn remove_instruction(&mut self) {
-        let i = self.gen_instruction_index();
+    fn remove_instruction(&mut self) -> Option<()> {
+        let i = self.gen_instruction_index()?;
 
         // Move everything back one place.
         self.data.copy_within(i + 2.., i);
         self.size -= 2;
+
+        Some(())
     }
 
-    fn replace_instruction(&mut self) {
-        let i = self.gen_instruction_index();
+    fn replace_instruction(&mut self) -> Option<()> {
+        let i = self.gen_instruction_index()?;
         self.data[i] = self.gen_opcode();
         self.data[i + 1] = self.gen_argument();
+        Some(())
     }
 
-    fn swap_instructions(&mut self) {
-        let i = self.gen_instruction_index();
-        let j = self.gen_instruction_index();
+    fn swap_instructions(&mut self) -> Option<()> {
+        let i = self.gen_instruction_index()?;
+        let j = self.gen_instruction_index()?;
+        if i == j {
+            return None;
+        }
         self.data.swap(i, j);
         self.data.swap(i + 1, j + 1);
+        Some(())
     }
 
-    fn increment_argument(&mut self) {
-        let i = self.gen_instruction_index();
+    fn increment_argument(&mut self) -> Option<()> {
+        let i = self.gen_instruction_index()?;
         self.data[i + 1] = self.data[i + 1].saturating_add(1);
+        Some(())
     }
 
-    fn decrement_argument(&mut self) {
-        let i = self.gen_instruction_index();
+    fn decrement_argument(&mut self) -> Option<()> {
+        let i = self.gen_instruction_index()?;
         self.data[i + 1] = self.data[i + 1].saturating_sub(1);
+        Some(())
     }
 
-    fn replace_argument(&mut self) {
-        let i = self.gen_instruction_index();
+    fn replace_argument(&mut self) -> Option<()> {
+        let i = self.gen_instruction_index()?;
         self.data[i + 1] = self.gen_argument();
+        Some(())
     }
 
-    fn append_byte(&mut self) {
-        if self.size >= self.data.len() || self.max_size >= self.data.len() {
-            return;
+    fn append_byte(&mut self) -> Option<()> {
+        if self.size >= self.data.len()
+            || self.max_size >= self.data.len()
+            || self.size + 1 >= self.max_size
+        {
+            return None;
         }
         // Bias values towards 0 or printable ASCII, the auxiliary data at the
         // end is often used for indices or strings.
-        let b = match self.rng.generate_range(0..2) {
+        let b = match self.rng.next_range(0..2u16) {
             0 => 0,
-            1 => self.rng.generate_range(0x20..0x7f),
-            2 => self.rng.generate(),
+            1 => self.rng.next_range(0x20..0x7f_u16) as u8,
+            2 => self.gen_byte(),
             _ => unreachable!(),
         };
         self.data[self.size] = b;
         self.size += 1;
+        Some(())
     }
 
-    fn remove_byte(&mut self) {
+    fn remove_byte(&mut self) -> Option<()> {
         let i = self.gen_data_index();
         self.data.copy_within(i + 1.., i);
         self.size -= 1;
+        Some(())
     }
 }
 
 fuzz_mutator!(|data: &mut [u8], size: usize, max_size: usize, seed: u32| {
-    let rng = WyRand::new_seed(seed as u64);
+    let rng = Wyrand::seed(seed as u64);
     let mut mutator = Mutator {
         data,
         size,
