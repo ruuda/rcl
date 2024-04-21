@@ -185,7 +185,7 @@ impl<'a> Mutator<'a> {
         }
         // Bias values towards 0 or printable ASCII, the auxiliary data at the
         // end is often used for indices or strings.
-        let b = match self.rng.next_range(0..2u16) {
+        let b = match self.rng.next_range(0..3u16) {
             0 => 0,
             1 => self.rng.next_range(0x20..0x7f_u16) as u8,
             2 => self.gen_byte(),
