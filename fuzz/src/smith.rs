@@ -437,6 +437,19 @@ pub struct SynthesizedProgram {
     pub program: String,
 }
 
+impl SynthesizedProgram {
+    pub fn new(bytecode: &[u8]) -> SynthesizedProgram {
+        let mut builder = ProgramBuilder::new(bytecode);
+
+        let mut has_more = true;
+        while has_more {
+            has_more = builder.execute_instruction();
+        }
+
+        builder.into_program()
+    }
+}
+
 // To control the `Debug` output in the libfuzzer_sys crate,
 // it demands an `Arbitrary` instance, even though we have our own way of
 // consuming the buffer. Fortunately we can get access to the underlying buffer.
@@ -445,14 +458,7 @@ impl<'a> Arbitrary<'a> for SynthesizedProgram {
         unreachable!("Only arbitrary_take_rest is used.");
     }
     fn arbitrary_take_rest(u: Unstructured<'a>) -> arbitrary::Result<Self> {
-        let mut builder = ProgramBuilder::new(u.take_rest());
-
-        let mut has_more = true;
-        while has_more {
-            has_more = builder.execute_instruction();
-        }
-
-        Ok(builder.into_program())
+        Ok(SynthesizedProgram::new(u.take_rest()))
     }
 }
 

@@ -20,6 +20,14 @@ version = "0.8.10"
 default-features = false
 features = ["parse"]
 
+# Helper binaries
+
+[[bin]]
+name = "smithctl"
+path = "tools/smithctl.rs"
+
+# Fuzz targets
+
 [[bin]]
 name = "cli"
 path = "fuzz_targets/fuzz_cli.rs"
