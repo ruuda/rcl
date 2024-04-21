@@ -61,6 +61,12 @@ const BUILTIN_TYPES: &[&str] = &[
 
 const LITERALS: &[&str] = &["true", "false", "null"];
 
+const UNOPS: &[&str] = &["not", "-"];
+
+const BINOPS: &[&str] = &[
+    "and", "or", "|", "+", "-", "*", "/", "<", ">", "<=", ">=", "==", "!=",
+];
+
 /// Return a copy of the nth last element of the array, clamping to the first.
 ///
 /// We take from the back, so that if an opcode references an identifier, it
@@ -146,7 +152,7 @@ define_ops! {
     0x38 => ExprFormatString,
     /// Prepend an unary operator to the element a the top.
     0x39 => ExprUnop,
-    /// Combine the top _n_ elements with a binary operator in between.
+    /// Combine the top two elements with a binary operator in between.
     0x3a => ExprBinop,
 
     /// Replace the top 2 elements with `let ... = {0}; {1}`.
@@ -388,6 +394,23 @@ impl<'a> ProgramBuilder<'a> {
                 s.push('"');
                 self.expr_stack.push(s);
             }
+            Op::ExprUnop => {
+                if let Some(s) = self.expr_stack.last_mut() {
+                    let unop = nth(UNOPS, n).unwrap();
+                    s.insert_str(0, &unop);
+                }
+            }
+            Op::ExprBinop => {
+                let lhs = self.expr_stack.pop();
+                let rhs = self.expr_stack.pop();
+                match (lhs, rhs) {
+                    (Some(lhs), Some(rhs)) => {
+                        let binop = nth(BINOPS, n).unwrap();
+                        self.expr_stack.push(format!("{lhs} {binop} {rhs}"));
+                    }
+                    _ => return true,
+                }
+            }
 
             Op::ExprLet => {
                 let ident = nth(&self.ident_stack[..], n);
@@ -410,6 +433,50 @@ impl<'a> ProgramBuilder<'a> {
                     (Some(ident), Some(type_), Some(value), Some(body)) => {
                         self.expr_stack
                             .push(format!("let {ident}: {type_} = {value}; {body}"));
+                    }
+                    _ => return true,
+                }
+            }
+            Op::ExprAssert => {
+                let condition = self.expr_stack.pop();
+                let message = self.expr_stack.pop();
+                let body = self.expr_stack.pop();
+                match (condition, message, body) {
+                    (Some(condition), Some(message), Some(body)) => {
+                        self.expr_stack
+                            .push(format!("assert {condition}, {message}; {body}"));
+                    }
+                    _ => return true,
+                }
+            }
+            Op::ExprTrace => {
+                let message = self.expr_stack.pop();
+                let body = self.expr_stack.pop();
+                match (message, body) {
+                    (Some(message), Some(body)) => {
+                        self.expr_stack.push(format!("trace {message}; {body}"));
+                    }
+                    _ => return true,
+                }
+            }
+            Op::ExprIfElse => {
+                let condition = self.expr_stack.pop();
+                let body_then = self.expr_stack.pop();
+                let body_else = self.expr_stack.pop();
+                match (condition, body_then, body_else) {
+                    (Some(condition), Some(body_then), Some(body_else)) => {
+                        self.expr_stack
+                            .push(format!("if {condition}: {body_then} else {body_else}"));
+                    }
+                    _ => return true,
+                }
+            }
+            Op::ExprIf => {
+                let condition = self.expr_stack.pop();
+                let body = self.expr_stack.pop();
+                match (condition, body) {
+                    (Some(condition), Some(body)) => {
+                        self.expr_stack.push(format!("if {condition}: {body}"));
                     }
                     _ => return true,
                 }
@@ -443,7 +510,12 @@ impl<'a> ProgramBuilder<'a> {
                 self.expr_stack.push(s);
             }
 
-            _ => return true,
+            Op::CheckEval => {
+                // TODO: This should mark the end of the program and then instruct
+                // the fuzzer which check to execute. For now there is only one hard-
+                // coded check, so we ignore this instruction.
+                return true;
+            }
         }
 
         true
