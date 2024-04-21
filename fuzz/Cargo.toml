@@ -48,13 +48,13 @@ test = false
 doc = false
 
 [[bin]]
-name = "main"
-path = "fuzz_targets/fuzz_uber.rs"
+name = "fuzz_source"
+path = "fuzz_targets/fuzz_source.rs"
 test = false
 doc = false
 
 [[bin]]
-name = "smith"
+name = "fuzz_smith"
 path = "fuzz_targets/fuzz_smith.rs"
 test = false
 doc = false

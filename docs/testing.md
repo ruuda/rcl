@@ -30,10 +30,20 @@ see `flake.nix` for the exact flags and commands.
 
 ## Fuzz tests
 
-The other means of testing are fuzz tests. RCL contains one primary fuzzer
-called `fuzz_uber`, whose fuzz inputs are valid <abbr>RCL</abbr> files that
-contain a little bit of metadata about what to exercise. Putting everything in
-one fuzzer enables sharing the corpus across the different modes.
+The other means of testing are fuzz tests. RCL contains two primary fuzzers
+called `fuzz_source` and `fuzz_smith`. The input to the source-based fuzzer
+are valid <abbr>RCL</abbr> files that contain a little bit of metadata about
+what mode to exercise. Putting everything in one fuzzer enables sharing the
+corpus across the different modes. The input to the smith-based fuzzer are
+small bytecode programs for a _smith_ that synthesizes <abbr>RCL</abbr> programs
+from them. The smith fuzzer is a lot faster than the source-based fuzzer,
+because it does not have to overcome trivial obstacles like having balanced
+parentheses or using the same name in a variable definition and usage site.
+Getting past such obstacles is hard for the source-based fuzzer because it
+requires two separate mutations to work together to make a valid file. The
+downside of the smith-based fuzzer is that it does not explore the full input
+space, in particular regarding parse errors, so that’s why a combination of both
+fuzzers is ideal.
 
 The basic modes of the fuzzer just test that the lexer, parser, and evaluator
 do not crash. They are useful for finding mistakes such as slicing a string
