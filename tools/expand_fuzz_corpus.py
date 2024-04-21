@@ -19,7 +19,7 @@ def expand_file(in_fname: str, out_dir: str) -> None:
 
     nlpos = sample_in.find(b"\n")
 
-    for mode in b"APQTajt":
+    for mode in b"ajkt":
         # We set the width parameter to 100 on all samples. The fuzzer may
         # discover other variants but they shouldn’t matter so much.
         sample_out = (

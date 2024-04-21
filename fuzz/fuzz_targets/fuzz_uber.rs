@@ -55,15 +55,6 @@ impl<'a> Arbitrary<'a> for Input<'a> {
         let mode_byte = u.bytes(1);
         let width = u.arbitrary::<NonNewline>()?.0 as u32;
         let mode = match mode_byte? {
-            // TODO: These are here for historical reasons, they used to exercise
-            // a smaller part of the pipeline, but now we just do the full eval
-            // here. But if we remove them, we lose some of the corpus, I need
-            // to migrate the corpus first.
-            b"A" => Mode::Eval,
-            b"P" => Mode::Eval,
-            b"Q" => Mode::Eval,
-            b"T" => Mode::Eval,
-
             b"a" => Mode::Eval,
             b"j" => Mode::EvalJsonIdempotent { width },
             b"k" => Mode::EvalJsonCheck { width },
