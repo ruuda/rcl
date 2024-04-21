@@ -30,19 +30,19 @@ path = "tools/smithctl.rs"
 # Fuzz targets
 
 [[bin]]
-name = "cli"
+name = "fuzz_cli"
 path = "fuzz_targets/fuzz_cli.rs"
 test = false
 doc = false
 
 [[bin]]
-name = "escapes"
+name = "fuzz_escapes"
 path = "fuzz_targets/fuzz_escapes.rs"
 test = false
 doc = false
 
 [[bin]]
-name = "is_identifier"
+name = "fuzz_is_identifier"
 path = "fuzz_targets/fuzz_is_identifier.rs"
 test = false
 doc = false
@@ -60,13 +60,13 @@ test = false
 doc = false
 
 [[bin]]
-name = "string_len"
+name = "fuzz_string_len"
 path = "fuzz_targets/fuzz_string_len.rs"
 test = false
 doc = false
 
 [[bin]]
-name = "tree_sitter"
+name = "fuzz_tree_sitter"
 path = "fuzz_targets/fuzz_tree_sitter.rs"
 test = false
 doc = false
