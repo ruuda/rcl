@@ -22,42 +22,42 @@ features = ["parse"]
 
 [[bin]]
 name = "cli"
-path = "fuzz_targets/cli.rs"
+path = "fuzz_targets/fuzz_cli.rs"
 test = false
 doc = false
 
 [[bin]]
 name = "escapes"
-path = "fuzz_targets/escapes.rs"
+path = "fuzz_targets/fuzz_escapes.rs"
 test = false
 doc = false
 
 [[bin]]
 name = "is_identifier"
-path = "fuzz_targets/is_identifier.rs"
+path = "fuzz_targets/fuzz_is_identifier.rs"
 test = false
 doc = false
 
 [[bin]]
 name = "main"
-path = "fuzz_targets/main.rs"
+path = "fuzz_targets/fuzz_uber.rs"
 test = false
 doc = false
 
 [[bin]]
 name = "smith"
-path = "fuzz_targets/smith.rs"
+path = "fuzz_targets/fuzz_smith.rs"
 test = false
 doc = false
 
 [[bin]]
 name = "string_len"
-path = "fuzz_targets/string_len.rs"
+path = "fuzz_targets/fuzz_string_len.rs"
 test = false
 doc = false
 
 [[bin]]
 name = "tree_sitter"
-path = "fuzz_targets/tree_sitter.rs"
+path = "fuzz_targets/fuzz_tree_sitter.rs"
 test = false
 doc = false

@@ -31,9 +31,9 @@ see `flake.nix` for the exact flags and commands.
 ## Fuzz tests
 
 The other means of testing are fuzz tests. RCL contains one primary fuzzer
-called `main`, whose fuzz inputs are valid <abbr>RCL</abbr> files that contain a
-little bit of metadata about what to exercise. Putting everything in one fuzzer
-enables sharing the corpus across the different modes.
+called `fuzz_uber`, whose fuzz inputs are valid <abbr>RCL</abbr> files that
+contain a little bit of metadata about what to exercise. Putting everything in
+one fuzzer enables sharing the corpus across the different modes.
 
 The basic modes of the fuzzer just test that the lexer, parser, and evaluator
 do not crash. They are useful for finding mistakes such as slicing a string

@@ -1,3 +1,12 @@
+// RCL -- A reasonable configuration language.
+// Copyright 2024 Ruud van Asseldonk
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// A copy of the License has been included in the root of the repository.
+
+//! The "über fuzzer" checks many invariants from one corpus of RCL programs.
+
 #![no_main]
 
 use arbitrary::{Arbitrary, Unstructured};
