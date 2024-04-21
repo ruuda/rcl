@@ -197,7 +197,7 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<
                         )
                         .err()
                 }
-                _ => args.iter().cloned().collect(),
+                _ => args.to_vec(),
             };
             let union = Union { elements };
             Ok(Type::Union(Rc::new(union)))
