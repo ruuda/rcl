@@ -7,16 +7,7 @@
 
 //! Smith is a fuzzer that generates likely-interesting RCL expressions.
 //!
-//! The key idea is that if the fuzzer is generating RCL as text bytes, although
-//! this works surprisingly well, this will waste a lot of time on inputs with
-//! e.g. non-matching brackets that don't pass the lexer, or inputs where all
-//! indentifiers are different, so without interesting logic.
-//!
-//! So for this fuzzer, we treat the fuzz input as instructions for a small
-//! stack-based language that builds the RCL input as we go.
-//!
-//! The name of this fuzzer is inspired by Csmith by John Regehr et al.
-//! I don't know if the implementation resembles theirs.
+//! See also the [`rcl_fuzz::smith`] module.
 
 #![no_main]
 
@@ -30,6 +21,7 @@ fuzz_target!(|input: SynthesizedProgram| {
     fuzz_main(input.mode, &input.program);
 });
 
+/// Helper that implements a custom libFuzzer mutator.
 struct Mutator<'a> {
     data: &'a mut [u8],
     size: usize,
@@ -97,7 +89,7 @@ impl<'a> Mutator<'a> {
     }
 
     fn mutate(&mut self) {
-        // Some mutations don't succeed. For example, if the input is 1 bytes,
+        // Some mutations don't succeed. For example, if the input is 1 byte,
         // we can't generate an instruction index. So try up to 8 times to get
         // a working mutation.
         for _ in 0..8 {
