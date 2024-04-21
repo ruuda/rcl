@@ -89,7 +89,7 @@ macro_rules! define_ops {
             $( #[doc = $doc] $name = $opcode ),+
         }
 
-        fn parse_op(opcode: u8) -> Option<Op> {
+        pub fn parse_opcode(opcode: u8) -> Option<Op> {
             match opcode {
                 $( $opcode => Some(Op::$name), )+
                 _ => None,
@@ -264,7 +264,7 @@ impl<'a> ProgramBuilder<'a> {
         let n = self.input[self.head + 1];
         self.head += 2;
 
-        let op = match parse_op(op_byte) {
+        let op = match parse_opcode(op_byte) {
             None => return true,
             Some(op) => op,
         };
