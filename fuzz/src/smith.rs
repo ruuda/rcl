@@ -22,6 +22,8 @@ use std::fmt::Formatter;
 
 use arbitrary::{Arbitrary, Unstructured};
 
+use crate::uber::Mode;
+
 // TODO: Deduplicate these between various sources ...
 /// Names of built-in variables and methods.
 const BUILTINS: &[&str] = &[
@@ -172,9 +174,16 @@ define_ops! {
     /// Replace the top element with an import expression.
     0x57 => ExprImport,
 
-    /// Render the program, run the evaluator on it.
-    0xef => CheckEval,
-    // TODO: Extend with all the same evaluation modes as the `main` fuzzer.
+    // The instructions below modify the fuzz mode. The default mode is `Eval`,
+    // and because it's the default, there is no instruction to set it.
+    /// Set the check mode to `FormatIdempotent`.
+    0xe1 => ModeFormatIdempotent,
+    /// Set the check mode to `JsonCheck`.
+    0xe2 => ModeJsonIdempotent,
+    /// Set the check mode to `JsonCheck`.
+    0xe3 => ModeJsonCheck,
+    /// Set the check mode to `TomlCheck`.
+    0xe4 => ModeTomlCheck,
 }
 
 /// A helper for visualizing program execution for debug purposes.
@@ -188,6 +197,9 @@ struct ProgramBuilder<'a> {
     ident_stack: Vec<String>,
     type_stack: Vec<String>,
     expr_stack: Vec<String>,
+
+    /// Fuzz mode to use for the final program.
+    mode: Mode,
 
     /// A trace of the executed instructions.
     trace: Vec<TraceEvent<'a>>,
@@ -203,6 +215,7 @@ impl<'a> ProgramBuilder<'a> {
             ident_stack: Vec::new(),
             type_stack: Vec::new(),
             expr_stack: Vec::new(),
+            mode: Mode::Eval,
             trace: Vec::with_capacity(input.len() / 2),
             input,
             head: 0,
@@ -510,11 +523,17 @@ impl<'a> ProgramBuilder<'a> {
                 self.expr_stack.push(s);
             }
 
-            Op::CheckEval => {
-                // TODO: This should mark the end of the program and then instruct
-                // the fuzzer which check to execute. For now there is only one hard-
-                // coded check, so we ignore this instruction.
-                return true;
+            Op::ModeFormatIdempotent => {
+                self.mode = Mode::FormatIdempotent { width: n as u32 };
+            }
+            Op::ModeJsonIdempotent => {
+                self.mode = Mode::EvalJsonIdempotent { width: n as u32 };
+            }
+            Op::ModeJsonCheck => {
+                self.mode = Mode::EvalJsonCheck { width: n as u32 };
+            }
+            Op::ModeTomlCheck => {
+                self.mode = Mode::EvalTomlCheck { width: n as u32 };
             }
         }
 
@@ -526,6 +545,7 @@ impl<'a> ProgramBuilder<'a> {
         SynthesizedProgram {
             trace: self.trace,
             program: self.expr_stack.pop().unwrap_or("".into()),
+            mode: self.mode,
         }
     }
 }
@@ -534,6 +554,7 @@ impl<'a> ProgramBuilder<'a> {
 pub struct SynthesizedProgram<'a> {
     pub trace: Vec<TraceEvent<'a>>,
     pub program: String,
+    pub mode: Mode,
 }
 
 impl<'a> SynthesizedProgram<'a> {
@@ -582,6 +603,6 @@ impl<'a> std::fmt::Debug for SynthesizedProgram<'a> {
                 }
             }
         }
-        writeln!(f, "-->\n{}", self.program)
+        writeln!(f, "{:?} -->\n{}", self.mode, self.program)
     }
 }

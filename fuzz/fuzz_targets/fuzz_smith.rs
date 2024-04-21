@@ -21,27 +21,13 @@
 #![no_main]
 
 use libfuzzer_sys::{fuzz_mutator, fuzz_target};
-use rcl::eval::Evaluator;
-use rcl::loader::{Loader, VoidFilesystem};
-use rcl::tracer::VoidTracer;
 use rcl_fuzz::smith::SynthesizedProgram;
+use rcl_fuzz::uber::fuzz_main;
 use tinyrand::wyrand::Wyrand;
 use tinyrand::{RandRange, Seeded};
 
 fuzz_target!(|input: SynthesizedProgram| {
-    // In repro mode, also print the input when it doesn't fail, so we have a
-    // way to spy at what programs the fuzzer is discovering.
-    #[cfg(fuzzing_repro)]
-    println!("{input:?}");
-
-    let mut loader = Loader::new();
-    loader.set_filesystem(Box::new(VoidFilesystem));
-    let doc = loader.load_string(input.program);
-    let mut tracer = VoidTracer;
-    let mut evaluator = Evaluator::new(&mut loader, &mut tracer);
-    let mut type_env = rcl::typecheck::prelude();
-    let mut value_env = rcl::runtime::prelude();
-    let _ = evaluator.eval_doc(&mut type_env, &mut value_env, doc);
+    fuzz_main(input.mode, &input.program);
 });
 
 struct Mutator<'a> {
