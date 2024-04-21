@@ -167,13 +167,20 @@ define_ops! {
     // TODO: Extend with all the same evaluation modes as the `main` fuzzer.
 }
 
+/// A helper for visualizing program execution for debug purposes.
+pub enum TraceEvent<'a> {
+    Instruction { operation: Op, argument: u8 },
+    TakeString { len: u8, result: &'a str },
+    TakeU64 { len: u8, result: u64 },
+}
+
 struct ProgramBuilder<'a> {
     ident_stack: Vec<String>,
     type_stack: Vec<String>,
     expr_stack: Vec<String>,
 
     /// A trace of the executed instructions.
-    trace: Vec<(Op, u8)>,
+    trace: Vec<TraceEvent<'a>>,
 
     input: &'a [u8],
     head: usize,
@@ -199,7 +206,10 @@ impl<'a> ProgramBuilder<'a> {
         let start = self.tail - n;
         let bytes = &self.input[start..self.tail];
         self.tail = start;
-        std::str::from_utf8(bytes).ok().unwrap_or("")
+        let result = std::str::from_utf8(bytes).ok().unwrap_or("");
+        let event = TraceEvent::TakeString { len, result };
+        self.trace.push(event);
+        result
     }
 
     /// Consume `len` bytes (or fewer if we run out, and at most 8) for a `u64`.
@@ -209,7 +219,10 @@ impl<'a> ProgramBuilder<'a> {
         let mut out = [0u8; 8];
         out[..n].copy_from_slice(&self.input[start..self.tail]);
         self.tail = start;
-        u64::from_le_bytes(out)
+        let result = u64::from_le_bytes(out);
+        let event = TraceEvent::TakeU64 { len, result };
+        self.trace.push(event);
+        result
     }
 
     /// Join elements from a stack with separators and surround them with open/close tokens.
@@ -252,7 +265,11 @@ impl<'a> ProgramBuilder<'a> {
             Some(op) => op,
         };
 
-        self.trace.push((op, n));
+        let event = TraceEvent::Instruction {
+            operation: op,
+            argument: n,
+        };
+        self.trace.push(event);
 
         match op {
             Op::IdentPop => {
@@ -429,7 +446,7 @@ impl<'a> ProgramBuilder<'a> {
     }
 
     /// Return the final synthesized RCL expression and a trace of what executed.
-    fn into_program(mut self) -> SynthesizedProgram {
+    fn into_program(mut self) -> SynthesizedProgram<'a> {
         SynthesizedProgram {
             trace: self.trace,
             program: self.expr_stack.pop().unwrap_or("".into()),
@@ -438,13 +455,13 @@ impl<'a> ProgramBuilder<'a> {
 }
 
 /// The output of running the program builder.
-pub struct SynthesizedProgram {
-    pub trace: Vec<(Op, u8)>,
+pub struct SynthesizedProgram<'a> {
+    pub trace: Vec<TraceEvent<'a>>,
     pub program: String,
 }
 
-impl SynthesizedProgram {
-    pub fn new(bytecode: &[u8]) -> SynthesizedProgram {
+impl<'a> SynthesizedProgram<'a> {
+    pub fn new(bytecode: &'a [u8]) -> SynthesizedProgram<'a> {
         let mut builder = ProgramBuilder::new(bytecode);
 
         let mut has_more = true;
@@ -459,7 +476,7 @@ impl SynthesizedProgram {
 // To control the `Debug` output in the libfuzzer_sys crate,
 // it demands an `Arbitrary` instance, even though we have our own way of
 // consuming the buffer. Fortunately we can get access to the underlying buffer.
-impl<'a> Arbitrary<'a> for SynthesizedProgram {
+impl<'a> Arbitrary<'a> for SynthesizedProgram<'a> {
     fn arbitrary(_: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         unreachable!("Only arbitrary_take_rest is used.");
     }
@@ -468,13 +485,26 @@ impl<'a> Arbitrary<'a> for SynthesizedProgram {
     }
 }
 
-impl std::fmt::Debug for SynthesizedProgram {
+impl<'a> std::fmt::Debug for SynthesizedProgram<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "╭──────╴ Opcode (hex)")?;
         writeln!(f, "│  ╭───╴ Argument (hex)")?;
         writeln!(f, "│  │  ╭╴ Operation, argument (decimal)")?;
-        for (op, n) in &self.trace {
-            writeln!(f, "{:02x} {:02x} {:?}, {}", *op as u8, n, op, n)?;
+        for event in &self.trace {
+            match event {
+                TraceEvent::Instruction {
+                    operation: op,
+                    argument: n,
+                } => {
+                    writeln!(f, "{:02x} {:02x} {:?}, {}", *op as u8, n, op, n)?;
+                }
+                TraceEvent::TakeString { len, result } => {
+                    writeln!(f, "      take_str, {len:<3} → {result:?}")?;
+                }
+                TraceEvent::TakeU64 { len, result } => {
+                    writeln!(f, "      take_u64, {len:<3} → {result} (0x{result:x})")?;
+                }
+            }
         }
         writeln!(f, "-->\n{}", self.program)
     }
