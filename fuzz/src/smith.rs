@@ -61,13 +61,17 @@ const BUILTIN_TYPES: &[&str] = &[
 
 const LITERALS: &[&str] = &["true", "false", "null"];
 
-/// Return a copy of the nth element of the array, clamping to the last.
+/// Return a copy of the nth last element of the array, clamping to the first.
+///
+/// We take from the back, so that if an opcode references an identifier, it
+/// takes relative to the stack, so that if a mutation inserts a push instruction,
+/// it actually changes the behavior of the program.
 pub fn nth<S: ToString>(xs: &[S], n: u8) -> Option<String> {
     if xs.is_empty() {
         None
     } else {
-        let i = (xs.len() - 1).min(n as usize);
-        Some(xs[i].to_string())
+        let i = xs.len().min(n as usize + 1);
+        Some(xs[xs.len() - i].to_string())
     }
 }
 
@@ -416,7 +420,7 @@ impl<'a> ProgramBuilder<'a> {
                 match (collection, body) {
                     (Some(collection), Some(body)) => {
                         let mut result = "for ".to_string();
-                        for i in 0..n {
+                        for i in 0..(n % 4) {
                             let m = self.take_u64(1) as u8;
                             if let Some(ident) = nth(&self.ident_stack[..], m) {
                                 if i > 0 {
