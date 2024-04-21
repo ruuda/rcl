@@ -219,13 +219,16 @@ impl<'a> ProgramBuilder<'a> {
     /// The 4 characters are open, sep_even, sep_odd, close.
     fn join(n: u8, from: &mut Vec<String>, mut into: String, chars: &[u8; 4]) -> String {
         into.push(chars[0] as char);
+        let mut sep = None;
         for i in 0..n {
             match from.pop() {
                 None => break,
                 Some(t) => {
-                    let sep = if i % 2 == 0 { chars[1] } else { chars[2] };
+                    if let Some(sep) = sep {
+                        into.push(sep as char);
+                    }
                     into.push_str(&t);
-                    into.push(sep as char);
+                    sep = Some(if i % 2 == 0 { chars[1] } else { chars[2] });
                 }
             }
         }
@@ -272,8 +275,11 @@ impl<'a> ProgramBuilder<'a> {
                 self.type_stack.pop();
             }
             Op::TypePushInput => {
-                let arg = self.take_str(n).into();
-                self.type_stack.push(arg);
+                let arg: String = self.take_str(n).into();
+                // See also the note in `IdentPushInput`.
+                if arg.as_bytes().iter().all(|b| b.is_ascii_alphanumeric()) {
+                    self.type_stack.push(arg);
+                }
             }
             Op::TypePushBuiltin => {
                 self.type_stack.push(nth(BUILTIN_TYPES, n).unwrap());
