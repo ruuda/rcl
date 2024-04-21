@@ -115,7 +115,7 @@ impl<'a> Mutator<'a> {
         // we can't generate an instruction index. So try up to 8 times to get
         // a working mutation.
         for _ in 0..8 {
-            let mutation = match self.rng.next_range(0..9_u16) {
+            let mutation = match self.rng.next_range(0..10_u16) {
                 0 => self.insert_instruction(),
                 1 => self.remove_instruction(),
                 2 => self.replace_instruction(),
@@ -125,6 +125,7 @@ impl<'a> Mutator<'a> {
                 6 => self.replace_argument(),
                 7 => self.append_byte(),
                 8 => self.remove_byte(),
+                9 => self.mutate_libfuzzer(),
                 _ => unreachable!(),
             };
             if mutation.is_some() {
@@ -221,6 +222,13 @@ impl<'a> Mutator<'a> {
         let i = self.gen_data_index();
         self.data.copy_within(i + 1.., i);
         self.size -= 1;
+        Some(())
+    }
+
+    fn mutate_libfuzzer(&mut self) -> Option<()> {
+        // To avoid getting stuck in a monoculture with our own mutations,
+        // call the upstream mutator occasionally.
+        self.size = libfuzzer_sys::fuzzer_mutate(self.data, self.size, self.max_size);
         Some(())
     }
 }
