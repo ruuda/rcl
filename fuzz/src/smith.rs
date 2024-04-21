@@ -332,7 +332,7 @@ impl<'a> ProgramBuilder<'a> {
                     Some(f) => f,
                     None => return true,
                 };
-                let applied = ProgramBuilder::join(n, &mut self.type_stack, function, b"(,,)");
+                let applied = ProgramBuilder::join(n, &mut self.expr_stack, function, b"(,,)");
                 self.expr_stack.push(applied);
             }
             Op::ExprFunction => {
@@ -340,7 +340,7 @@ impl<'a> ProgramBuilder<'a> {
                     Some(b) => b,
                     None => return true,
                 };
-                let mut res = ProgramBuilder::join(n, &mut self.type_stack, String::new(), b"(,,)");
+                let mut res = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"(,,)");
                 res.push_str("=>");
                 res.push_str(&body);
                 self.expr_stack.push(res);
