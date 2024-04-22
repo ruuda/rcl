@@ -122,6 +122,8 @@ define_ops! {
     0x12 => TypePushBuiltin,
     /// Treat the top as a type constructor, and apply it to _n_ other elements.
     0x13 => TypeApply,
+    /// Make the top of the stack a function type, with _n_ elements as arguments.
+    0x14 => TypeFunction,
 
     /// Push an identifier from the identifier stack onto the expression stack.
     0x20 => ExprPushIdent,
@@ -328,6 +330,14 @@ impl<'a> ProgramBuilder<'a> {
                 let constructor = self.type_stack.pop().unwrap_or("List".into());
                 let applied = ProgramBuilder::join(n, &mut self.type_stack, constructor, b"[,,]");
                 self.type_stack.push(applied);
+            }
+            Op::TypeFunction => {
+                let result_type = self.type_stack.pop().unwrap_or("Any".into());
+                let mut args =
+                    ProgramBuilder::join(n, &mut self.type_stack, String::new(), b"(,,)");
+                args.push_str(" -> ");
+                args.push_str(&result_type);
+                self.type_stack.push(args);
             }
 
             Op::ExprPushIdent => {
