@@ -107,15 +107,17 @@ macro_rules! define_ops {
 }
 
 define_ops! {
-    /// Remove the top of the identifier stack.
-    0x00 => IdentPop,
+    // 0x00 was used to pop an identifier in the past, but it's not needed. The
+    // opcode can be removed in the future, but maybe it's good to keep it
+    // unused for mutations that mis-align all instructions, so a 0-arg doesn't
+    // become a valid instruction. Is that helpful though?
     /// Add a fresh identifier to the identifier stack, from the fuzz input.
     0x01 => IdentPushInput,
     /// Push the name of a builtin method or value to the identifier stack.
     0x02 => IdentPushBuiltin,
 
-    /// Remove the top of the type stack.
-    0x10 => TypePop,
+    // 0x10 was used for type pop in the past, but it's not needed. The opcode
+    // can be reused in the future.
     /// Add a fresh name to the type stack, from the fuzz input.
     0x11 => TypePushInput,
     /// Add the name of a builtin type to the identifier stack.
@@ -297,9 +299,6 @@ impl<'a> ProgramBuilder<'a> {
         self.trace.push(event);
 
         match op {
-            Op::IdentPop => {
-                self.ident_stack.pop();
-            }
             Op::IdentPushInput => {
                 match n {
                     // Have a short encoding to get a short variable name.
@@ -327,9 +326,6 @@ impl<'a> ProgramBuilder<'a> {
                 self.ident_stack.push(nth(BUILTINS, n).unwrap());
             }
 
-            Op::TypePop => {
-                self.type_stack.pop();
-            }
             Op::TypePushInput => {
                 let arg: String = self.take_str(n).into();
                 // See also the note in `IdentPushInput`.
