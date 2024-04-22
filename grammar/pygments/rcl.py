@@ -97,6 +97,7 @@ _root_base = [
                 "Null",
                 "Set",
                 "String",
+                "Union",
                 "Void",
             ),
             suffix=r"\b",
