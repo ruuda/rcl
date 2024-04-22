@@ -68,15 +68,3 @@ impl WyRand {
         r.start + (self.next_u64() % r.len() as u64) as u8
     }
 }
-
-#[test]
-pub fn test_reference_tinyrand() {
-    use tinyrand::{Rand, Seeded};
-    for seed in [0, 1, 2, 0xffff, 0x1ffff_fff55] {
-        let mut rcl_wyrand = WyRand::new(seed);
-        let mut ref_wyrand = tinyrand::Wyrand::seed(seed);
-        for _ in 0..10_000 {
-            assert_eq!(rcl_wyrand.next_u64(), ref_wyrand.next_u64());
-        }
-    }
-}

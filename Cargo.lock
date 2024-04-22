@@ -344,7 +344,6 @@ dependencies = [
  "libfuzzer-sys",
  "rcl",
  "serde_json",
- "tinyrand",
  "toml",
  "tree-sitter",
  "tree-sitter-rcl",
@@ -498,12 +497,6 @@ name = "target-lexicon"
 version = "0.12.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69758bda2e78f098e4ccb393021a0963bb3442eac05f135c30f61b7370bbafae"
-
-[[package]]
-name = "tinyrand"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87ffaad2263779579369d45f65cad0647c860893d27e4543cdcc1e428d07da2c"
 
 [[package]]
 name = "toml"
