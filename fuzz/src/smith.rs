@@ -408,9 +408,9 @@ impl<'a> ProgramBuilder<'a> {
                 self.expr_stack.push(s);
             }
             Op::ExprUnop => {
-                if let Some(s) = self.expr_stack.last_mut() {
+                if let Some(s) = self.expr_stack.pop() {
                     let unop = nth(UNOPS, n).unwrap();
-                    s.insert_str(0, &unop);
+                    self.expr_stack.push(format!("{unop} {s}"));
                 }
             }
             Op::ExprBinop => {
