@@ -1,0 +1,24 @@
+let a0: Union[Null, Int] = null;
+let b0: String = a0;
+b0
+
+# output:
+stdin:2:18
+  ╷
+2 │ let b0: String = a0;
+  ╵                  ^~
+Error: Type mismatch. Expected String but found this type:
+
+  Union[Null, Int]
+
+stdin:2:9
+  ╷
+2 │ let b0: String = a0;
+  ╵         ^~~~~~
+Note: Expected String because of this annotation.
+
+stdin:1:9
+  ╷
+1 │ let a0: Union[Null, Int] = null;
+  ╵         ^~~~~~~~~~~~~~~~
+Note: Found Union because of this annotation.

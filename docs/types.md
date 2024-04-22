@@ -134,6 +134,31 @@ type for empty collections.
 let xs = [];
 ```
 
+## Union types
+
+A union type allows instances of any member of the union. For example:
+
+```rcl
+// Both of these are okay!
+let x: Union[Int, String] = 0;
+let y: Union[Int, String] = "zero";
+
+// But this is a type error: expected Int or String but found Null.
+let z: Union[Int, String] = null;
+```
+
+Unions have two or more members:
+
+```rcl
+// Error, this is equivalent to using Int directly, so the Union is pointless.
+let u1: Union[Int] = 42;
+
+// But these are all okay.
+let u2: Union[Int, String] = 43;
+let u3: Union[Int, String, List[Int]] = 43;
+let u4: Union[Int, String, List[Int], Bool] = 43;
+```
+
 ## Type inference
 
 In all code, annotated or not, <abbr>RCL</abbr> will infer types. Type inference

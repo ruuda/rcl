@@ -1,0 +1,12 @@
+let x: Union = {};
+x
+
+# output:
+stdin:1:8
+  ╷
+1 │ let x: Union = {};
+  ╵        ^~~~~
+Error: Expected a concrete type, but found uninstantiated union type.
+
+Help: 'Union' without type parameters cannot be used directly.
+Specify types to union, e.g. 'Union[Int, Null]'.

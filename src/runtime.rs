@@ -218,10 +218,10 @@ impl Value {
         };
         match (req_type, self) {
             // For the primitive types, we just check for matching values.
-            (Type::Null, Value::Null) => Ok(()),
-            (Type::Bool, Value::Bool(..)) => Ok(()),
-            (Type::Int, Value::Int(..)) => Ok(()),
-            (Type::String, Value::String(..)) => Ok(()),
+            (Type::Null, Value::Null) => return Ok(()),
+            (Type::Bool, Value::Bool(..)) => return Ok(()),
+            (Type::Int, Value::Int(..)) => return Ok(()),
+            (Type::String, Value::String(..)) => return Ok(()),
 
             // For compound types, we descend into them to check.
             (Type::List(elem_type), Value::List(elems)) => {
@@ -229,7 +229,7 @@ impl Value {
                     elem.is_instance_of(at, elem_type)
                         .map_err(|err| err.with_path_element(PathElement::Index(i)))?;
                 }
-                Ok(())
+                return Ok(());
             }
             (Type::Set(elem_type), Value::Set(elems)) => {
                 for (i, elem) in elems.iter().enumerate() {
@@ -239,7 +239,7 @@ impl Value {
                         // clarify that this is a nested error.
                         err.with_path_element(PathElement::Index(i)))?;
                 }
-                Ok(())
+                return Ok(());
             }
             (Type::Dict(dict), Value::Dict(kvs)) => {
                 for (k, v) in kvs.iter() {
@@ -248,7 +248,18 @@ impl Value {
                     v.is_instance_of(at, &dict.value)
                         .map_err(|err| err.with_path_element(PathElement::Key(k.clone())))?;
                 }
-                Ok(())
+                return Ok(());
+            }
+
+            (Type::Union(types), value) => {
+                // For a union, if it's an instance of any member, then it's
+                // okay, if not, we fall through to the generic error at the end.
+                for member in types.members.iter() {
+                    match value.is_instance_of(at, member) {
+                        Ok(()) => return Ok(()),
+                        Err(..) => continue,
+                    }
+                }
             }
 
             (Type::Function(fn_type), Value::Function(fn_val)) => {
@@ -274,20 +285,20 @@ impl Value {
                 unreachable!("The above ? fails.")
             }
 
-            _ => {
-                let mut error = at.error("Type mismatch.").with_body(concat! {
-                    "Expected a value that fits this type:"
-                    Doc::HardBreak Doc::HardBreak
-                    indent! { format_type(req_type).into_owned() }
-                    Doc::HardBreak Doc::HardBreak
-                    "But got this value:"
-                    Doc::HardBreak Doc::HardBreak
-                    indent! { format_rcl(self).into_owned() }
-                });
-                type_.explain_error(Side::Expected, &mut error);
-                error.err()
-            }
+            _ => {}
         }
+
+        let mut error = at.error("Type mismatch.").with_body(concat! {
+            "Expected a value that fits this type:"
+            Doc::HardBreak Doc::HardBreak
+            indent! { format_type(req_type).into_owned() }
+            Doc::HardBreak Doc::HardBreak
+            "But got this value:"
+            Doc::HardBreak Doc::HardBreak
+            indent! { format_rcl(self).into_owned() }
+        });
+        type_.explain_error(Side::Expected, &mut error);
+        error.err()
     }
 }
 

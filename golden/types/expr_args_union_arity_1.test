@@ -1,0 +1,11 @@
+let x: Union[Int] = {};
+x
+
+# output:
+stdin:1:8
+  ╷
+1 │ let x: Union[Int] = {};
+  ╵        ^~~~~~~~~~
+Error: A union type must have more than one member.
+
+Help: A union of a single type is equivalent to just that type itself.

@@ -37,8 +37,11 @@ pub fn format_type(type_: &Type) -> Doc {
             Doc::from("Set").with_markup(Markup::Type)
             format_types("[", [(None, &element_type.type_)], "]")
         },
+        Type::Union(union) => concat! {
+            Doc::from("Union").with_markup(Markup::Type)
+            format_types("[", union.members.iter().map(|st| (None, &st.type_)), "]")
+        },
 
-        // The function type.
         Type::Function(func) => concat! {
             format_types(
                 "(",

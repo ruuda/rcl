@@ -1,0 +1,19 @@
+let a0: Union[Null, Int] = "neither";
+a0
+
+# output:
+stdin:1:28
+  ╷
+1 │ let a0: Union[Null, Int] = "neither";
+  ╵                            ^~~~~~~~~
+Error: Type mismatch. Expected this type:
+
+  Union[Null, Int]
+
+But found String.
+
+stdin:1:9
+  ╷
+1 │ let a0: Union[Null, Int] = "neither";
+  ╵         ^~~~~~~~~~~~~~~~
+Note: Expected Union because of this annotation.
