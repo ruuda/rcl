@@ -21,6 +21,13 @@ fuzz_target!(|input: SynthesizedProgram| {
 });
 
 /// Helper that implements a custom libFuzzer mutator.
+///
+/// Although the default libFuzzer mutator works, it tends to try inserts and
+/// removes. This is not good for the structure of these smith programs, because
+/// those consist of instructions that are 2 bytes in size. So we have a custom
+/// mutator that takes this format into account, and also biases the random
+/// numbers a bit to more often generate cases that are more likely to be
+/// interesting.
 struct Mutator<'a> {
     data: &'a mut [u8],
     size: usize,
