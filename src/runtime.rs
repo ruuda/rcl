@@ -252,10 +252,10 @@ impl Value {
             }
 
             (Type::Union(types), value) => {
-                // For a union, if it's an instance of any element, then it's
+                // For a union, if it's an instance of any member, then it's
                 // okay, if not, we fall through to the generic error at the end.
-                for union_variant in types.elements.iter() {
-                    match value.is_instance_of(at, union_variant) {
+                for member in types.members.iter() {
+                    match value.is_instance_of(at, member) {
                         Ok(()) => return Ok(()),
                         Err(..) => continue,
                     }

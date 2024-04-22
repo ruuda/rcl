@@ -182,7 +182,7 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<
                 .err(),
         },
         "Union" => {
-            let elements = match args.len() {
+            let members = match args.len() {
                 0 => {
                     return name_span
                         .error("A union type cannot be empty.")
@@ -191,7 +191,7 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<
                 }
                 1 => {
                     return name_span
-                        .error("A union type must have more than one element.")
+                        .error("A union type must have more than one member.")
                         .with_help(
                             "A union of a single type is equivalent to just that type itself.",
                         )
@@ -199,7 +199,7 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<
                 }
                 _ => args.to_vec(),
             };
-            let union = Union { elements };
+            let union = Union { members };
             Ok(Type::Union(Rc::new(union)))
         }
 

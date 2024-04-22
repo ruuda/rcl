@@ -326,7 +326,7 @@ pub struct Union {
     // TODO: Ensure the elements are sorted and deduplicated on just type,
     // meeting the sources if we have multiple.
     // TODO: Enforce that none of the elements are unions, you need to flatten those.
-    pub elements: Vec<SourcedType>,
+    pub members: Vec<SourcedType>,
 }
 
 impl Union {
@@ -346,15 +346,15 @@ impl Union {
         let mut n_ok: u32 = 0;
         let mut errors = Vec::new();
 
-        for candidate in self.elements.iter() {
+        for candidate in self.members.iter() {
             match candidate.is_subtype_of(other) {
                 TypeDiff::Ok(..) => n_ok += 1,
                 TypeDiff::Error(err) => errors.push(err),
                 TypeDiff::Defer(..) => {}
             }
         }
-        let all_ok = n_ok == self.elements.len() as u32;
-        let all_error = errors.len() == self.elements.len();
+        let all_ok = n_ok == self.members.len() as u32;
+        let all_error = errors.len() == self.members.len();
 
         if all_ok {
             // If all of the candidates are a subtype, then the entire union is
@@ -575,7 +575,7 @@ impl SourcedType {
                 // subtype of *any* element of `u2`, then it is a subtype.
                 // If it is not a subtype of any, then it's certainly an error.
                 let mut all_error = true;
-                for candidate in u2.elements.iter() {
+                for candidate in u2.members.iter() {
                     match self.is_subtype_of(candidate) {
                         TypeDiff::Ok(t) => return TypeDiff::Ok(t),
                         TypeDiff::Error(..) => continue,

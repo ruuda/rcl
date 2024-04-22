@@ -39,7 +39,7 @@ pub fn format_type(type_: &Type) -> Doc {
         },
         Type::Union(union) => concat! {
             Doc::from("Union").with_markup(Markup::Type)
-            format_types("[", union.elements.iter().map(|st| (None, &st.type_)), "]")
+            format_types("[", union.members.iter().map(|st| (None, &st.type_)), "]")
         },
 
         Type::Function(func) => concat! {
