@@ -12,10 +12,9 @@
 #![no_main]
 
 use libfuzzer_sys::{fuzz_mutator, fuzz_target};
+use rcl_fuzz::random::WyRand;
 use rcl_fuzz::smith::SynthesizedProgram;
 use rcl_fuzz::uber::fuzz_main;
-use tinyrand::wyrand::Wyrand;
-use tinyrand::{RandRange, Seeded};
 
 fuzz_target!(|input: SynthesizedProgram| {
     fuzz_main(input.mode, &input.program);
@@ -26,15 +25,10 @@ struct Mutator<'a> {
     data: &'a mut [u8],
     size: usize,
     max_size: usize,
-    rng: Wyrand,
+    rng: WyRand,
 }
 
 impl<'a> Mutator<'a> {
-    /// Generate a uniform random byte.
-    fn gen_byte(&mut self) -> u8 {
-        self.rng.next_range(0..0x100_u16) as u8
-    }
-
     /// Return the byte offset of an arbitrary instruction in the buffer.
     fn gen_instruction_index(&mut self) -> Option<usize> {
         // Subtract 1 so we are sure to have an index of a full 2-byte instruction,
@@ -44,7 +38,7 @@ impl<'a> Mutator<'a> {
         if i == 0 {
             None
         } else {
-            Some(self.rng.next_range(0..i) * 2)
+            Some(self.rng.next_range_usize(0..i) * 2)
         }
     }
 
@@ -57,10 +51,10 @@ impl<'a> Mutator<'a> {
         // small mutation). We should have more luck deleting in e.g. a string
         // at the end.
         let n = std::cmp::min(self.size, self.max_size);
-        match self.rng.next_range(0..3_u16) {
+        match self.rng.next_range_u8(0..3) {
             0 => n - 1,
-            1 => self.rng.next_range((n / 2)..n),
-            2 => self.rng.next_range(0..n),
+            1 => self.rng.next_range_usize((n / 2)..n),
+            2 => self.rng.next_range_usize(0..n),
             _ => unreachable!(),
         }
     }
@@ -68,7 +62,7 @@ impl<'a> Mutator<'a> {
     /// Generate a random valid opcode.
     fn gen_opcode(&mut self) -> u8 {
         loop {
-            let opcode = self.gen_byte();
+            let opcode = self.rng.next_u8();
             if rcl_fuzz::smith::parse_opcode(opcode).is_some() {
                 return opcode;
             }
@@ -79,11 +73,11 @@ impl<'a> Mutator<'a> {
     fn gen_argument(&mut self) -> u8 {
         // We bias the argument towards smaller numbers, because often they are
         // lengths or indexes into the stack, and those are all small.
-        match self.rng.next_range(0..4_u16) {
+        match self.rng.next_range_u8(0..4) {
             0 => 0,
             1 => 1,
-            2 => self.rng.next_range(0..10_u16) as u8,
-            3 => self.gen_byte(),
+            2 => self.rng.next_range_u8(0..10),
+            3 => self.rng.next_u8(),
             _ => unreachable!(),
         }
     }
@@ -93,7 +87,7 @@ impl<'a> Mutator<'a> {
         // we can't generate an instruction index. So try up to 8 times to get
         // a working mutation.
         for _ in 0..8 {
-            let mutation = match self.rng.next_range(0..10_u16) {
+            let mutation = match self.rng.next_range_u8(0..10) {
                 0 => self.insert_instruction(),
                 1 => self.remove_instruction(),
                 2 => self.replace_instruction(),
@@ -185,10 +179,10 @@ impl<'a> Mutator<'a> {
         }
         // Bias values towards 0 or printable ASCII, the auxiliary data at the
         // end is often used for indices or strings.
-        let b = match self.rng.next_range(0..3u16) {
+        let b = match self.rng.next_range_u8(0..3) {
             0 => 0,
-            1 => self.rng.next_range(0x20..0x7f_u16) as u8,
-            2 => self.gen_byte(),
+            1 => self.rng.next_range_u8(0x20..0x7f),
+            2 => self.rng.next_u8(),
             _ => unreachable!(),
         };
         self.data[self.size] = b;
@@ -212,7 +206,7 @@ impl<'a> Mutator<'a> {
 }
 
 fuzz_mutator!(|data: &mut [u8], size: usize, max_size: usize, seed: u32| {
-    let rng = Wyrand::seed(seed as u64);
+    let rng = WyRand::new(seed as u64);
     let mut mutator = Mutator {
         data,
         size,
