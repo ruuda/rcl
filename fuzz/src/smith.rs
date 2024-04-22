@@ -301,12 +301,26 @@ impl<'a> ProgramBuilder<'a> {
                 self.ident_stack.pop();
             }
             Op::IdentPushInput => {
-                let arg: String = self.take_str(n).into();
-                // Temp hack; if we allow punctuation, the fuzzer is just going
-                // to mutate this and not the instructions. But at some point we
-                // do want a way for exotic values to get in here ...
-                if arg.as_bytes().iter().all(|b| b.is_ascii_alphanumeric()) {
-                    self.ident_stack.push(arg);
+                match n {
+                    // Have a short encoding to get a short variable name.
+                    // We reserve the first 16 args for this, otherwise we take
+                    // from the end of the input. Without this, the fuzzer will
+                    // try to use `IdentPushBuiltin` because it's a shorter fuzz
+                    // input, but it leads to a longer RCL program.
+                    0..=0xf => {
+                        let chars = "abcfghijpqruwxyz";
+                        let i = n as usize;
+                        self.ident_stack.push(chars[i..i + 1].to_string());
+                    }
+                    _ => {
+                        let arg: String = self.take_str(n - 0x10).into();
+                        // Temp hack; if we allow punctuation, the fuzzer is just going
+                        // to mutate this and not the instructions. But at some point we
+                        // do want a way for exotic values to get in here ...
+                        if arg.as_bytes().iter().all(|b| b.is_ascii_alphanumeric()) {
+                            self.ident_stack.push(arg);
+                        }
+                    }
                 }
             }
             Op::IdentPushBuiltin => {
