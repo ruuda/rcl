@@ -336,7 +336,11 @@ impl Union {
     /// members are a subtype. We can also rule out that `self` is a subtype of
     /// `other` if all of its members are not a subtype of `other`. If we have
     /// mixed results, then we defer to runtime.
-    pub fn is_subtype_of(self: &Rc<Self>, other: &SourcedType) -> TypeDiff<SourcedType> {
+    pub fn is_subtype_of(
+        self: &Rc<Self>,
+        source: Source,
+        other: &SourcedType,
+    ) -> TypeDiff<SourcedType> {
         if let Type::Union(_) = &other.type_ {
             // For now, union/union typechecks are out of scope, we defer to a
             // runtime check.
@@ -344,17 +348,17 @@ impl Union {
         }
 
         let mut n_ok: u32 = 0;
-        let mut errors = Vec::new();
+        let mut n_err: u32 = 0;
 
         for candidate in self.members.iter() {
             match candidate.is_subtype_of(other) {
                 TypeDiff::Ok(..) => n_ok += 1,
-                TypeDiff::Error(err) => errors.push(err),
+                TypeDiff::Error(..) => n_err += 1,
                 TypeDiff::Defer(..) => {}
             }
         }
         let all_ok = n_ok == self.members.len() as u32;
-        let all_error = errors.len() == self.members.len();
+        let all_error = n_err == self.members.len() as u32;
 
         if all_ok {
             // If all of the candidates are a subtype, then the entire union is
@@ -363,8 +367,16 @@ impl Union {
             // to do, so we just return the expected type as the upper bound.
             TypeDiff::Ok(other.clone())
         } else if all_error {
-            TypeDiff::Error(Mismatch::UnionActual {
-                actual: errors,
+            // If all of the candidates are an error, then we definitely have an
+            // error. Previously we used a custom TypeDiff variant to report this,
+            // to hold the inner errors, but it turned out to be more noisy in
+            // error messages than helpful, so just report it as an atom. Better
+            // ideas are welcome!
+            TypeDiff::Error(Mismatch::Atom {
+                actual: SourcedType {
+                    source,
+                    type_: Type::Union(self.clone()),
+                },
                 expected: other.clone(),
             })
         } else {
@@ -568,7 +580,7 @@ impl SourcedType {
                     }
                 }
             }
-            (Type::Union(u1), _) => u1.is_subtype_of(other),
+            (Type::Union(u1), _) => u1.is_subtype_of(self.source, other),
             (_, Type::Union(u2)) => {
                 // This is the reverse case of `Union::is_subtype_of`. We
                 // already know that `self` is not a union. If `self` is a
@@ -583,11 +595,14 @@ impl SourcedType {
                     }
                 }
                 if all_error {
-                    // TODO: There should be better ways of reporting this.
+                    // If the actual type is not a subtype of any of the members,
+                    // then it's definitely an error, report it as an atom.
+                    // I feel like there should be better ways of reporting this.
                     // If we expect e.g. `Union[List[T], Set[T]]`, and we have
                     // a `List[U]`, then normally we would report an inner
                     // mismatch inside List and an Atom on T and U, but with the
-                    // union we throw away all of those.
+                    // union we throw away all of those. Ideas for how to report
+                    // this better are welcome.
                     TypeDiff::Error(Mismatch::Atom {
                         expected: other.clone(),
                         actual: self.clone(),

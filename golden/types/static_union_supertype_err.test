@@ -7,13 +7,9 @@ stdin:2:18
   ╷
 2 │ let b0: String = a0;
   ╵                  ^~
-Error: Type mismatch inside this type:
+Error: Type mismatch. Expected String but found this type:
 
-  Union[<E1>, <E2>]
-
-At E1: Expected String but found Null.
-
-At E2: Expected String but found Int.
+  Union[Null, Int]
 
 stdin:2:9
   ╷
@@ -21,20 +17,8 @@ stdin:2:9
   ╵         ^~~~~~
 Note: Expected String because of this annotation.
 
-stdin:1:15
+stdin:1:9
   ╷
 1 │ let a0: Union[Null, Int] = null;
-  ╵               ^~~~
-Note: Found Null because of this annotation.
-
-stdin:2:9
-  ╷
-2 │ let b0: String = a0;
-  ╵         ^~~~~~
-Note: Expected String because of this annotation.
-
-stdin:1:21
-  ╷
-1 │ let a0: Union[Null, Int] = null;
-  ╵                     ^~~
-Note: Found Int because of this annotation.
+  ╵         ^~~~~~~~~~~~~~~~
+Note: Found Union because of this annotation.
