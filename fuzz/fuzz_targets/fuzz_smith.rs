@@ -94,17 +94,18 @@ impl<'a> Mutator<'a> {
         // we can't generate an instruction index. So try up to 8 times to get
         // a working mutation.
         for _ in 0..8 {
-            let mutation = match self.rng.next_range_u8(0..10) {
+            let mutation = match self.rng.next_range_u8(0..11) {
                 0 => self.insert_instruction(),
                 1 => self.remove_instruction(),
                 2 => self.replace_instruction(),
                 3 => self.swap_instructions(),
-                4 => self.increment_argument(),
-                5 => self.decrement_argument(),
-                6 => self.replace_argument(),
-                7 => self.append_byte(),
-                8 => self.remove_byte(),
-                9 => self.mutate_libfuzzer(),
+                4 => self.rotate_instructions(),
+                5 => self.increment_argument(),
+                6 => self.decrement_argument(),
+                7 => self.replace_argument(),
+                8 => self.append_byte(),
+                9 => self.remove_byte(),
+                10 => self.mutate_libfuzzer(),
                 _ => unreachable!(),
             };
             if mutation.is_some() {
@@ -156,6 +157,21 @@ impl<'a> Mutator<'a> {
         }
         self.data.swap(i, j);
         self.data.swap(i + 1, j + 1);
+        Some(())
+    }
+
+    fn rotate_instructions(&mut self) -> Option<()> {
+        let mut i = self.gen_instruction_index()?;
+        let mut j = self.gen_instruction_index()?;
+        if i == j {
+            return None;
+        }
+        if i > j {
+            std::mem::swap(&mut i, &mut j);
+        }
+        let range = &mut self.data[i..j + 2];
+        let mid = self.rng.next_range_usize(1..range.len());
+        range.rotate_left(mid);
         Some(())
     }
 
