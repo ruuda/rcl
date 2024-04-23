@@ -17,7 +17,12 @@ use rcl_fuzz::smith::SynthesizedProgram;
 use rcl_fuzz::uber::fuzz_main;
 
 fuzz_target!(|input: SynthesizedProgram| {
-    fuzz_main(input.mode, &input.program);
+    if input.is_minimal {
+        // Fuzz only smith programs that don't waste stack space. If we have
+        // one, there exists an equivalent one that is more efficient, so spend
+        // the CPU cycles on the more efficient one instead.
+        fuzz_main(input.mode, &input.program);
+    }
 });
 
 /// Helper that implements a custom libFuzzer mutator.

@@ -566,6 +566,7 @@ impl<'a> ProgramBuilder<'a> {
             trace: self.trace,
             program: self.expr_stack.pop().unwrap_or("".into()),
             mode: self.mode,
+            is_minimal: self.expr_stack.is_empty() && self.type_stack.is_empty(),
         }
     }
 }
@@ -575,6 +576,13 @@ pub struct SynthesizedProgram<'a> {
     pub trace: Vec<TraceEvent<'a>>,
     pub program: String,
     pub mode: Mode,
+
+    /// Whether there is no redundant data left on one of the stacks.
+    ///
+    /// If there is, it means that a smaller smith program could evaluate to the
+    /// same RCL program. We can skip the RCL part of the fuzzer for those to
+    /// focus more mutations on interesting programs.
+    pub is_minimal: bool,
 }
 
 impl<'a> SynthesizedProgram<'a> {
