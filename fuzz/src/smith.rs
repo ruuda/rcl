@@ -107,17 +107,8 @@ macro_rules! define_ops {
 }
 
 define_ops! {
-    // 0x00 was used to pop an identifier in the past, but it's not needed. The
-    // opcode can be removed in the future, but maybe it's good to keep it
-    // unused for mutations that mis-align all instructions, so a 0-arg doesn't
-    // become a valid instruction. Is that helpful though?
-    /// Add a fresh identifier to the identifier stack, from the fuzz input.
-    0x01 => IdentPushInput,
-    /// Push the name of a builtin method or value to the identifier stack.
-    0x02 => IdentPushBuiltin,
+    // 0x10 is reserved for TypePushIdent, but right now there are no type aliases.
 
-    // 0x10 was used for type pop in the past, but it's not needed. The opcode
-    // can be reused in the future.
     /// Add a fresh name to the type stack, from the fuzz input.
     0x11 => TypePushInput,
     /// Add the name of a builtin type to the identifier stack.
@@ -127,7 +118,7 @@ define_ops! {
     /// Make the top of the stack a function type, with _n_ elements as arguments.
     0x14 => TypeFunction,
 
-    /// Push an identifier from the identifier stack onto the expression stack.
+    /// Push an identifier chosen from a limited set.
     0x20 => ExprPushIdent,
     /// Push an integer in decimal form onto the expression stack.
     0x21 => ExprPushDecimal,
@@ -137,6 +128,10 @@ define_ops! {
     0x23 => ExprPushBinary,
     /// Push one of `true`, `false`, `null`.
     0x24 => ExprPushLiteral,
+    /// Push the name of a builtin to the expression stack.
+    0x25 => ExprPushBuiltin,
+    /// Push a string from the end of the fuzz input onto the expression stack.
+    0x26 => ExprPushInput,
 
     /// Wrap the top of the expression stack in `()`.
     0x30 => ExprWrapParens,
@@ -199,9 +194,20 @@ pub enum TraceEvent<'a> {
     TakeU64 { len: u8, result: u64 },
 }
 
+/// The program builder holds the intermediate state for executing the Smith program.
+///
+/// We have two stacks, one for types and one for expressions. In the past we
+/// also had a third stack for identifiers, so the same identifiers could be
+/// reused in multiple expressions, leading to more interesting programs. In
+/// practice though, this required two instructions, and the fuzzer is faster
+/// if we just have one instruction to push from a hard-coded limited set of
+/// identifiers directly onto the expression stack, even though this can lead to
+/// RCL programs with syntax errors that a dedicated identifier stack can avoid.
+/// See the commit history for details.
 struct ProgramBuilder<'a> {
-    ident_stack: Vec<String>,
+    /// The stack of type expressions.
     type_stack: Vec<String>,
+    /// The stack of expressions.
     expr_stack: Vec<String>,
 
     /// Fuzz mode to use for the final program.
@@ -218,7 +224,6 @@ struct ProgramBuilder<'a> {
 impl<'a> ProgramBuilder<'a> {
     pub fn new(input: &'a [u8]) -> ProgramBuilder<'a> {
         ProgramBuilder {
-            ident_stack: Vec::new(),
             type_stack: Vec::new(),
             expr_stack: Vec::new(),
             mode: Mode::Eval,
@@ -301,36 +306,9 @@ impl<'a> ProgramBuilder<'a> {
         self.trace.push(event);
 
         match op {
-            Op::IdentPushInput => {
-                match n {
-                    // Have a short encoding to get a short variable name.
-                    // We reserve the first 16 args for this, otherwise we take
-                    // from the end of the input. Without this, the fuzzer will
-                    // try to use `IdentPushBuiltin` because it's a shorter fuzz
-                    // input, but it leads to a longer RCL program.
-                    0..=0xf => {
-                        let chars = "abcfghijpqruwxyz";
-                        let i = n as usize;
-                        self.ident_stack.push(chars[i..i + 1].to_string());
-                    }
-                    _ => {
-                        let arg: String = self.take_str(n - 0x10).into();
-                        // Temp hack; if we allow punctuation, the fuzzer is just going
-                        // to mutate this and not the instructions. But at some point we
-                        // do want a way for exotic values to get in here ...
-                        if arg.as_bytes().iter().all(|b| b.is_ascii_alphanumeric()) {
-                            self.ident_stack.push(arg);
-                        }
-                    }
-                }
-            }
-            Op::IdentPushBuiltin => {
-                self.ident_stack.push(nth(BUILTINS, n).unwrap());
-            }
-
             Op::TypePushInput => {
                 let arg: String = self.take_str(n).into();
-                // See also the note in `IdentPushInput`.
+                // See also the note in `ExprPushInput`.
                 if arg.as_bytes().iter().all(|b| b.is_ascii_alphanumeric()) {
                     self.type_stack.push(arg);
                 }
@@ -353,8 +331,10 @@ impl<'a> ProgramBuilder<'a> {
             }
 
             Op::ExprPushIdent => {
-                let ident = nth(&self.ident_stack[..], n)?;
-                self.expr_stack.push(ident);
+                // Push a single-letter identifier, one of the following 16.
+                let chars = "abcfghijpqruwxyz";
+                let i = (n & 0xf) as usize;
+                self.expr_stack.push(chars[i..i + 1].to_string());
             }
             Op::ExprPushDecimal => {
                 let k = self.take_u64(n);
@@ -370,6 +350,18 @@ impl<'a> ProgramBuilder<'a> {
             }
             Op::ExprPushLiteral => {
                 self.expr_stack.push(nth(LITERALS, n).unwrap());
+            }
+            Op::ExprPushBuiltin => {
+                self.expr_stack.push(nth(BUILTINS, n).unwrap());
+            }
+            Op::ExprPushInput => {
+                let arg: String = self.take_str(n).into();
+                // Temp hack; if we allow punctuation, the fuzzer is just going
+                // to mutate this and not the instructions. But at some point we
+                // do want a way for exotic values to get in here ...
+                if arg.as_bytes().iter().all(|b| b.is_ascii_alphanumeric()) {
+                    self.expr_stack.push(arg);
+                }
             }
 
             Op::ExprWrapParens => {
@@ -461,14 +453,14 @@ impl<'a> ProgramBuilder<'a> {
             }
 
             Op::ExprLet => {
-                let ident = nth(&self.ident_stack[..], n)?;
+                let ident = self.expr_stack.pop()?;
                 let value = self.expr_stack.pop()?;
                 let body = self.expr_stack.pop()?;
                 self.expr_stack
                     .push(format!("let {ident} = {value}; {body}"));
             }
             Op::ExprTypedLet => {
-                let ident = nth(&self.ident_stack[..], n)?;
+                let ident = self.expr_stack.pop()?;
                 let type_ = self.type_stack.pop()?;
                 let value = self.expr_stack.pop()?;
                 let body = self.expr_stack.pop()?;
@@ -504,8 +496,7 @@ impl<'a> ProgramBuilder<'a> {
                 let body = self.expr_stack.pop()?;
                 let mut result = "for ".to_string();
                 for i in 0..(n % 4) {
-                    let m = self.take_u64(1) as u8;
-                    let ident = nth(&self.ident_stack[..], m)?;
+                    let ident = self.expr_stack.pop()?;
                     if i > 0 {
                         result.push_str(", ");
                     }
