@@ -259,38 +259,38 @@ impl<'a> ProgramBuilder<'a> {
     /// This is used to build lists and dicts, function calls, etc.
     ///
     /// The 4 characters are open, sep_even, sep_odd, close.
-    fn join(n: u8, from: &mut Vec<String>, mut into: String, chars: &[u8; 4]) -> String {
+    fn join(n: u8, from: &mut Vec<String>, mut into: String, chars: &[u8; 4]) -> Option<String> {
         into.push(chars[0] as char);
         let mut sep = None;
         for i in 0..n {
-            match from.pop() {
-                None => break,
-                Some(t) => {
-                    if let Some(sep) = sep {
-                        into.push(sep as char);
-                    }
-                    into.push_str(&t);
-                    sep = Some(if i % 2 == 0 { chars[1] } else { chars[2] });
-                }
+            let t = from.pop()?;
+            if let Some(sep) = sep {
+                into.push(sep as char);
             }
+            into.push_str(&t);
+            sep = Some(if i % 2 == 0 { chars[1] } else { chars[2] });
         }
         into.push(chars[3] as char);
-        into
+        Some(into)
     }
 
-    /// Execute a single instruction if possible. Returns whether we can execute more.
-    pub fn execute_instruction(&mut self) -> bool {
+    /// Return whether there is an instruction next that we can execute.
+    pub fn has_next(&self) -> bool {
         // We need at least one opcode and one argument.
-        if self.head + 2 >= self.tail {
-            return false;
-        }
+        self.head + 2 < self.tail
+    }
 
+    /// Execute a single instruction if possible.
+    ///
+    /// Returns `Some` when the instruction was successful, or `None` when
+    /// something failed, e.g. a stack underflow, or an invalid opcode.
+    pub fn execute_instruction(&mut self) -> Option<()> {
         let op_byte = self.input[self.head];
         let n = self.input[self.head + 1];
         self.head += 2;
 
         let op = match parse_opcode(op_byte) {
-            None => return true,
+            None => return None,
             Some(op) => op,
         };
 
@@ -339,14 +339,15 @@ impl<'a> ProgramBuilder<'a> {
                 self.type_stack.push(nth(BUILTIN_TYPES, n).unwrap());
             }
             Op::TypeApply => {
+                // TODO: Should we not have a default?
                 let constructor = self.type_stack.pop().unwrap_or("List".into());
-                let applied = ProgramBuilder::join(n, &mut self.type_stack, constructor, b"[,,]");
+                let applied = ProgramBuilder::join(n, &mut self.type_stack, constructor, b"[,,]")?;
                 self.type_stack.push(applied);
             }
             Op::TypeFunction => {
                 let result_type = self.type_stack.pop().unwrap_or("Any".into());
                 let mut args =
-                    ProgramBuilder::join(n, &mut self.type_stack, String::new(), b"(,,)");
+                    ProgramBuilder::join(n, &mut self.type_stack, String::new(), b"(,,)")?;
                 args.push_str(" -> ");
                 args.push_str(&result_type);
                 self.type_stack.push(args);
@@ -380,35 +381,30 @@ impl<'a> ProgramBuilder<'a> {
                 }
             }
             Op::ExprList => {
-                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"[,,]");
+                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"[,,]")?;
                 self.expr_stack.push(result);
             }
             Op::ExprSet => {
-                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"{,,}");
+                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"{,,}")?;
                 self.expr_stack.push(result);
             }
             Op::ExprDictColon => {
-                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"{:,}");
+                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"{:,}")?;
                 self.expr_stack.push(result);
             }
             Op::ExprDictRecord => {
-                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"{=,}");
+                let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"{=,}")?;
                 self.expr_stack.push(result);
             }
             Op::ExprCall => {
-                let function = match self.expr_stack.pop() {
-                    Some(f) => f,
-                    None => return true,
-                };
-                let applied = ProgramBuilder::join(n, &mut self.expr_stack, function, b"(,,)");
+                let function = self.expr_stack.pop()?;
+                let applied = ProgramBuilder::join(n, &mut self.expr_stack, function, b"(,,)")?;
                 self.expr_stack.push(applied);
             }
             Op::ExprFunction => {
-                let body = match self.expr_stack.pop() {
-                    Some(b) => b,
-                    None => return true,
-                };
-                let mut res = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"(,,)");
+                let body = self.expr_stack.pop()?;
+                let mut res =
+                    ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"(,,)")?;
                 res.push_str("=>");
                 res.push_str(&body);
                 self.expr_stack.push(res);
@@ -417,7 +413,8 @@ impl<'a> ProgramBuilder<'a> {
                 // Reuse the join function, which then adds surrounding space,
                 // but we can cut that off afterwards. Could be more efficient,
                 // but this is simpler.
-                let mut res = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b" .. ");
+                let mut res =
+                    ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b" .. ")?;
                 res.pop();
                 res.remove(0);
                 self.expr_stack.push(res);
@@ -430,124 +427,78 @@ impl<'a> ProgramBuilder<'a> {
                 self.expr_stack.push(s);
             }
             Op::ExprUnop => {
-                if let Some(s) = self.expr_stack.pop() {
-                    let unop = nth(UNOPS, n).unwrap();
-                    self.expr_stack.push(format!("{unop} {s}"));
-                }
+                let s = self.expr_stack.pop()?;
+                let unop = nth(UNOPS, n).unwrap();
+                self.expr_stack.push(format!("{unop} {s}"));
             }
             Op::ExprBinop => {
-                let lhs = self.expr_stack.pop();
-                let rhs = self.expr_stack.pop();
-                match (lhs, rhs) {
-                    (Some(lhs), Some(rhs)) => {
-                        let binop = nth(BINOPS, n).unwrap();
-                        self.expr_stack.push(format!("{lhs} {binop} {rhs}"));
-                    }
-                    _ => return true,
-                }
+                let lhs = self.expr_stack.pop()?;
+                let rhs = self.expr_stack.pop()?;
+                let binop = nth(BINOPS, n).unwrap();
+                self.expr_stack.push(format!("{lhs} {binop} {rhs}"));
             }
             Op::ExprIndex => {
-                let collection = self.expr_stack.pop();
-                let index = self.expr_stack.pop();
-                match (collection, index) {
-                    (Some(collection), Some(index)) => {
-                        self.expr_stack.push(format!("{collection}[{index}]"));
-                    }
-                    _ => return true,
-                }
+                let collection = self.expr_stack.pop()?;
+                let index = self.expr_stack.pop()?;
+                self.expr_stack.push(format!("{collection}[{index}]"));
             }
 
             Op::ExprLet => {
-                let ident = nth(&self.ident_stack[..], n);
-                let value = self.expr_stack.pop();
-                let body = self.expr_stack.pop();
-                match (ident, value, body) {
-                    (Some(ident), Some(value), Some(body)) => {
-                        self.expr_stack
-                            .push(format!("let {ident} = {value}; {body}"));
-                    }
-                    _ => return true,
-                }
+                let ident = nth(&self.ident_stack[..], n)?;
+                let value = self.expr_stack.pop()?;
+                let body = self.expr_stack.pop()?;
+                self.expr_stack
+                    .push(format!("let {ident} = {value}; {body}"));
             }
             Op::ExprTypedLet => {
-                let ident = nth(&self.ident_stack[..], n);
-                let type_ = self.type_stack.pop();
-                let value = self.expr_stack.pop();
-                let body = self.expr_stack.pop();
-                match (ident, type_, value, body) {
-                    (Some(ident), Some(type_), Some(value), Some(body)) => {
-                        self.expr_stack
-                            .push(format!("let {ident}: {type_} = {value}; {body}"));
-                    }
-                    _ => return true,
-                }
+                let ident = nth(&self.ident_stack[..], n)?;
+                let type_ = self.type_stack.pop()?;
+                let value = self.expr_stack.pop()?;
+                let body = self.expr_stack.pop()?;
+                self.expr_stack
+                    .push(format!("let {ident}: {type_} = {value}; {body}"));
             }
             Op::ExprAssert => {
-                let condition = self.expr_stack.pop();
-                let message = self.expr_stack.pop();
-                let body = self.expr_stack.pop();
-                match (condition, message, body) {
-                    (Some(condition), Some(message), Some(body)) => {
-                        self.expr_stack
-                            .push(format!("assert {condition}, {message}; {body}"));
-                    }
-                    _ => return true,
-                }
+                let condition = self.expr_stack.pop()?;
+                let message = self.expr_stack.pop()?;
+                let body = self.expr_stack.pop()?;
+                self.expr_stack
+                    .push(format!("assert {condition}, {message}; {body}"));
             }
             Op::ExprTrace => {
-                let message = self.expr_stack.pop();
-                let body = self.expr_stack.pop();
-                match (message, body) {
-                    (Some(message), Some(body)) => {
-                        self.expr_stack.push(format!("trace {message}; {body}"));
-                    }
-                    _ => return true,
-                }
+                let message = self.expr_stack.pop()?;
+                let body = self.expr_stack.pop()?;
+                self.expr_stack.push(format!("trace {message}; {body}"));
             }
             Op::ExprIfElse => {
-                let condition = self.expr_stack.pop();
-                let body_then = self.expr_stack.pop();
-                let body_else = self.expr_stack.pop();
-                match (condition, body_then, body_else) {
-                    (Some(condition), Some(body_then), Some(body_else)) => {
-                        self.expr_stack
-                            .push(format!("if {condition}: {body_then} else {body_else}"));
-                    }
-                    _ => return true,
-                }
+                let condition = self.expr_stack.pop()?;
+                let body_then = self.expr_stack.pop()?;
+                let body_else = self.expr_stack.pop()?;
+                self.expr_stack
+                    .push(format!("if {condition}: {body_then} else {body_else}"));
             }
             Op::ExprIf => {
-                let condition = self.expr_stack.pop();
-                let body = self.expr_stack.pop();
-                match (condition, body) {
-                    (Some(condition), Some(body)) => {
-                        self.expr_stack.push(format!("if {condition}: {body}"));
-                    }
-                    _ => return true,
-                }
+                let condition = self.expr_stack.pop()?;
+                let body = self.expr_stack.pop()?;
+                self.expr_stack.push(format!("if {condition}: {body}"));
             }
             Op::ExprFor => {
-                let collection = self.expr_stack.pop();
-                let body = self.expr_stack.pop();
-                match (collection, body) {
-                    (Some(collection), Some(body)) => {
-                        let mut result = "for ".to_string();
-                        for i in 0..(n % 4) {
-                            let m = self.take_u64(1) as u8;
-                            if let Some(ident) = nth(&self.ident_stack[..], m) {
-                                if i > 0 {
-                                    result.push_str(", ");
-                                }
-                                result.push_str(&ident);
-                            }
-                        }
-                        result.push_str(" in ");
-                        result.push_str(&collection);
-                        result.push(':');
-                        result.push_str(&body);
+                let collection = self.expr_stack.pop()?;
+                let body = self.expr_stack.pop()?;
+                let mut result = "for ".to_string();
+                for i in 0..(n % 4) {
+                    let m = self.take_u64(1) as u8;
+                    let ident = nth(&self.ident_stack[..], m)?;
+                    if i > 0 {
+                        result.push_str(", ");
                     }
-                    _ => return true,
+                    result.push_str(&ident);
                 }
+                result.push_str(" in ");
+                result.push_str(&collection);
+                result.push(':');
+                result.push_str(&body);
+                self.expr_stack.push(result);
             }
             Op::ExprImport => {
                 let mut s = self.expr_stack.pop().unwrap_or("\"\"".into());
@@ -569,7 +520,7 @@ impl<'a> ProgramBuilder<'a> {
             }
         }
 
-        true
+        Some(())
     }
 
     /// Return the final synthesized RCL expression and a trace of what executed.
@@ -600,13 +551,16 @@ pub struct SynthesizedProgram<'a> {
 impl<'a> SynthesizedProgram<'a> {
     pub fn new(bytecode: &'a [u8]) -> SynthesizedProgram<'a> {
         let mut builder = ProgramBuilder::new(bytecode);
+        let mut is_ok = true;
 
-        let mut has_more = true;
-        while has_more {
-            has_more = builder.execute_instruction();
+        while builder.has_next() {
+            let instr_ok = builder.execute_instruction().is_some();
+            is_ok = is_ok && instr_ok;
         }
 
-        builder.into_program()
+        let mut result = builder.into_program();
+        result.is_minimal = result.is_minimal && is_ok;
+        result
     }
 }
 
