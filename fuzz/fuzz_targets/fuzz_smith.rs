@@ -16,13 +16,15 @@ use rcl_fuzz::random::WyRand;
 use rcl_fuzz::smith::SynthesizedProgram;
 use rcl_fuzz::uber::fuzz_main;
 
-fuzz_target!(|input: SynthesizedProgram| {
-    if input.is_minimal {
+fuzz_target!(|input: SynthesizedProgram| -> libfuzzer_sys::Corpus {
+    if !input.is_minimal {
         // Fuzz only smith programs that don't waste stack space. If we have
         // one, there exists an equivalent one that is more efficient, so spend
         // the CPU cycles on the more efficient one instead.
-        fuzz_main(input.mode, &input.program);
+        return libfuzzer_sys::Corpus::Reject;
     }
+    fuzz_main(input.mode, &input.program);
+    libfuzzer_sys::Corpus::Keep
 });
 
 /// Helper that implements a custom libFuzzer mutator.
