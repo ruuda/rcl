@@ -221,6 +221,21 @@
               '';
             installPhase = "echo 'Skipping default install phase.'";
           };
+
+          fuzzers = pkgs.rustPlatform.buildRustPackage rec {
+            name = "rcl-fuzzers";
+            inherit version;
+            src = rustSourcesAll;
+            cargoLock.lockFile = ./Cargo.lock;
+            buildAndTestSubdir = "fuzz";
+          };
+
+          fuzzers-coverage = fuzzers.overrideAttrs (old: {
+            name = "rcl-fuzzers-coverage";
+            buildType = "debug";
+            RUSTFLAGS = "-C instrument-coverage -C link-dead-code -C debug-assertions";
+          });
+
         in
           rec {
             devShells.default = pkgs.mkShell {
@@ -232,6 +247,7 @@
                 pkgs.python311Packages.black
                 pkgs.binaryen
                 pkgs.esbuild
+                pkgs.grcov
                 pkgs.maturin
                 pkgs.nodejs  # Required for tree-sitter.
                 pkgs.rustup
@@ -257,19 +273,13 @@
             };
 
             checks = rec {
+              inherit fuzzers;
+
               debugBuild = packages.default.overrideAttrs (old: {
                 name = "check-test";
                 buildType = "debug";
                 RUSTFLAGS = "-C debug-assertions";
               });
-
-              fuzzers = pkgs.rustPlatform.buildRustPackage rec {
-                name = "rcl-fuzzers";
-                inherit version;
-                src = rustSourcesAll;
-                cargoLock.lockFile = ./Cargo.lock;
-                buildAndTestSubdir = "fuzz";
-              };
 
               golden = pkgs.runCommand
                 "check-golden"
@@ -334,7 +344,7 @@
             };
 
             packages = {
-              inherit rcl pyrcl treeSitterRcl;
+              inherit fuzzers-coverage rcl pyrcl treeSitterRcl;
 
               default = rcl;
               wasm = rcl-wasm;
