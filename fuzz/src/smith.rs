@@ -339,13 +339,12 @@ impl<'a> ProgramBuilder<'a> {
                 self.type_stack.push(nth(BUILTIN_TYPES, n).unwrap());
             }
             Op::TypeApply => {
-                // TODO: Should we not have a default?
-                let constructor = self.type_stack.pop().unwrap_or("List".into());
+                let constructor = self.type_stack.pop()?;
                 let applied = ProgramBuilder::join(n, &mut self.type_stack, constructor, b"[,,]")?;
                 self.type_stack.push(applied);
             }
             Op::TypeFunction => {
-                let result_type = self.type_stack.pop().unwrap_or("Any".into());
+                let result_type = self.type_stack.pop()?;
                 let mut args =
                     ProgramBuilder::join(n, &mut self.type_stack, String::new(), b"(,,)")?;
                 args.push_str(" -> ");
@@ -354,9 +353,8 @@ impl<'a> ProgramBuilder<'a> {
             }
 
             Op::ExprPushIdent => {
-                if let Some(ident) = nth(&self.ident_stack[..], n) {
-                    self.expr_stack.push(ident);
-                }
+                let ident = nth(&self.ident_stack[..], n)?;
+                self.expr_stack.push(ident);
             }
             Op::ExprPushDecimal => {
                 let k = self.take_u64(n);
@@ -375,10 +373,9 @@ impl<'a> ProgramBuilder<'a> {
             }
 
             Op::ExprWrapParens => {
-                if let Some(t) = self.expr_stack.last_mut() {
-                    t.insert(0, '(');
-                    t.push(')');
-                }
+                let t = self.expr_stack.last_mut()?;
+                t.insert(0, '(');
+                t.push(')');
             }
             Op::ExprList => {
                 let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"[,,]")?;
@@ -501,7 +498,7 @@ impl<'a> ProgramBuilder<'a> {
                 self.expr_stack.push(result);
             }
             Op::ExprImport => {
-                let mut s = self.expr_stack.pop().unwrap_or("\"\"".into());
+                let mut s = self.expr_stack.pop()?;
                 s.insert_str(0, "import ");
                 self.expr_stack.push(s);
             }
