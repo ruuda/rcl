@@ -417,11 +417,31 @@ impl<'a> ProgramBuilder<'a> {
                 self.expr_stack.push(res);
             }
             Op::ExprFormatString => {
-                // TODO: Respect `n`, *actually* make a format string.
-                let mut s = self.expr_stack.pop().unwrap_or("".into());
-                s.insert(0, '"');
-                s.push('"');
-                self.expr_stack.push(s);
+                // We hijack the least significant bit to choose between a
+                // "-string and """-string.
+                let style = n & 1;
+                let n_parts = n >> 1;
+                let mut in_hole = false;
+                let mut result: String = match style {
+                    0 if n_parts > 1 => "f\"".into(),
+                    1 if n_parts > 1 => "f\"\"\"".into(),
+                    0 => "\"".into(),
+                    1 => "\"\"\"".into(),
+                    _ => unreachable!(),
+                };
+                for i in 0..n_parts {
+                    if i > 0 {
+                        result.push(if in_hole { '}' } else { '{' });
+                    }
+                    result.push_str(&self.expr_stack.pop()?);
+                    in_hole = !in_hole;
+                }
+                match style {
+                    0 => result.push('"'),
+                    1 => result.push_str("\"\"\""),
+                    _ => unreachable!(),
+                }
+                self.expr_stack.push(result);
             }
             Op::ExprUnop => {
                 let s = self.expr_stack.pop()?;
