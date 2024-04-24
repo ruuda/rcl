@@ -160,6 +160,8 @@ define_ops! {
     0x39 => ExprUnop,
     /// Combine the top two elements with a binary operator in between.
     0x3a => ExprBinop,
+    /// Combine the top two elements in an indexing operation.
+    0x3b => ExprIndex,
 
     /// Replace the top 2 elements with `let ... = {0}; {1}`.
     0x50 => ExprLet,
@@ -440,6 +442,16 @@ impl<'a> ProgramBuilder<'a> {
                     (Some(lhs), Some(rhs)) => {
                         let binop = nth(BINOPS, n).unwrap();
                         self.expr_stack.push(format!("{lhs} {binop} {rhs}"));
+                    }
+                    _ => return true,
+                }
+            }
+            Op::ExprIndex => {
+                let collection = self.expr_stack.pop();
+                let index = self.expr_stack.pop();
+                match (collection, index) {
+                    (Some(collection), Some(index)) => {
+                        self.expr_stack.push(format!("{collection}[{index}]"));
                     }
                     _ => return true,
                 }
