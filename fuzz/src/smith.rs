@@ -307,11 +307,9 @@ impl<'a> ProgramBuilder<'a> {
 
         match op {
             Op::TypePushInput => {
-                let arg: String = self.take_str(n).into();
                 // See also the note in `ExprPushInput`.
-                if arg.as_bytes().iter().all(|b| b.is_ascii_alphanumeric()) {
-                    self.type_stack.push(arg);
-                }
+                let arg: String = self.take_str(n.min(6)).into();
+                self.type_stack.push(arg);
             }
             Op::TypePushBuiltin => {
                 self.type_stack.push(nth(BUILTIN_TYPES, n).unwrap());
@@ -355,13 +353,14 @@ impl<'a> ProgramBuilder<'a> {
                 self.expr_stack.push(nth(BUILTINS, n).unwrap());
             }
             Op::ExprPushInput => {
-                let arg: String = self.take_str(n).into();
-                // Temp hack; if we allow punctuation, the fuzzer is just going
-                // to mutate this and not the instructions. But at some point we
-                // do want a way for exotic values to get in here ...
-                if arg.as_bytes().iter().all(|b| b.is_ascii_alphanumeric()) {
-                    self.expr_stack.push(arg);
-                }
+                // If we allow arbitrary input, including punctuation, up to any
+                // length, then for many code paths the smallest encoding is an
+                // ExprPushInput, so the fuzzer is going to exploit that, but
+                // then it has to spend time on the relatively inefficient direct
+                // source manipulation instead of exploring smith programs. So
+                // limit the length to 6 bytes, so it can't rely on this too much.
+                let arg: String = self.take_str(n.min(6)).into();
+                self.expr_stack.push(arg);
             }
 
             Op::ExprWrapParens => {
