@@ -533,16 +533,6 @@ impl<'a> ProgramBuilder<'a> {
 
         Some(())
     }
-
-    /// Return the final synthesized RCL expression and a trace of what executed.
-    fn into_program(mut self) -> SynthesizedProgram<'a> {
-        SynthesizedProgram {
-            trace: self.trace,
-            program: self.expr_stack.pop().unwrap_or("".into()),
-            mode: self.mode,
-            is_minimal: self.expr_stack.is_empty() && self.type_stack.is_empty(),
-        }
-    }
 }
 
 /// The output of running the program builder.
@@ -565,13 +555,29 @@ impl<'a> SynthesizedProgram<'a> {
         let mut is_ok = true;
 
         while builder.has_next() {
+            // If any of the instructions failed to execute, then we still get
+            // some result, but we no longer call that result "OK" or "minimal",
+            // because a different sequence of instructions could produce the
+            // same RCL expression with fewer Smith instructions.
             let instr_ok = builder.execute_instruction().is_some();
             is_ok = is_ok && instr_ok;
         }
 
-        let mut result = builder.into_program();
-        result.is_minimal = result.is_minimal && is_ok;
-        result
+        is_ok = is_ok && !builder.expr_stack.is_empty();
+        let program = builder.expr_stack.pop().unwrap_or("".into());
+
+        // If anything is left on the stacks at this point, that's wasteful, a
+        // smaller Smith program would not have put them there in the first
+        // place.
+        is_ok = is_ok && builder.expr_stack.is_empty();
+        is_ok = is_ok && builder.type_stack.is_empty();
+
+        SynthesizedProgram {
+            program,
+            trace: builder.trace,
+            mode: builder.mode,
+            is_minimal: is_ok,
+        }
     }
 }
 
