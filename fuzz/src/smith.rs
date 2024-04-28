@@ -139,9 +139,9 @@ define_ops! {
     0x31 => ExprList,
     /// Combine the top _n_ elements into a set.
     0x32 => ExprSet,
-    /// Combine the top _2n_ elements into a dict with `:` to separate keys from values.
+    /// Combine the top _n_ elements into a dict with `:` to separate keys from values.
     0x33 => ExprDictColon,
-    /// Combine the top _2n_ elements into a dict with `=` to separate keys from values.
+    /// Combine the top _n_ elements into a dict with `=` to separate keys from values.
     0x34 => ExprDictRecord,
     /// Call the top of the stack, with _n_ elements as arguments.
     0x35 => ExprCall,
@@ -149,7 +149,7 @@ define_ops! {
     0x36 => ExprFunction,
     /// Join the top _n_ elements with a `.` in between.
     0x37 => ExprField,
-    /// Combine the top _2n + 1_ elements into a string or f-string.
+    /// Combine the top _n/2_ elements into a string or f-string.
     0x38 => ExprFormatString,
     /// Prepend an unary operator to the element a the top.
     0x39 => ExprUnop,
@@ -158,9 +158,9 @@ define_ops! {
     /// Combine the top two elements in an indexing operation.
     0x3b => ExprIndex,
 
-    /// Replace the top 2 elements with `let ... = {0}; {1}`.
+    /// Replace the top 3 elements with `let {0} = {1}; {2}`.
     0x50 => ExprLet,
-    /// Replace the top 2 elements with `let ...: {T} = {0}; {1}`.
+    /// Replace the top 2 elements with `let {0}: {T} = {0}; {1}`.
     0x51 => ExprTypedLet,
     /// Replace the top 3 elements with `assert {0}, {1}; {2}`.
     0x52 => ExprAssert,
@@ -170,7 +170,7 @@ define_ops! {
     0x54 => ExprIfElse,
     /// Replace the top 2 elements with `if {0}: {1}`.
     0x55 => ExprIf,
-    /// Replace the top 2 elements with `for ... in {0}: {1}`.
+    /// Replace the top elements with `for {0..4} in {}: {}`.
     0x56 => ExprFor,
     /// Replace the top element with an import expression.
     0x57 => ExprImport,
@@ -179,7 +179,7 @@ define_ops! {
     // and because it's the default, there is no instruction to set it.
     /// Set the check mode to `FormatIdempotent`.
     0xe1 => ModeFormatIdempotent,
-    /// Set the check mode to `JsonCheck`.
+    /// Set the check mode to `JsonIdempotent`.
     0xe2 => ModeJsonIdempotent,
     /// Set the check mode to `JsonCheck`.
     0xe3 => ModeJsonCheck,
@@ -294,10 +294,7 @@ impl<'a> ProgramBuilder<'a> {
         let n = self.input[self.head + 1];
         self.head += 2;
 
-        let op = match parse_opcode(op_byte) {
-            None => return None,
-            Some(op) => op,
-        };
+        let op = parse_opcode(op_byte)?;
 
         let event = TraceEvent::Instruction {
             operation: op,
