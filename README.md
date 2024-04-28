@@ -144,9 +144,10 @@ View coverage of the golden tests:
     nix build .#coverage --out-link result
     xdg-open result/index.html
 
-Run the fuzzer:
+Run the smith-based fuzzer or the source-based fuzzer:
 
-    cargo +nightly-2023-06-03 fuzz run main -- -dict=fuzz/dictionary.txt -timout=5
+    cargo +nightly-2023-06-03 fuzz run fuzz_smith -- -timeout=3
+    cargo +nightly-2023-06-03 fuzz run fuzz_source -- -dict=fuzz/dictionary.txt -timeout=3
 
 ## Building the Python module
 
