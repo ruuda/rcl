@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The RCL Configuration Language</title>
+  <link href="/favicon.svg" rel="icon" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:ital,wght@0,300..900;1,300..900&family=Red+Hat+Mono:ital,wght@0,300..700;1,300..700&family=Red+Hat+Text:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+  <style>
+  * {
+    margin: 0;
+    padding: 0;
+    border-spacing: 0;
+  }
+
+  html {
+    background-color: var(--oxford-blue);
+    color: #fff;
+    font-family: 'Red Hat Text', sans-serif;
+    font-optical-sizing: auto;
+    font-size: 18px;
+    line-height: 1.55;
+
+    --margin-small: 1.3rem;
+    --margin: 2.5rem;
+    --margin-large: 3.2rem;
+    --bullet-distance: -1.0rem;
+    --outset: -0.5rem;
+    --hsep: 1px;
+    --vsep: 0px;
+
+    /* Colors: https://coolors.co/000f29-033563-f5e5b8-7b0d1e-9f2042 */
+    --oxford-blue: #000f29ff;
+    /* --berkeley-blue: #033563ff; */
+    --berkeley-blue: #0e3259;
+    --dutch-white: #f5e5b8ff;
+    --burgundy: #7b0d1eff;
+    --amaranth-purple: #9f2042ff;
+
+    --off-white: #fafaf9;
+    --text-light: #335184;
+    --text-lighter: #36d;
+
+    --syn-error: #f25a0b;
+    --syn-accent: #ffd07e;
+    --syn-red: #ff7e7e;
+    --syn-blue: #4ccae5;
+    --syn-light-blue: #81baf7;
+
+    --link-blue: #4fbdec78;
+    --outline: #ffffff44;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: var(--margin) calc(100% - 2 * var(--margin)) var(--margin);
+    grid-template-areas: "lmargin content rmargin";
+  }
+
+  .span-full, .span-l2, .span-r2 { grid-column: content }
+
+  @media (min-width: 500px) {
+    .xnarrow {
+      display: none;
+    }
+  }
+
+  @media (min-width: 600px) {
+    html {
+      --margin: 3.2rem;
+      --margin-large: 4rem;
+      --bullet-distance: -1.2rem;
+      --outset: -1.2rem;
+    }
+    .narrow, .wxnarrow {
+      display: none;
+    }
+  }
+
+  @media (min-width: 710px) {
+    .wnarrow {
+      display: none;
+    }
+  }
+
+  @media (min-width: 820px) {
+    html {
+      /* The separator rotates 90 degrees now. */
+      --hsep: 0px;
+      --vsep: 1px;
+    }
+    .xnarrow, .narrow {
+      display: inline;
+    }
+    .grid {
+      grid-template-columns: var(--margin) 1fr 1fr 1fr 1fr var(--margin);
+      grid-template-areas: "lmargin c1 c2 c3 c4 rmargin";
+    }
+    .span-full {
+      grid-column: c1-start / c4-end
+    }
+    .span-l2 {
+      grid-column: c1-start / c2-end;
+      padding-right: var(--margin);
+    }
+    .span-r2 {
+      grid-column: c3-start / c4-end;
+      padding-left: var(--margin);
+    }
+  }
+
+  @media (min-width: 910px) {
+    .xnarrow {
+      display: none;
+    }
+  }
+
+  @media (min-width: 1000px) {
+    .narrow {
+      display: none;
+    }
+    .grid {
+      grid-template-columns: auto 12rem 12rem 12rem 12rem auto;
+    }
+  }
+
+  @media (min-width: 1200px) {
+    html {
+      font-size: 20px;
+    }
+  }
+
+  h1 {
+    font-family: 'Red Hat Display', sans-serif;
+    font-size: 1rem;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  header {
+    padding-top: var(--margin-small);
+    padding-bottom: var(--margin-small);
+    word-spacing: 1rem;
+  }
+
+  header h1 {
+    font-weight: 900;
+    display: inline;
+  }
+
+  section {
+    overflow: hidden;
+    background: var(--berkeley-blue);
+    color: #eef;
+    padding-top: var(--margin-large);
+  }
+
+  section.alt {
+    background: var(--off-white);
+    color: var(--text-light);
+  }
+
+  h1.tagline {
+    color: #fff;
+    font-size: 2.5rem;
+    line-height: 2.4rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+  }
+
+  .p-ul {
+    margin-top: var(--margin);
+    margin-bottom: 1em;
+  }
+
+  ul li {
+    position: relative;
+    list-style-type: none;
+  }
+
+  ul li:before {
+    /* color: #ffffff66; */
+    position: absolute;
+    left: var(--bullet-distance);
+    content: '•';
+    opacity: 0.4;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+  }
+
+  p, pre, ul {
+    margin-bottom: var(--margin-large);
+  }
+
+  section a, footer a {
+    text-decoration-line: underline;
+    text-decoration-skip-ink: none;
+    text-decoration-color: var(--link-blue);
+    text-decoration-thickness: 3pt;
+  }
+
+  h2 a {
+    text-decoration: none;
+  }
+
+  section.alt h2 {
+    color: var(--text-lighter);
+  }
+
+  strong {
+    font-weight: 700;
+  }
+
+  p.warning strong {
+    margin-right: 0.2rem;
+  }
+
+  span.cc {
+    font-weight: 600;
+  }
+
+  code, pre {
+    font-family: 'Red Hat Mono', monospace;
+    font-size: 0.8rem;
+  }
+
+  .demo {
+    margin-left: var(--outset);
+    margin-right: var(--outset);
+    margin-top: -1rem;
+    margin-bottom: 0;
+    display: grid;
+    grid-template-columns: subgrid;
+    background-color: #00000066;
+    border: 1px solid var(--outline);
+    border-radius: 0.2rem;
+    overflow: hidden;
+  }
+
+  .demo h3 {
+    color: #ffffff99;
+    font-weight: inherit;
+    font-size: 0.8rem;
+    padding: 0.5rem;
+    padding-left: 0.8rem;
+    border-bottom: 1px solid var(--outline);
+  }
+
+  .demo > div {
+    position: relative;
+  }
+
+  .demo h3.label {
+    color: #ffffff77;
+    border-bottom: none;
+    position: absolute;
+  }
+
+  .demo .span-l2, .demo .span-r2, .demo .span-full {
+    padding: 0;
+    overflow-x: auto;
+  }
+
+  .demo .span-r2 {
+    /* This switches between top and left depending on the viewport width,
+       see the media query elsewhere. */
+    border-top: var(--hsep) solid var(--outline);
+    border-left: var(--vsep) solid var(--outline);
+  }
+
+  .focus-marker {
+    border: 3px solid transparent;
+  }
+  .focus-marker:has(code:focus-visible), .focus-marker:has(span:focus-visible) {
+    border: 3px solid var(--outline);
+  }
+  .focus-marker code:focus-visible, .focus-marker span:focus-visible {
+    outline: none;
+  }
+
+  .focus-marker:has(#in2) {
+    margin-left: -0.7em;
+    margin-right: 0.5rem;
+    border-radius: 0.25rem;
+    padding: 0.4rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+  }
+  #in2:before, #in2:after {
+    content: "'";
+    display: inline-block;
+  }
+
+  .demo pre {
+    min-width: min-content;
+    /* The regular margin is a bit much for the snippet,
+       instead apply the small margin twice. */
+    padding: var(--margin-small);
+    margin-bottom: var(--margin-small);
+  }
+
+  .demo pre code {
+    display: block;
+    padding-top: var(--margin-small);
+    padding-left: var(--margin-small);
+  }
+
+  code span.highlight { font-weight: 600; }
+  code span.error { font-weight: 600; color: var(--syn-error); }
+  code span.warning { font-weight: 600; color: var(--syn-accent); }
+  code span.keyword { font-weight: 600; color: var(--syn-light-blue); }
+  code span.comment { font-style: italic; opacity: 0.6; }
+  code span.type { color: var(--syn-accent); }
+  code span.string { color: var(--syn-red); }
+  code span.field { color: var(--syn-accent); }
+  code span.number { color: var(--syn-blue); }
+
+  .edit-contain {
+    position: relative;
+  }
+  .edit-front {
+    position: absolute;
+    top: 0;
+    caret-color: #fff;
+    color: transparent;
+  }
+
+  footer {
+    padding-top: var(--margin-large);
+    opacity: 0.6;
+    font-size: 0.8rem;
+  }
+  </style>
+  <!-- TODO: Use a content-addressable name to avoid caching issues. -->
+  <script src="/rcl.js" defer></script>
+</head>
+<body>
+  <header class="grid">
+    <nav class="span-full">
+      <a href="/"><h1>RCL</h1></a>
+      <a href="https://docs.ruuda.nl/rcl">Docs</a>
+      <a href="https://github.com/ruuda/rcl">GitHub</a>
+      <a href="https://codeberg.org/ruuda/rcl">Codeberg</a>
+    </nav>
+  </header>
+  <section class="grid">
+    <div class="span-l2">
+      <h1 class="tagline">Make<br>configuration<br>boring again</h1>
+      <p>RCL is a domain-specific language for specifying human-written
+      data with just enough abstraction to avoid repetition.
+      It extends json into a simple functional programming
+      language that resembles Python and Nix.</p>
+    </div>
+    <div class="span-r2">
+      <pre><code>{
+  <span class="comment">// A silly snippet to show some</span>
+  <span class="comment">// features in a limited space.</span>
+  <span class="keyword">let</span> data: <span class="type">List</span>[<span class="type">String</span>] = <span class="narrow">
+    </span><span class="keyword">import</span> <span class="string">"data.rcl"</span>;
+  <span class="keyword">assert</span>
+    data.contains(<span class="string">"Assertions"</span>),
+    <span class="string">"Assertions are supported"</span>;
+  <span class="keyword">let</span> f = () => [<span class="xnarrow">
+    </span><span class="string">"List"</span>, <span class="xnarrow">
+    </span><span class="string">"Dict"</span>, <span class="xnarrow">
+    </span><span class="string">"Set"</span><span class="xnarrow">,
+  </span>];
+  <span class="field">features</span> = [
+    <span class="keyword">for</span> d <span class="keyword">in</span> data: d,
+    <span class="keyword">for</span> collection <span class="keyword">in</span> f():
+    <span class="string">f"{</span>collection<span class="string">} comprehensions"</span>,
+  ],
+  <span class="field">export-to</span> = <span class="string">"json, yaml, toml, ..."</span>,
+}</code></pre>
+    </div>
+    <div class="span-full">
+      <p class="warning"><strong>Note!</strong> RCL is a hobby project without stability promise.
+      It is usable, but also experimental and incomplete.</p>
+    </div>
+  </section>
+  <section class="grid alt">
+    <div class="feature-block span-l2">
+      <h2>Connect anything</h2>
+      <p>Generate json, yaml, toml, or other text-based configuration
+      for tools that do not natively talk to each other,
+      all from a single source of truth.</p>
+    </div>
+    <div class="feature-block span-r2">
+      <h2>Remove repetition</h2>
+      <p>Stop copy-pasting.
+      Use variables, list comprehensions, and functions to avoid duplication.
+      Bump <span class="cc">ubuntu-20.04</span> to <span class="cc">24.04</span>
+      in <em>one</em> place.</p>
+    </div>
+    <div class="feature-block span-l2">
+      <h2>Fight complexity, not tools</h2>
+      <p>Spend time building your infrastructure,
+      not debugging whitespace and escaping issues in your string templates.
+      Generate correct yaml, json, and toml.
+      </p>
+    </div>
+    <div class="feature-block span-r2">
+      <h2>Familiar syntax</h2>
+      <p>Have you used Python, TypeScript or Rust before?
+      Then you will find RCL obvious to read and natural to write.
+      </p>
+    </div>
+    <div class="feature-block span-l2">
+      <h2>Built-in json queries</h2>
+      <p>Need to drill down into a json document,
+      but can’t figure out the <span class="cc">jq</span> syntax?
+      Try <a href="https://docs.ruuda.nl/rcl/rcl_query/"><span class="cc">rcl query</span></a> instead.
+      Scroll down for an example.
+      </p>
+    </div>
+    <div class="feature-block span-r2">
+      <h2>Python module</h2>
+      <p>You can always export json from the command line
+      and load it into your program.
+      For Python we can skip that intermediate stage:
+      <a href="https://docs.ruuda.nl/rcl/python_bindings/#loads"><span class="cc">rcl.loads</span></a>
+      is a drop-in replacement for <span class="cc">json.loads</span>.
+    </div>
+  </section>
+  <section class="grid">
+    <div class="span-full">
+      <h2><a href="#try-it-yourself" id="try-it-yourself">Try it yourself</a></h2>
+      <p>Suppose we run a webserver that serves both
+      <span class="cc">www.example.com</span> and
+      <span class="cc">docs.example.com</span>.
+      We have to create two very similar DNS records pointing to that server’s address.
+      One way to manage those is with Terraform/OpenTofu.
+      The output below is a
+      <a href="https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/record">simplified form</a>
+      of a
+      <a href="https://opentofu.org/docs/language/syntax/json/">json config</a>
+      that defines the records.</p>
+    </div>
+    <div class="span-full demo">
+    <div class="span-full">
+      <h3>rcl evaluate --format=json</h3>
+    </div>
+    <div class="span-l2 focus-marker edit-contain">
+      <h3 class="label">input</h3>
+      <pre class="edit-back" id="shadow1"><code>{
+  <span class="keyword">let</span> <span class="field">tld</span> = <span class="string">"com"</span>;
+  <span class="comment">// for tld in ["com", "net"]:</span>
+  <span class="keyword">for</span> <span class="field">subdomain</span> <span class="keyword">in</span> [<span class="string">"docs"</span>, <span class="string">"www"</span>]:
+  <span class="string">f"a_record_</span><span class="escape">{</span><span class="field">subdomain</span><span class="escape">}</span><span class="string">_example_</span><span class="escape">{</span><span class="field">tld</span><span class="escape">}</span><span class="string">"</span>:
+  {
+    <span class="field">domain</span> = <span class="string">"example.com"</span>,
+    <span class="field">name</span> = <span class="field">subdomain</span>,
+    <span class="field">type</span> = <span class="string">"A"</span>,
+    <span class="field">value</span> = <span class="string">"93.184.216.34"</span>,
+  }
+}</code></pre>
+      <pre class="edit-front"><code id="in1" spellcheck="false">{
+  let tld = "com";
+  // for tld in ["com", "net"]:
+  for subdomain in ["docs", "www"]:
+  f"a_record_{subdomain}_example_{tld}":
+  {
+    domain = "example.com",
+    name = subdomain,
+    type = "A",
+    value = "93.184.216.34",
+  }
+}</code></pre>
+    </div>
+  <div class="span-r2">
+    <h3 class="label">output</h3>
+    <pre id="out1"><code>{
+  <span class="field">"a_record_docs_example_com"</span>: {
+    <span class="field">"domain"</span>: <span class="string">"example.com"</span>,
+    <span class="field">"name"</span>: <span class="string">"docs"</span>,
+    <span class="field">"type"</span>: <span class="string">"A"</span>,
+    <span class="field">"value"</span>: <span class="string">"93.184.216.34"</span>
+  },
+  <span class="field">"a_record_www_example_com"</span>: {
+    <span class="field">"domain"</span>: <span class="string">"example.com"</span>,
+    <span class="field">"name"</span>: <span class="string">"www"</span>,
+    <span class="field">"type"</span>: <span class="string">"A"</span>,
+    <span class="field">"value"</span>: <span class="string">"93.184.216.34"</span>
+  }
+}
+</code></pre>
+    </div></div>
+    <div class="span-full">
+      <p class="p-ul"><strong>The input above is editable.</strong>
+      How would you change it to emit records for
+      <span class="cc">www.example.net</span> and
+      <span class="cc">docs.example.net</span>
+      in addition to <span class="cc">example.com</span>?
+      Try uncommenting the <span class="cc">tld</span> loop.
+      <noscript>
+        <br><br>
+        You need to enable Javascript to use the live demo.
+        It runs a WebAssembly version of RCL in your browser.
+        No server ever sees your keystrokes.
+        This is the only script on the page,
+        there are no trackers or other malware.
+        The RCL code is open source,
+        and the scripts on this page are not obfuscated
+        so you can verify them yourself.
+        </noscript>
+      </p>
+    </div>
+  </section>
+  <section class="grid">
+    <div class="span-full">
+      <h2><a href="#intuitive-json-queries" id="intuitive-json-queries">Intuitive json queries</a></h2>
+      <p>Suppose a cloud provider has an API that returns the regions it
+      supports, and you want to know the details of the region with id
+      <span class="cc">nrt</span>. Below is a query that does this.</p>
+    </div>
+    <div class="span-full demo">
+    <div class="span-full"><pre><code><span class="field">$</span> curl --silent <br class="wxnarrow"
+    >https://api.vultr.com/v2/regions <br class="wnarrow"
+    ><span class="field">|</span> rcl query
+<div class="focus-marker"><span id="in2" spellcheck="false" class="highlight">input.regions.key_by(r =&gt; r.id).nrt</span></div></code><div id="out2"><code>{
+  <span class="field">city</span> = <span class="string">"Tokyo"</span>,
+  <span class="field">continent</span> = <span class="string">"Asia"</span>,
+  <span class="field">country</span> = <span class="string">"JP"</span>,
+  <span class="field">id</span> = <span class="string">"nrt"</span>,
+  <span class="field">options</span> = [
+    <span class="string">"ddos_protection"</span>,
+    <span class="string">"block_storage_high_perf"</span>,
+    <span class="string">"block_storage_storage_opt"</span>,
+    <span class="string">"load_balancers"</span>,
+    <span class="string">"kubernetes"</span>,
+  ],
+}</code></div></pre>
+      </div>
+    </div>
+    <div class="span-full">
+      <p class="p-ul">The above query is editable.
+      Can you change the query to return the ids of all regions where the
+      <span class="cc">block_storage_high_perf</span> option is available?
+      Some ideas to get you started:</p>
+      <ul>
+        <li>Change the query to just <span class="cc">input</span>.
+        What does the input look like?</li>
+        <li>Wrap <span class="cc">input.regions</span> in a
+        <a href="https://docs.ruuda.nl/rcl/syntax/#comprehensions">list comprehension</a>.</li>
+        <li>Use <span class="cc">if</span> to filter elements.</li>
+        <li>Use <a href="https://docs.ruuda.nl/rcl/type_list/#contains">the <span class="cc">List.contains</span> method</a>
+        to check whether a list contains a particular element.</li>
+      </ul>
+    </div>
+  </section>
+  <section class="grid alt">
+    <div class="span-full">
+      <h2><a href="#installation" id="installation">Installation</a></h2>
+      <p>
+      RCL is written in Rust and has few dependencies,
+      so it is quick and easy to build from source with <a href="https://doc.rust-lang.org/cargo/index.html">Cargo</a>.
+      There is no need to pipe arbitrary code from the web into your shell.
+      <br><br>
+      <code>
+        <span class="number">$</span>
+        git clone https://github.com/ruuda/rcl<br>
+        <span class="number">$</span>
+        cargo build --release<br>
+        <span class="number">$</span>
+        target/release/rcl --help
+      </code></p>
+    </div>
+    <div class="feature-block span-l2">
+      <h2><a href="#further-resources" id="further-resources">Further resources</a></h2>
+      <ul>
+        <li><a href="https://docs.ruuda.nl/rcl/syntax_highlighting/">Set up syntax highlighting</a></li>
+        <li><a href="https://docs.ruuda.nl/rcl/tutorial/">Check out the tutorial</a></li>
+        <li><a href="https://docs.ruuda.nl/rcl/">Check out the documentation</a></li>
+        <li><a href="https://ruudvanasseldonk.com/2024/a-reasonable-configuration-language">Read the background story</a></li>
+      </ul>
+    </div>
+    <div class="feature-block span-r2">
+      <h2><a href="#floss" id="floss">Free &amp; open source</a></h2>
+      <p>RCL is free/libre software,
+      licensed under the Apache 2.0 license.
+      The project is developed in the open
+      and the source code is available on
+      <a href="https://github.com/ruuda/rcl">GitHub</a> and
+      <a href="https://codeberg.org/ruuda/rcl">Codeberg</a>.</p>
+    </div>
+    <div class="span-full">
+      <h2><a href="#support-rcl" id="support-rcl">Support RCL</a></h2>
+      <p>One thing that holds RCL back from being useful to more people
+      is the lack of widespread support for syntax highlighting,
+      in particular on platforms such as GitHub.
+      If RCL is useful to you,
+      you can help by using RCL publicly in a GitHub repository
+      <a href="https://github.com/github-linguist/linguist/blob/4ac734c15a96f9e16fd12330d0cb8de82274f700/CONTRIBUTING.md#adding-a-language">to demonstrate traction</a>.
+      Use it seriously of course, please don’t game the metric.
+      Other things you can help with are getting RCL packaged for your favorite package manager,
+      and developing syntax highlighting for your favorite editor if it is not yet supported.
+      </p>
+    </div>
+    <div class="span-full">
+      <h2><a href="#get-in-touch" id="get-in-touch">Get in touch</a></h2>
+      <p>
+      If you want to share your thoughts,
+      you can <a href="https://ruudvanasseldonk.com/contact">send an email</a>
+      or reach out <a href="https://fosstodon.org/@ruuda">on Mastodon</a>.
+      To report a technical defect you can open an issue
+      <a href="https://codeberg.org/ruuda/rcl/issues">on Codeberg</a> or
+      <a href="https://github.com/ruuda/rcl/issues">on GitHub</a>.
+      </p>
+    </div>
+  </section>
+  <footer class="grid">
+    <div class="span-full">
+      <p>Copyright 2024 <a href="https://ruudvanasseldonk.com">Ruud van Asseldonk</a></p>
+    </div>
+  </footer>
+</body>
+<script>
+  window.onload = function() {
+    const {
+      rcl_evaluate_json,
+      rcl_evaluate_query_value,
+      rcl_evaluate_query,
+      rcl_highlight,
+    } = wasm_bindgen;
+
+    var wasmPromise = null;
+    var wasmLoaded = false;
+    var jsonPromise = null;
+    var jsonValue = null;
+
+    const maxLen = 4000;
+    // TODO: Infer from window width.
+    const printWidth = 40;
+
+    async function ensureWasmInitialized() {
+      if (wasmLoaded) return;
+      if (wasmPromise === null) wasmPromise = wasm_bindgen();
+      await wasmPromise;
+      wasmLoaded = true;
+    }
+
+    async function ensureJsonValue() {
+      if (jsonValue !== null) return jsonValue;
+      if (jsonPromise === null) jsonPromise = fetch("/vultr.json").then(r => r.text());
+
+      const wasm = ensureWasmInitialized();
+      const json = await jsonPromise;
+      await wasm;
+
+      // We have to check again that the value is still null, because we may
+      // not be the first task to wait for the json response.
+      if (jsonValue === null) {
+        jsonValue = rcl_evaluate_query_value(json);
+      }
+
+      return jsonValue;
+    }
+
+    async function onInputEvaluate(inBox, outBox) {
+      // If the user started typing but the wasm module is still loading,
+      // give some feedback about that.
+      if (!wasmLoaded) {
+        const msgNode = document.createElement("code");
+        msgNode.textContent = "Loading WASM module ...";
+        outBox.replaceChild(msgNode, outBox.firstChild);
+      }
+
+      const outNode = document.createElement("code");
+      await ensureWasmInitialized();
+      rcl_evaluate_json(inBox.textContent, outNode, printWidth, maxLen);
+      outBox.replaceChild(outNode, outBox.firstChild);
+    }
+
+    async function onInputQuery(inBox, outBox, evt) {
+      // If the user started typing but the wasm module or data is still loading,
+      // give some feedback about that.
+      if (jsonValue === null) {
+        const msgNode = document.createElement("code");
+        msgNode.textContent = wasmLoaded
+          ? "Loading JSON data ..."
+          : "Loading WASM module ...";
+        outBox.replaceChild(msgNode, outBox.firstChild);
+      }
+
+      const query = evt.target.value;
+      const outNode = document.createElement("code");
+      const input = await ensureJsonValue();
+      rcl_evaluate_query(input, inBox.textContent, outNode, printWidth, maxLen);
+      outBox.replaceChild(outNode, outBox.firstChild);
+    }
+
+    var goodInput = in1.textContent;
+
+    async function onInputHighlight(inBox, outBox) {
+      const outNode = document.createElement("code");
+
+      if (!wasmLoaded) {
+        // If the user started typing but the wasm module is still loading, then
+        // we don't highlight for now. Instant feedback is more important.
+        outNode.textContent = inBox.textContent;
+      } else {
+        const newInput = inBox.textContent;
+        const wasGood = rcl_highlight(newInput, goodInput, outNode);
+        if (wasGood) goodInput = newInput;
+      }
+      outBox.replaceChild(outNode, outBox.firstChild);
+    }
+
+    function onInputStripHtml(inBox) {
+      inBox.normalize();
+      const text = inBox.textContent;
+      var didEdit = false;
+      inBox.childNodes.forEach((child) => {
+        if (child.nodeType !== Node.TEXT_NODE) {
+          inBox.removeChild(child);
+          didEdit = true;
+        }
+      });
+      if (didEdit) {
+        inBox.textContent = text;
+      }
+    }
+
+    // By default, the tab key moves focus, but after observing others try to
+    // use the webpage, every single one of them tried to press tab to indent
+    // and got confused by the single jump. So hijack the tab to act as indent
+    // instead.
+    function onKeyDown(evt) {
+      if (evt.code === "Tab") {
+        // Don't move focus.
+        evt.preventDefault();
+
+        // Insert two spaces. If the selection has a length, we could indent
+        // every line, but that starts to get fancy, we are not building a text
+        // editor here!
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const node = document.createTextNode("  ");
+        range.insertNode(node);
+        selection.collapseToEnd();
+
+        // After editing the selection, the `input` even does not trigger,
+        // do that manually.
+        const inputEvent = new Event("input");
+        evt.target.dispatchEvent(inputEvent);
+      }
+    }
+
+    // Note, in1, in2, out1, out2 are all available as local variables because
+    // they have an id in the DOM. No need for getElementById any more.
+
+    // Don't allow editing the examples before the page is fully loaded, because
+    // then we miss edit events. In Chromium we can prevent markup but Firefox
+    // does not yet support it.
+    try {
+      in1.contentEditable = "plaintext-only";
+      in2.contentEditable = "plaintext-only";
+    } catch {
+      in1.contentEditable = true;
+      in2.contentEditable = true;
+      in1.addEventListener("input", (evt) => onInputStripHtml(in1));
+      in2.addEventListener("input", (evt) => onInputStripHtml(in2));
+    }
+
+    // We don't load the wasm module instantly. If somebody opens the page but
+    // doesn't try to edit the example, we don't have to load the module. The
+    // flip side is that there is a small delay when you start editing. We can
+    // mitigate that somewhat by starting the load already when focus lands in
+    // the editable area.
+    in1.addEventListener("focus", () => ensureWasmInitialized());
+    // As for typing, we first handle the input event for highlighting, and only
+    // after that we compute the result. Evaluate takes ~3ms but highlighting
+    // only ~0.3ms, and the delay in when text appears seems noticeable.
+    in1.addEventListener("input", (evt) => onInputHighlight(in1, shadow1));
+    in1.addEventListener("input", (evt) => onInputEvaluate(in1, out1));
+    in1.addEventListener("keydown", onKeyDown);
+
+    in2.addEventListener("focus", () => ensureJsonValue());
+    in2.addEventListener("input", (evt) => onInputQuery(in2, out2, evt));
+    in2.addEventListener("keydown", onKeyDown);
+  }
+</script>
+</html>
