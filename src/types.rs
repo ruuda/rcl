@@ -673,6 +673,8 @@ impl SourcedType {
             // can only be one help per error. Either extend that, but probably
             // better, add spans to the sources?
             Source::IndexList => error.set_help("List indices must be integers."),
+
+            Source::BuildFile(reason) => error.set_help(*reason),
         }
     }
 }
@@ -731,12 +733,14 @@ macro_rules! make_type {
     (String) => { builtin(Type::String) };
     ([$elem:tt]) => { builtin(Type::List(Rc::new(make_type!($elem)))) };
     ({$elem:tt}) => { builtin(Type::Set(Rc::new(make_type!($elem)))) };
-    ({$k:tt: $v:tt}) => {
+    ({$k:tt: $v:tt}) => {{
+        use std::rc::Rc;
+        use crate::types::{Dict, Type};
         builtin(Type::Dict(Rc::new(Dict {
             key: make_type!($k),
             value: make_type!($v),
         })))
-    };
+    }};
     ((fn ($( $arg_name:ident: $arg_type:tt ),*) -> $result:tt)) => {
         builtin(Type::Function(Rc::new(
             make_function!(($( $arg_name:$arg_type ),*) -> $result)
