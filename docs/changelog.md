@@ -19,9 +19,10 @@ compatibility impact will be clearly marked as such in the changelog.
 Unreleased.
 
  * Add [union types](types.md#union-types).
- * The [`--in-place`](rcl_format.md#-i-in-place) option for `rcl format` is now
-   implemented.
-* The webassembly module can now output colored spans.
+ * `rcl format` now supports [`--in-place`](rcl_format.md#-i-in-place) and
+   [`--check`](rcl_format.md#-check). These were documented but marked to-do
+   previously, now they are fully supported.
+ * The webassembly module can now output colored spans.
 
 ## 0.2.0
 

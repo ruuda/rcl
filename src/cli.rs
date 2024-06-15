@@ -196,6 +196,7 @@ pub enum Target {
 pub enum FormatTarget {
     Stdout { fname: Target },
     InPlace { fnames: Vec<Target> },
+    Check { fnames: Vec<Target> },
 }
 
 /// An output file to write results to.
@@ -250,12 +251,16 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     let mut global_opts = GlobalOptions::default();
     let mut eval_opts = EvalOptions::default();
     let mut in_place = false;
+    let mut check = false;
     let mut is_version = false;
     let mut targets: Vec<Target> = Vec::new();
     let mut output = OutputTarget::Stdout;
 
     while let Some(arg) = args.next() {
         match arg.as_ref() {
+            Arg::Long("check") => {
+                check = true;
+            }
             Arg::Long("color") => {
                 global_opts.markup = match_option! {
                     args: arg,
@@ -435,6 +440,8 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             style_opts,
             target: if in_place {
                 FormatTarget::InPlace { fnames: targets }
+            } else if check {
+                FormatTarget::Check { fnames: targets }
             } else {
                 FormatTarget::Stdout {
                     fname: get_unique_target(targets)?,
@@ -659,6 +666,13 @@ mod test {
         }
         assert_eq!(parse(&["rcl", "f", "--in-place", "f1", "f2"]), expected);
         assert_eq!(parse(&["rcl", "-i", "f", "f1", "f2"]), expected);
+
+        if let Cmd::Format { ref mut target, .. } = &mut expected.1 {
+            *target = FormatTarget::Check {
+                fnames: vec![Target::File("f1".into()), Target::File("f2".into())],
+            };
+        }
+        assert_eq!(parse(&["rcl", "f", "--check", "f1", "f2"]), expected);
     }
 
     #[test]
