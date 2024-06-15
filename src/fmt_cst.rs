@@ -516,13 +516,18 @@ impl<'a> Formatter<'a> {
 
             let is_last = i + 1 == elements.len();
             let sep_doc = match i {
-                // For collections that contain a single seq, do not add a
-                // separator, even when they are multi-line. It makes
+                // For collections that contain a single comprehension, do not
+                // add a separator, even when they are multi-line. It makes
                 // comprehensions look weird, which are regularly multi-line
                 // but only rarely are there multiple seqs in the collection.
                 // If there is suffix noncode, then we need the separator before
                 // it, otherwise we would output a syntax error.
-                _ if elements.len() == 1 && suffix.is_empty() => Doc::Empty,
+                _ if elements.len() == 1 && suffix.is_empty() => match elements[0].inner {
+                    Seq::Elem { .. } | Seq::AssocExpr { .. } | Seq::AssocIdent { .. } => {
+                        Doc::tall(",")
+                    }
+                    Seq::For { .. } | Seq::If { .. } | Seq::Stmt { .. } => Doc::Empty,
+                },
                 _ if is_last => Doc::tall(","),
                 _ => Doc::str(","),
             };
