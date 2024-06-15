@@ -495,7 +495,7 @@ impl<'a> Formatter<'a> {
     pub fn seqs(&self, elements: &[Prefixed<Seq>], suffix: &[NonCode]) -> Doc<'a> {
         let mut result = Vec::new();
         for (i, elem) in elements.iter().enumerate() {
-            let (elem_doc, sep_str) = self.seq(&elem.inner);
+            let elem_doc = self.seq(&elem.inner);
 
             // We wrap the inner Seq in a group, so you can have a collection
             // that consists of multiple comprehensions, and each one fits on
@@ -513,8 +513,8 @@ impl<'a> Formatter<'a> {
                 // If there is suffix noncode, then we need the separator before
                 // it, otherwise we would output a syntax error.
                 _ if elements.len() == 1 && suffix.is_empty() => Doc::Empty,
-                _ if is_last => Doc::tall(sep_str),
-                _ => Doc::str(sep_str),
+                _ if is_last => Doc::tall(","),
+                _ => Doc::str(","),
             };
             result.push(sep_doc);
 
@@ -534,33 +534,28 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
-    /// Format a sequence. Return that and the trailing separator.
-    pub fn seq(&self, seq: &Seq) -> (Doc<'a>, &'static str) {
+    /// Format a sequence.
+    pub fn seq(&self, seq: &Seq) -> Doc<'a> {
         match seq {
-            Seq::Elem { value, .. } => (self.expr(value), ","),
+            Seq::Elem { value, .. } => self.expr(value),
 
             Seq::AssocExpr { field, value, .. } => {
                 // TODO: Special-case an inner string for markup?
-                (
-                    concat! { self.expr(field).with_markup(Markup::Field) ": " self.expr(value) },
-                    ",",
-                )
+                concat! { self.expr(field).with_markup(Markup::Field) ": " self.expr(value) }
             }
 
-            Seq::AssocIdent { field, value, .. } => (
-                concat! { self.span(*field).with_markup(Markup::Field) " = " self.expr(value) },
-                ",",
-            ),
+            Seq::AssocIdent { field, value, .. } => {
+                concat! { self.span(*field).with_markup(Markup::Field) " = " self.expr(value) }
+            }
 
             Seq::Stmt { stmt, body, .. } => {
-                let (body_doc, sep) = self.seq(&body.inner);
-                let result = concat! {
+                let body_doc = self.seq(&body.inner);
+                concat! {
                     self.stmt(stmt)
                     Doc::Sep
                     self.non_code(&body.prefix)
                     body_doc
-                };
-                (result, sep)
+                }
             }
 
             Seq::For {
@@ -569,8 +564,8 @@ impl<'a> Formatter<'a> {
                 body,
                 ..
             } => {
-                let (body_doc, sep) = self.seq(&body.inner);
-                let result = concat! {
+                let body_doc = self.seq(&body.inner);
+                concat! {
                     Doc::str("for").with_markup(Markup::Keyword)
                     " "
                     // TODO: This does not use a proper sep, which means we
@@ -588,15 +583,14 @@ impl<'a> Formatter<'a> {
                     Doc::Sep
                     self.non_code(&body.prefix)
                     body_doc
-                };
-                (result, sep)
+                }
             }
 
             Seq::If {
                 condition, body, ..
             } => {
-                let (body_doc, sep) = self.seq(&body.inner);
-                let result = concat! {
+                let body_doc = self.seq(&body.inner);
+                concat! {
                     Doc::str("if").with_markup(Markup::Keyword)
                     " "
                     self.expr(condition)
@@ -604,8 +598,7 @@ impl<'a> Formatter<'a> {
                     Doc::Sep
                     self.non_code(&body.prefix)
                     body_doc
-                };
-                (result, sep)
+                }
             }
         }
     }
