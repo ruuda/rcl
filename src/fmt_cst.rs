@@ -10,7 +10,7 @@
 //! The formatter converts the CST into a [`Doc`], which can subsequently be
 //! pretty-printed for formatting.
 
-use crate::cst::{Expr, NonCode, Prefixed, Seq, Stmt, StringPart, Type};
+use crate::cst::{Chain, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, Type};
 use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::markup::Markup;
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
@@ -363,15 +363,6 @@ impl<'a> Formatter<'a> {
 
             Expr::Var(span) => self.span(*span),
 
-            // TODO: Parse as vec with multiple dots, so we can toggle an entire
-            // method chain as all-or-nothing wide or tall. For now, we just
-            // don't line-wrap field access.
-            Expr::Field { inner, field, .. } => {
-                concat! {
-                    self.expr(inner) "." self.span(*field)
-                }
-            }
-
             Expr::IfThenElse {
                 condition,
                 then_body,
@@ -426,46 +417,6 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::Call {
-                function,
-                args,
-                suffix,
-                ..
-            } => {
-                concat! {
-                    self.expr(function)
-                    group! {
-                        "("
-                        Doc::SoftBreak
-                        indent! {
-                            Doc::join(
-                                args.iter().map(|(_span, arg)| self.prefixed_expr(arg)),
-                                concat!{ "," Doc::Sep },
-                            )
-                            Doc::tall(",")
-                            Doc::SoftBreak
-                            self.non_code(suffix)
-                        }
-                        ")"
-                    }
-                }
-            }
-
-            Expr::Index {
-                collection, index, ..
-            } => {
-                concat! {
-                    self.expr(collection)
-                    group! {
-                        "["
-                        Doc::SoftBreak
-                        indent! { self.prefixed_expr(index) }
-                        Doc::SoftBreak
-                        "]"
-                    }
-                }
-            }
-
             Expr::UnOp { op_span, body, .. } => {
                 concat! {
                     self.span(*op_span)
@@ -489,7 +440,66 @@ impl<'a> Formatter<'a> {
                     }
                 }
             }
+
+            Expr::Chain {
+                base_expr, chain, ..
+            } => self.chain(base_expr, chain),
         }
+    }
+
+    /// Format a chained expression.
+    pub fn chain(&self, base: &Expr, chain: &[(Span, Chain)]) -> Doc<'a> {
+        // Every field should start a new line. When we have a call or index,
+        // before the first field they go on the base, afterward they go on
+        // "next", the part after base. The "next" part needs to be indented
+        // but the base part is not.
+        let mut group_base = Vec::new();
+        let mut group_next = Vec::new();
+        let mut group = &mut group_base;
+
+        group.push(self.expr(base));
+
+        for (_, chain_elem) in chain.iter() {
+            match chain_elem {
+                Chain::Field { field } => {
+                    group = &mut group_next;
+                    group.push(Doc::SoftBreak);
+                    group.push(".".into());
+                    group.push(self.span(*field));
+                }
+                Chain::Call { args, suffix, .. } => {
+                    let call_doc = group! {
+                        "("
+                        Doc::SoftBreak
+                        indent! {
+                            Doc::join(
+                                args.iter().map(|(_span, arg)| self.prefixed_expr(arg)),
+                                concat!{ "," Doc::Sep },
+                            )
+                            Doc::tall(",")
+                            Doc::SoftBreak
+                            self.non_code(suffix)
+                        }
+                        ")"
+                    };
+                    group.push(call_doc);
+                }
+
+                Chain::Index { index, .. } => {
+                    let index_doc = group! {
+                        "["
+                        Doc::SoftBreak
+                        indent! { self.prefixed_expr(index) }
+                        Doc::SoftBreak
+                        "]"
+                    };
+                    group.push(index_doc);
+                }
+            }
+        }
+
+        group_base.push(indent! { Doc::Concat(group_next) });
+        group! { Doc::Concat(group_base) }
     }
 
     pub fn seqs(&self, elements: &[Prefixed<Seq>], suffix: &[NonCode]) -> Doc<'a> {

@@ -8,7 +8,7 @@
 //! The parser converts a sequence of tokens into a Concrete Syntax Tree.
 
 use crate::cst::{
-    BinOp, Expr, NonCode, Prefixed, Seq, SpanPrefixedExpr, Stmt, StringPart, Type, UnOp,
+    BinOp, Chain, Expr, NonCode, Prefixed, Seq, SpanPrefixedExpr, Stmt, StringPart, Type, UnOp,
 };
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
@@ -748,49 +748,60 @@ impl<'a> Parser<'a> {
         // to clarify that parens must be used to disambiguate.
 
         let begin = self.peek_span();
-        let mut result = self.parse_expr_term()?;
+        let base_expr = self.parse_expr_term()?;
+        let mut inner_span;
+
+        let mut chain = Vec::new();
 
         loop {
-            let result_span = self.span_from(begin);
+            inner_span = self.span_from(begin);
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::LParen) => {
                     let open = self.push_bracket()?;
                     let (args, suffix) = self.parse_call_args()?;
                     let close = self.pop_bracket()?;
-                    result = Expr::Call {
+                    let chain_expr = Chain::Call {
                         open,
                         close,
                         args,
                         suffix,
-                        function_span: result_span,
-                        function: Box::new(result),
                     };
+                    chain.push((inner_span, chain_expr));
                 }
                 Some(Token::LBracket) => {
                     let open = self.push_bracket()?;
                     let (index_span, index) = self.parse_prefixed_expr()?;
                     let close = self.pop_bracket()?;
-                    result = Expr::Index {
+                    let chain_expr = Chain::Index {
                         open,
                         close,
-                        collection_span: result_span,
-                        collection: Box::new(result),
                         index_span,
                         index: Box::new(index),
                     };
+                    chain.push((inner_span, chain_expr));
                 }
                 Some(Token::Dot) => {
                     self.consume();
                     self.skip_non_code()?;
                     let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
-                    result = Expr::Field {
-                        field,
-                        inner_span: result_span,
-                        inner: Box::new(result),
-                    };
+                    let chain_expr = Chain::Field { field };
+                    chain.push((inner_span, chain_expr));
                 }
-                _ => return Ok((result_span, result)),
+                _ => {
+                    // If it's not any of those cases, then the chain ends here.
+                    // If we have no chained expressions then keep the CST small,
+                    // if we have then we wrap it into a Chain node.
+                    if chain.is_empty() {
+                        return Ok((inner_span, base_expr));
+                    } else {
+                        let expr = Expr::Chain {
+                            base_expr: Box::new(base_expr),
+                            chain,
+                        };
+                        return Ok((inner_span, expr));
+                    }
+                }
             }
         }
     }

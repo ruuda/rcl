@@ -218,13 +218,6 @@ pub enum Expr {
     /// Access a variable.
     Var(Span),
 
-    /// Access a field on the inner expression.
-    Field {
-        inner_span: Span,
-        inner: Box<Expr>,
-        field: Span,
-    },
-
     /// A conditional expression.
     IfThenElse {
         condition_span: Span,
@@ -242,33 +235,6 @@ pub enum Expr {
         suffix: Box<[NonCode]>,
         body_span: Span,
         body: Box<Expr>,
-    },
-
-    /// Call a function.
-    Call {
-        /// The opening parenthesis.
-        open: Span,
-        /// The closing parenthesis.
-        close: Span,
-        /// The span of the callee.
-        function_span: Span,
-        /// The callee expression.
-        function: Box<Expr>,
-        args: Box<[SpanPrefixedExpr]>,
-        /// Any non-code between the final argument and the closing paren.
-        suffix: Box<[NonCode]>,
-    },
-
-    /// Index into a collection with `[]`.
-    Index {
-        /// The opening bracket.
-        open: Span,
-        /// The closing bracket.
-        close: Span,
-        collection_span: Span,
-        collection: Box<Expr>,
-        index_span: Span,
-        index: Box<Prefixed<Expr>>,
     },
 
     /// A unary operator.
@@ -304,6 +270,24 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs_span: Span,
         rhs: Box<Expr>,
+    },
+
+    /// A chained expression (field lookup, calls, indexes).
+    ///
+    /// We represent every chain as a node with a list of chained expressions
+    /// rather than a degenerate CST tree that is a singly linked list, to make
+    /// it easier to format such chains. It also matches the structure of the
+    /// parser quite well.
+    Chain {
+        /// The very first expression in the chained expression.
+        base_expr: Box<Expr>,
+
+        /// Any chained operations to apply on top of the body (call, field lookup, etc.).
+        ///
+        /// The spans contain the span of the inner expression to which the
+        /// chained expression is applied, e.g. if the base is `a` and the chain
+        /// has `.b` and `.c`, then `chain[1]` has span `a.b`.
+        chain: Vec<(Span, Chain)>,
     },
 }
 
@@ -359,6 +343,37 @@ pub enum Seq {
         condition_span: Span,
         condition: Box<Expr>,
         body: Box<Prefixed<Seq>>,
+    },
+}
+
+/// A case in a chained non-operator expression (field lookup, call, index).
+#[derive(Debug)]
+pub enum Chain {
+    /// Access a field on the preceding expression.
+    Field { field: Span },
+
+    /// Call a function.
+    Call {
+        /// The opening parenthesis.
+        open: Span,
+        /// The closing parenthesis.
+        close: Span,
+        /// The arguments passed to the call.
+        args: Box<[SpanPrefixedExpr]>,
+        /// Any non-code between the final argument and the closing paren.
+        suffix: Box<[NonCode]>,
+    },
+
+    /// Index into a collection with `[]`.
+    Index {
+        /// The opening bracket.
+        open: Span,
+        /// The closing bracket.
+        close: Span,
+        /// The span of the index expression between the `[]`.
+        index_span: Span,
+        /// The index expression.
+        index: Box<Prefixed<Expr>>,
     },
 }
 
