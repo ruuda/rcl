@@ -183,6 +183,8 @@ impl App {
             let cst = self.loader.get_cst(doc)?;
             let fmt_doc = rcl::fmt_cst::format_expr(data, &cst);
             let res = fmt_doc.println(&cfg);
+            let formatted = res.to_string_no_markup();
+            let did_change = data != &formatted[..];
 
             if is_write_in_place {
                 let fname = match target {
@@ -200,15 +202,13 @@ impl App {
                 // that we don't cause rebuilds for build systems that look at mtimes,
                 // that we don't waste space on CoW filesystems, and that we don't
                 // unnecessarily burn through SSDs in general.
-                let formatted = res.to_string_no_markup();
-                if data != &formatted[..] {
+                if did_change {
                     n_changed += 1;
                     self.print_to_file(MarkupMode::None, res, &fname)?;
                 }
             } else {
                 // We are in the --check case, not the --in-place case.
-                let formatted = res.to_string_no_markup();
-                if data != &formatted[..] {
+                if did_change {
                     n_changed += 1;
                     println!("Would reformat {}", self.loader.get_doc(doc).name);
                 }
