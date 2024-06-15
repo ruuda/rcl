@@ -17,9 +17,10 @@ use crate::ast::{
     CallArg, Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
 };
 use crate::cst::Prefixed;
-use crate::cst::{Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart, Type as CType};
+use crate::cst::{Chain, Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart, Type as CType};
 use crate::error::{IntoError, Result};
 use crate::lexer::QuoteStyle;
+use crate::source::Span;
 use crate::string;
 
 /// Abstract an expression.
@@ -244,17 +245,6 @@ impl<'a> Abstractor<'a> {
                 ident: span.resolve(self.input).into(),
             },
 
-            CExpr::Field {
-                inner,
-                inner_span,
-                field,
-            } => AExpr::Field {
-                inner: Box::new(self.expr(inner)?),
-                inner_span: *inner_span,
-                field: field.resolve(self.input).into(),
-                field_span: *field,
-            },
-
             CExpr::Function {
                 args,
                 body_span,
@@ -267,45 +257,6 @@ impl<'a> Abstractor<'a> {
                     .collect(),
                 body_span: *body_span,
                 body: Box::new(self.expr(body)?),
-            },
-
-            CExpr::Call {
-                open,
-                close,
-                function,
-                function_span,
-                args,
-                ..
-            } => AExpr::Call {
-                open: *open,
-                close: *close,
-                function_span: *function_span,
-                function: Box::new(self.expr(function)?),
-                args: args
-                    .iter()
-                    .map(|(span, a)| {
-                        Ok(CallArg {
-                            span: *span,
-                            value: self.expr(&a.inner)?,
-                        })
-                    })
-                    .collect::<Result<Vec<_>>>()?,
-            },
-
-            CExpr::Index {
-                open,
-                close,
-                collection,
-                collection_span,
-                index,
-                index_span,
-            } => AExpr::Index {
-                open: *open,
-                close: *close,
-                collection_span: *collection_span,
-                collection: Box::new(self.expr(collection)?),
-                index_span: *index_span,
-                index: Box::new(self.expr(&index.inner)?),
             },
 
             CExpr::UnOp {
@@ -335,6 +286,14 @@ impl<'a> Abstractor<'a> {
                 rhs_span: *rhs_span,
                 rhs: Box::new(self.expr(rhs)?),
             },
+
+            CExpr::Chain { base_expr, chain } => {
+                let mut inner_expr = self.expr(base_expr)?;
+                for (span, chain_expr) in chain.iter() {
+                    inner_expr = self.chain(chain_expr, *span, inner_expr)?;
+                }
+                inner_expr
+            }
         };
         Ok(result)
     }
@@ -415,6 +374,56 @@ impl<'a> Abstractor<'a> {
                 body: Box::new(self.seq(&body.inner)?),
             },
         };
+        Ok(result)
+    }
+
+    /// Abstract an element in a chained expression.
+    ///
+    /// This is the place where we convert the flat list of the CST (which is
+    /// good for formatting) into a degenerate tree of nested inner nodes (which
+    /// is a bit nicer for evaluation and typechecking).
+    pub fn chain(&self, chained: &Chain, inner_span: Span, inner: AExpr) -> Result<AExpr> {
+        let result = match chained {
+            Chain::Field { field } => AExpr::Field {
+                inner: Box::new(inner),
+                inner_span,
+                field: field.resolve(self.input).into(),
+                field_span: *field,
+            },
+
+            Chain::Call {
+                open, close, args, ..
+            } => AExpr::Call {
+                open: *open,
+                close: *close,
+                function_span: inner_span,
+                function: Box::new(inner),
+                args: args
+                    .iter()
+                    .map(|(span, a)| {
+                        Ok(CallArg {
+                            span: *span,
+                            value: self.expr(&a.inner)?,
+                        })
+                    })
+                    .collect::<Result<Vec<_>>>()?,
+            },
+
+            Chain::Index {
+                open,
+                close,
+                index,
+                index_span,
+            } => AExpr::Index {
+                open: *open,
+                close: *close,
+                collection_span: inner_span,
+                collection: Box::new(inner),
+                index_span: *index_span,
+                index: Box::new(self.expr(&index.inner)?),
+            },
+        };
+
         Ok(result)
     }
 
