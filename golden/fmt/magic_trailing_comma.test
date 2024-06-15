@@ -1,0 +1,150 @@
+// RCL implements Black's "magic trailing comma" behavior for lists of length >= 2.
+// https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#the-magic-trailing-comma
+// If there is a trailing comma originally, and there are at least two elements,
+// then the output is tall regardless of whether it would fit wide. If there is
+// no trailing comma, the output is whatever fits.
+
+// Length 1, trailing comma is not relevant.
+let a = [1,];
+let b = [1];
+let c = [
+  1
+];
+let d = [
+  1,
+];
+
+// Length 2, trailing comma forces tall.
+let a = [1, 2];
+let b = [
+  1, 2
+];
+let c = [1, 2,];
+let d = [
+  1, 2,
+];
+
+// Sets.
+let z = {1,};
+let a = {1, 2};
+let b = {
+  1, 2
+};
+let c = {1, 2,};
+let d = {
+  1, 2,
+};
+
+// Dicts.
+let z = {a=1,};
+let a = {a=1, b=2};
+let b = {
+  a=1, b=2
+};
+let c = {a=1, b=2,};
+let d = {
+  a=1, b=2,
+};
+
+// Function calls.
+let z = f(1,);
+let a = f(1, 2);
+let b = f(
+  1, 2
+);
+let c = f(1, 2,);
+let d = f(
+  1, 2,
+);
+
+// Function definitions.
+let z = (x,) => 1;
+let a = (x, y) => 1;
+let b = (
+  x, y
+) => 1;
+let c = (x, y,) => 1;
+let d = (
+  x, y,
+) => 1;
+
+null
+
+# output:
+// RCL implements Black's "magic trailing comma" behavior for lists of length >= 2.
+// https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#the-magic-trailing-comma
+// If there is a trailing comma originally, and there are at least two elements,
+// then the output is tall regardless of whether it would fit wide. If there is
+// no trailing comma, the output is whatever fits.
+
+// Length 1, trailing comma is not relevant.
+let a = [1];
+let b = [1];
+let c = [1];
+let d = [1];
+
+// Length 2, trailing comma forces tall.
+let a = [1, 2];
+let b = [1, 2];
+let c = [
+  1,
+  2,
+];
+let d = [
+  1,
+  2,
+];
+
+// Sets.
+let z = {1};
+let a = {1, 2};
+let b = {1, 2};
+let c = {
+  1,
+  2,
+};
+let d = {
+  1,
+  2,
+};
+
+// Dicts.
+let z = { a = 1 };
+let a = { a = 1, b = 2 };
+let b = { a = 1, b = 2 };
+let c = {
+  a = 1,
+  b = 2,
+};
+let d = {
+  a = 1,
+  b = 2,
+};
+
+// Function calls.
+let z = f(1);
+let a = f(1, 2);
+let b = f(1, 2);
+let c = f(
+  1,
+  2,
+);
+let d = f(
+  1,
+  2,
+);
+
+// Function definitions.
+let z = x => 1;
+let a = (x, y) => 1;
+let b = (x, y) => 1;
+let c = (
+  x,
+  y,
+) => 1;
+let d = (
+  x,
+  y,
+) => 1;
+
+null

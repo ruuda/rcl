@@ -64,17 +64,23 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
-    /// A soft break if the collection is not empty.
+    /// The separator to add after a collection's opening punctuation.
     ///
     /// This is used in collection literals. If there are elements, then we have
-    /// a soft break between the opening delimiter and content, and between the
-    /// content and closing delimiter. But if we have no content, then we need
-    /// only one soft break.
-    pub fn soft_break_if_not_empty<T>(&self, elems: &[T]) -> Option<Doc<'a>> {
-        if elems.is_empty() {
-            None
-        } else {
-            Some(Doc::SoftBreak)
+    /// a hard or soft break between the opening delimiter and content, and
+    /// between the content and closing delimiter. But if we have no content
+    /// (but possibly a suffix) then we need only one soft break.
+    pub fn collection_opening_sep<T>(&self, list: &List<T>) -> Option<Doc<'a>> {
+        // When there is a list of at least two elements, and there is a trailing
+        // comma, then regardless of whether the list would fit in wide mode, we
+        // force it to be tall, to give the user some control over wide/tall.
+        // This is inspired by Black's "magic trailing comma":
+        // https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#the-magic-trailing-comma
+        match list.elements.len() {
+            0 => None,
+            1 => Some(Doc::SoftBreak),
+            _ if list.trailing_comma => Some(Doc::HardBreak),
+            _ => Some(Doc::SoftBreak),
         }
     }
 
@@ -289,9 +295,10 @@ impl<'a> Formatter<'a> {
                 if elements.elements.is_empty() && elements.suffix.is_empty() {
                     Doc::str("{}")
                 } else {
-                    let sep = self
-                        .sep_key_value(&elements.elements)
-                        .or(self.soft_break_if_not_empty(&elements.elements));
+                    let sep = match self.collection_opening_sep(&elements) {
+                        Some(Doc::HardBreak) => Some(Doc::HardBreak),
+                        other => self.sep_key_value(&elements.elements).or(other),
+                    };
                     group! {
                         "{"
                         sep
@@ -307,7 +314,7 @@ impl<'a> Formatter<'a> {
                 } else {
                     group! {
                         "["
-                        self.soft_break_if_not_empty(&elements.elements)
+                        self.collection_opening_sep(elements)
                         indent! { self.seqs(elements) }
                         "]"
                     }
@@ -396,7 +403,7 @@ impl<'a> Formatter<'a> {
                     }
                     _ => group! {
                         "("
-                        Doc::SoftBreak
+                        self.collection_opening_sep(args)
                         indent! {
                             Doc::join(
                                 args.elements.iter().map(|arg| concat! {
@@ -473,7 +480,7 @@ impl<'a> Formatter<'a> {
                 Chain::Call { args, .. } => {
                     let call_doc = group! {
                         "("
-                        Doc::SoftBreak
+                        self.collection_opening_sep(args)
                         indent! {
                             Doc::join(
                                 args.elements.iter().map(|(_span, arg)| self.prefixed_expr(arg)),
@@ -530,19 +537,17 @@ impl<'a> Formatter<'a> {
 
             let is_last = i + 1 == seqs.elements.len();
             let sep_doc = match i {
+                // If there is suffix noncode, then we need the separator before
+                // it, otherwise we would output a syntax error.
+                _ if !seqs.suffix.is_empty() => Doc::str(","),
                 // For collections that contain a single comprehension, do not
                 // add a separator, even when they are multi-line. It makes
                 // comprehensions look weird, which are regularly multi-line
                 // but only rarely are there multiple seqs in the collection.
-                // If there is suffix noncode, then we need the separator before
-                // it, otherwise we would output a syntax error.
-                _ if seqs.elements.len() == 1 && seqs.suffix.is_empty() => {
-                    if seqs.elements[0].inner.is_comprehension() {
-                        Doc::Empty
-                    } else {
-                        Doc::tall(",")
-                    }
-                }
+                _ if seqs.elements.len() == 1 => match seqs.elements[0].inner.is_comprehension() {
+                    true => Doc::Empty,
+                    false => Doc::tall(","),
+                },
                 _ if is_last => Doc::tall(","),
                 _ => Doc::str(","),
             };

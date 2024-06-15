@@ -1,4 +1,5 @@
-let x = f( a, b , c,);
+let x1 = f( a, b , c);
+let x2 = f( a, b , c,);
 let y = f(
   // The first argument.
   a,
@@ -7,7 +8,12 @@ let y = f(
 x + y
 
 # output:
-let x = f(a, b, c);
+let x1 = f(a, b, c);
+let x2 = f(
+  a,
+  b,
+  c,
+);
 let y = f(
   // The first argument.
   a,
