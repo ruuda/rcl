@@ -6,11 +6,12 @@
 "query"
 
 # Options
+"--check"
 "--color"
 "--directory"
+"--format"
 "--help"
 "--in-place"
-"--format"
 "--sandbox"
 "--version"
 "--width"

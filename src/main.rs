@@ -17,7 +17,7 @@ use rcl::loader::{Loader, SandboxMode};
 use rcl::markup::{MarkupMode, MarkupString};
 use rcl::pprint::{self, Doc};
 use rcl::runtime::{self, Value};
-use rcl::source::{DocId, Span};
+use rcl::source::Span;
 use rcl::tracer::StderrTracer;
 use rcl::typecheck;
 
@@ -145,38 +145,95 @@ impl App {
         StderrTracer::new(self.opts.markup)
     }
 
-    fn main_fmt(&self, output: OutputTarget, style_opts: &StyleOptions, doc: DocId) -> Result<()> {
-        let data = self.loader.get_doc(doc).data;
-        let cst = self.loader.get_cst(doc)?;
-        let res = rcl::fmt_cst::format_expr(data, &cst);
-        self.print_doc_target(output, style_opts, res)
-    }
-
-    fn main_fmt_in_place(&mut self, style_opts: &StyleOptions, fnames: &[Target]) -> Result<()> {
+    fn main_fmt(
+        &mut self,
+        output: OutputTarget,
+        style_opts: &StyleOptions,
+        targets: FormatTarget,
+    ) -> Result<()> {
         let cfg = pprint::Config {
             width: style_opts.width,
         };
-        for target in fnames {
-            let fname = match target {
-                Target::File(fname) => fname,
-                Target::Stdin => {
-                    let msg =
-                        "Formatting in-place is only possible for named files, not for stdin.";
-                    return Error::new(msg).err();
+        let (is_write_in_place, fnames) = match targets {
+            FormatTarget::Stdout { fname } => {
+                let doc = self.loader.load_cli_target(&fname)?;
+                let data = self.loader.get_doc(doc).data;
+                let cst = self.loader.get_cst(doc)?;
+                let res = rcl::fmt_cst::format_expr(data, &cst);
+                return self.print_doc_target(output, style_opts, res);
+            }
+            FormatTarget::InPlace { fnames } => (true, fnames),
+            FormatTarget::Check { mut fnames } => {
+                // For in-place formatting we really need files, but for checking,
+                // we can check stdin if the user did not specify any files.
+                if fnames.is_empty() {
+                    fnames.push(Target::StdinDefault);
                 }
-                Target::StdinDefault => unreachable!("In-place default is empty list, not stdin."),
-            };
-            let doc = self.loader.load_cli_target(target)?;
+                (false, fnames)
+            }
+        };
+
+        let mut n_changed: u32 = 0;
+        let mut n_loaded: u32 = 0;
+
+        for target in fnames {
+            n_loaded += 1;
+            let doc = self.loader.load_cli_target(&target)?;
             let data = self.loader.get_doc(doc).data;
             let cst = self.loader.get_cst(doc)?;
             let fmt_doc = rcl::fmt_cst::format_expr(data, &cst);
             let res = fmt_doc.println(&cfg);
-            // TODO: Only write when the result is different, to help build
-            // systems but also file systems with reflink copies to avoid
-            // duplicating the data.
-            self.print_to_file(MarkupMode::None, res, fname)?;
+
+            if is_write_in_place {
+                let fname = match target {
+                    Target::File(fname) => fname,
+                    Target::Stdin => {
+                        let msg =
+                            "Formatting in-place is only possible for named files, not for stdin.";
+                        return Error::new(msg).err();
+                    }
+                    Target::StdinDefault => {
+                        unreachable!("In-place default is empty list, not stdin.")
+                    }
+                };
+                // We only write to the file if we changed anything. This ensures
+                // that we don't cause rebuilds for build systems that look at mtimes,
+                // that we don't waste space on CoW filesystems, and that we don't
+                // unnecessarily burn through SSDs in general.
+                let formatted = res.to_string_no_markup();
+                if data != &formatted[..] {
+                    n_changed += 1;
+                    self.print_to_file(MarkupMode::None, res, &fname)?;
+                }
+            } else {
+                // We are in the --check case, not the --in-place case.
+                let formatted = res.to_string_no_markup();
+                if data != &formatted[..] {
+                    n_changed += 1;
+                    println!("Would reformat {}", self.loader.get_doc(doc).name);
+                }
+            }
         }
-        Ok(())
+
+        if is_write_in_place {
+            println!("Reformatted {} of {} files.", n_changed, n_loaded);
+            return Ok(());
+        }
+        if n_changed == 0 {
+            match n_loaded {
+                1 => println!("The file is formatted correctly."),
+                n => println!("All {} files are formatted correctly.", n),
+            }
+            Ok(())
+        } else {
+            let parts = vec![
+                n_changed.to_string().into(),
+                Doc::str(" of "),
+                n_loaded.to_string().into(),
+                Doc::str(" files would be reformatted."),
+            ];
+            Error::new(Doc::Concat(parts)).err()
+        }
     }
 
     fn main(&mut self) -> Result<()> {
@@ -261,15 +318,7 @@ impl App {
                     SandboxMode::Unrestricted,
                     self.opts.workdir.as_deref(),
                 )?;
-                match target {
-                    FormatTarget::InPlace { fnames } => {
-                        self.main_fmt_in_place(&style_opts, &fnames)
-                    }
-                    FormatTarget::Stdout { fname } => {
-                        let doc = self.loader.load_cli_target(&fname)?;
-                        self.main_fmt(output, &style_opts, doc)
-                    }
-                }
+                self.main_fmt(output, &style_opts, target)
             }
 
             Cmd::Highlight { fname } => {
