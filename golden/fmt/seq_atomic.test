@@ -1,0 +1,42 @@
+// Here we test that the seq elements get formatted either wide or tall.
+let oneline = [for x in xs: for y in ys: for z in zs: x + y + z];
+
+let multiline = [
+  for x in xs:
+  for y in ys:
+  for z in zs:
+  for w in ws:
+  x + y + z + w
+];
+
+let multiline_tall = [
+  for x in xs:
+  for y in ys:
+  for z in zs:
+  for u in us:
+  for v in vs:
+  for w in ws:
+  x + y + z + u + v + w
+];
+
+[oneline, multiline, multiline_tall]
+
+# output:
+// Here we test that the seq elements get formatted either wide or tall.
+let oneline = [for x in xs: for y in ys: for z in zs: x + y + z];
+
+let multiline = [
+  for x in xs: for y in ys: for z in zs: for w in ws: x + y + z + w
+];
+
+let multiline_tall = [
+  for x in xs:
+  for y in ys:
+  for z in zs:
+  for u in us:
+  for v in vs:
+  for w in ws:
+  x + y + z + u + v + w
+];
+
+[oneline, multiline, multiline_tall]
