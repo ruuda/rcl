@@ -11,7 +11,7 @@
 //! pretty-printed for formatting.
 
 use crate::ast::UnOp;
-use crate::cst::{Chain, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, Type};
+use crate::cst::{Chain, Expr, List, NonCode, Prefixed, Seq, Stmt, StringPart, Type};
 use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::markup::Markup;
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
@@ -64,17 +64,23 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
-    /// A soft break if the collection is not empty.
+    /// The separator to add after a collection's opening punctuation.
     ///
     /// This is used in collection literals. If there are elements, then we have
-    /// a soft break between the opening delimiter and content, and between the
-    /// content and closing delimiter. But if we have no content, then we need
-    /// only one soft break.
-    pub fn soft_break_if_not_empty<T>(&self, elems: &[T]) -> Option<Doc<'a>> {
-        if elems.is_empty() {
-            None
-        } else {
-            Some(Doc::SoftBreak)
+    /// a hard or soft break between the opening delimiter and content, and
+    /// between the content and closing delimiter. But if we have no content
+    /// (but possibly a suffix) then we need only one soft break.
+    pub fn collection_opening_sep<T>(&self, list: &List<T>) -> Option<Doc<'a>> {
+        // When there is a list of at least two elements, and there is a trailing
+        // comma, then regardless of whether the list would fit in wide mode, we
+        // force it to be tall, to give the user some control over wide/tall.
+        // This is inspired by Black's "magic trailing comma":
+        // https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#the-magic-trailing-comma
+        match list.elements.len() {
+            0 => None,
+            1 => Some(Doc::SoftBreak),
+            _ if list.trailing_comma => Some(Doc::HardBreak),
+            _ => Some(Doc::SoftBreak),
         }
     }
 
@@ -98,6 +104,28 @@ impl<'a> Formatter<'a> {
         }
 
         Doc::Concat(result)
+    }
+
+    /// The final trailing comma in a collection (also call args, type args, etc.).
+    ///
+    /// Also includes the soft break after the comma.
+    pub fn trailing_comma<T>(&self, list: &List<T>) -> Doc<'a> {
+        if !list.suffix.is_empty() {
+            return concat! {
+                ","
+                Doc::SoftBreak
+                self.non_code(&list.suffix)
+            };
+        }
+
+        if list.elements.is_empty() {
+            return Doc::SoftBreak;
+        }
+
+        concat! {
+            Doc::tall(",")
+            Doc::SoftBreak
+        }
     }
 
     /// Format a `"` or `f"` quoted string or format string.
@@ -285,34 +313,31 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::BraceLit {
-                elements, suffix, ..
-            } => {
-                if elements.is_empty() && suffix.is_empty() {
+            Expr::BraceLit { elements, .. } => {
+                if elements.elements.is_empty() && elements.suffix.is_empty() {
                     Doc::str("{}")
                 } else {
-                    let sep = self
-                        .sep_key_value(elements)
-                        .or(self.soft_break_if_not_empty(elements));
+                    let sep = match self.collection_opening_sep(elements) {
+                        Some(Doc::HardBreak) => Some(Doc::HardBreak),
+                        other => self.sep_key_value(&elements.elements).or(other),
+                    };
                     group! {
                         "{"
                         sep
-                        indent! { self.seqs(elements, suffix) }
+                        indent! { self.seqs(elements) }
                         "}"
                     }
                 }
             }
 
-            Expr::BracketLit {
-                elements, suffix, ..
-            } => {
-                if elements.is_empty() && suffix.is_empty() {
+            Expr::BracketLit { elements, .. } => {
+                if elements.elements.is_empty() && elements.suffix.is_empty() {
                     Doc::str("[]")
                 } else {
                     group! {
                         "["
-                        self.soft_break_if_not_empty(elements)
-                        indent! { self.seqs(elements, suffix) }
+                        self.collection_opening_sep(elements)
+                        indent! { self.seqs(elements) }
                         "]"
                     }
                 }
@@ -388,30 +413,28 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::Function {
-                args, suffix, body, ..
-            } => {
-                let args_doc: Doc = match args.len() {
+            Expr::Function { args, body, .. } => {
+                let args_doc: Doc = match args.elements.len() {
                     0 => Doc::str("()"),
                     // Don't put parens around the argument if there is a single
                     // argument that has no comments on it. If it has comments,
                     // then we need the parens, because otherwise we might
                     // produce a syntax error in the output.
-                    1 if args[0].prefix.is_empty() && suffix.is_empty() => self.span(args[0].inner),
+                    1 if args.elements[0].prefix.is_empty() && args.suffix.is_empty() => {
+                        self.span(args.elements[0].inner)
+                    }
                     _ => group! {
                         "("
-                        Doc::SoftBreak
+                        self.collection_opening_sep(args)
                         indent! {
                             Doc::join(
-                                args.iter().map(|arg| concat! {
+                                args.elements.iter().map(|arg| concat! {
                                     self.non_code(&arg.prefix)
                                     self.span(arg.inner)
                                 }),
                                 concat!{ "," Doc::Sep },
                             )
-                            Doc::tall(",")
-                            Doc::SoftBreak
-                            self.non_code(suffix)
+                            self.trailing_comma(args)
                         }
                         ")"
                     },
@@ -474,18 +497,16 @@ impl<'a> Formatter<'a> {
                     group.push(".".into());
                     group.push(self.span(*field));
                 }
-                Chain::Call { args, suffix, .. } => {
+                Chain::Call { args, .. } => {
                     let call_doc = group! {
                         "("
-                        Doc::SoftBreak
+                        self.collection_opening_sep(args)
                         indent! {
                             Doc::join(
-                                args.iter().map(|(_span, arg)| self.prefixed_expr(arg)),
+                                args.elements.iter().map(|(_span, arg)| self.prefixed_expr(arg)),
                                 concat!{ "," Doc::Sep },
                             )
-                            Doc::tall(",")
-                            Doc::SoftBreak
-                            self.non_code(suffix)
+                            self.trailing_comma(args)
                         }
                         ")"
                     };
@@ -520,9 +541,9 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    pub fn seqs(&self, elements: &[Prefixed<Seq>], suffix: &[NonCode]) -> Doc<'a> {
+    pub fn seqs(&self, seqs: &List<Prefixed<Seq>>) -> Doc<'a> {
         let mut result = Vec::new();
-        for (i, elem) in elements.iter().enumerate() {
+        for (i, elem) in seqs.elements.iter().enumerate() {
             let elem_doc = self.seq(&elem.inner);
 
             // We wrap the inner Seq in a group, so you can have a collection
@@ -532,21 +553,19 @@ impl<'a> Formatter<'a> {
             result.push(self.non_code(&elem.prefix));
             result.push(group! { elem_doc });
 
-            let is_last = i + 1 == elements.len();
+            let is_last = i + 1 == seqs.elements.len();
             let sep_doc = match i {
+                // If there is suffix noncode, then we need the separator before
+                // it, otherwise we would output a syntax error.
+                _ if !seqs.suffix.is_empty() => Doc::str(","),
                 // For collections that contain a single comprehension, do not
                 // add a separator, even when they are multi-line. It makes
                 // comprehensions look weird, which are regularly multi-line
                 // but only rarely are there multiple seqs in the collection.
-                // If there is suffix noncode, then we need the separator before
-                // it, otherwise we would output a syntax error.
-                _ if elements.len() == 1 && suffix.is_empty() => {
-                    if elements[0].inner.is_comprehension() {
-                        Doc::Empty
-                    } else {
-                        Doc::tall(",")
-                    }
-                }
+                _ if seqs.elements.len() == 1 => match seqs.elements[0].inner.is_comprehension() {
+                    true => Doc::Empty,
+                    false => Doc::tall(","),
+                },
                 _ if is_last => Doc::tall(","),
                 _ => Doc::str(","),
             };
@@ -558,12 +577,12 @@ impl<'a> Formatter<'a> {
         }
 
         // Depending on whether we have key-values, add a soft break or sep.
-        result.push(self.sep_key_value(elements).unwrap_or(Doc::SoftBreak));
+        result.push(self.sep_key_value(&seqs.elements).unwrap_or(Doc::SoftBreak));
 
         // We could do it non-conditionally and push an empty doc, but seq is
         // a very common thing and suffixes are not, so efficiency matters here.
-        if !suffix.is_empty() {
-            result.push(self.non_code(suffix));
+        if !seqs.suffix.is_empty() {
+            result.push(self.non_code(&seqs.suffix));
         }
 
         Doc::Concat(result)
@@ -667,20 +686,19 @@ impl<'a> Formatter<'a> {
     pub fn types(
         &self,
         open: &'static str,
-        types: &[Prefixed<Type>],
+        types: &List<Prefixed<Type>>,
         close: &'static str,
     ) -> Doc<'a> {
         group! {
             open
-            Doc::SoftBreak
+            self.collection_opening_sep(types)
             indent! {
                 Doc::join(
-                    types.iter().map(|t| self.prefixed_type(t)),
+                    types.elements.iter().map(|t| self.prefixed_type(t)),
                     concat!{ "," Doc::Sep },
                 )
-                Doc::tall(",")
+                self.trailing_comma(types)
             }
-            Doc::SoftBreak
             close
         }
     }

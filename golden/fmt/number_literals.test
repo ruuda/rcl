@@ -5,4 +5,8 @@
 ]
 
 # output:
-[0xffff_ffff, 0b0101_0101, 1e10]
+[
+  0xffff_ffff,
+  0b0101_0101,
+  1e10,
+]

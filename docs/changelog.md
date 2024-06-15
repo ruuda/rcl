@@ -18,11 +18,26 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased.
 
+**Changes with compatibility impact:**
+
+* The output of the formatter can differ significantly. This may cause large
+  diffs in codebases where formatting is enforced. See below for more details.
+
+All changes:
+
  * Add [union types](types.md#union-types).
+ * The formatter now handles real-world code much better. In particular, it no
+   longer puts things on one line as aggressively, it improves how chains of
+   field lookups and method calls get line-wrapped, and the formatting of
+   dictionaries is now consistent between `evaluate` and `format` output (both
+   now use inner padding).
  * `rcl format` now supports [`--in-place`](rcl_format.md#-i-in-place) and
    [`--check`](rcl_format.md#-check). These were documented but marked to-do
    previously, now they are fully supported.
  * The webassembly module can now output colored spans.
+
+Independent of this release, <abbr>RCL</abbr> now has an official website:
+<https://rcl-lang.org>.
 
 ## 0.2.0
 

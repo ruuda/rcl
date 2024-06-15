@@ -21,6 +21,14 @@ let f = (
   // And in an argument list, it should be preserved.
 ) => x;
 
+let u0: Union[
+  // Also in types.
+] = null;
+let u1: Union[
+  Int,
+  // Whether or not there is an element before it.
+] = null;
+
 null
 
 # output:
@@ -46,5 +54,13 @@ let f = (
   x,
   // And in an argument list, it should be preserved.
 ) => x;
+
+let u0: Union[,
+  // Also in types.
+] = null;
+let u1: Union[
+  Int,
+  // Whether or not there is an element before it.
+] = null;
 
 null

@@ -2,7 +2,9 @@ let f =
  (
  ) => "short value";
 
-let g1 = (arg1, arg2,) => [very_long_name_1, very_long_name_2, very_long_name_3, very_long_name_4, very_long_name_5];
+let g1 = (
+arg1,
+arg2) => [very_long_name_1, very_long_name_2, very_long_name_3, very_long_name_4, very_long_name_5];
 let g2 = (rec_self, k) =>
   if {0, 1}.contains(k):
     1
@@ -21,7 +23,7 @@ let doc2 = (
   arg1,
 
   // Argument 2.
-  arg2,
+  arg2
 ) => 42;
 
 let with_lets = (widgets, frobnicators) =>

@@ -166,6 +166,7 @@ impl<'a> Abstractor<'a> {
             CExpr::BraceLit { open, elements, .. } => AExpr::BraceLit {
                 open: *open,
                 elements: elements
+                    .elements
                     .iter()
                     .map(|elem| self.seq(&elem.inner))
                     .collect::<Result<Vec<_>>>()?,
@@ -174,6 +175,7 @@ impl<'a> Abstractor<'a> {
             CExpr::BracketLit { open, elements, .. } => AExpr::BracketLit {
                 open: *open,
                 elements: elements
+                    .elements
                     .iter()
                     .map(|elem| self.seq(&elem.inner))
                     .collect::<Result<Vec<_>>>()?,
@@ -252,6 +254,7 @@ impl<'a> Abstractor<'a> {
                 ..
             } => AExpr::Function {
                 args: args
+                    .elements
                     .iter()
                     .map(|arg| (arg.inner, arg.inner.resolve(self.input).into()))
                     .collect(),
@@ -399,6 +402,7 @@ impl<'a> Abstractor<'a> {
                 function_span: inner_span,
                 function: Box::new(inner),
                 args: args
+                    .elements
                     .iter()
                     .map(|(span, a)| {
                         Ok(CallArg {
@@ -438,6 +442,7 @@ impl<'a> Abstractor<'a> {
                 span: *span,
                 name: name.resolve(self.input).into(),
                 args: args
+                    .elements
                     .iter()
                     .map(|arg| self.type_expr(&arg.inner))
                     .collect::<Result<Box<_>>>()?,
@@ -445,6 +450,7 @@ impl<'a> Abstractor<'a> {
             CType::Function { span, args, result } => AType::Function {
                 span: *span,
                 args: args
+                    .elements
                     .iter()
                     .map(|arg| self.type_expr(&arg.inner))
                     .collect::<Result<Box<_>>>()?,

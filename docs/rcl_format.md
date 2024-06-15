@@ -16,7 +16,6 @@ specified, the input defaults to stdin.
 In the default mode, there must be exactly one input file, and the formatted
 result is printed to stdout. With `--in-place` and `--check`, you can provide
 multiple input files.
-
 ## Options
 
 ### `--check`
@@ -49,3 +48,34 @@ This option is incompatible with `--check` and `--in-place`.
 
 Target width in columns. Must be an integer. Defaults to 80. Note that the
 formatter is not always able to stay within the desired width limit.
+
+## The standard style
+
+The output of `rcl format` should generally be sensible and readable, though as
+with any mechanical formatter, it cannot please everybody for every possible
+input. The format is not configurable aside from the target [width](#-w-width-width).
+Although the formatter tries to not exceed the target width, it is not always
+possible to stay within the limit.
+
+The formatter is not sensitive to initial formatting, with the exception of
+trailing commas, to give some control over how collections are formatted.[^1]
+Collections with at least two elements that have a trailing comma will be
+formatted tall, even when they fit on a line. To format the collection wide,
+remove the trailing comma. This applies to any place where trailing commas are
+allowed, not just collection literals.
+
+```rcl
+// This collection is formatted wide.
+let xs = [1, 2];
+
+// Even though it fits on one line, this collection is kept tall due to the
+// trailing comma.
+let ys = [
+  1,
+  2,
+];
+```
+
+[^1]: This was inspired by how the Black Python formatter
+      [treats trailing trailing commas][magic-comma].
+[magic-comma]: https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#the-magic-trailing-comma
