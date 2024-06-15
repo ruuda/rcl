@@ -1,0 +1,12 @@
+let x = very_long_base.very_long_field.another_long_field.call_func().list[32].entry["key"].call_again();
+x
+
+# output:
+let x = very_long_base
+  .very_long_field
+  .another_long_field
+  .call_func()
+  .list[32]
+  .entry["key"]
+  .call_again();
+x
