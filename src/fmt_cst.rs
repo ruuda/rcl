@@ -106,6 +106,28 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
+    /// The final trailing comma in a collection (also call args, type args, etc.).
+    ///
+    /// Also includes the soft break after the comma.
+    pub fn trailing_comma<T>(&self, list: &List<T>) -> Doc<'a> {
+        if !list.suffix.is_empty() {
+            return concat! {
+                ","
+                Doc::SoftBreak
+                self.non_code(&list.suffix)
+            };
+        }
+
+        if list.elements.is_empty() {
+            return Doc::SoftBreak;
+        }
+
+        concat! {
+            Doc::tall(",")
+            Doc::SoftBreak
+        }
+    }
+
     /// Format a `"` or `f"` quoted string or format string.
     fn string_double(&self, open: &'static str, parts: &[StringPart]) -> Doc<'a> {
         let mut result = vec![Doc::str(open).with_markup(Markup::String)];
@@ -295,7 +317,7 @@ impl<'a> Formatter<'a> {
                 if elements.elements.is_empty() && elements.suffix.is_empty() {
                     Doc::str("{}")
                 } else {
-                    let sep = match self.collection_opening_sep(&elements) {
+                    let sep = match self.collection_opening_sep(elements) {
                         Some(Doc::HardBreak) => Some(Doc::HardBreak),
                         other => self.sep_key_value(&elements.elements).or(other),
                     };
@@ -412,9 +434,7 @@ impl<'a> Formatter<'a> {
                                 }),
                                 concat!{ "," Doc::Sep },
                             )
-                            Doc::tall(",")
-                            Doc::SoftBreak
-                            self.non_code(&args.suffix)
+                            self.trailing_comma(args)
                         }
                         ")"
                     },
@@ -486,9 +506,7 @@ impl<'a> Formatter<'a> {
                                 args.elements.iter().map(|(_span, arg)| self.prefixed_expr(arg)),
                                 concat!{ "," Doc::Sep },
                             )
-                            Doc::tall(",")
-                            Doc::SoftBreak
-                            self.non_code(&args.suffix)
+                            self.trailing_comma(args)
                         }
                         ")"
                     };
@@ -668,20 +686,19 @@ impl<'a> Formatter<'a> {
     pub fn types(
         &self,
         open: &'static str,
-        types: &[Prefixed<Type>],
+        types: &List<Prefixed<Type>>,
         close: &'static str,
     ) -> Doc<'a> {
         group! {
             open
-            Doc::SoftBreak
+            self.collection_opening_sep(types)
             indent! {
                 Doc::join(
-                    types.iter().map(|t| self.prefixed_type(t)),
+                    types.elements.iter().map(|t| self.prefixed_type(t)),
                     concat!{ "," Doc::Sep },
                 )
-                Doc::tall(",")
+                self.trailing_comma(types)
             }
-            Doc::SoftBreak
             close
         }
     }

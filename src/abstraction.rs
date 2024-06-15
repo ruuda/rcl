@@ -442,6 +442,7 @@ impl<'a> Abstractor<'a> {
                 span: *span,
                 name: name.resolve(self.input).into(),
                 args: args
+                    .elements
                     .iter()
                     .map(|arg| self.type_expr(&arg.inner))
                     .collect::<Result<Box<_>>>()?,
@@ -449,6 +450,7 @@ impl<'a> Abstractor<'a> {
             CType::Function { span, args, result } => AType::Function {
                 span: *span,
                 args: args
+                    .elements
                     .iter()
                     .map(|arg| self.type_expr(&arg.inner))
                     .collect::<Result<Box<_>>>()?,

@@ -427,13 +427,13 @@ pub enum Type {
     Apply {
         span: Span,
         name: Span,
-        args: Box<[Prefixed<Type>]>,
+        args: List<Prefixed<Type>>,
     },
 
     /// A function type with zero or more arguments, and one result type.
     Function {
         span: Span,
-        args: Box<[Prefixed<Type>]>,
+        args: List<Prefixed<Type>>,
         result: Box<Type>,
     },
 }

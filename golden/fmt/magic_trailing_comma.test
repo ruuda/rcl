@@ -68,6 +68,28 @@ let d = (
   x, y,
 ) => 1;
 
+// Generic types.
+let z: List[Int,] = [];
+let a: List[Int, Int] = [];
+let b: List[
+  Int, Int
+] = [];
+let c: List[Int, Int,] = [];
+let d: List[
+  Int, Int,
+] = [];
+
+// Function types.
+let z: (Int,) -> Int = null;
+let a: (Int, Int) -> Int = null;
+let b: (
+  Int, Int
+) -> Int = null;
+let c: (Int, Int,) -> Int = null;
+let d: (
+  Int, Int,
+) -> Int = null;
+
 null
 
 # output:
@@ -146,5 +168,31 @@ let d = (
   x,
   y,
 ) => 1;
+
+// Generic types.
+let z: List[Int] = [];
+let a: List[Int, Int] = [];
+let b: List[Int, Int] = [];
+let c: List[
+  Int,
+  Int,
+] = [];
+let d: List[
+  Int,
+  Int,
+] = [];
+
+// Function types.
+let z: (Int) -> Int = null;
+let a: (Int, Int) -> Int = null;
+let b: (Int, Int) -> Int = null;
+let c: (
+  Int,
+  Int,
+) -> Int = null;
+let d: (
+  Int,
+  Int,
+) -> Int = null;
 
 null

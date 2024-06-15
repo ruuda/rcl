@@ -1307,14 +1307,19 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a comma-delimited list of types with optional trailing comma.
-    fn parse_types(&mut self) -> Result<Box<[Prefixed<Type>]>> {
+    fn parse_types(&mut self) -> Result<List<Prefixed<Type>>> {
         let mut result = Vec::new();
+        let mut trailing_comma = false;
+
         loop {
             let prefix = self.parse_non_code();
             if matches!(self.peek(), Some(Token::RParen | Token::RBracket)) {
-                // TODO: In this case we lose the prefix that we parsed.
-                // See also the comment in `parse_seqs`.
-                return Ok(result.into_boxed_slice());
+                let final_result = List {
+                    elements: result.into_boxed_slice(),
+                    suffix: prefix,
+                    trailing_comma,
+                };
+                return Ok(final_result);
             }
 
             let type_ = self.parse_type_expr()?;
@@ -1323,12 +1328,14 @@ impl<'a> Parser<'a> {
                 inner: type_,
             };
             result.push(prefixed);
+            trailing_comma = false;
 
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::RParen | Token::RBracket) => continue,
                 Some(Token::Comma) => {
                     self.consume();
+                    trailing_comma = true;
                     continue;
                 }
                 _ => {
