@@ -68,7 +68,7 @@ fn build_python_value(py: Python, v: &Value) -> PyResult<PyObject> {
 fn load_file(py: Python, path: String) -> PyResult<PyObject> {
     // Behavior of the file paths for this function is the same as on the
     // command line; it's *not* the same as for import expressions.
-    match evaluate(|loader| loader.load_cli_target(Target::File(path))) {
+    match evaluate(|loader| loader.load_cli_target(&Target::File(path))) {
         Ok(v) => build_python_value(py, &v),
         Err(..) => Err(runtime_error("Evaluation failed.")),
     }

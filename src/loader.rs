@@ -495,7 +495,7 @@ impl Loader {
     }
 
     /// Load the file with the given name, or stdin.
-    pub fn load_cli_target(&mut self, target: Target) -> Result<DocId> {
+    pub fn load_cli_target(&mut self, target: &Target) -> Result<DocId> {
         match target {
             Target::File(fname) => {
                 let path = self.filesystem.resolve_entrypoint(&fname)?;

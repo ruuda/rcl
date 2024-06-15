@@ -10,6 +10,7 @@ use std::path::Path;
 
 use rcl::cli::{
     self, Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, OutputTarget, StyleOptions,
+    Target,
 };
 use rcl::error::{Error, Result};
 use rcl::loader::{Loader, SandboxMode};
@@ -42,9 +43,12 @@ impl App {
         data: MarkupString,
         out_path: &Path,
     ) -> std::io::Result<()> {
-        let f = std::fs::File::open(out_path)?;
+        let f = std::fs::File::create(out_path)?;
         let mut w = std::io::BufWriter::new(f);
-        data.write_bytes(mode, &mut w)
+        data.write_bytes(mode, &mut w)?;
+        // Flush to force errors to materialize. Without this, flush would
+        // happen on drop, which has no opportunity to report errors.
+        w.flush()
     }
 
     /// Write a string to a file.
@@ -148,6 +152,33 @@ impl App {
         self.print_doc_target(output, style_opts, res)
     }
 
+    fn main_fmt_in_place(&mut self, style_opts: &StyleOptions, fnames: &[Target]) -> Result<()> {
+        let cfg = pprint::Config {
+            width: style_opts.width,
+        };
+        for target in fnames {
+            let fname = match target {
+                Target::File(fname) => fname,
+                Target::Stdin => {
+                    let msg =
+                        "Formatting in-place is only possible for named files, not for stdin.";
+                    return Error::new(msg).err();
+                }
+                Target::StdinDefault => unreachable!("In-place default is empty list, not stdin."),
+            };
+            let doc = self.loader.load_cli_target(target)?;
+            let data = self.loader.get_doc(doc).data;
+            let cst = self.loader.get_cst(doc)?;
+            let fmt_doc = rcl::fmt_cst::format_expr(data, &cst);
+            let res = fmt_doc.println(&cfg);
+            // TODO: Only write when the result is different, to help build
+            // systems but also file systems with reflink copies to avoid
+            // duplicating the data.
+            self.print_to_file(MarkupMode::None, res, fname)?;
+        }
+        Ok(())
+    }
+
     fn main(&mut self) -> Result<()> {
         let (opts, cmd) = cli::parse(std::env::args().collect())?;
         self.opts = opts;
@@ -170,7 +201,7 @@ impl App {
                 let mut tracer = self.get_tracer();
                 let mut type_env = typecheck::prelude();
                 let mut value_env = runtime::prelude();
-                let doc = self.loader.load_cli_target(fname)?;
+                let doc = self.loader.load_cli_target(&fname)?;
                 let val = self
                     .loader
                     .evaluate(&mut type_env, &mut value_env, doc, &mut tracer)?;
@@ -193,7 +224,7 @@ impl App {
                 self.loader
                     .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
 
-                let input = self.loader.load_cli_target(fname)?;
+                let input = self.loader.load_cli_target(&fname)?;
                 let query = self.loader.load_string(expr);
 
                 // First we evaluate the input document.
@@ -225,26 +256,28 @@ impl App {
                 style_opts,
                 target,
                 output,
-            } => match target {
-                FormatTarget::InPlace { fnames: _ } => {
-                    todo!("TODO: --in-place formatting is not yet implemented.");
+            } => {
+                self.loader.initialize_filesystem(
+                    SandboxMode::Unrestricted,
+                    self.opts.workdir.as_deref(),
+                )?;
+                match target {
+                    FormatTarget::InPlace { fnames } => {
+                        self.main_fmt_in_place(&style_opts, &fnames)
+                    }
+                    FormatTarget::Stdout { fname } => {
+                        let doc = self.loader.load_cli_target(&fname)?;
+                        self.main_fmt(output, &style_opts, doc)
+                    }
                 }
-                FormatTarget::Stdout { fname } => {
-                    self.loader.initialize_filesystem(
-                        SandboxMode::Unrestricted,
-                        self.opts.workdir.as_deref(),
-                    )?;
-                    let doc = self.loader.load_cli_target(fname)?;
-                    self.main_fmt(output, &style_opts, doc)
-                }
-            },
+            }
 
             Cmd::Highlight { fname } => {
                 self.loader.initialize_filesystem(
                     SandboxMode::Unrestricted,
                     self.opts.workdir.as_deref(),
                 )?;
-                let doc = self.loader.load_cli_target(fname)?;
+                let doc = self.loader.load_cli_target(&fname)?;
                 let tokens = self.loader.get_tokens(doc)?;
                 let data = self.loader.get_doc(doc).data;
                 let mut stdout = std::io::stdout().lock();
