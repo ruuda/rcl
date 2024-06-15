@@ -9,7 +9,7 @@ let tall = {
 wide | tall
 
 # output:
-let wide = {"a": 1, "b": 2};
+let wide = { "a": 1, "b": 2 };
 let tall = {
   // The comment forces tall mode.
   "a": 1,

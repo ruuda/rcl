@@ -69,11 +69,11 @@ impl<'a> Formatter<'a> {
     /// a soft break between the opening delimiter and content, and between the
     /// content and closing delimiter. But if we have no content, then we need
     /// only one soft break.
-    pub fn soft_break_if_not_empty<T>(&self, elems: &[T]) -> Doc<'a> {
+    pub fn soft_break_if_not_empty<T>(&self, elems: &[T]) -> Option<Doc<'a>> {
         if elems.is_empty() {
-            Doc::Empty
+            None
         } else {
-            Doc::SoftBreak
+            Some(Doc::SoftBreak)
         }
     }
 
@@ -290,9 +290,12 @@ impl<'a> Formatter<'a> {
                 if elements.is_empty() && suffix.is_empty() {
                     Doc::str("{}")
                 } else {
+                    let sep = self
+                        .sep_key_value(elements)
+                        .or(self.soft_break_if_not_empty(elements));
                     group! {
                         "{"
-                        self.soft_break_if_not_empty(elements)
+                        sep
                         indent! { self.seqs(elements, suffix) }
                         "}"
                     }
@@ -502,6 +505,17 @@ impl<'a> Formatter<'a> {
         group! { Doc::Concat(group_base) }
     }
 
+    /// If the elements start or end with a key-value, return a separator, otherwise empty string.
+    ///
+    /// This is so that `{ a = 10 }` formats with spaces, but `{a, 10}` does not.
+    fn sep_key_value(&self, elements: &[Prefixed<Seq>]) -> Option<Doc<'a>> {
+        match elements.first().map(|x| x.inner.is_inner_elem()) {
+            Some(false) => Some(Doc::Sep),
+            Some(true) => None,
+            None => None,
+        }
+    }
+
     pub fn seqs(&self, elements: &[Prefixed<Seq>], suffix: &[NonCode]) -> Doc<'a> {
         let mut result = Vec::new();
         for (i, elem) in elements.iter().enumerate() {
@@ -522,12 +536,13 @@ impl<'a> Formatter<'a> {
                 // but only rarely are there multiple seqs in the collection.
                 // If there is suffix noncode, then we need the separator before
                 // it, otherwise we would output a syntax error.
-                _ if elements.len() == 1 && suffix.is_empty() => match elements[0].inner {
-                    Seq::Elem { .. } | Seq::AssocExpr { .. } | Seq::AssocIdent { .. } => {
+                _ if elements.len() == 1 && suffix.is_empty() => {
+                    if elements[0].inner.is_comprehension() {
+                        Doc::Empty
+                    } else {
                         Doc::tall(",")
                     }
-                    Seq::For { .. } | Seq::If { .. } | Seq::Stmt { .. } => Doc::Empty,
-                },
+                }
                 _ if is_last => Doc::tall(","),
                 _ => Doc::str(","),
             };
@@ -538,7 +553,8 @@ impl<'a> Formatter<'a> {
             }
         }
 
-        result.push(Doc::SoftBreak);
+        // Depending on whether we have key-values, add a soft break or sep.
+        result.push(self.sep_key_value(elements).unwrap_or(Doc::SoftBreak));
 
         // We could do it non-conditionally and push an empty doc, but seq is
         // a very common thing and suffixes are not, so efficiency matters here.

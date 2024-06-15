@@ -407,6 +407,18 @@ impl<'a> From<String> for Doc<'a> {
     }
 }
 
+impl<'a, T> From<Option<T>> for Doc<'a>
+where
+    Doc<'a>: From<T>,
+{
+    fn from(value: Option<T>) -> Doc<'a> {
+        match value {
+            None => Doc::Empty,
+            Some(x) => Doc::from(x),
+        }
+    }
+}
+
 impl<'a> std::ops::Add<Doc<'a>> for Doc<'a> {
     type Output = Doc<'a>;
 
