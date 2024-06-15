@@ -10,6 +10,7 @@
 //! The formatter converts the CST into a [`Doc`], which can subsequently be
 //! pretty-printed for formatting.
 
+use crate::ast::UnOp;
 use crate::cst::{Chain, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, Type};
 use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::markup::Markup;
@@ -420,13 +421,16 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::UnOp { op_span, body, .. } => {
-                concat! {
-                    self.span(*op_span)
-                    Doc::Sep
+            Expr::UnOp { op, body, .. } => match op {
+                UnOp::Neg => concat! {
+                    "-" self.expr(body)
+                },
+                UnOp::Not => concat! {
+                    Doc::from("not").with_markup(Markup::Keyword)
+                    " "
                     self.expr(body)
-                }
-            }
+                },
+            },
 
             // TODO: Make this a collection in the parser, so we can toggle
             // operator chains into all-wide or all-tall but not mixed.

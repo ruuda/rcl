@@ -1,8 +1,17 @@
+let x =
 not
 not
 not
 not
-true
+true;
+
+let y =- 32;
+
+null
 
 # output:
-not not not not true
+let x = not not not not true;
+
+let y = -32;
+
+null
