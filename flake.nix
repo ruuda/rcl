@@ -322,6 +322,13 @@
                 touch $out
                 '';
 
+              fmtRcl = pkgs.runCommand
+                "check-fmt-rcl"
+                { buildInputs = [ debugBuild ]; }
+                ''
+                rcl format --check ${./examples}/* | tee $out
+                '';
+
               typecheckPython = pkgs.runCommand
                 "check-typecheck-python"
                 { buildInputs = [ pythonEnv ]; }
