@@ -185,6 +185,8 @@ define_ops! {
     0xe3 => ModeJsonCheck,
     /// Set the check mode to `TomlCheck`.
     0xe4 => ModeTomlCheck,
+    /// Set the check mode to `EvalFormat`.
+    0xe5 => ModeEvalFormat,
 }
 
 /// A helper for visualizing program execution for debug purposes.
@@ -528,6 +530,9 @@ impl<'a> ProgramBuilder<'a> {
             }
             Op::ModeTomlCheck => {
                 self.mode = Mode::EvalTomlCheck { width: n as u32 };
+            }
+            Op::ModeEvalFormat => {
+                self.mode = Mode::EvalFormat { width: n as u32 };
             }
         }
 
