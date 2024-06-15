@@ -18,15 +18,20 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased.
 
- * Add union types.
- * The webassembly module can now output colored spans.
+ * Add [union types](types.md#union-types).
+ * The [`--in-place`](rcl_format.md#-i-in-place) option for `rcl format` is now
+   implemented.
+* The webassembly module can now output colored spans.
 
 ## 0.2.0
 
 Released 2024-03-15.
 
- * Add new methods on `String`: `remove_prefix`, `remove_suffix`, `to_lowercase`,
-   `to_uppercase`.
+ * Add new methods on `String`:
+   [`remove_prefix`](type_string.md#remove_prefix),
+   [`remove_suffix`](type_string.md#remove_suffix),
+   [`to_lowercase`](type_string.md#to_lowercase),
+   [`to_uppercase`](type_string.md#to_uppercase).
  * Allow `\}` in strings as an escape sequence for `}`.
  * Fix a compatibility problem in the toml output format. Improve tests and add
    a fuzzer to rule out similar compatibility problems.
