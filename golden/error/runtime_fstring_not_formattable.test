@@ -7,4 +7,4 @@ stdin:1:33
   ╵                                 ^~~~~~~~~~~~~~~~
 Error: This value cannot be interpolated into a string:
 
-  Dict.contains
+  «method Dict.contains»

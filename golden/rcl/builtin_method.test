@@ -1,4 +1,4 @@
 "abc".len
 
 # output:
-String.len
+«method String.len»
