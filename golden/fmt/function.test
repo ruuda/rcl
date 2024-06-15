@@ -75,7 +75,9 @@ let doc2 = (
 
 let with_lets = (widgets, frobnicators) =>
   let frobnicated_widgets = [
-    for widget in widgets: for frobnicator in frobnicators: frobnicator(widget)
+    for widget in widgets:
+    for frobnicator in frobnicators:
+    frobnicator(widget)
   ];
   [for w in frobnicated_widgets: w.turbo_encabulator];
 

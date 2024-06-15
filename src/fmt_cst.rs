@@ -571,6 +571,16 @@ impl<'a> Formatter<'a> {
 
     /// Format a sequence.
     pub fn seq(&self, seq: &Seq) -> Doc<'a> {
+        // If we have a deep seq, even though it *could* fit on one line,
+        // this is a complex thing akin to a nested for loop, usually it gets
+        // more readable if we spread it across multiple lines. So if the seq
+        // is deeper than 2, force it to be tall.
+        let sep = if seq.depth() > 2 {
+            Doc::HardBreak
+        } else {
+            Doc::Sep
+        };
+
         match seq {
             Seq::Elem { value, .. } => self.expr(value),
 
@@ -587,7 +597,7 @@ impl<'a> Formatter<'a> {
                 let body_doc = self.seq(&body.inner);
                 concat! {
                     self.stmt(stmt)
-                    Doc::Sep
+                    sep
                     self.non_code(&body.prefix)
                     body_doc
                 }
@@ -615,7 +625,7 @@ impl<'a> Formatter<'a> {
                     " "
                     self.expr(collection)
                     ":"
-                    Doc::Sep
+                    sep
                     self.non_code(&body.prefix)
                     body_doc
                 }
@@ -630,7 +640,7 @@ impl<'a> Formatter<'a> {
                     " "
                     self.expr(condition)
                     ":"
-                    Doc::Sep
+                    sep
                     self.non_code(&body.prefix)
                     body_doc
                 }
