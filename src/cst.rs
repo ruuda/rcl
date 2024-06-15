@@ -100,6 +100,23 @@ pub struct Prefixed<T> {
 /// A prefixed expression, and the span of the inner expression.
 pub type SpanPrefixedExpr = (Span, Prefixed<Expr>);
 
+/// A collection of `T`s separated by commas, with an optional trailing comma and non-code suffix.
+///
+/// This is a list in the sense of a sequence of elements, it is not a list
+/// literal in the source code. `List<T>` only describes elements, not the
+/// surrounding delimiters like `[]`, `()`, or `{}`.
+#[derive(Debug)]
+pub struct List<T> {
+    /// The collection elements.
+    pub elements: Box<[T]>,
+
+    /// Any non-code before the closing delimiter.
+    pub suffix: Box<[NonCode]>,
+
+    /// Whether a trailing comma is present.
+    pub trailing_comma: bool,
+}
+
 /// A part of a string literal or format string.
 #[derive(Debug)]
 pub enum StringPart {
@@ -164,18 +181,14 @@ pub enum Expr {
     BraceLit {
         open: Span,
         close: Span,
-        elements: Box<[Prefixed<Seq>]>,
-        /// Any content before the closing brace.
-        suffix: Box<[NonCode]>,
+        elements: List<Prefixed<Seq>>,
     },
 
     /// A `[]`-enclosed collection literal.
     BracketLit {
         open: Span,
         close: Span,
-        elements: Box<[Prefixed<Seq>]>,
-        /// Any content before the closing bracket.
-        suffix: Box<[NonCode]>,
+        elements: List<Prefixed<Seq>>,
     },
 
     /// An expression enclosed in `()`.
@@ -230,9 +243,7 @@ pub enum Expr {
 
     /// Define a lambda function.
     Function {
-        args: Box<[Prefixed<Span>]>,
-        /// Any non-code between the final arg and the closing paren.
-        suffix: Box<[NonCode]>,
+        args: List<Prefixed<Span>>,
         body_span: Span,
         body: Box<Expr>,
     },
@@ -387,9 +398,7 @@ pub enum Chain {
         /// The closing parenthesis.
         close: Span,
         /// The arguments passed to the call.
-        args: Box<[SpanPrefixedExpr]>,
-        /// Any non-code between the final argument and the closing paren.
-        suffix: Box<[NonCode]>,
+        args: List<SpanPrefixedExpr>,
     },
 
     /// Index into a collection with `[]`.

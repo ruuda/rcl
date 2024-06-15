@@ -166,6 +166,7 @@ impl<'a> Abstractor<'a> {
             CExpr::BraceLit { open, elements, .. } => AExpr::BraceLit {
                 open: *open,
                 elements: elements
+                    .elements
                     .iter()
                     .map(|elem| self.seq(&elem.inner))
                     .collect::<Result<Vec<_>>>()?,
@@ -174,6 +175,7 @@ impl<'a> Abstractor<'a> {
             CExpr::BracketLit { open, elements, .. } => AExpr::BracketLit {
                 open: *open,
                 elements: elements
+                    .elements
                     .iter()
                     .map(|elem| self.seq(&elem.inner))
                     .collect::<Result<Vec<_>>>()?,
@@ -252,6 +254,7 @@ impl<'a> Abstractor<'a> {
                 ..
             } => AExpr::Function {
                 args: args
+                    .elements
                     .iter()
                     .map(|arg| (arg.inner, arg.inner.resolve(self.input).into()))
                     .collect(),
@@ -399,6 +402,7 @@ impl<'a> Abstractor<'a> {
                 function_span: inner_span,
                 function: Box::new(inner),
                 args: args
+                    .elements
                     .iter()
                     .map(|(span, a)| {
                         Ok(CallArg {

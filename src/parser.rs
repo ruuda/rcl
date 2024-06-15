@@ -8,15 +8,13 @@
 //! The parser converts a sequence of tokens into a Concrete Syntax Tree.
 
 use crate::cst::{
-    BinOp, Chain, Expr, NonCode, Prefixed, Seq, SpanPrefixedExpr, Stmt, StringPart, Type, UnOp,
+    BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, SpanPrefixedExpr, Stmt, StringPart, Type,
+    UnOp,
 };
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
 use crate::pprint::{concat, Doc};
 use crate::source::{DocId, Span};
-
-/// A collection of `T`s, and a non-code suffix.
-type SuffixedElems<T> = (Box<[T]>, Box<[NonCode]>);
 
 /// Parse an input document into a concrete syntax tree.
 pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<SpanPrefixedExpr> {
@@ -610,19 +608,23 @@ impl<'a> Parser<'a> {
 
     /// Try parsing a lambda function expression.
     fn parse_expr_function(&mut self) -> Result<Expr> {
-        let (args, suffix) = match self.peek() {
+        let args = match self.peek() {
             Some(Token::Ident) => {
                 let prefixed = Prefixed {
                     prefix: [].into(),
                     inner: self.consume(),
                 };
-                ([prefixed].into(), [].into())
+                List {
+                    elements: [prefixed].into(),
+                    suffix: [].into(),
+                    trailing_comma: false,
+                }
             }
             Some(Token::LParen) => {
                 self.push_bracket()?;
-                let (args, suffix) = self.parse_function_args()?;
+                let args = self.parse_function_args()?;
                 self.pop_bracket()?;
-                (args, suffix)
+                args
             }
             _ => panic!("Should only call `parse_expr_function` on a lambda."),
         };
@@ -634,7 +636,6 @@ impl<'a> Parser<'a> {
 
         let result = Expr::Function {
             args,
-            suffix,
             body_span,
             body: Box::new(body),
         };
@@ -759,14 +760,9 @@ impl<'a> Parser<'a> {
             match self.peek() {
                 Some(Token::LParen) => {
                     let open = self.push_bracket()?;
-                    let (args, suffix) = self.parse_call_args()?;
+                    let args = self.parse_call_args()?;
                     let close = self.pop_bracket()?;
-                    let chain_expr = Chain::Call {
-                        open,
-                        close,
-                        args,
-                        suffix,
-                    };
+                    let chain_expr = Chain::Call { open, close, args };
                     chain.push((inner_span, chain_expr));
                 }
                 Some(Token::LBracket) => {
@@ -810,25 +806,23 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some(Token::LBrace) => {
                 let open = self.push_bracket()?;
-                let (elements, suffix) = self.parse_seqs()?;
+                let elements = self.parse_seqs()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::BraceLit {
                     open,
                     close,
                     elements,
-                    suffix,
                 };
                 Ok(result)
             }
             Some(Token::LBracket) => {
                 let open = self.push_bracket()?;
-                let (elements, suffix) = self.parse_seqs()?;
+                let elements = self.parse_seqs()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::BracketLit {
                     open,
                     close,
                     elements,
-                    suffix,
                 };
                 Ok(result)
             }
@@ -952,13 +946,19 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse arguments in a lambda function definition.
-    fn parse_function_args(&mut self) -> Result<SuffixedElems<Prefixed<Span>>> {
+    fn parse_function_args(&mut self) -> Result<List<Prefixed<Span>>> {
         let mut result = Vec::new();
+        let mut trailing_comma = false;
 
         loop {
             let prefix = self.parse_non_code();
             if self.peek() == Some(Token::RParen) {
-                return Ok((result.into_boxed_slice(), prefix));
+                let final_result = List {
+                    elements: result.into_boxed_slice(),
+                    suffix: prefix,
+                    trailing_comma,
+                };
+                return Ok(final_result);
             }
 
             let ident = self.parse_ident()?;
@@ -967,12 +967,14 @@ impl<'a> Parser<'a> {
                 inner: ident,
             };
             result.push(prefixed);
+            trailing_comma = false;
 
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::RParen) => continue,
                 Some(Token::Comma) => {
                     self.consume();
+                    trailing_comma = true;
                     continue;
                 }
                 _ => {
@@ -987,13 +989,19 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse arguments in a function call.
-    fn parse_call_args(&mut self) -> Result<SuffixedElems<SpanPrefixedExpr>> {
+    fn parse_call_args(&mut self) -> Result<List<SpanPrefixedExpr>> {
         let mut result = Vec::new();
+        let mut trailing_comma = false;
 
         loop {
             let prefix = self.parse_non_code();
             if self.peek() == Some(Token::RParen) {
-                return Ok((result.into_boxed_slice(), prefix));
+                let final_result = List {
+                    elements: result.into_boxed_slice(),
+                    suffix: prefix,
+                    trailing_comma,
+                };
+                return Ok(final_result);
             }
 
             let (span, expr) = self.parse_expr()?;
@@ -1002,12 +1010,14 @@ impl<'a> Parser<'a> {
                 inner: expr,
             };
             result.push((span, prefixed));
+            trailing_comma = false;
 
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::RParen) => continue,
                 Some(Token::Comma) => {
                     self.consume();
+                    trailing_comma = true;
                     continue;
                 }
                 _ => {
@@ -1025,25 +1035,32 @@ impl<'a> Parser<'a> {
     ///
     /// This corresponds to `seqs` in the grammar, but it is slightly different
     /// from the rule there to be able to incorporate noncode.
-    fn parse_seqs(&mut self) -> Result<SuffixedElems<Prefixed<Seq>>> {
+    fn parse_seqs(&mut self) -> Result<List<Prefixed<Seq>>> {
         let mut result = Vec::new();
+        let mut trailing_comma = false;
 
         loop {
             let prefix = self.parse_non_code();
             if matches!(self.peek(), Some(Token::RBrace | Token::RBracket)) {
-                return Ok((result.into_boxed_slice(), prefix));
+                let final_result = List {
+                    elements: result.into_boxed_slice(),
+                    suffix: prefix,
+                    trailing_comma,
+                };
+                return Ok(final_result);
             }
 
             let (_span, seq) = self.parse_seq()?;
-
             let prefixed = Prefixed { prefix, inner: seq };
             result.push(prefixed);
+            trailing_comma = false;
 
             self.skip_non_code()?;
             match self.peek() {
                 Some(Token::RBrace | Token::RBracket) => continue,
                 tok if tok == Some(Token::Comma) => {
                     self.consume();
+                    trailing_comma = true;
                     continue;
                 }
                 // All of the next tokens are unexpected, but we add special
