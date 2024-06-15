@@ -1,0 +1,9 @@
+// This is a regression test to test that the value formatter formats built-in
+// functions in the same way that the CST formatter does, including line breaks.
+{ some_really_long_key_name_that_causes_the_rest_to_wrap_if_long_enough = std.read_file_utf8 }
+
+# output:
+{
+  some_really_long_key_name_that_causes_the_rest_to_wrap_if_long_enough = std
+    .read_file_utf8,
+}

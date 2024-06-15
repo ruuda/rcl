@@ -111,9 +111,45 @@ fn value(v: &Value) -> Doc {
         // and format it as that?
         Value::Set(vs) => list("{", "}", vs.iter()),
         Value::Dict(vs) => dict(vs.iter()),
-        // TODO: Add a more proper printer for functions/builtins. For now this will do.
-        Value::Function(..) => Doc::from("«function»").with_markup(Markup::Keyword),
-        Value::BuiltinFunction(b) => Doc::from(b.name).with_markup(Markup::Builtin),
-        Value::BuiltinMethod(m) => Doc::from(m.method.name).with_markup(Markup::Builtin),
+
+        Value::BuiltinFunction(b) => {
+            let name = b
+                .name
+                .strip_prefix("std.")
+                .expect("All functions start with 'std.'.");
+            group! {
+                Doc::from("std").with_markup(Markup::Builtin)
+                Doc::SoftBreak
+                indent! { "." Doc::from(name).with_markup(Markup::Builtin) }
+            }
+        }
+
+        // We can't pretty-print methods and user-defined functions in a way
+        // that is a valid expression later on, but we can make it an *invalid*
+        // expression by putting «» in the output, so it doesn't get mistaken
+        // for a valid value. Also add a bit of detail to identify what the
+        // function is.
+        Value::Function(f) => concat! {
+            "«"
+            Doc::from("function").with_markup(Markup::Keyword)
+            " "
+            // Include the document id and span to identify the function.
+            // It's maybe a bit cryptic, but at least it's unique (modulo
+            // captured environment) so it's better than just "function"
+            // without details.
+            f.span.doc().0.to_string()
+            ":"
+            f.span.start().to_string()
+            ".."
+            f.span.end().to_string()
+            "»"
+        },
+        Value::BuiltinMethod(m) => concat! {
+            "«"
+            Doc::from("method").with_markup(Markup::Keyword)
+            " "
+            Doc::from(m.method.name).with_markup(Markup::Builtin)
+            "»"
+        },
     }
 }

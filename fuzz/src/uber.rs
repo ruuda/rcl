@@ -48,6 +48,7 @@ pub enum Mode {
     EvalJsonIdempotent { width: u32 },
     EvalJsonCheck { width: u32 },
     EvalTomlCheck { width: u32 },
+    EvalFormat { width: u32 },
 }
 
 pub fn fuzz_main(mode: Mode, input: &str) {
@@ -90,6 +91,10 @@ fn fuzz_main_impl(loader: &mut Loader, mode: Mode, input: &str) -> Result<()> {
         Mode::EvalTomlCheck { width } => {
             cfg.width = width;
             let _ = fuzz_eval_toml_check(loader, input, cfg);
+        }
+        Mode::EvalFormat { width } => {
+            cfg.width = width;
+            let _ = fuzz_eval_format(loader, input, cfg);
         }
     };
 
@@ -184,4 +189,20 @@ fn fuzz_eval_toml_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -
         Ok(..) => Ok(()),
         Err(err) => panic!("RCL output should be parseable, but got {err:?}"),
     }
+}
+
+/// Check that formatting after evaluation is idempotent.
+///
+/// When evaluating and printing as RCL, an expression gets formatted through
+/// the expression pretty-printer, but when formatting that again, it gets
+/// formatted through the CST pretty-printer. This mode ensures that formatting
+/// is idempotent. In other words, ensure that the expression and CST pretty-
+/// printer agree.
+fn fuzz_eval_format(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
+    let (_span, value) = eval(loader, input)?;
+    let doc1 = rcl::fmt_rcl::format_rcl(&value);
+    let out1 = doc1.println(&cfg).to_string_no_markup();
+    let out2 = run_fmt(loader, &out1, &cfg)?;
+    assert_eq!(out1, out2, "Formatting after evaluation should be a no-op.");
+    Ok(())
 }

@@ -1,0 +1,44 @@
+// This tests where to insert spaces in collection literals.
+
+// Plain lists and sets should get no spaces around them.
+let xs = [1, 2, 3];
+let ys = {1, 2, 3};
+
+// Dicts should get spaces around them, regardless of json or record style.
+let xs = { a = 1, b = 2 };
+let ys = { "a": 1, "b": 2 };
+
+// List comprehensions never get spaces.
+let xs = [for x in xs: x * 2];
+
+// For consistency, set comprehensions do not either.
+let ys = {for y in ys: y * 2};
+
+// But dict comprehensions do for consistency with dicts.
+let xs = { for x in xs: name = x };
+let ys = { for y in ys: "name": y };
+
+null
+
+# output:
+// This tests where to insert spaces in collection literals.
+
+// Plain lists and sets should get no spaces around them.
+let xs = [1, 2, 3];
+let ys = {1, 2, 3};
+
+// Dicts should get spaces around them, regardless of json or record style.
+let xs = { a = 1, b = 2 };
+let ys = { "a": 1, "b": 2 };
+
+// List comprehensions never get spaces.
+let xs = [for x in xs: x * 2];
+
+// For consistency, set comprehensions do not either.
+let ys = {for y in ys: y * 2};
+
+// But dict comprehensions do for consistency with dicts.
+let xs = { for x in xs: name = x };
+let ys = { for y in ys: "name": y };
+
+null

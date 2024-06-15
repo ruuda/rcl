@@ -10,6 +10,7 @@
 //! The formatter converts the CST into a [`Doc`], which can subsequently be
 //! pretty-printed for formatting.
 
+use crate::ast::UnOp;
 use crate::cst::{Chain, Expr, NonCode, Prefixed, Seq, Stmt, StringPart, Type};
 use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::markup::Markup;
@@ -69,11 +70,11 @@ impl<'a> Formatter<'a> {
     /// a soft break between the opening delimiter and content, and between the
     /// content and closing delimiter. But if we have no content, then we need
     /// only one soft break.
-    pub fn soft_break_if_not_empty<T>(&self, elems: &[T]) -> Doc<'a> {
+    pub fn soft_break_if_not_empty<T>(&self, elems: &[T]) -> Option<Doc<'a>> {
         if elems.is_empty() {
-            Doc::Empty
+            None
         } else {
-            Doc::SoftBreak
+            Some(Doc::SoftBreak)
         }
     }
 
@@ -290,9 +291,12 @@ impl<'a> Formatter<'a> {
                 if elements.is_empty() && suffix.is_empty() {
                     Doc::str("{}")
                 } else {
+                    let sep = self
+                        .sep_key_value(elements)
+                        .or(self.soft_break_if_not_empty(elements));
                     group! {
                         "{"
-                        self.soft_break_if_not_empty(elements)
+                        sep
                         indent! { self.seqs(elements, suffix) }
                         "}"
                     }
@@ -417,13 +421,16 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::UnOp { op_span, body, .. } => {
-                concat! {
-                    self.span(*op_span)
-                    Doc::Sep
+            Expr::UnOp { op, body, .. } => match op {
+                UnOp::Neg => concat! {
+                    "-" self.expr(body)
+                },
+                UnOp::Not => concat! {
+                    Doc::from("not").with_markup(Markup::Keyword)
+                    " "
                     self.expr(body)
-                }
-            }
+                },
+            },
 
             // TODO: Make this a collection in the parser, so we can toggle
             // operator chains into all-wide or all-tall but not mixed.
@@ -502,6 +509,17 @@ impl<'a> Formatter<'a> {
         group! { Doc::Concat(group_base) }
     }
 
+    /// If the elements start or end with a key-value, return a separator, otherwise empty string.
+    ///
+    /// This is so that `{ a = 10 }` formats with spaces, but `{a, 10}` does not.
+    fn sep_key_value(&self, elements: &[Prefixed<Seq>]) -> Option<Doc<'a>> {
+        match elements.first().map(|x| x.inner.is_inner_elem()) {
+            Some(false) => Some(Doc::Sep),
+            Some(true) => None,
+            None => None,
+        }
+    }
+
     pub fn seqs(&self, elements: &[Prefixed<Seq>], suffix: &[NonCode]) -> Doc<'a> {
         let mut result = Vec::new();
         for (i, elem) in elements.iter().enumerate() {
@@ -516,13 +534,19 @@ impl<'a> Formatter<'a> {
 
             let is_last = i + 1 == elements.len();
             let sep_doc = match i {
-                // For collections that contain a single seq, do not add a
-                // separator, even when they are multi-line. It makes
+                // For collections that contain a single comprehension, do not
+                // add a separator, even when they are multi-line. It makes
                 // comprehensions look weird, which are regularly multi-line
                 // but only rarely are there multiple seqs in the collection.
                 // If there is suffix noncode, then we need the separator before
                 // it, otherwise we would output a syntax error.
-                _ if elements.len() == 1 && suffix.is_empty() => Doc::Empty,
+                _ if elements.len() == 1 && suffix.is_empty() => {
+                    if elements[0].inner.is_comprehension() {
+                        Doc::Empty
+                    } else {
+                        Doc::tall(",")
+                    }
+                }
                 _ if is_last => Doc::tall(","),
                 _ => Doc::str(","),
             };
@@ -533,7 +557,8 @@ impl<'a> Formatter<'a> {
             }
         }
 
-        result.push(Doc::SoftBreak);
+        // Depending on whether we have key-values, add a soft break or sep.
+        result.push(self.sep_key_value(elements).unwrap_or(Doc::SoftBreak));
 
         // We could do it non-conditionally and push an empty doc, but seq is
         // a very common thing and suffixes are not, so efficiency matters here.
@@ -546,6 +571,16 @@ impl<'a> Formatter<'a> {
 
     /// Format a sequence.
     pub fn seq(&self, seq: &Seq) -> Doc<'a> {
+        // If we have a deep seq, even though it *could* fit on one line,
+        // this is a complex thing akin to a nested for loop, usually it gets
+        // more readable if we spread it across multiple lines. So if the seq
+        // is deeper than 2, force it to be tall.
+        let sep = if seq.depth() > 2 {
+            Doc::HardBreak
+        } else {
+            Doc::Sep
+        };
+
         match seq {
             Seq::Elem { value, .. } => self.expr(value),
 
@@ -562,7 +597,7 @@ impl<'a> Formatter<'a> {
                 let body_doc = self.seq(&body.inner);
                 concat! {
                     self.stmt(stmt)
-                    Doc::Sep
+                    sep
                     self.non_code(&body.prefix)
                     body_doc
                 }
@@ -590,7 +625,7 @@ impl<'a> Formatter<'a> {
                     " "
                     self.expr(collection)
                     ":"
-                    Doc::Sep
+                    sep
                     self.non_code(&body.prefix)
                     body_doc
                 }
@@ -605,7 +640,7 @@ impl<'a> Formatter<'a> {
                     " "
                     self.expr(condition)
                     ":"
-                    Doc::Sep
+                    sep
                     self.non_code(&body.prefix)
                     body_doc
                 }

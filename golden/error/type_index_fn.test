@@ -8,10 +8,10 @@ stdin:4:4
   ╷
 4 │ xs[x => x]
   ╵    ^~~~~~
-Error: Dict does not have a key «function».
+Error: Dict does not have a key «function 0:119..125».
 
 stdin:4:1
   ╷
 4 │ xs[x => x]
   ╵ ^~
-Note: On value: { «function»: 0 }
+Note: On value: { «function 0:91..97»: 0 }

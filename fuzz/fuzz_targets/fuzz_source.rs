@@ -59,6 +59,7 @@ impl<'a> Arbitrary<'a> for Input<'a> {
             b"j" => Mode::EvalJsonIdempotent { width },
             b"k" => Mode::EvalJsonCheck { width },
             b"t" => Mode::EvalTomlCheck { width },
+            b"f" => Mode::EvalFormat { width },
             _ => return Err(Error::IncorrectFormat),
         };
 

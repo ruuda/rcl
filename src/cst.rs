@@ -346,6 +346,34 @@ pub enum Seq {
     },
 }
 
+impl Seq {
+    /// Whether the innermost seq is `Seq::Elem` (as opposed to `AssocExpr` or `AssocIdent`).
+    pub fn is_inner_elem(&self) -> bool {
+        match self {
+            Seq::Elem { .. } => true,
+            Seq::AssocExpr { .. } | Seq::AssocIdent { .. } => false,
+            Seq::For { body, .. } => body.inner.is_inner_elem(),
+            Seq::If { body, .. } => body.inner.is_inner_elem(),
+            Seq::Stmt { body, .. } => body.inner.is_inner_elem(),
+        }
+    }
+
+    /// Whether this is a comprehension (as opposed to `Seq::Elem` or `Assoc{Expr,Ident}`).
+    pub fn is_comprehension(&self) -> bool {
+        matches!(self, Seq::For { .. } | Seq::If { .. } | Seq::Stmt { .. })
+    }
+
+    /// Return the number of layers, where the innermost expression has depth 1.
+    pub fn depth(&self) -> u32 {
+        match self {
+            Seq::Elem { .. } | Seq::AssocIdent { .. } | Seq::AssocExpr { .. } => 1,
+            Seq::For { body, .. } => 1 + body.inner.depth(),
+            Seq::If { body, .. } => 1 + body.inner.depth(),
+            Seq::Stmt { body, .. } => 1 + body.inner.depth(),
+        }
+    }
+}
+
 /// A case in a chained non-operator expression (field lookup, call, index).
 #[derive(Debug)]
 pub enum Chain {
