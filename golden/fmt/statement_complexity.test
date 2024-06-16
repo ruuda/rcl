@@ -1,0 +1,19 @@
+// This is still okay, one statement.
+let okay = let x = 1; 1 + x;
+
+// This, despite fitting on one line, wraps because it has two statements.
+let wrap = let x = 1; let y = 2; 1 + x + y;
+
+okay + wrap
+
+# output:
+// This is still okay, one statement.
+let okay = let x = 1; 1 + x;
+
+// This, despite fitting on one line, wraps because it has two statements.
+let wrap =
+  let x = 1;
+  let y = 2;
+  1 + x + y;
+
+okay + wrap

@@ -292,11 +292,19 @@ impl<'a> Formatter<'a> {
         match expr {
             Expr::Statements { stmts, body, .. } => {
                 let mut parts = Vec::new();
+                // If we have two or more statements, then always format tall,
+                // even if it would fit on a line. If you have that many
+                // statements it's probably complex, a oneliner might make it
+                // hard to understand.
+                let sep = if stmts.len() >= 2 {
+                    Doc::HardBreak
+                } else {
+                    Doc::Sep
+                };
                 for (_span, stmt) in stmts.iter() {
                     parts.push(self.non_code(&stmt.prefix));
                     parts.push(self.stmt(&stmt.inner));
-                    // TODO: Force a hard break if it's more than 2, like with Seq depth?
-                    parts.push(Doc::Sep);
+                    parts.push(sep.clone());
                 }
                 parts.push(self.non_code(&body.prefix));
                 parts.push(self.expr(&body.inner));
