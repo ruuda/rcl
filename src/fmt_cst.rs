@@ -142,9 +142,16 @@ impl<'a> Formatter<'a> {
                     result.push(self.span(*span).with_markup(Markup::Escape));
                 }
                 StringPart::Hole(_span, expr) => {
-                    // TODO: Add soft breaks around the hole contents?
                     result.push(Doc::str("{").with_markup(Markup::Escape));
-                    result.push(self.expr(expr));
+                    // We need soft breaks here in case the expression contains
+                    // forced breaks, for example when it has non-code.
+                    result.push(group! {
+                        indent! {
+                            Doc::SoftBreak
+                            self.expr(expr)
+                            Doc::SoftBreak
+                        }
+                    });
                     result.push(Doc::str("}").with_markup(Markup::Escape));
                 }
             }
@@ -211,9 +218,16 @@ impl<'a> Formatter<'a> {
                     result.push(self.span(*span).with_markup(Markup::Escape));
                 }
                 StringPart::Hole(_span, expr) => {
-                    // TODO: Add soft breaks around the hole contents?
                     result.push(Doc::str("{").with_markup(Markup::Escape));
-                    result.push(self.expr(expr));
+                    // We need soft breaks here in case the expression contains
+                    // forced breaks, for example when it has non-code.
+                    result.push(group! {
+                        indent! {
+                            Doc::SoftBreak
+                            self.expr(expr)
+                            Doc::SoftBreak
+                        }
+                    });
                     result.push(Doc::str("}").with_markup(Markup::Escape));
                 }
             }
