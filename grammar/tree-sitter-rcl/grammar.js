@@ -262,7 +262,7 @@ module.exports = grammar({
       "for",
       field("idents", $._idents),
       "in",
-      field("collection", $._expr),
+      field("collection", $._expr_op),
       ":",
       field("body", $._seq),
     ),

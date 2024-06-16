@@ -123,7 +123,7 @@ seq
   | expr_op ':' expr
   | IDENT '=' expr ',' seq
   | stmt seq
-  | "for" idents "in" expr ':' seq
+  | "for" idents "in" expr_op ':' seq
   | "if" expr_op ':' seq
   ;
 

@@ -1250,7 +1250,7 @@ impl<'a> Parser<'a> {
         self.parse_token(Token::KwIn, "Expected 'in' here.")?;
 
         self.skip_non_code()?;
-        let (collection_span, collection) = self.parse_expr()?;
+        let (collection_span, collection) = self.parse_expr_op()?;
 
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' after the collection.")?;
