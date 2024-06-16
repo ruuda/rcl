@@ -238,8 +238,6 @@ impl<'a> Formatter<'a> {
     }
 
     pub fn stmt(&self, stmt: &Stmt) -> Doc<'a> {
-        // TODO: Make statement chains a first class construct, so we can format
-        // them either wide or tall.
         match stmt {
             Stmt::Let {
                 ident,
@@ -289,15 +287,17 @@ impl<'a> Formatter<'a> {
 
     pub fn expr(&self, expr: &Expr) -> Doc<'a> {
         match expr {
-            Expr::Stmt { stmt, body, .. } => {
-                group! {
-                    flush_indent! {
-                        self.stmt(stmt)
-                        Doc::Sep
-                        self.non_code(&body.prefix)
-                        self.expr(&body.inner)
-                    }
+            Expr::Statements { stmts, body, .. } => {
+                let mut parts = Vec::new();
+                for (_span, stmt) in stmts.iter() {
+                    parts.push(self.non_code(&stmt.prefix));
+                    parts.push(self.stmt(&stmt.inner));
+                    // TODO: Force a hard break if it's more than 2, like with Seq depth?
+                    parts.push(Doc::Sep);
                 }
+                parts.push(self.non_code(&body.prefix));
+                parts.push(self.expr(&body.inner));
+                group! { flush_indent! { Doc::Concat(parts) } }
             }
 
             Expr::Import { path, .. } => {

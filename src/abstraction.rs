@@ -148,15 +148,26 @@ impl<'a> Abstractor<'a> {
     /// Abstract an expression.
     pub fn expr(&self, expr: &CExpr) -> Result<AExpr> {
         let result = match expr {
-            CExpr::Stmt {
-                stmt,
+            CExpr::Statements {
+                stmts,
                 body_span,
                 body,
-            } => AExpr::Stmt {
-                stmt: self.stmt(stmt)?,
-                body_span: *body_span,
-                body: Box::new(self.expr(&body.inner)?),
-            },
+            } => {
+                // Convert the flat CST list of statements into a tree for the AST.
+                // TODO: Should it be flat in the AST as well? Possibly it's not much
+                // harder to implement, and it would help lift recursion limits.
+                let mut body_span = *body_span;
+                let mut body = self.expr(&body.inner)?;
+                for (stmt_span, stmt) in stmts.iter().rev() {
+                    body = AExpr::Stmt {
+                        stmt: self.stmt(&stmt.inner)?,
+                        body_span,
+                        body: Box::new(body),
+                    };
+                    body_span = stmt_span.union(body_span);
+                }
+                body
+            }
 
             CExpr::Import { path_span, path } => AExpr::Import {
                 path_span: *path_span,

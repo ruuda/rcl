@@ -100,6 +100,9 @@ pub struct Prefixed<T> {
 /// A prefixed expression, and the span of the inner expression.
 pub type SpanPrefixedExpr = (Span, Prefixed<Expr>);
 
+/// A prefixed statement, and the span of the inner statement.
+pub type SpanPrefixedStmt = (Span, Prefixed<Stmt>);
+
 /// A collection of `T`s separated by commas, with an optional trailing comma and non-code suffix.
 ///
 /// This is a list in the sense of a sequence of elements, it is not a list
@@ -161,9 +164,9 @@ pub enum Stmt {
 
 #[derive(Debug)]
 pub enum Expr {
-    /// A statement-like expression.
-    Stmt {
-        stmt: Stmt,
+    /// An expression preceded by a prefix and/or one or more statements.
+    Statements {
+        stmts: Vec<SpanPrefixedStmt>,
         body_span: Span,
         body: Box<Prefixed<Expr>>,
     },

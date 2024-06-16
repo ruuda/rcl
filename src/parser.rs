@@ -318,27 +318,65 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    /// Parse a top-level expression, which may start with a list of statements.
     fn parse_expr(&mut self) -> Result<(Span, Expr)> {
-        let begin = self.peek_span();
-        // TODO: This depth limit is not sustainable if my lets are recursive.
-        // We need tail calls or loops to handle them in the parser ...
+        // Increase the depth once, this depth applies to all statements
+        // and also the expression.
         self.increase_depth()?;
-        let result = match self.peek() {
-            Some(Token::KwAssert | Token::KwLet | Token::KwTrace) => {
-                let stmt = self.parse_stmt()?;
-                let (body_span, body) = self.parse_prefixed_expr()?;
-                Expr::Stmt {
-                    stmt,
-                    body_span,
-                    body: Box::new(body),
+
+        let mut statements = Vec::new();
+        loop {
+            let prefix = self.parse_non_code();
+            let begin = self.peek_span();
+
+            match self.peek() {
+                Some(Token::KwAssert | Token::KwLet | Token::KwTrace) => {
+                    let stmt = self.parse_stmt()?;
+                    let prefixed = Prefixed {
+                        prefix,
+                        inner: stmt,
+                    };
+                    let span = self.span_from(begin);
+                    statements.push((span, prefixed));
+                }
+                _ => {
+                    let expr = self.parse_expr_no_stmt()?;
+                    let span = self.span_from(begin);
+                    self.decrease_depth();
+
+                    // Do not make the CST deeper than it needs to be. If there
+                    // are no statements, there is no need for a wrapping node.
+                    if statements.is_empty() && prefix.is_empty() {
+                        return Ok((span, expr));
+                    }
+
+                    let expr = Expr::Statements {
+                        stmts: statements,
+                        body_span: span,
+                        body: Box::new(Prefixed {
+                            prefix,
+                            inner: expr,
+                        }),
+                    };
+
+                    // We have a choice of what span to return here.
+                    // What is the span for an expression preceded by statements?
+                    // Does it include the statements or not? Let's say for now
+                    // it does not, because the entire expression evaluates to
+                    // its body anyway, so that is the span that matters. If it
+                    // leads to confusing errors, we can re-evaluate this.
+                    return Ok((span, expr));
                 }
             }
-            Some(Token::KwIf) => self.parse_expr_if()?,
-            _ => self.parse_expr_op()?,
-        };
-        self.decrease_depth();
+        }
+    }
 
-        Ok((self.span_from(begin), result))
+    /// Parse an expression that is known to not be a statement.
+    fn parse_expr_no_stmt(&mut self) -> Result<Expr> {
+        match self.peek() {
+            Some(Token::KwIf) => self.parse_expr_if(),
+            _ => self.parse_expr_op(),
+        }
     }
 
     fn parse_expr_if(&mut self) -> Result<Expr> {
