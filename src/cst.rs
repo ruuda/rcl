@@ -97,9 +97,6 @@ pub struct Prefixed<T> {
     pub inner: T,
 }
 
-/// A prefixed expression, and the span of the inner expression.
-pub type SpanPrefixedExpr = (Span, Prefixed<Expr>);
-
 /// A prefixed statement, and the span of the inner statement.
 pub type SpanPrefixedStmt = (Span, Prefixed<Stmt>);
 
@@ -401,7 +398,7 @@ pub enum Chain {
         /// The closing parenthesis.
         close: Span,
         /// The arguments passed to the call.
-        args: List<SpanPrefixedExpr>,
+        args: List<(Span, Expr)>,
     },
 
     /// Index into a collection with `[]`.

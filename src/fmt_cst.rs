@@ -224,13 +224,6 @@ impl<'a> Formatter<'a> {
         flush_indent! { Doc::Concat(result) }
     }
 
-    pub fn prefixed_expr(&self, expr: &Prefixed<Expr>) -> Doc<'a> {
-        concat! {
-            self.non_code(&expr.prefix)
-            self.expr(&expr.inner)
-        }
-    }
-
     pub fn prefixed_type(&self, type_: &Prefixed<Type>) -> Doc<'a> {
         concat! {
             self.non_code(&type_.prefix)
@@ -503,7 +496,7 @@ impl<'a> Formatter<'a> {
                         self.collection_opening_sep(args)
                         indent! {
                             Doc::join(
-                                args.elements.iter().map(|(_span, arg)| self.prefixed_expr(arg)),
+                                args.elements.iter().map(|(_span, arg)| self.expr(arg)),
                                 concat!{ "," Doc::Sep },
                             )
                             self.trailing_comma(args)

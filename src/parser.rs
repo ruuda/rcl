@@ -7,10 +7,7 @@
 
 //! The parser converts a sequence of tokens into a Concrete Syntax Tree.
 
-use crate::cst::{
-    BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, SpanPrefixedExpr, Stmt, StringPart, Type,
-    UnOp,
-};
+use crate::cst::{BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, Stmt, StringPart, Type, UnOp};
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
 use crate::pprint::{concat, Doc};
@@ -91,9 +88,16 @@ impl<'a> Parser<'a> {
 
     /// Return the token under the cursor, if there is one.
     fn peek(&self) -> Option<Token> {
-        // TODO: Peek should ignore whitespace and comments for most cases,
-        // probably it should be the default.
         self.peek_n(0)
+    }
+
+    /// Return the next code token, ignoring whitespace and non-code.
+    fn peek_past_non_code(&self) -> Option<Token> {
+        self.tokens[self.cursor..]
+            .iter()
+            .filter(|t| !matches!(t.0, Token::Blank | Token::LineComment | Token::Shebang))
+            .map(|t| t.0)
+            .next()
     }
 
     /// Return the token `offset` tokens after the cursor, if there is one.
@@ -218,6 +222,7 @@ impl<'a> Parser<'a> {
     ///
     /// This may advance the cursor even if it returns `None`, when the
     /// whitespace was significant enough to keep.
+    #[must_use]
     fn parse_non_code(&mut self) -> Box<[NonCode]> {
         let mut result = Vec::new();
 
@@ -1015,27 +1020,22 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse arguments in a function call.
-    fn parse_call_args(&mut self) -> Result<List<SpanPrefixedExpr>> {
+    fn parse_call_args(&mut self) -> Result<List<(Span, Expr)>> {
         let mut result = Vec::new();
         let mut trailing_comma = false;
 
         loop {
-            let prefix = self.parse_non_code();
-            if self.peek() == Some(Token::RParen) {
+            if self.peek_past_non_code() == Some(Token::RParen) {
+                let suffix = self.parse_non_code();
                 let final_result = List {
                     elements: result.into_boxed_slice(),
-                    suffix: prefix,
+                    suffix,
                     trailing_comma,
                 };
                 return Ok(final_result);
             }
 
-            let (span, expr) = self.parse_expr()?;
-            let prefixed = Prefixed {
-                prefix,
-                inner: expr,
-            };
-            result.push((span, prefixed));
+            result.push(self.parse_expr()?);
             trailing_comma = false;
 
             self.skip_non_code()?;

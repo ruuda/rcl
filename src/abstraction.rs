@@ -417,7 +417,7 @@ impl<'a> Abstractor<'a> {
                     .map(|(span, a)| {
                         Ok(CallArg {
                             span: *span,
-                            value: self.expr(&a.inner)?,
+                            value: self.expr(a)?,
                         })
                     })
                     .collect::<Result<Vec<_>>>()?,
