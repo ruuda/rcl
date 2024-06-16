@@ -7,24 +7,21 @@
 
 //! The parser converts a sequence of tokens into a Concrete Syntax Tree.
 
-use crate::cst::{
-    BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, SpanPrefixedExpr, Stmt, StringPart, Type,
-    UnOp,
-};
+use crate::cst::{BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, Stmt, StringPart, Type, UnOp};
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
 use crate::pprint::{concat, Doc};
 use crate::source::{DocId, Span};
 
 /// Parse an input document into a concrete syntax tree.
-pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<SpanPrefixedExpr> {
+pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<(Span, Expr)> {
     let mut parser = Parser::new(doc, input, tokens);
 
     // Comments at the start of the document are allowed, but the document
     // should not start with blank lines, those we drop.
     parser.skip_blanks();
 
-    let (span, result) = parser.parse_prefixed_expr()?;
+    let (span, result) = parser.parse_expr()?;
     parser.parse_eof()?;
     Ok((span, result))
 }
@@ -91,9 +88,16 @@ impl<'a> Parser<'a> {
 
     /// Return the token under the cursor, if there is one.
     fn peek(&self) -> Option<Token> {
-        // TODO: Peek should ignore whitespace and comments for most cases,
-        // probably it should be the default.
         self.peek_n(0)
+    }
+
+    /// Return the next code token, ignoring whitespace and non-code.
+    fn peek_past_non_code(&self) -> Option<Token> {
+        self.tokens[self.cursor..]
+            .iter()
+            .filter(|t| !matches!(t.0, Token::Blank | Token::LineComment | Token::Shebang))
+            .map(|t| t.0)
+            .next()
     }
 
     /// Return the token `offset` tokens after the cursor, if there is one.
@@ -218,6 +222,7 @@ impl<'a> Parser<'a> {
     ///
     /// This may advance the cursor even if it returns `None`, when the
     /// whitespace was significant enough to keep.
+    #[must_use]
     fn parse_non_code(&mut self) -> Box<[NonCode]> {
         let mut result = Vec::new();
 
@@ -307,49 +312,83 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    pub fn parse_prefixed_expr(&mut self) -> Result<SpanPrefixedExpr> {
-        let pf = self.parse_prefixed(|s| s.parse_expr())?;
-        Ok((
-            pf.inner.0,
-            Prefixed {
-                prefix: pf.prefix,
-                inner: pf.inner.1,
-            },
-        ))
-    }
-
+    /// Parse a top-level expression, which may start with a list of statements.
     fn parse_expr(&mut self) -> Result<(Span, Expr)> {
-        let begin = self.peek_span();
-        // TODO: This depth limit is not sustainable if my lets are recursive.
-        // We need tail calls or loops to handle them in the parser ...
+        // Increase the depth once, this depth applies to all statements
+        // and also the expression.
         self.increase_depth()?;
-        let result = match self.peek() {
-            Some(Token::KwAssert | Token::KwLet | Token::KwTrace) => {
-                let stmt = self.parse_stmt()?;
-                let (body_span, body) = self.parse_prefixed_expr()?;
-                Expr::Stmt {
-                    stmt,
-                    body_span,
-                    body: Box::new(body),
+
+        let mut statements = Vec::new();
+        loop {
+            let prefix = self.parse_non_code();
+            let begin = self.peek_span();
+
+            match self.peek() {
+                Some(Token::KwAssert | Token::KwLet | Token::KwTrace) => {
+                    let stmt = self.parse_stmt()?;
+                    let prefixed = Prefixed {
+                        prefix,
+                        inner: stmt,
+                    };
+                    let span = self.span_from(begin);
+                    statements.push((span, prefixed));
+                }
+                _ => {
+                    let expr = self.parse_expr_no_stmt()?;
+                    let span = self.span_from(begin);
+                    self.decrease_depth();
+
+                    // Do not make the CST deeper than it needs to be. If there
+                    // are no statements, there is no need for a wrapping node.
+                    if statements.is_empty() && prefix.is_empty() {
+                        return Ok((span, expr));
+                    }
+
+                    let expr = Expr::Statements {
+                        stmts: statements,
+                        body_span: span,
+                        body: Box::new(Prefixed {
+                            prefix,
+                            inner: expr,
+                        }),
+                    };
+
+                    // We have a choice of what span to return here.
+                    // What is the span for an expression preceded by statements?
+                    // Does it include the statements or not? Let's say for now
+                    // it does not, because the entire expression evaluates to
+                    // its body anyway, so that is the span that matters. If it
+                    // leads to confusing errors, we can re-evaluate this.
+                    return Ok((span, expr));
                 }
             }
-            Some(Token::KwIf) => self.parse_expr_if()?,
-            _ => self.parse_expr_op()?,
-        };
-        self.decrease_depth();
+        }
+    }
 
-        Ok((self.span_from(begin), result))
+    /// Parse an expression that is known to not be a statement.
+    fn parse_expr_no_stmt(&mut self) -> Result<Expr> {
+        match self.peek() {
+            Some(Token::KwIf) => self.parse_expr_if(),
+            _ => Ok(self.parse_expr_op()?.1),
+        }
     }
 
     fn parse_expr_if(&mut self) -> Result<Expr> {
         // Consume the `if` keyword.
         let if_span = self.consume();
+
+        // We do not allow non-code between the if and the condition, and for
+        // the condition, we do not allow if or statements. There is no technical
+        // need to limit this, we could use `parse_expr`, but the resulting CST
+        // is a royal pain to format in a pleasant way. What to do with blank
+        // lines, how do you indent? And `if if` looks confusing anyway. If you
+        // want an expr there you can still do it, just put parens around it.
         self.skip_non_code()?;
-        let (condition_span, condition) = self.parse_expr()?;
+        let (condition_span, condition) = self.parse_expr_op()?;
 
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' after the condition.")?;
-        let (then_span, then_body) = self.parse_prefixed_expr()?;
+        let (then_span, then_body) = self.parse_expr()?;
 
         self.skip_non_code()?;
         self.parse_token_with_note(
@@ -370,7 +409,7 @@ impl<'a> Parser<'a> {
                 .err();
         }
 
-        let (else_span, else_body) = self.parse_prefixed_expr()?;
+        let (else_span, else_body) = self.parse_expr()?;
 
         let result = Expr::IfThenElse {
             condition_span,
@@ -383,15 +422,15 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    fn parse_expr_import(&mut self) -> Result<Expr> {
+    fn parse_expr_import(&mut self) -> Result<(Span, Expr)> {
         // Consume the `import` keyword.
-        let _import_span = self.consume();
-        let (path_span, path) = self.parse_prefixed_expr()?;
+        let import_span = self.consume();
+        let (path_span, path) = self.parse_expr()?;
         let result = Expr::Import {
             path_span,
             path: Box::new(path),
         };
-        Ok(result)
+        Ok((import_span.union(path_span), result))
     }
 
     /// Parse the statement under the cursor.
@@ -607,7 +646,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Try parsing a lambda function expression.
-    fn parse_expr_function(&mut self) -> Result<Expr> {
+    fn parse_expr_function(&mut self) -> Result<(Span, Expr)> {
+        let begin = self.peek_span();
         let args = match self.peek() {
             Some(Token::Ident) => {
                 let prefixed = Prefixed {
@@ -639,16 +679,15 @@ impl<'a> Parser<'a> {
             body_span,
             body: Box::new(body),
         };
-        Ok(result)
+        Ok((self.span_from(begin), result))
     }
 
-    fn parse_expr_op(&mut self) -> Result<Expr> {
+    fn parse_expr_op(&mut self) -> Result<(Span, Expr)> {
         // First we check all the rules for prefix unary operators.
         self.check_bad_unop()?;
 
         if self.peek().and_then(to_unop).is_some() {
-            let (_span, result) = self.parse_expr_unop()?;
-            return Ok(result);
+            return self.parse_expr_unop();
         }
 
         // Instead of an operator chain, it could still be an import or lambda,
@@ -695,7 +734,7 @@ impl<'a> Parser<'a> {
                         "Without parentheses, it is not clear whether this operator should take precedence.",
                     ).err();
                 }
-                _ => return Ok(result),
+                _ => return Ok((lhs_span, result)),
             }
         }
     }
@@ -767,7 +806,7 @@ impl<'a> Parser<'a> {
                 }
                 Some(Token::LBracket) => {
                     let open = self.push_bracket()?;
-                    let (index_span, index) = self.parse_prefixed_expr()?;
+                    let (index_span, index) = self.parse_expr()?;
                     let close = self.pop_bracket()?;
                     let chain_expr = Chain::Index {
                         open,
@@ -828,7 +867,7 @@ impl<'a> Parser<'a> {
             }
             Some(Token::LParen) => {
                 let open = self.push_bracket()?;
-                let (body_span, body) = self.parse_prefixed_expr()?;
+                let (body_span, body) = self.parse_expr()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::Parens {
                     open,
@@ -846,6 +885,14 @@ impl<'a> Parser<'a> {
             Some(Token::NumBinary) => Ok(Expr::NumBinary(self.consume())),
             Some(Token::NumDecimal) => Ok(Expr::NumDecimal(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),
+
+            // Some tokens are valid starts of an expression, but just not at
+            // the term level. For those, we can recommend the user to wrap
+            // everything in parens, because then it would be allowed.
+            Some(Token::KwLet | Token::KwAssert | Token::KwTrace | Token::KwIf) => self
+                .error("Expected a term here.")
+                .with_help("If this should be an expression, try wrapping it in parentheses.")
+                .err(),
             _ => self.error("Expected a term here.").err(),
         }
     }
@@ -989,27 +1036,22 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse arguments in a function call.
-    fn parse_call_args(&mut self) -> Result<List<SpanPrefixedExpr>> {
+    fn parse_call_args(&mut self) -> Result<List<(Span, Expr)>> {
         let mut result = Vec::new();
         let mut trailing_comma = false;
 
         loop {
-            let prefix = self.parse_non_code();
-            if self.peek() == Some(Token::RParen) {
+            if self.peek_past_non_code() == Some(Token::RParen) {
+                let suffix = self.parse_non_code();
                 let final_result = List {
                     elements: result.into_boxed_slice(),
-                    suffix: prefix,
+                    suffix,
                     trailing_comma,
                 };
                 return Ok(final_result);
             }
 
-            let (span, expr) = self.parse_expr()?;
-            let prefixed = Prefixed {
-                prefix,
-                inner: expr,
-            };
-            result.push((span, prefixed));
+            result.push(self.parse_expr()?);
             trailing_comma = false;
 
             self.skip_non_code()?;
@@ -1147,11 +1189,7 @@ impl<'a> Parser<'a> {
             (Some(Token::KwFor), _) => self.parse_seq_for()?,
             (Some(Token::KwIf), _) => self.parse_seq_if()?,
             _ => {
-                let before = self.peek_span();
-                let expr = self.parse_expr_op()?;
-                // TODO: This span is not necessarily minimal, it may include
-                // whitespace.
-                let expr_span = before.until(self.peek_span());
+                let (expr_span, expr) = self.parse_expr_op()?;
                 self.skip_non_code()?;
                 match self.peek() {
                     Some(Token::Colon) => {
@@ -1220,7 +1258,7 @@ impl<'a> Parser<'a> {
         self.parse_token(Token::KwIn, "Expected 'in' here.")?;
 
         self.skip_non_code()?;
-        let (collection_span, collection) = self.parse_expr()?;
+        let (collection_span, collection) = self.parse_expr_op()?;
 
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' after the collection.")?;
@@ -1240,8 +1278,10 @@ impl<'a> Parser<'a> {
     fn parse_seq_if(&mut self) -> Result<Seq> {
         let _if = self.consume();
 
+        // See also the note in `parse_expr_if` about why we don't allow
+        // arbitrary expressions here.
         self.skip_non_code()?;
-        let (condition_span, condition) = self.parse_expr()?;
+        let (condition_span, condition) = self.parse_expr_op()?;
 
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' after the condition.")?;

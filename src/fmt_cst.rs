@@ -19,12 +19,8 @@ use crate::source::Span;
 use crate::string;
 
 /// Format a document.
-pub fn format_expr<'a>(input: &'a str, expr: &'a Prefixed<Expr>) -> Doc<'a> {
-    let formatter = Formatter::new(input);
-    // Usually the entire thing is already wrapped in a group, but we need to
-    // add one in case it is not, to enable wide formatting of expressions that
-    // are not a group at the top level.
-    Doc::Group(Box::new(formatter.prefixed_expr(expr)))
+pub fn format_expr<'a>(input: &'a str, expr: &'a Expr) -> Doc<'a> {
+    Formatter::new(input).expr(expr)
 }
 
 /// Helper so we can use methods for resolving spans against the input.
@@ -141,9 +137,16 @@ impl<'a> Formatter<'a> {
                     result.push(self.span(*span).with_markup(Markup::Escape));
                 }
                 StringPart::Hole(_span, expr) => {
-                    // TODO: Add soft breaks around the hole contents?
                     result.push(Doc::str("{").with_markup(Markup::Escape));
-                    result.push(self.expr(expr));
+                    // We need soft breaks here in case the expression contains
+                    // forced breaks, for example when it has non-code.
+                    result.push(group! {
+                        indent! {
+                            Doc::SoftBreak
+                            self.expr(expr)
+                            Doc::SoftBreak
+                        }
+                    });
                     result.push(Doc::str("}").with_markup(Markup::Escape));
                 }
             }
@@ -210,9 +213,16 @@ impl<'a> Formatter<'a> {
                     result.push(self.span(*span).with_markup(Markup::Escape));
                 }
                 StringPart::Hole(_span, expr) => {
-                    // TODO: Add soft breaks around the hole contents?
                     result.push(Doc::str("{").with_markup(Markup::Escape));
-                    result.push(self.expr(expr));
+                    // We need soft breaks here in case the expression contains
+                    // forced breaks, for example when it has non-code.
+                    result.push(group! {
+                        indent! {
+                            Doc::SoftBreak
+                            self.expr(expr)
+                            Doc::SoftBreak
+                        }
+                    });
                     result.push(Doc::str("}").with_markup(Markup::Escape));
                 }
             }
@@ -223,13 +233,6 @@ impl<'a> Formatter<'a> {
         flush_indent! { Doc::Concat(result) }
     }
 
-    pub fn prefixed_expr(&self, expr: &Prefixed<Expr>) -> Doc<'a> {
-        concat! {
-            self.non_code(&expr.prefix)
-            self.expr(&expr.inner)
-        }
-    }
-
     pub fn prefixed_type(&self, type_: &Prefixed<Type>) -> Doc<'a> {
         concat! {
             self.non_code(&type_.prefix)
@@ -238,8 +241,6 @@ impl<'a> Formatter<'a> {
     }
 
     pub fn stmt(&self, stmt: &Stmt) -> Doc<'a> {
-        // TODO: Make statement chains a first class construct, so we can format
-        // them either wide or tall.
         match stmt {
             Stmt::Let {
                 ident,
@@ -289,15 +290,25 @@ impl<'a> Formatter<'a> {
 
     pub fn expr(&self, expr: &Expr) -> Doc<'a> {
         match expr {
-            Expr::Stmt { stmt, body, .. } => {
-                group! {
-                    flush_indent! {
-                        self.stmt(stmt)
-                        Doc::Sep
-                        self.non_code(&body.prefix)
-                        self.expr(&body.inner)
-                    }
+            Expr::Statements { stmts, body, .. } => {
+                let mut parts = Vec::new();
+                // If we have two or more statements, then always format tall,
+                // even if it would fit on a line. If you have that many
+                // statements it's probably complex, a oneliner might make it
+                // hard to understand.
+                let sep = if stmts.len() >= 2 {
+                    Doc::HardBreak
+                } else {
+                    Doc::Sep
+                };
+                for (_span, stmt) in stmts.iter() {
+                    parts.push(self.non_code(&stmt.prefix));
+                    parts.push(self.stmt(&stmt.inner));
+                    parts.push(sep.clone());
                 }
+                parts.push(self.non_code(&body.prefix));
+                parts.push(self.expr(&body.inner));
+                group! { flush_indent! { Doc::Concat(parts) } }
             }
 
             Expr::Import { path, .. } => {
@@ -306,8 +317,7 @@ impl<'a> Formatter<'a> {
                         Doc::str("import").with_markup(Markup::Keyword)
                         indent! {
                             Doc::Sep
-                            self.non_code(&path.prefix)
-                            self.expr(&path.inner)
+                            self.expr(path)
                         }
                     }
                 }
@@ -347,7 +357,7 @@ impl<'a> Formatter<'a> {
                 group! {
                     "("
                     Doc::SoftBreak
-                    indent! { self.prefixed_expr(body) }
+                    indent! { self.expr(body) }
                     Doc::SoftBreak
                     ")"
                 }
@@ -404,11 +414,11 @@ impl<'a> Formatter<'a> {
                         " "
                         self.expr(condition) ":"
                         Doc::Sep
-                        indent! { self.prefixed_expr(then_body) }
+                        indent! { self.expr(then_body) }
                         Doc::Sep
                         Doc::str("else").with_markup(Markup::Keyword)
                         Doc::Sep
-                        indent! { self.prefixed_expr(else_body) }
+                        indent! { self.expr(else_body) }
                     }
                 }
             }
@@ -503,7 +513,7 @@ impl<'a> Formatter<'a> {
                         self.collection_opening_sep(args)
                         indent! {
                             Doc::join(
-                                args.elements.iter().map(|(_span, arg)| self.prefixed_expr(arg)),
+                                args.elements.iter().map(|(_span, arg)| self.expr(arg)),
                                 concat!{ "," Doc::Sep },
                             )
                             self.trailing_comma(args)
@@ -517,7 +527,7 @@ impl<'a> Formatter<'a> {
                     let index_doc = group! {
                         "["
                         Doc::SoftBreak
-                        indent! { self.prefixed_expr(index) }
+                        indent! { self.expr(index) }
                         Doc::SoftBreak
                         "]"
                     };

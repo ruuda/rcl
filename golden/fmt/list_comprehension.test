@@ -22,11 +22,10 @@ let double_comprehension = [
     .is_marzlevane():
   h.frobnicated(),
 ];
-// TODO: All-or-nothing let chain wide or tall.
 let b = [
   1,
-];
-a + b
+]; a +
+b
 
 # output:
 // With a single element, there is never a separator, even when it is tall.
@@ -53,5 +52,5 @@ let double_comprehension = [
   for m in extract_marzlevanes().is_hydrocoptic(): m.frobnicated(),
   for h in extract_hydrocoptics().is_marzlevane(): h.frobnicated(),
 ];
-// TODO: All-or-nothing let chain wide or tall.
-let b = [1]; a + b
+let b = [1];
+a + b

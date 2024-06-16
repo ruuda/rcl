@@ -22,6 +22,17 @@ let z1 = f"""
   {"^ Tab above."}
   """;
 
+// Here we have a comment inside the hole, which makes it multi-line.
+let hole1 = f"Beware: {
+// A comment
+0
+}";
+let hole1 = f"""
+This one has a blank line instead: {
+
+0
+}""";
+
 f"""
 This { let strtype = "f"; strtype }-string has a hole too.
 """
@@ -29,10 +40,12 @@ This { let strtype = "f"; strtype }-string has a hole too.
 # output:
 let x = f"This f-string has {"a hole"} inside it.";
 
-let y = f"This f-string has {[
-  // A list with a comment.
-  "in a hole",
-]} inside it.";
+let y = f"This f-string has {
+  [
+    // A list with a comment.
+    "in a hole",
+  ]
+} inside it.";
 
 // The next one is a regression test; a bug would drop the content after the
 // hole.
@@ -47,6 +60,18 @@ let z1 =
   \t this one.
   {"^ Tab above."}
   """;
+
+// Here we have a comment inside the hole, which makes it multi-line.
+let hole1 = f"Beware: {
+  // A comment
+  0
+}";
+let hole1 =
+  f"""
+  This one has a blank line instead: {
+
+    0
+  }""";
 
 f"""
 This {let strtype = "f"; strtype}-string has a hole too.

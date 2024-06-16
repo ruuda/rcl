@@ -191,7 +191,7 @@ mod test {
         let doc = DocId(0);
         let tokens = crate::lexer::lex(doc, input).unwrap();
         let (_span, expr) = crate::parser::parse(doc, input, &tokens).unwrap();
-        match expr.inner {
+        match expr {
             StringLit { parts, .. } => parts,
             _ => panic!("Should have parsed a string."),
         }

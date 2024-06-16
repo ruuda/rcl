@@ -24,7 +24,7 @@ expr
   ;
 
 expr_stmt: stmt expr;
-expr_if: "if" expr ':' expr "else" expr;
+expr_if: "if" expr_op ':' expr "else" expr;
 expr_import: "import" expr;
 
 // There is no operator precedence, so if there is an operator, its args must
@@ -123,8 +123,8 @@ seq
   | expr_op ':' expr
   | IDENT '=' expr ',' seq
   | stmt seq
-  | "for" idents "in" expr ':' seq
-  | "if" expr ':' seq
+  | "for" idents "in" expr_op ':' seq
+  | "if" expr_op ':' seq
   ;
 
 idents: IDENT | idents ',' IDENT;
