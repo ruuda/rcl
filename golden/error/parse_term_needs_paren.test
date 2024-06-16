@@ -1,0 +1,12 @@
+let valid = [for x in (let ys = [1, 2, 3]; ys): x];
+let invalid = [for x in let ys = [1, 2, 3]; ys: x];
+invalid
+
+# output:
+stdin:2:25
+  ╷
+2 │ let invalid = [for x in let ys = [1, 2, 3]; ys: x];
+  ╵                         ^~~
+Error: Expected a term here.
+
+Help: If this should be an expression, try wrapping it in parentheses.

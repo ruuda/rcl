@@ -885,6 +885,14 @@ impl<'a> Parser<'a> {
             Some(Token::NumBinary) => Ok(Expr::NumBinary(self.consume())),
             Some(Token::NumDecimal) => Ok(Expr::NumDecimal(self.consume())),
             Some(Token::Ident) => Ok(Expr::Var(self.consume())),
+
+            // Some tokens are valid starts of an expression, but just not at
+            // the term level. For those, we can recommend the user to wrap
+            // everything in parens, because then it would be allowed.
+            Some(Token::KwLet | Token::KwAssert | Token::KwTrace | Token::KwIf) => self
+                .error("Expected a term here.")
+                .with_help("If this should be an expression, try wrapping it in parentheses.")
+                .err(),
             _ => self.error("Expected a term here.").err(),
         }
     }
