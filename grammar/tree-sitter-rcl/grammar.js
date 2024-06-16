@@ -135,7 +135,7 @@ module.exports = grammar({
 
     expr_if: $ => seq(
       "if",
-      field("condition", $._expr),
+      field("condition", $._expr_op),
       ":",
       field("then", $._expr),
       "else",
@@ -268,7 +268,7 @@ module.exports = grammar({
     ),
     seq_if: $ => seq(
       "if",
-      field("condition", $._expr),
+      field("condition", $._expr_op),
       ":",
       field("body", $._seq),
     ),

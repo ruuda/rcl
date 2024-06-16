@@ -20,8 +20,12 @@ Unreleased.
 
 **Changes with compatibility impact:**
 
-* The output of the formatter can differ significantly. This may cause large
-  diffs in codebases where formatting is enforced. See below for more details.
+ * The output of the formatter can differ significantly. This may cause large
+   diffs in codebases where formatting is enforced. See below for more details.
+ * Certain syntactic constructs are no longer allowed inside the condition after
+   `if`. If this causes a problem, simply wrap the condition in parentheses. The
+   stricter syntax ensures that conditionals can always be formatted in a
+   reasonable way without loss in expressiveness.
 
 All changes:
 
