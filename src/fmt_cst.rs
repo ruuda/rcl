@@ -20,12 +20,7 @@ use crate::string;
 
 /// Format a document.
 pub fn format_expr<'a>(input: &'a str, expr: &'a Expr) -> Doc<'a> {
-    let formatter = Formatter::new(input);
-    // Usually the entire thing is already wrapped in a group, but we need to
-    // add one in case it is not, to enable wide formatting of expressions that
-    // are not a group at the top level.
-    // TODO: Is that still true without the prefix though?
-    Doc::Group(Box::new(formatter.expr(expr)))
+    Formatter::new(input).expr(expr)
 }
 
 /// Helper so we can use methods for resolving spans against the input.
