@@ -177,7 +177,7 @@ pub enum Expr {
         path_span: Span,
 
         /// An expression that evaluates to the path to import.
-        path: Box<Prefixed<Expr>>,
+        path: Box<Expr>,
     },
 
     /// A `{}`-enclosed collection literal.
@@ -199,7 +199,7 @@ pub enum Expr {
         open: Span,
         close: Span,
         body_span: Span,
-        body: Box<Prefixed<Expr>>,
+        body: Box<Expr>,
     },
 
     /// A null literal.
@@ -239,9 +239,9 @@ pub enum Expr {
         condition_span: Span,
         condition: Box<Expr>,
         then_span: Span,
-        then_body: Box<Prefixed<Expr>>,
+        then_body: Box<Expr>,
         else_span: Span,
-        else_body: Box<Prefixed<Expr>>,
+        else_body: Box<Expr>,
     },
 
     /// Define a lambda function.
@@ -413,7 +413,7 @@ pub enum Chain {
         /// The span of the index expression between the `[]`.
         index_span: Span,
         /// The index expression.
-        index: Box<Prefixed<Expr>>,
+        index: Box<Expr>,
     },
 }
 

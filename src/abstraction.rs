@@ -16,7 +16,6 @@
 use crate::ast::{
     CallArg, Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
 };
-use crate::cst::Prefixed;
 use crate::cst::{Chain, Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart, Type as CType};
 use crate::error::{IntoError, Result};
 use crate::lexer::QuoteStyle;
@@ -24,8 +23,8 @@ use crate::source::Span;
 use crate::string;
 
 /// Abstract an expression.
-pub fn abstract_expr(input: &str, expr: &Prefixed<CExpr>) -> Result<AExpr> {
-    Abstractor::new(input).expr(&expr.inner)
+pub fn abstract_expr(input: &str, expr: &CExpr) -> Result<AExpr> {
+    Abstractor::new(input).expr(expr)
 }
 
 /// The abstractor can convert CST nodes to AST nodes for a given document.
@@ -171,7 +170,7 @@ impl<'a> Abstractor<'a> {
 
             CExpr::Import { path_span, path } => AExpr::Import {
                 path_span: *path_span,
-                path: Box::new(self.expr(&path.inner)?),
+                path: Box::new(self.expr(path)?),
             },
 
             CExpr::BraceLit { open, elements, .. } => AExpr::BraceLit {
@@ -192,7 +191,7 @@ impl<'a> Abstractor<'a> {
                     .collect::<Result<Vec<_>>>()?,
             },
 
-            CExpr::Parens { body, .. } => self.expr(&body.inner)?,
+            CExpr::Parens { body, .. } => self.expr(body)?,
 
             CExpr::NullLit(_span) => AExpr::NullLit,
 
@@ -249,8 +248,8 @@ impl<'a> Abstractor<'a> {
                 span_then: *then_span,
                 span_else: *else_span,
                 condition: Box::new(self.expr(condition)?),
-                body_then: Box::new(self.expr(&then_body.inner)?),
-                body_else: Box::new(self.expr(&else_body.inner)?),
+                body_then: Box::new(self.expr(then_body)?),
+                body_else: Box::new(self.expr(else_body)?),
             },
 
             CExpr::Var(span) => AExpr::Var {
@@ -435,7 +434,7 @@ impl<'a> Abstractor<'a> {
                 collection_span: inner_span,
                 collection: Box::new(inner),
                 index_span: *index_span,
-                index: Box::new(self.expr(&index.inner)?),
+                index: Box::new(self.expr(index)?),
             },
         };
 

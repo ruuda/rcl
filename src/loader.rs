@@ -395,7 +395,7 @@ impl Loader {
     }
 
     /// Parse the given document and return its Concrete Syntax Tree.
-    pub fn get_cst(&self, id: DocId) -> Result<cst::Prefixed<cst::Expr>> {
+    pub fn get_cst(&self, id: DocId) -> Result<cst::Expr> {
         let doc = self.get_doc(id);
         let tokens = self.get_tokens(id)?;
         let (_doc_span, expr) = parser::parse(id, doc.data, &tokens)?;

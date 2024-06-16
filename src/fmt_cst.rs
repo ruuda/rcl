@@ -19,12 +19,13 @@ use crate::source::Span;
 use crate::string;
 
 /// Format a document.
-pub fn format_expr<'a>(input: &'a str, expr: &'a Prefixed<Expr>) -> Doc<'a> {
+pub fn format_expr<'a>(input: &'a str, expr: &'a Expr) -> Doc<'a> {
     let formatter = Formatter::new(input);
     // Usually the entire thing is already wrapped in a group, but we need to
     // add one in case it is not, to enable wide formatting of expressions that
     // are not a group at the top level.
-    Doc::Group(Box::new(formatter.prefixed_expr(expr)))
+    // TODO: Is that still true without the prefix though?
+    Doc::Group(Box::new(formatter.expr(expr)))
 }
 
 /// Helper so we can use methods for resolving spans against the input.
@@ -306,8 +307,7 @@ impl<'a> Formatter<'a> {
                         Doc::str("import").with_markup(Markup::Keyword)
                         indent! {
                             Doc::Sep
-                            self.non_code(&path.prefix)
-                            self.expr(&path.inner)
+                            self.expr(path)
                         }
                     }
                 }
@@ -347,7 +347,7 @@ impl<'a> Formatter<'a> {
                 group! {
                     "("
                     Doc::SoftBreak
-                    indent! { self.prefixed_expr(body) }
+                    indent! { self.expr(body) }
                     Doc::SoftBreak
                     ")"
                 }
@@ -404,11 +404,11 @@ impl<'a> Formatter<'a> {
                         " "
                         self.expr(condition) ":"
                         Doc::Sep
-                        indent! { self.prefixed_expr(then_body) }
+                        indent! { self.expr(then_body) }
                         Doc::Sep
                         Doc::str("else").with_markup(Markup::Keyword)
                         Doc::Sep
-                        indent! { self.prefixed_expr(else_body) }
+                        indent! { self.expr(else_body) }
                     }
                 }
             }
@@ -517,7 +517,7 @@ impl<'a> Formatter<'a> {
                     let index_doc = group! {
                         "["
                         Doc::SoftBreak
-                        indent! { self.prefixed_expr(index) }
+                        indent! { self.expr(index) }
                         Doc::SoftBreak
                         "]"
                     };

@@ -17,14 +17,14 @@ use crate::pprint::{concat, Doc};
 use crate::source::{DocId, Span};
 
 /// Parse an input document into a concrete syntax tree.
-pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<SpanPrefixedExpr> {
+pub fn parse(doc: DocId, input: &str, tokens: &[Lexeme]) -> Result<(Span, Expr)> {
     let mut parser = Parser::new(doc, input, tokens);
 
     // Comments at the start of the document are allowed, but the document
     // should not start with blank lines, those we drop.
     parser.skip_blanks();
 
-    let (span, result) = parser.parse_prefixed_expr()?;
+    let (span, result) = parser.parse_expr()?;
     parser.parse_eof()?;
     Ok((span, result))
 }
@@ -307,17 +307,6 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    pub fn parse_prefixed_expr(&mut self) -> Result<SpanPrefixedExpr> {
-        let pf = self.parse_prefixed(|s| s.parse_expr())?;
-        Ok((
-            pf.inner.0,
-            Prefixed {
-                prefix: pf.prefix,
-                inner: pf.inner.1,
-            },
-        ))
-    }
-
     /// Parse a top-level expression, which may start with a list of statements.
     fn parse_expr(&mut self) -> Result<(Span, Expr)> {
         // Increase the depth once, this depth applies to all statements
@@ -382,12 +371,11 @@ impl<'a> Parser<'a> {
     fn parse_expr_if(&mut self) -> Result<Expr> {
         // Consume the `if` keyword.
         let if_span = self.consume();
-        self.skip_non_code()?;
         let (condition_span, condition) = self.parse_expr()?;
 
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' after the condition.")?;
-        let (then_span, then_body) = self.parse_prefixed_expr()?;
+        let (then_span, then_body) = self.parse_expr()?;
 
         self.skip_non_code()?;
         self.parse_token_with_note(
@@ -408,7 +396,7 @@ impl<'a> Parser<'a> {
                 .err();
         }
 
-        let (else_span, else_body) = self.parse_prefixed_expr()?;
+        let (else_span, else_body) = self.parse_expr()?;
 
         let result = Expr::IfThenElse {
             condition_span,
@@ -424,7 +412,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_import(&mut self) -> Result<Expr> {
         // Consume the `import` keyword.
         let _import_span = self.consume();
-        let (path_span, path) = self.parse_prefixed_expr()?;
+        let (path_span, path) = self.parse_expr()?;
         let result = Expr::Import {
             path_span,
             path: Box::new(path),
@@ -805,7 +793,7 @@ impl<'a> Parser<'a> {
                 }
                 Some(Token::LBracket) => {
                     let open = self.push_bracket()?;
-                    let (index_span, index) = self.parse_prefixed_expr()?;
+                    let (index_span, index) = self.parse_expr()?;
                     let close = self.pop_bracket()?;
                     let chain_expr = Chain::Index {
                         open,
@@ -866,7 +854,7 @@ impl<'a> Parser<'a> {
             }
             Some(Token::LParen) => {
                 let open = self.push_bracket()?;
-                let (body_span, body) = self.parse_prefixed_expr()?;
+                let (body_span, body) = self.parse_expr()?;
                 let close = self.pop_bracket()?;
                 let result = Expr::Parens {
                     open,
