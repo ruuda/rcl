@@ -78,6 +78,18 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    /// Special case of [`collection_opening_sep`] for `Seq`.
+    ///
+    /// For singleton comprehensions, we do not add a trailing comma. This means
+    /// that we should not format wide/tall based on the presence of a trailing
+    /// comma for singleton list comprehensions.
+    pub fn seq_opening_sep(&self, list: &List<Prefixed<Seq>>) -> Option<Doc<'a>> {
+        match list.elements.len() {
+            1 if list.elements[0].inner.is_comprehension() => Some(Doc::SoftBreak),
+            _ => self.collection_opening_sep(list),
+        }
+    }
+
     pub fn non_code(&self, nc: &[NonCode]) -> Doc<'a> {
         let mut result = Vec::new();
 
@@ -325,7 +337,7 @@ impl<'a> Formatter<'a> {
                 if elements.elements.is_empty() && elements.suffix.is_empty() {
                     Doc::str("{}")
                 } else {
-                    let sep = match self.collection_opening_sep(elements) {
+                    let sep = match self.seq_opening_sep(elements) {
                         Some(Doc::HardBreak) => Some(Doc::HardBreak),
                         other => self.sep_key_value(&elements.elements).or(other),
                     };
@@ -344,7 +356,7 @@ impl<'a> Formatter<'a> {
                 } else {
                     group! {
                         "["
-                        self.collection_opening_sep(elements)
+                        self.seq_opening_sep(elements)
                         indent! { self.seqs(elements) }
                         "]"
                     }

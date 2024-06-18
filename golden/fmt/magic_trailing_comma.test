@@ -85,6 +85,20 @@ let d: (
   Int, Int,
 ) -> Int = null;
 
+// This is a regression test for a non-idempotency.
+// In sequences with a single comprehension,
+// we don't output the trailing comma,
+// therefore we can't respect it on input.
+let compr_list = [
+  for x in xs: x,
+];
+let compr_set = {
+  for x in xs: x,
+};
+let compr_dict = {
+  for x in xs: v = x,
+};
+
 null
 
 # output:
@@ -188,5 +202,13 @@ let d: (
   Int,
   Int,
 ) -> Int = null;
+
+// This is a regression test for a non-idempotency.
+// In sequences with a single comprehension,
+// we don't output the trailing comma,
+// therefore we can't respect it on input.
+let compr_list = [for x in xs: x];
+let compr_set = {for x in xs: x};
+let compr_dict = { for x in xs: v = x };
 
 null
