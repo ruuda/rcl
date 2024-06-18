@@ -95,8 +95,8 @@ fn rcl_evaluate_json_impl<'a>(
     let mut type_env = rcl::typecheck::prelude();
     let mut value_env = rcl::runtime::prelude();
     let value = evaluator.eval_doc(&mut type_env, &mut value_env, id)?;
-    let full_span = loader.get_span(id);
-    let doc = rcl::fmt_json::format_json(full_span, &value)?;
+    let body_span = loader.get_span(id);
+    let doc = rcl::fmt_json::format_json(body_span, &value)?;
     pprint_doc(cfg, doc, out_node);
     Ok(())
 }

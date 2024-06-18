@@ -33,8 +33,16 @@ use crate::typecheck::{self, TypeChecker};
 pub struct Document {
     /// A friendly name for the source, usually the file path.
     name: String,
+
     /// The document contents.
     data: String,
+
+    /// The span of the final expression, if known.
+    ///
+    /// If we haven't yet parsed the document, then this is the full span, but
+    /// if a more precise span is known, then that is usually what we want to
+    /// blame global errors (e.g. failure to export as json) on.
+    span: Span,
 }
 
 impl Document {
@@ -42,6 +50,7 @@ impl Document {
         Doc {
             name: &self.name,
             data: &self.data,
+            span: self.span,
         }
     }
 }
@@ -313,6 +322,8 @@ impl Filesystem for SandboxFilesystem {
         let doc = Document {
             name: path.name,
             data: buf,
+            // This span is a placeholder that is overwritten later when we push.
+            span: Span::new(DocId(0), 0, 0),
         };
 
         Ok(doc)
@@ -382,9 +393,12 @@ impl Loader {
         self.documents[id.0 as usize].as_doc()
     }
 
-    /// Return the span that covers the entire document.
+    /// Return the span of the document's body expression if known.
+    ///
+    /// This span is known only after parsing. Before that, this returns the
+    /// span of the full document.
     pub fn get_span(&self, id: DocId) -> Span {
-        Span::new(id, 0, self.documents[id.0 as usize].data.len())
+        self.get_doc(id).span
     }
 
     /// Lex the given document and return its tokens.
@@ -395,25 +409,34 @@ impl Loader {
     }
 
     /// Parse the given document and return its Concrete Syntax Tree.
-    pub fn get_cst(&self, id: DocId) -> Result<cst::Expr> {
+    pub fn get_cst(&mut self, id: DocId) -> Result<cst::Expr> {
         let doc = self.get_doc(id);
         let tokens = self.get_tokens(id)?;
-        let (_doc_span, expr) = parser::parse(id, doc.data, &tokens)?;
+        let (doc_span, expr) = parser::parse(id, doc.data, &tokens)?;
+
+        // After parsing we have a more precise span for the document's body
+        // expression, store it so we can later use it to blame errors on.
+        self.documents[id.0 as usize].span = doc_span;
+
         Ok(expr)
     }
 
     /// Parse the given document and return its Abstract Syntax Tree.
     ///
     /// This is the AST before typecheking.
-    pub fn get_unchecked_ast(&self, id: DocId) -> Result<ast::Expr> {
-        let doc = self.get_doc(id);
+    pub fn get_unchecked_ast(&mut self, id: DocId) -> Result<ast::Expr> {
         let cst = self.get_cst(id)?;
+        let doc = self.get_doc(id);
         let ast = abstraction::abstract_expr(doc.data, &cst)?;
         Ok(ast)
     }
 
     /// Parse and typecheck the document, return the checked Abstract Syntax Tree.
-    pub fn get_typechecked_ast(&self, env: &mut typecheck::Env, id: DocId) -> Result<ast::Expr> {
+    pub fn get_typechecked_ast(
+        &mut self,
+        env: &mut typecheck::Env,
+        id: DocId,
+    ) -> Result<ast::Expr> {
         // The typechecker needs a span to blame type errors on, we put in the
         // entire document. It is not going to blame any type errors on this
         // span, because we check `Type::Any` which any value satisfies. If we
@@ -438,10 +461,16 @@ impl Loader {
         evaluator.eval_doc(type_env, value_env, id)
     }
 
-    fn push(&mut self, document: Document) -> DocId {
+    /// Push a document and set its span to the full document.
+    ///
+    /// We set the span here because the span contains the document id, which is
+    /// only known after we push the document.
+    fn push(&mut self, mut document: Document) -> DocId {
         let n = self.documents.len();
+        let id = DocId(n.try_into().expect("Cannot load that many documents!"));
+        document.span = Span::new(id, 0, document.data.len());
         self.documents.push(document);
-        DocId(n.try_into().expect("Cannot load that many documents!"))
+        id
     }
 
     /// Load stdin into a new document.
@@ -453,6 +482,8 @@ impl Loader {
         let doc = Document {
             name: "stdin".to_string(),
             data: buf,
+            // This span is a placeholder that is overwritten by `push`.
+            span: Span::new(DocId(0), 0, 0),
         };
         Ok(self.push(doc))
     }
@@ -490,6 +521,8 @@ impl Loader {
         let doc = Document {
             name: "input".to_string(),
             data,
+            // This span is a placeholder that is overwritten by `push`.
+            span: Span::new(DocId(0), 0, 0),
         };
         self.push(doc)
     }

@@ -16,6 +16,9 @@ pub struct Doc<'a> {
 
     /// The contents of the file.
     pub data: &'a str,
+
+    /// The span of the main expression, if known.
+    pub span: Span,
 }
 
 /// A list of input documents.

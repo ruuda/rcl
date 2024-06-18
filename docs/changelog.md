@@ -28,7 +28,7 @@ Unreleased.
    these constructs can always be formatted in a reasonable way without loss in
    expressiveness.
 
-All changes:
+Release highlights:
 
  * Add [union types](types.md#union-types).
  * The formatter now handles real-world code much better. In particular, it no
@@ -40,6 +40,7 @@ All changes:
    [`--check`](rcl_format.md#-check). These were documented but marked to-do
    previously, now they are fully supported.
  * The webassembly module can now output colored spans.
+ * Errors about unserializable values now report more accurate source locations.
 
 Independent of this release, <abbr>RCL</abbr> now has an official website:
 <https://rcl-lang.org>.

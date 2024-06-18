@@ -145,15 +145,15 @@ fn fuzz_eval_json_idempotent(loader: &mut Loader, input: &str, cfg: pprint::Conf
     let doc_1 = loader.load_string(input.to_string());
     let val_1 = loader.evaluate(&mut type_env, &mut value_env, doc_1, &mut tracer)?;
 
-    let full_span = loader.get_span(doc_1);
-    let json = rcl::fmt_json::format_json(full_span, &val_1)?;
+    let body_span = loader.get_span(doc_1);
+    let json = rcl::fmt_json::format_json(body_span, &val_1)?;
 
     let out_1 = json.println(&cfg).to_string_no_markup();
     let doc_2 = loader.load_string(out_1);
     let val_2 = loader.evaluate(&mut type_env, &mut value_env, doc_2, &mut tracer)?;
 
-    let full_span = loader.get_span(doc_2);
-    let json = rcl::fmt_json::format_json(full_span, &val_2)?;
+    let body_span = loader.get_span(doc_2);
+    let json = rcl::fmt_json::format_json(body_span, &val_2)?;
     let out_2 = json.println(&cfg).to_string_no_markup();
 
     assert_eq!(

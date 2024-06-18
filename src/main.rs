@@ -157,8 +157,8 @@ impl App {
         let (is_write_in_place, fnames) = match targets {
             FormatTarget::Stdout { fname } => {
                 let doc = self.loader.load_cli_target(&fname)?;
-                let data = self.loader.get_doc(doc).data;
                 let cst = self.loader.get_cst(doc)?;
+                let data = self.loader.get_doc(doc).data;
                 let res = rcl::fmt_cst::format_expr(data, &cst);
                 return self.print_doc_target(output, style_opts, res);
             }
@@ -179,8 +179,8 @@ impl App {
         for target in fnames {
             n_loaded += 1;
             let doc = self.loader.load_cli_target(&target)?;
-            let data = self.loader.get_doc(doc).data;
             let cst = self.loader.get_cst(doc)?;
+            let data = self.loader.get_doc(doc).data;
             let fmt_doc = rcl::fmt_cst::format_expr(data, &cst);
             let res = fmt_doc.println(&cfg);
             let formatted = res.to_string_no_markup();
@@ -266,9 +266,9 @@ impl App {
                 if let Some(depfile_path) = eval_opts.output_depfile.as_ref() {
                     self.loader.write_depfile(&output, depfile_path)?;
                 }
-                // TODO: Need to get last inner span.
-                let full_span = self.loader.get_span(doc);
-                self.print_value(&eval_opts, &style_opts, output, full_span, &val)
+
+                let body_span = self.loader.get_span(doc);
+                self.print_value(&eval_opts, &style_opts, output, body_span, &val)
             }
 
             Cmd::Query {
@@ -305,8 +305,8 @@ impl App {
                     self.loader.write_depfile(&output, depfile_path)?;
                 }
 
-                let full_span = self.loader.get_span(query);
-                self.print_value(&eval_opts, &style_opts, output, full_span, &val_result)
+                let body_span = self.loader.get_span(query);
+                self.print_value(&eval_opts, &style_opts, output, body_span, &val_result)
             }
 
             Cmd::Format {

@@ -1,0 +1,12 @@
+// This tests that we blame the error on the innermost expression,
+// even when it is preceded by a statement.
+let method = "String".len;
+assert method() == 6, "The length of 'String' is 6.";
+method
+
+# output:
+stdin:5:1
+  ╷
+5 │ method
+  ╵ ^~~~~~
+Error: Methods cannot be exported as json.

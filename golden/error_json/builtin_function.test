@@ -2,8 +2,8 @@
 std.read_file_utf8
 
 # output:
-stdin:1:1
+stdin:2:1
   ╷
-1 │ // Note, this is an unserializable function, we don't call it!
-  ╵ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2 │ std.read_file_utf8
+  ╵ ^~~~~~~~~~~~~~~~~~
 Error: Functions cannot be exported as json.
