@@ -59,10 +59,10 @@ possible to stay within the limit.
 
 The formatter is not sensitive to initial formatting, with the exception of
 trailing commas, to give some control over how collections are formatted.[^1]
-Collections with at least two elements that have a trailing comma will be
-formatted tall, even when they fit on a line. To format the collection wide,
-remove the trailing comma. This applies to any place where trailing commas are
-allowed, not just collection literals.
+Collections that have a trailing comma will be formatted tall, even when they
+fit on a line. To format the collection wide, remove the trailing comma. This
+applies to any place where trailing commas are allowed, not just collection
+literals.
 
 ```rcl
 // This collection is formatted wide.

@@ -67,14 +67,12 @@ impl<'a> Formatter<'a> {
     /// between the content and closing delimiter. But if we have no content
     /// (but possibly a suffix) then we need only one soft break.
     pub fn collection_opening_sep<T>(&self, list: &List<T>) -> Option<Doc<'a>> {
-        // When there is a list of at least two elements, and there is a trailing
-        // comma, then regardless of whether the list would fit in wide mode, we
-        // force it to be tall, to give the user some control over wide/tall.
-        // This is inspired by Black's "magic trailing comma":
+        // When there is a trailing comma, then regardless of whether the list
+        // would fit in wide mode, we force it to be tall, to give the user some
+        // control over wide/tall. This is inspired by Black's "magic trailing comma":
         // https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#the-magic-trailing-comma
         match list.elements.len() {
             0 => None,
-            1 => Some(Doc::SoftBreak),
             _ if list.trailing_comma => Some(Doc::HardBreak),
             _ => Some(Doc::SoftBreak),
         }

@@ -23,7 +23,7 @@ let double_comprehension = [
   h.frobnicated(),
 ];
 let b = [
-  1,
+  1
 ]; a +
 b
 

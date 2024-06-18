@@ -1,12 +1,12 @@
-// RCL implements Black's "magic trailing comma" behavior for lists of length >= 2.
+// RCL implements Black's "magic trailing comma" behavior.
 // https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#the-magic-trailing-comma
-// If there is a trailing comma originally, and there are at least two elements,
-// then the output is tall regardless of whether it would fit wide. If there is
-// no trailing comma, the output is whatever fits.
+// If there is a trailing comma originally, then the output is tall regardless
+// regardless of whether it would fit wide. If there is no trailing comma, the
+// output is whatever fits.
 
-// Length 1, trailing comma is not relevant.
-let a = [1,];
-let b = [1];
+// Length 1.
+let a = [1];
+let b = [1,];
 let c = [
   1
 ];
@@ -14,7 +14,7 @@ let d = [
   1,
 ];
 
-// Length 2, trailing comma forces tall.
+// Length 2.
 let a = [1, 2];
 let b = [
   1, 2
@@ -25,7 +25,6 @@ let d = [
 ];
 
 // Sets.
-let z = {1,};
 let a = {1, 2};
 let b = {
   1, 2
@@ -36,7 +35,6 @@ let d = {
 };
 
 // Dicts.
-let z = {a=1,};
 let a = {a=1, b=2};
 let b = {
   a=1, b=2
@@ -47,7 +45,6 @@ let d = {
 };
 
 // Function calls.
-let z = f(1,);
 let a = f(1, 2);
 let b = f(
   1, 2
@@ -57,7 +54,7 @@ let d = f(
   1, 2,
 );
 
-// Function definitions.
+// Function definitions. Here a single argument is a special case.
 let z = (x,) => 1;
 let a = (x, y) => 1;
 let b = (
@@ -69,7 +66,6 @@ let d = (
 ) => 1;
 
 // Generic types.
-let z: List[Int,] = [];
 let a: List[Int, Int] = [];
 let b: List[
   Int, Int
@@ -80,7 +76,6 @@ let d: List[
 ] = [];
 
 // Function types.
-let z: (Int,) -> Int = null;
 let a: (Int, Int) -> Int = null;
 let b: (
   Int, Int
@@ -93,19 +88,23 @@ let d: (
 null
 
 # output:
-// RCL implements Black's "magic trailing comma" behavior for lists of length >= 2.
+// RCL implements Black's "magic trailing comma" behavior.
 // https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#the-magic-trailing-comma
-// If there is a trailing comma originally, and there are at least two elements,
-// then the output is tall regardless of whether it would fit wide. If there is
-// no trailing comma, the output is whatever fits.
+// If there is a trailing comma originally, then the output is tall regardless
+// regardless of whether it would fit wide. If there is no trailing comma, the
+// output is whatever fits.
 
-// Length 1, trailing comma is not relevant.
+// Length 1.
 let a = [1];
-let b = [1];
+let b = [
+  1,
+];
 let c = [1];
-let d = [1];
+let d = [
+  1,
+];
 
-// Length 2, trailing comma forces tall.
+// Length 2.
 let a = [1, 2];
 let b = [1, 2];
 let c = [
@@ -118,7 +117,6 @@ let d = [
 ];
 
 // Sets.
-let z = {1};
 let a = {1, 2};
 let b = {1, 2};
 let c = {
@@ -131,7 +129,6 @@ let d = {
 };
 
 // Dicts.
-let z = { a = 1 };
 let a = { a = 1, b = 2 };
 let b = { a = 1, b = 2 };
 let c = {
@@ -144,7 +141,6 @@ let d = {
 };
 
 // Function calls.
-let z = f(1);
 let a = f(1, 2);
 let b = f(1, 2);
 let c = f(
@@ -156,7 +152,7 @@ let d = f(
   2,
 );
 
-// Function definitions.
+// Function definitions. Here a single argument is a special case.
 let z = x => 1;
 let a = (x, y) => 1;
 let b = (x, y) => 1;
@@ -170,7 +166,6 @@ let d = (
 ) => 1;
 
 // Generic types.
-let z: List[Int] = [];
 let a: List[Int, Int] = [];
 let b: List[Int, Int] = [];
 let c: List[
@@ -183,7 +178,6 @@ let d: List[
 ] = [];
 
 // Function types.
-let z: (Int) -> Int = null;
 let a: (Int, Int) -> Int = null;
 let b: (Int, Int) -> Int = null;
 let c: (
