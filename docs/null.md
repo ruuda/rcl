@@ -13,3 +13,9 @@ having a null value per se, they are problems with implicit nullability, which
 RCL does not have. `null` is the sole value of type `Null`, which is distinct
 from and does not unify with other types. In this sense, null behaves like the
 unit type in languages such as Haskell and Rust (written `()` there).
+
+Although it is possible to use `null` as a sentinel value, this is not idiomatic
+in <abbr>RCL</abbr>. For example, indexing into a dict with a key that is not
+present does not return `null` or some other representation of “undefined”, it
+aborts evaluation with an error. To handle possibly absent keys, there is
+[`Dict.get`](type_dict.md#get) which requires specifying a default value.
