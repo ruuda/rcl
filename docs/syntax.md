@@ -1,14 +1,15 @@
 # Syntax
 
-RCL is a superset of json. Any json document is a valid RCL expression which
-evaluates to itself as json. RCL furthermore features the following constructs.
+RCL is a superset of json. Any json document is a valid <abbr>RCL</abbr>
+expression which evaluates to itself as json. RCL furthermore features the
+following constructs.
 
 ## Comments
 
-Comments start with `//` and run until the end of the line. Comments in RCL are
-slightly unusual in that there are some locations where comments are not
-allowed.[^1] Generally, prefer to put comments on their own line, before the
-item they comment on.
+Comments start with `//` and run until the end of the line. Comments in
+<abbr>RCL</abbr> are slightly unusual in that there are some locations where
+comments are not allowed.[^1] Generally, prefer to put comments on their own
+line, before the item they comment on.
 
 ```rcl
 // Comment like this.
@@ -25,13 +26,13 @@ to support executable files. For example:
 "This document prints this string when executed."
 ```
 
-[^1]: The reason for disallowing comments in arbitrary locations, is that RCL
-has a single syntax tree that is used both by the formatter and the evaluator.
-The upside of this, is that the formatter is much less likely to have subtle
-bugs where it will drop comments that are in weird locations that are not
-represented in the <abbr title="Concrete Syntax Tree">CST</abbr> (such as before
-the `in` in a `for ... in` construct). The downside is that the parser will
-sometimes ask you to move comments.
+[^1]: The reason for disallowing comments in arbitrary locations, is that
+<abbr>RCL</abbr> has a single syntax tree that is used both by the formatter and
+the evaluator. The upside of this, is that the formatter is much less likely to
+have subtle bugs where it will drop comments that are in weird locations that
+are not represented in the <abbr title="Concrete Syntax Tree">CST</abbr> (such
+as before the `in` in a `for ... in` construct). The downside is that the parser
+will sometimes ask you to move comments.
 
 ## Booleans and null
 
@@ -290,7 +291,7 @@ Binary operators that operate between two expressions, e.g. `x and y`:
 | `*`      | Numeric multiplication |
 | `/`      | Numeric division |
 
-Unlike most other languages (but [like Pony][pony-ops]), RCL does not have
+Unlike most other languages (but [like Pony][pony-ops]), <abbr>RCL</abbr> does not have
 different precedence levels. To avoid confusing combinations of operators, you
 have to use parentheses:
 
@@ -398,10 +399,10 @@ does not get evaluated at all.
 ## Debug tracing
 
 In larger programs it can sometimes be useful to print what is going on during
-evaluation. However, RCL is a purely functional language without side effects;
-the only output it can produce is the final value. To still aid debugging,
-`trace` acts as an escape hatch: it has the side effect of printing a value to
-stderr during evaluation.
+evaluation. However, <abbr>RCL</abbr> is a purely functional language without
+side effects; the only output it can produce is the final value. To still aid
+debugging, `trace` acts as an escape hatch: it has the side effect of printing
+a value to stderr during evaluation.
 
 Like assertions, you can use `trace` in expressions and inside comprehensions:
 
@@ -418,7 +419,8 @@ The message does not have to be a string, it can be an arbitrary value.
 
 ## Imports
 
-An `import` expression evaluates to the contents of another RCL document.
+An `import` expression evaluates to the contents of another <abbr>RCL</abbr>
+document.
 
 ```rcl
 let inventory = import "inventory.rcl";

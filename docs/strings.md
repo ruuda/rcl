@@ -1,8 +1,8 @@
 # Strings
 
-RCL has multiple forms of string literals. String literals in RCL support
-string interpolation and are most similar to those in Python, with some
-inspiration from Nix and Rust. All json strings are valid in RCL[^1].
+RCL has multiple forms of string literals. String literals in <abbr>RCL</abbr>
+support string interpolation and are most similar to those in Python, with some
+inspiration from Nix and Rust. All json strings are valid in <abbr>RCL</abbr>[^1].
 
 Strings can be quoted with double quotes:
 
@@ -25,8 +25,9 @@ f"Hello {greetee}"
 ```
 
 [^1]: Except for `\u` escape sequences that encode surrogate code points
-(U+D800 through U+DFFF). While a pair of such escape sequences may together be
-valid, a single one is not, so at this point RCL opts to not implement surrogate
+(U+D800 through U+DFFF). While a pair of such escape sequences may together
+be valid, a single one is not, so at this point <abbr>RCL</abbr> opts to not
+implement surrogate
 pairs.
 
 ## Multiline strings
