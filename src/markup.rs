@@ -226,13 +226,26 @@ impl<'a> MarkupString<'a> {
         write!(out, "<pre><code class=\"sourceCode\">")?;
 
         for (frag_str, frag_markup) in self.fragments.iter() {
-            if markup != Markup::None && markup != *frag_markup {
-                write!(out, "</span>")?;
+            if markup != *frag_markup {
+                if markup != Markup::None {
+                    write!(out, "</span>")?;
+                }
+                if *frag_markup != Markup::None {
+                    write!(out, "<span class=\"{}\">", html_class_pandoc(*frag_markup))?;
+                }
             }
-            if *frag_markup != Markup::None {
-                write!(out, "<span class=\"{}\">", html_class_pandoc(*frag_markup))?;
+
+            // Then write the fragment itself, but if there is a <, replace it
+            // with &lt; so the result is valid html.
+            let mut needs_sep = false;
+            for frag_safe in frag_str.split('<') {
+                if needs_sep {
+                    write!(out, "&lt;")?;
+                }
+                out.write_all(frag_safe.as_bytes())?;
+                needs_sep = true;
             }
-            out.write_all(frag_str.as_bytes())?;
+
             markup = *frag_markup;
         }
 
