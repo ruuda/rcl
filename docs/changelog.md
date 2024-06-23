@@ -14,9 +14,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Next
+## 0.3.0
 
-Unreleased.
+Released 2024-06-23.
 
 **Changes with compatibility impact:**
 
@@ -39,8 +39,12 @@ Release highlights:
  * `rcl format` now supports [`--in-place`](rcl_format.md#-i-in-place) and
    [`--check`](rcl_format.md#-check). These were documented but marked to-do
    previously, now they are fully supported.
+ * Errors about unserializable values now report more accurate source locations,
+   and errors that emerge from dicts now report the dict key even when it is not
+   a string.
  * The webassembly module can now output colored spans.
- * Errors about unserializable values now report more accurate source locations.
+ * Fuzz testing is now more effient due to the addition of the [smith
+   fuzzer](testing.md#fuzz-tests), and the fuzzers now test more invariants.
 
 Independent of this release, <abbr>RCL</abbr> now has an official website:
 <https://rcl-lang.org>.
