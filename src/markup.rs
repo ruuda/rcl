@@ -235,16 +235,14 @@ impl<'a> MarkupString<'a> {
                 }
             }
 
-            // Then write the fragment itself, but if there is a <, replace it
-            // with &lt; so the result is valid html.
-            let mut needs_sep = false;
-            for frag_safe in frag_str.split('<') {
-                if needs_sep {
-                    write!(out, "&lt;")?;
-                }
-                out.write_all(frag_safe.as_bytes())?;
-                needs_sep = true;
-            }
+            // Then write the fragment itself, but escape the characters that
+            // need html escaping.
+            out.write_all(
+                frag_str
+                    .replace('&', "&amp;")
+                    .replace('<', "&lt;")
+                    .as_bytes(),
+            )?;
 
             markup = *frag_markup;
         }

@@ -24,7 +24,7 @@ let xs: List[String] = [
 [
   null,
   true,
-  <span class="co">// Include &lt; which escapes to &lt;.</span>
+  <span class="co">// Include &lt; which escapes to &amp;lt;.</span>
   <span class="dv">0</span> &lt; <span class="dv">1</span>,
   <span class="co">// Also builtins, though currently these do not get highlighted</span>
   <span class="co">// by the formatter.</span>
