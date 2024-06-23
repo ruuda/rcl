@@ -222,6 +222,23 @@
             installPhase = "echo 'Skipping default install phase.'";
           };
 
+          website = pkgs.stdenv.mkDerivation {
+            pname = "rcl-website";
+            inherit version;
+            src = ./website;
+            nativeBuildInputs = [ pkgs.brotli ];
+            doCheck = false;
+            buildPhase =
+              ''
+              mkdir -p $out
+              cp $src/* $out
+              cp ${rcl-wasm}/* $out
+              # TODO: Make js filenames content-addressible to avoid cache problems.
+              # Pre-compress all assets for use with brotli_static in Nginx.
+              for f in $out/*; do brotli -9 $f; done
+              '';
+          };
+
           fuzzers = pkgs.rustPlatform.buildRustPackage rec {
             name = "rcl-fuzzers";
             inherit version;
@@ -351,7 +368,7 @@
             };
 
             packages = {
-              inherit fuzzers-coverage rcl pyrcl treeSitterRcl;
+              inherit fuzzers-coverage rcl pyrcl treeSitterRcl website;
 
               default = rcl;
               wasm = rcl-wasm;
