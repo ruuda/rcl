@@ -30,6 +30,10 @@ _**Warning:** While RCL is usable, it is still in an early exploratory stage
 with frequent breaking changes. This is a hobby project without stability
 promise._
 
+## Demo
+
+For an interactive demo in your browser, see <https://rcl-lang.org>.
+
 ## Example
 
 ```rcl
@@ -41,7 +45,8 @@ promise._
   backup_buckets = [
     let retention_days = { hourly = 4, daily = 30, monthly = 365 };
     for database in ["alpha", "bravo"]:
-    for period, days in retention_days: {
+    for period, days in retention_days:
+    {
       name = f"{database}-{period}",
       region = "eu-west",
       lifecycle_policy = { delete_after_seconds = days * 24 * 3600 },
