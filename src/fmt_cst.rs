@@ -373,9 +373,9 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            Expr::NullLit(span) => self.span(*span),
+            Expr::NullLit(span) => self.span(*span).with_markup(Markup::Keyword),
 
-            Expr::BoolLit(span, ..) => self.span(*span),
+            Expr::BoolLit(span, ..) => self.span(*span).with_markup(Markup::Keyword),
 
             Expr::StringLit {
                 prefix: StringPrefix::None,

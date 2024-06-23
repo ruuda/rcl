@@ -22,8 +22,8 @@ let xs: List[String] = [
   <span class="st">f"And </span><span class="dt">{</span><span class="dv">42</span><span class="dt">}</span><span class="st"> in them, and integers."</span>,
 ];
 [
-  null,
-  true,
+  <span class="kw">null</span>,
+  <span class="kw">true</span>,
   <span class="co">// Include &lt; which escapes to &amp;lt;.</span>
   <span class="dv">0</span> &lt; <span class="dv">1</span>,
   <span class="co">// Also builtins, though currently these do not get highlighted</span>
