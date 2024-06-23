@@ -14,6 +14,11 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Unreleased
+
+ * Add support for [`--color=html`](rcl.md#-color-mode) to output
+   <abbr>HTML</abbr> spans compatible with Pandoc.
+
 ## 0.3.0
 
 Released 2024-06-23.

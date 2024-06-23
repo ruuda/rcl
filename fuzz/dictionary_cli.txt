@@ -19,6 +19,7 @@
 # Option arguments
 "ansi"
 "auto"
+"html"
 "json"
 "none"
 "rcl"

@@ -27,6 +27,9 @@ Set how output is colored. The following modes are available:
   <dd>Use <abbr>ANSI</abbr> if the output file is a <abbr>TTY</abbr> and the
   <a href="https://no-color.org/"><code>NO_COLOR</code></a> environment variable
   is not set to a non-empty string. This is the default.</dd>
+  <dt>html</dt>
+  <dd>Output <abbr>HTML</abbr> spans in the same style as
+  <a href="https://pandoc.org/MANUAL.html#syntax-highlighting">Pandoc</a>.</dd>
   <dt>none</dt>
   <dd>Do not color output at all.</dd>
 </dl>

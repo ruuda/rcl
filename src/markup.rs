@@ -44,8 +44,12 @@ pub enum Markup {
 pub enum MarkupMode {
     /// Ignore all markup hints, do not output them.
     None,
+
     /// Output markup as ANSI escape sequences.
     Ansi,
+
+    /// Output as html spans in the same style as Pandoc with Pygments style.
+    HtmlPandoc,
 }
 
 /// Whether we should use ANSI colors when writing to this file descriptor.
@@ -104,6 +108,28 @@ pub fn switch_ansi(markup: Markup) -> &'static str {
         Markup::String => red,
         Markup::Escape => yellow,
         Markup::Type => magenta,
+    }
+}
+
+pub fn html_class_pandoc(markup: Markup) -> &'static str {
+    match markup {
+        Markup::None => panic!("Should not be called for Markup::None."),
+
+        // These classes don't occur in Pandoc as far as I know, but I have to
+        // pick *something*, so here we go.
+        Markup::Error => "error",
+        Markup::Warning => "warn",
+        Markup::Trace => "trace",
+        Markup::Highlight => "highlight",
+
+        Markup::Builtin => "fu",
+        Markup::Comment => "co",
+        Markup::Field => "n",
+        Markup::Keyword => "kw",
+        Markup::Number => "dv",
+        Markup::String => "st",
+        Markup::Escape => "dt",
+        Markup::Type => "dt",
     }
 }
 
@@ -193,11 +219,36 @@ impl<'a> MarkupString<'a> {
         Ok(())
     }
 
+    /// Write the string to a writer, using Pandoc class names for the spans.
+    pub fn write_bytes_html_pandoc(&self, out: &mut dyn Write) -> std::io::Result<()> {
+        let mut markup = Markup::None;
+
+        write!(out, "<pre><code class=\"sourceCode\">")?;
+
+        for (frag_str, frag_markup) in self.fragments.iter() {
+            if markup != Markup::None && markup != *frag_markup {
+                write!(out, "</span>")?;
+            }
+            if *frag_markup != Markup::None {
+                write!(out, "<span class=\"{}\">", html_class_pandoc(*frag_markup))?;
+            }
+            out.write_all(frag_str.as_bytes())?;
+            markup = *frag_markup;
+        }
+
+        if markup != Markup::None {
+            write!(out, "</span>")?;
+        }
+
+        writeln!(out, "</code></pre>")
+    }
+
     /// Write the string to a write with the given markup mode.
     pub fn write_bytes(&self, mode: MarkupMode, out: &mut dyn Write) -> std::io::Result<()> {
         match mode {
             MarkupMode::None => self.write_bytes_no_markup(out),
             MarkupMode::Ansi => self.write_bytes_ansi(out),
+            MarkupMode::HtmlPandoc => self.write_bytes_html_pandoc(out),
         }
     }
 }

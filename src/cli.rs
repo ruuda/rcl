@@ -45,6 +45,7 @@ Color modes:
   ansi    Always color output using ANSI escape codes.
   auto    Use ANSI if the output file is a TTY and the NO_COLOR environment
           variable is not set to a non-empty string. This is the default.
+  html    Output HTML tags in the same style as Pandoc.
   none    Do not color output at all.
 "#;
 
@@ -266,6 +267,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     args: arg,
                     "auto" => None,
                     "ansi" => Some(MarkupMode::Ansi),
+                    "html" => Some(MarkupMode::HtmlPandoc),
                     "none" => Some(MarkupMode::None),
                 }
             }
@@ -512,6 +514,8 @@ mod test {
         assert_eq!(parse(&["rcl", "--color=auto", "e", "infile"]), expected);
         expected.0.markup = Some(MarkupMode::None);
         assert_eq!(parse(&["rcl", "--color=none", "e", "infile"]), expected);
+        expected.0.markup = Some(MarkupMode::HtmlPandoc);
+        assert_eq!(parse(&["rcl", "--color=html", "e", "infile"]), expected);
         expected.0.markup = Some(MarkupMode::Ansi);
         assert_eq!(parse(&["rcl", "--color=ansi", "e", "infile"]), expected);
 
