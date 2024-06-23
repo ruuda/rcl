@@ -99,6 +99,9 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
         case "json":
             cmd = ["eval", "--format=json"]
 
+        case "html":
+            cmd = ["format", "--color=html"]
+
         case "raw":
             cmd = ["eval", "--format=raw"]
 

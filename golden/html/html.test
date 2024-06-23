@@ -1,0 +1,33 @@
+// This tests --color=html output.
+let xs: List[String] = [
+  "We should have type spans in there.",
+  "Also strings, with \u{20} escapes.",
+  f"And { 42 } in them, and integers.",
+];
+[
+  null,
+  true,
+  // Include < which escapes to &lt;.
+  0 < 1,
+  // Also builtins, though currently these do not get highlighted
+  // by the formatter.
+  std.range,
+]
+
+# output:
+<pre><code class="sourceCode"><span class="co">// This tests --color=html output.</span>
+<span class="kw">let</span> xs: <span class="dt">List</span>[<span class="dt">String</span>] = [
+  <span class="st">"We should have type spans in there."</span>,
+  <span class="st">"Also strings, with </span><span class="dt">\u{20}</span><span class="st"> escapes."</span>,
+  <span class="st">f"And </span><span class="dt">{</span><span class="dv">42</span><span class="dt">}</span><span class="st"> in them, and integers."</span>,
+];
+[
+  null,
+  true,
+  <span class="co">// Include &lt; which escapes to &lt;.</span>
+  <span class="dv">0</span> &lt; <span class="dv">1</span>,
+  <span class="co">// Also builtins, though currently these do not get highlighted</span>
+  <span class="co">// by the formatter.</span>
+  std.range,
+]
+</code></pre>
