@@ -232,10 +232,21 @@
               ''
               mkdir -p $out
               cp $src/* $out
-              cp ${rcl-wasm}/* $out
-              # TODO: Make js filenames content-addressible to avoid cache problems.
+
+              # Put the artifacts at an input-addressible path, so we don't
+              # have issues with stale cache entries. We can use anything that
+              # changes on release, and one of those things is the Nix base32
+              # hash of the wasm module. This has the advantage that it remains
+              # unchanged if we change the webpage. 8 characters is probably
+              # enough to avoid collisions. To make the path less cryptic, we
+              # also put the human-readable version name in there.
+              hash="v${version}-$(basename ${rcl-wasm} | cut --bytes 1-8)"
+              mkdir -p $out/$hash
+              cp ${rcl-wasm}/* $out/$hash
+              sed --in-place "s|rcl\.js|$hash/rcl.js|" $out/index.html
+
               # Pre-compress all assets for use with brotli_static in Nginx.
-              for f in $out/*; do brotli -9 $f; done
+              for f in $(find $out -type f); do brotli -9 $f; done
               '';
           };
 
