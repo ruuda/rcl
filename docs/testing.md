@@ -51,11 +51,21 @@ across a code point binary, or trying to consume tokens past the end of the
 document. However the more interesting fuzzers are the formatter, and the value
 pretty-printer. They verify the following properties:
 
- * The formatter is idempotent. Running `rcl fmt` on an already-formatted file
-   should not change it. This sounds obvious, but the fuzzer caught a few
+ * **The formatter is idempotent.** Running `rcl fmt` on an already-formatted
+   file should not change it. This sounds obvious, but the fuzzer caught a few
    interesting cases related to trailing whitespace and multiline strings.
- * The evaluator is idempotent. RCL can evaluate to json, and is itself a
+ * **The evaluator is idempotent.** RCL can evaluate to json, and is itself a
    superset of json, so evaluating the same input again should not change it.
+ * **The formatter agrees with the pretty-printer.** When <abbr>RCL</abbr>
+   evaluates to json, it pretty-prints the json document using the value pretty
+   printer. The formatter that formats source files on the other hand,
+   pretty-prints the concrete syntax tree. This check tests that formatting a
+   pretty-printed json value is a no-op.
+ * **The json output can be parsed by Serde.** Even if <abbr>RCL</abbr> can read
+   back a json output, that is no guarantee that a third-party parser considers
+   the output valid, so we also test against the widely used Serde deserializer.
+ * **The toml output can be parsed by Serde.** Same as above, but for toml
+   output.
 
 ## Unit tests
 
