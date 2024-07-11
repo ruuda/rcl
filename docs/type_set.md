@@ -30,6 +30,33 @@ present in the first place, then the result is identical to the input.
 {1, 3}
 ```
 
+## filter
+
+```rcl
+Set.filter: (self: Set[T], predicate: T -> Bool) -> Set[T]
+```
+
+Construct a new set that contains only the elements where `predicate` returned
+true. The result is equivalent to a [set comprehension](syntax.md#comprehensions),
+`a` and `b` are identical in this example:
+
+```rcl
+let xs = {1, 2, 3};
+let a = xs.filter(x => x > 1);
+let b = {
+  for x in xs:
+  if x > 1:
+  x
+};
+```
+
+Set comprehensions are more general than `filter`: they support nested loops,
+and let-bindings are accessible to the inner scope. Still, `filter` can be
+useful, especially for iteratively refining a query in an [`rcl query`][query]
+command.
+
+[query]: rcl_query.md
+
 ## group_by
 
 ```rcl
@@ -90,7 +117,7 @@ let b = xs.map(x => x * 2);
 Set comprehensions are often clearer in configuration files, especially when
 the body is large. They are also more general: set comprehensions support
 nested loops and filtering with `if`. Still, `map` can be useful, especially
-for iteratively refining a query in an [`rcl query`](rcl_query.md) command.
+for iteratively refining a query in an [`rcl query`][query] command.
 
 ## len
 

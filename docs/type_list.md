@@ -45,6 +45,33 @@ unordered_pairs
 [["pawn", "queen"], ["pawn", "bisshop"], ["queen", "bisshop"]]
 ```
 
+## filter
+
+```rcl
+List.filter: (self: List[T], predicate: T -> Bool) -> List[T]
+```
+
+Construct a new list that contains only the elements where `predicate` returned
+true. The result is equivalent to a [list comprehension](syntax.md#comprehensions),
+`a` and `b` are identical in this example:
+
+```rcl
+let xs = [1, 2, 3];
+let a = xs.filter(x => x > 1);
+let b = [
+  for x in xs:
+  if x > 1:
+  x
+];
+```
+
+List comprehensions are more general than `filter`: they support nested loops,
+and let-bindings are accessible to the inner scope. Still, `filter` can be
+useful, especially for iteratively refining a query in an [`rcl query`][query]
+command.
+
+[query]: rcl_query.md
+
 ## fold
 
 ```rcl
@@ -181,7 +208,7 @@ let b = xs.map(x => x * 2);
 List comprehensions are often clearer in configuration files, especially when
 the body is large. They are also more general: list comprehensions support
 nested loops and filtering with `if`. Still, `map` can be useful, especially
-for iteratively refining a query in an [`rcl query`](rcl_query.md) command.
+for iteratively refining a query in an [`rcl query`][query] command.
 
 ## reverse
 
