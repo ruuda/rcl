@@ -17,6 +17,7 @@ use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{builtin_function, builtin_method, FunctionCall, MethodCall, Value};
+use crate::types::AsTypeName;
 
 builtin_function!(
     "std.read_file_utf8",
@@ -372,9 +373,17 @@ fn builtin_set_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     builtin_key_by_impl(eval, call, "Set.key_by", set)
 }
 
-fn builtin_map_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
+/// A generic building block to help implement map, filter, and flatmap.
+///
+/// The acceptor function receives the original value, and the mapped value.
+fn builtin_generic_map_impl<
+    'a,
+    I: IntoIterator<Item = &'a Value>,
+    F: FnMut(&Value, Value) -> Result<()>,
+>(
     eval: &mut Evaluator,
     call: MethodCall,
+    fn_description: &'static str,
     name: &'static str,
     elements: I,
     mut accept: F,
@@ -403,19 +412,68 @@ fn builtin_map_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
                 // misleading.
                 err.replace_call_frame(
                     map_element_span,
-                    concat! { "In internal call to mapping function from '" Doc::highlight(name) "'." },
+                    concat! { "In internal call to " fn_description " from '" Doc::highlight(name) "'." },
                 );
                 err
             })?;
-        accept(mapped_value);
+        accept(x, mapped_value)?;
     }
     Ok(())
+}
+
+fn builtin_map_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+    mut accept: F,
+) -> Result<()> {
+    builtin_generic_map_impl(
+        eval,
+        call,
+        "mapping function",
+        name,
+        elements,
+        |_orig, mapped| {
+            accept(mapped);
+            Ok(())
+        },
+    )
+}
+
+fn builtin_filter_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+    mut accept: F,
+) -> Result<()> {
+    let predicate_span = call.call.args[0].span;
+    builtin_generic_map_impl(eval, call, "predicate", name, elements, |orig, result| {
+        match result {
+            Value::Bool(true) => accept(orig.clone()),
+            Value::Bool(false) => {}
+            not_bool => {
+                return predicate_span
+                    .error("Type mismatch.")
+                    .with_body(concat! {
+                        "Expected the predicate to return "
+                        "Bool".format_type()
+                        ", but it returned "
+                        format_rcl(&not_bool).into_owned()
+                        "."
+                    })
+                    .err();
+            }
+        }
+        Ok(())
+    })
 }
 
 builtin_method!(
     "List.map",
     // TODO: Add type variables so we can describe this more accurately.
-    (map_element: (fn (element: Any) -> Any)) -> {Any: Any},
+    (map_element: (fn (element: Any) -> Any)) -> [Any],
     const LIST_MAP,
     builtin_list_map
 );
@@ -427,9 +485,23 @@ fn builtin_list_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
 }
 
 builtin_method!(
+    "List.filter",
+    // TODO: Add type variables so we can describe this more accurately.
+    (predicate: (fn (element: Any) -> Bool)) -> [Any],
+    const LIST_FILTER,
+    builtin_list_filter
+);
+fn builtin_list_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    let mut result = Vec::new();
+    builtin_filter_impl(eval, call, "List.filter", list, |v| result.push(v))?;
+    Ok(Value::List(Rc::new(result)))
+}
+
+builtin_method!(
     "Set.map",
     // TODO: Add type variables so we can describe this more accurately.
-    (map_element: (fn (element: Any) -> Any)) -> {Any: Any},
+    (map_element: (fn (element: Any) -> Any)) -> {Any},
     const SET_MAP,
     builtin_set_map
 );
@@ -437,6 +509,22 @@ fn builtin_set_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     let mut result = BTreeSet::new();
     builtin_map_impl(eval, call, "Set.map", set, |v| {
+        result.insert(v);
+    })?;
+    Ok(Value::Set(Rc::new(result)))
+}
+
+builtin_method!(
+    "Set.filter",
+    // TODO: Add type variables so we can describe this more accurately.
+    (predicate: (fn (element: Any) -> Bool)) -> {Any},
+    const SET_FILTER,
+    builtin_set_filter
+);
+fn builtin_set_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    let mut result = BTreeSet::new();
+    builtin_filter_impl(eval, call, "Set.filter", set, |v| {
         result.insert(v);
     })?;
     Ok(Value::Set(Rc::new(result)))

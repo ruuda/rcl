@@ -434,6 +434,7 @@ impl<'a> Evaluator<'a> {
 
                     (Value::List(_), "contains") => Some(&stdlib::LIST_CONTAINS),
                     (Value::List(_), "enumerate") => Some(&stdlib::LIST_ENUMERATE),
+                    (Value::List(_), "filter") => Some(&stdlib::LIST_FILTER),
                     (Value::List(_), "fold") => Some(&stdlib::LIST_FOLD),
                     (Value::List(_), "group_by") => Some(&stdlib::LIST_GROUP_BY),
                     (Value::List(_), "join") => Some(&stdlib::LIST_JOIN),
@@ -444,6 +445,7 @@ impl<'a> Evaluator<'a> {
 
                     (Value::Set(_), "contains") => Some(&stdlib::SET_CONTAINS),
                     (Value::Set(_), "except") => Some(&stdlib::SET_EXCEPT),
+                    (Value::Set(_), "filter") => Some(&stdlib::SET_FILTER),
                     (Value::Set(_), "group_by") => Some(&stdlib::SET_GROUP_BY),
                     (Value::Set(_), "key_by") => Some(&stdlib::SET_KEY_BY),
                     (Value::Set(_), "len") => Some(&stdlib::SET_LEN),

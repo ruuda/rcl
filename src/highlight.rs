@@ -18,6 +18,7 @@ const BUILTINS: &[&str] = &[
     "ends_with",
     "enumerate",
     "except",
+    "filter",
     "fold",
     "get",
     "group_by",
