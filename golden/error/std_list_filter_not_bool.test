@@ -1,0 +1,14 @@
+[1, 2, 3].filter(x => null)
+
+# output:
+stdin:1:18
+  ╷
+1 │ [1, 2, 3].filter(x => null)
+  ╵                  ^~~~~~~~~
+Error: Type mismatch. Expected the predicate to return Bool, but it returned null.
+
+stdin:1:17
+  ╷
+1 │ [1, 2, 3].filter(x => null)
+  ╵                 ^
+In call to method 'List.filter'.
