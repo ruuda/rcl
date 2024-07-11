@@ -16,6 +16,8 @@ compatibility impact will be clearly marked as such in the changelog.
 
 ## Unreleased
 
+ * Add [`List.map`](type_list.md#map), [`List.filter`](type_list#filter),
+   [`Set.map`](type_set.md#map), and [`Set.filter`](type_set.md#filter) methods.
  * Add support for [`--color=html`](rcl.md#-color-mode) to output
    <abbr>HTML</abbr> spans compatible with Pandoc.
 
