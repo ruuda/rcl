@@ -40,6 +40,7 @@ const BUILTINS: &[&str] = &[
     "key_by",
     "keys",
     "len",
+    "map",
     "parse_int",
     "remove_prefix",
     "remove_suffix",

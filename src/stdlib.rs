@@ -7,7 +7,7 @@
 
 //! Implementation of the standard library.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::CallArg;
@@ -370,6 +370,76 @@ builtin_method!(
 fn builtin_set_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     builtin_key_by_impl(eval, call, "Set.key_by", set)
+}
+
+fn builtin_map_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+    mut accept: F,
+) -> Result<()> {
+    let map_element = &call.call.args[0].value;
+    let map_element_span = call.call.args[0].span;
+
+    for x in elements {
+        // The call that we construct here is internal, there is no span in the
+        // source code that we could point at. Point at the argument so we still
+        // have something to highlight.
+        let args = [CallArg {
+            span: map_element_span,
+            value: x.clone(),
+        }];
+        let call = FunctionCall {
+            call_open: map_element_span,
+            call_close: map_element_span,
+            args: &args,
+        };
+        let mapped_value = eval
+            .eval_call(map_element_span, map_element, call)
+            .map_err(|mut err| {
+                // If the call includes a call frame for this call, then replace
+                // it with a more descriptive message, since the span is a bit
+                // misleading.
+                err.replace_call_frame(
+                    map_element_span,
+                    concat! { "In internal call to mapping function from '" Doc::highlight(name) "'." },
+                );
+                err
+            })?;
+        accept(mapped_value);
+    }
+    Ok(())
+}
+
+builtin_method!(
+    "List.map",
+    // TODO: Add type variables so we can describe this more accurately.
+    (map_element: (fn (element: Any) -> Any)) -> {Any: Any},
+    const LIST_MAP,
+    builtin_list_map
+);
+fn builtin_list_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    let mut result = Vec::with_capacity(list.len());
+    builtin_map_impl(eval, call, "List.map", list, |v| result.push(v))?;
+    Ok(Value::List(Rc::new(result)))
+}
+
+builtin_method!(
+    "Set.map",
+    // TODO: Add type variables so we can describe this more accurately.
+    (map_element: (fn (element: Any) -> Any)) -> {Any: Any},
+    const SET_MAP,
+    builtin_set_map
+);
+fn builtin_set_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    let mut result = BTreeSet::new();
+    builtin_map_impl(eval, call, "Set.map", set, |v| {
+        result.insert(v);
+    })?;
+    Ok(Value::Set(Rc::new(result)))
 }
 
 builtin_method!(
