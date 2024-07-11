@@ -162,6 +162,27 @@ Return the number of elements in the list. For example:
 [1, 2, 3].len()
 ```
 
+## map
+
+```rcl
+List.map: (self: List[T], map_element: T -> U) -> List[U]
+```
+
+Construct a new list by applying `map_element` to every element in the list.
+The result is equivalent to a [list comprehension](syntax.md#comprehensions),
+`a` and `b` are identical in this example:
+
+```rcl
+let xs = [1, 2, 3];
+let a = [for x in xs: x * 2];
+let b = xs.map(x => x * 2);
+```
+
+List comprehensions are often clearer in configuration files, especially when
+the body is large. They are also more general: list comprehensions support
+nested loops and filtering with `if`. Still, `map` can be useful, especially
+for iteratively refining a query in an [`rcl query`](rcl_query.md) command.
+
 ## reverse
 
 ```rcl
