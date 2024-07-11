@@ -71,6 +71,27 @@ elements as values. The keys must be unique. When a key is not unique, this
 method fails and reports the conflicting values. See also
 [`List.key_by`](type_list.md#key_by) for an example.
 
+## map
+
+```rcl
+Set.map: (self: Set[T], map_element: T -> U) -> Set[U]
+```
+
+Construct a new set by applying `map_element` to every element in the set.
+The result is equivalent to a [set comprehension](syntax.md#comprehensions),
+`a` and `b` are identical in this example:
+
+```rcl
+let xs = {1, 2, 3};
+let a = {for x in xs: x * 2};
+let b = xs.map(x => x * 2);
+```
+
+Set comprehensions are often clearer in configuration files, especially when
+the body is large. They are also more general: set comprehensions support
+nested loops and filtering with `if`. Still, `map` can be useful, especially
+for iteratively refining a query in an [`rcl query`](rcl_query.md) command.
+
 ## len
 
 ```rcl
