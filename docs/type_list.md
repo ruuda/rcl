@@ -63,6 +63,8 @@ let b = [
   if x > 1:
   x
 ];
+// Both a and b evaluate to:
+[2, 3]
 ```
 
 List comprehensions are more general than `filter`: they support nested loops,
@@ -71,6 +73,39 @@ useful, especially for iteratively refining a query in an [`rcl query`][query]
 command.
 
 [query]: rcl_query.md
+
+## flat_map
+
+```rcl
+List.flat_map: (self: List[T], map_element: T -> List[U]) -> List[U]
+```
+
+Construct a new list by taking every element in the list, applying `map_element`
+to it (which should return a collection), and concatenating those results.
+`flat_map` is like [`map`](#map), except that it flattens the result. It is
+equivalent to a [list comprehension](syntax.md#comprehensions) with a nested
+loop: `a` and `b` are identical in this example:
+
+```rcl
+let apps = [
+  { name = "sshd", ports = [22] },
+  { name = "nginx", ports = [80, 443] },
+];
+let a = apps.flat_map(app => app.ports);
+let b = [
+  for app in apps:
+  for port in app.ports:
+  port
+];
+// Both a and b evaluate to:
+[22, 80, 443]
+```
+
+List comprehensions are often clearer in configuration files, especially when
+the body is large. They are also more general: list comprehensions support
+arbitrary nesting, filtering with `if`, and let-bindings are accessible to the
+inner scope. Still, `flat_map` can be useful, especially for iteratively
+refining a query in an [`rcl query`][query] command.
 
 ## fold
 
@@ -203,6 +238,8 @@ The result is equivalent to a [list comprehension](syntax.md#comprehensions),
 let xs = [1, 2, 3];
 let a = [for x in xs: x * 2];
 let b = xs.map(x => x * 2);
+// Both a and b evaluate to:
+[2, 4, 6]
 ```
 
 List comprehensions are often clearer in configuration files, especially when
