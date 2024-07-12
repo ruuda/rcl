@@ -1,0 +1,14 @@
+[1, 2, 3].flat_map(x => x)
+
+# output:
+stdin:1:20
+  ╷
+1 │ [1, 2, 3].flat_map(x => x)
+  ╵                    ^~~~~~
+Error: Type mismatch. Expected the mapping function to return a list or set, but it returned 1.
+
+stdin:1:19
+  ╷
+1 │ [1, 2, 3].flat_map(x => x)
+  ╵                   ^
+In call to method 'List.flat_map'.

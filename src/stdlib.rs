@@ -7,7 +7,7 @@
 
 //! Implementation of the standard library.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::CallArg;
@@ -17,6 +17,7 @@ use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{builtin_function, builtin_method, FunctionCall, MethodCall, Value};
+use crate::types::AsTypeName;
 
 builtin_function!(
     "std.read_file_utf8",
@@ -370,6 +371,235 @@ builtin_method!(
 fn builtin_set_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     builtin_key_by_impl(eval, call, "Set.key_by", set)
+}
+
+/// A generic building block to help implement map, filter, and flatmap.
+///
+/// The acceptor function receives the original value, and the mapped value.
+fn builtin_generic_map_impl<
+    'a,
+    I: IntoIterator<Item = &'a Value>,
+    F: FnMut(&Value, Value) -> Result<()>,
+>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    fn_description: &'static str,
+    name: &'static str,
+    elements: I,
+    mut accept: F,
+) -> Result<()> {
+    let map_element = &call.call.args[0].value;
+    let map_element_span = call.call.args[0].span;
+
+    for x in elements {
+        // The call that we construct here is internal, there is no span in the
+        // source code that we could point at. Point at the argument so we still
+        // have something to highlight.
+        let args = [CallArg {
+            span: map_element_span,
+            value: x.clone(),
+        }];
+        let call = FunctionCall {
+            call_open: map_element_span,
+            call_close: map_element_span,
+            args: &args,
+        };
+        let mapped_value = eval
+            .eval_call(map_element_span, map_element, call)
+            .map_err(|mut err| {
+                // If the call includes a call frame for this call, then replace
+                // it with a more descriptive message, since the span is a bit
+                // misleading.
+                err.replace_call_frame(
+                    map_element_span,
+                    concat! { "In internal call to " fn_description " from '" Doc::highlight(name) "'." },
+                );
+                err
+            })?;
+        accept(x, mapped_value)?;
+    }
+    Ok(())
+}
+
+fn builtin_map_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+    mut accept: F,
+) -> Result<()> {
+    builtin_generic_map_impl(
+        eval,
+        call,
+        "mapping function",
+        name,
+        elements,
+        |_orig, mapped| {
+            accept(mapped);
+            Ok(())
+        },
+    )
+}
+
+fn builtin_filter_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+    mut accept: F,
+) -> Result<()> {
+    let predicate_span = call.call.args[0].span;
+    builtin_generic_map_impl(eval, call, "predicate", name, elements, |orig, result| {
+        match result {
+            Value::Bool(true) => accept(orig.clone()),
+            Value::Bool(false) => {}
+            not_bool => {
+                return predicate_span
+                    .error("Type mismatch.")
+                    .with_body(concat! {
+                        "Expected the predicate to return "
+                        "Bool".format_type()
+                        ", but it returned "
+                        format_rcl(&not_bool).into_owned()
+                        "."
+                    })
+                    .err();
+            }
+        }
+        Ok(())
+    })
+}
+
+fn builtin_flat_map_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+    mut accept: F,
+) -> Result<()> {
+    let predicate_span = call.call.args[0].span;
+    builtin_generic_map_impl(
+        eval,
+        call,
+        "mapping function",
+        name,
+        elements,
+        |_orig, mapped| {
+            match mapped {
+                Value::List(xs) => {
+                    for x in xs.iter() {
+                        accept(x.clone());
+                    }
+                }
+                Value::Set(xs) => {
+                    for x in xs.iter() {
+                        accept(x.clone());
+                    }
+                }
+                not_collection => {
+                    return predicate_span
+                        .error("Type mismatch.")
+                        .with_body(concat! {
+                        "Expected the mapping function to return a list or set, but it returned "
+                        format_rcl(&not_collection).into_owned()
+                        "."
+                    })
+                        .err();
+                }
+            }
+            Ok(())
+        },
+    )
+}
+
+builtin_method!(
+    "List.map",
+    // TODO: Add type variables so we can describe this more accurately.
+    (map_element: (fn (element: Any) -> Any)) -> [Any],
+    const LIST_MAP,
+    builtin_list_map
+);
+fn builtin_list_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    let mut result = Vec::with_capacity(list.len());
+    builtin_map_impl(eval, call, "List.map", list, |v| result.push(v))?;
+    Ok(Value::List(Rc::new(result)))
+}
+
+builtin_method!(
+    "List.flat_map",
+    // TODO: Add type variables so we can describe this more accurately.
+    (map_element: (fn (element: Any) -> [Any])) -> [Any],
+    const LIST_FLAT_MAP,
+    builtin_list_flat_map
+);
+fn builtin_list_flat_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    let mut result = Vec::with_capacity(list.len());
+    builtin_flat_map_impl(eval, call, "List.flat_map", list, |v| result.push(v))?;
+    Ok(Value::List(Rc::new(result)))
+}
+
+builtin_method!(
+    "List.filter",
+    // TODO: Add type variables so we can describe this more accurately.
+    (predicate: (fn (element: Any) -> Bool)) -> [Any],
+    const LIST_FILTER,
+    builtin_list_filter
+);
+fn builtin_list_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    let mut result = Vec::new();
+    builtin_filter_impl(eval, call, "List.filter", list, |v| result.push(v))?;
+    Ok(Value::List(Rc::new(result)))
+}
+
+builtin_method!(
+    "Set.map",
+    // TODO: Add type variables so we can describe this more accurately.
+    (map_element: (fn (element: Any) -> Any)) -> {Any},
+    const SET_MAP,
+    builtin_set_map
+);
+fn builtin_set_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    let mut result = BTreeSet::new();
+    builtin_map_impl(eval, call, "Set.map", set, |v| {
+        result.insert(v);
+    })?;
+    Ok(Value::Set(Rc::new(result)))
+}
+
+builtin_method!(
+    "Set.flat_map",
+    // TODO: Add type variables so we can describe this more accurately.
+    (map_element: (fn (element: Any) -> {Any})) -> {Any},
+    const SET_FLAT_MAP,
+    builtin_set_flat_map
+);
+fn builtin_set_flat_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    let mut result = BTreeSet::new();
+    builtin_flat_map_impl(eval, call, "Set.flat_map", set, |v| {
+        result.insert(v);
+    })?;
+    Ok(Value::Set(Rc::new(result)))
+}
+
+builtin_method!(
+    "Set.filter",
+    // TODO: Add type variables so we can describe this more accurately.
+    (predicate: (fn (element: Any) -> Bool)) -> {Any},
+    const SET_FILTER,
+    builtin_set_filter
+);
+fn builtin_set_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    let mut result = BTreeSet::new();
+    builtin_filter_impl(eval, call, "Set.filter", set, |v| {
+        result.insert(v);
+    })?;
+    Ok(Value::Set(Rc::new(result)))
 }
 
 builtin_method!(

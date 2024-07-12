@@ -434,18 +434,24 @@ impl<'a> Evaluator<'a> {
 
                     (Value::List(_), "contains") => Some(&stdlib::LIST_CONTAINS),
                     (Value::List(_), "enumerate") => Some(&stdlib::LIST_ENUMERATE),
+                    (Value::List(_), "filter") => Some(&stdlib::LIST_FILTER),
+                    (Value::List(_), "flat_map") => Some(&stdlib::LIST_FLAT_MAP),
                     (Value::List(_), "fold") => Some(&stdlib::LIST_FOLD),
                     (Value::List(_), "group_by") => Some(&stdlib::LIST_GROUP_BY),
                     (Value::List(_), "join") => Some(&stdlib::LIST_JOIN),
                     (Value::List(_), "key_by") => Some(&stdlib::LIST_KEY_BY),
                     (Value::List(_), "len") => Some(&stdlib::LIST_LEN),
+                    (Value::List(_), "map") => Some(&stdlib::LIST_MAP),
                     (Value::List(_), "reverse") => Some(&stdlib::LIST_REVERSE),
 
                     (Value::Set(_), "contains") => Some(&stdlib::SET_CONTAINS),
                     (Value::Set(_), "except") => Some(&stdlib::SET_EXCEPT),
+                    (Value::Set(_), "filter") => Some(&stdlib::SET_FILTER),
+                    (Value::Set(_), "flat_map") => Some(&stdlib::SET_FLAT_MAP),
                     (Value::Set(_), "group_by") => Some(&stdlib::SET_GROUP_BY),
                     (Value::Set(_), "key_by") => Some(&stdlib::SET_KEY_BY),
                     (Value::Set(_), "len") => Some(&stdlib::SET_LEN),
+                    (Value::Set(_), "map") => Some(&stdlib::SET_MAP),
 
                     _other => None,
                 };
