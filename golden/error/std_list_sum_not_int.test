@@ -1,0 +1,14 @@
+[1, 2, false].sum()
+
+# output:
+stdin:1:1
+  ╷
+1 │ [1, 2, false].sum()
+  ╵ ^~~~~~~~~~~~~
+Error: Expected integers to add, but found false.
+
+stdin:1:18
+  ╷
+1 │ [1, 2, false].sum()
+  ╵                  ^
+In call to method 'List.sum'.

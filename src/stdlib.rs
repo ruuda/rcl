@@ -602,6 +602,46 @@ fn builtin_set_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     Ok(Value::Set(Rc::new(result)))
 }
 
+fn builtin_sum_impl<'a>(
+    call: MethodCall,
+    xs: impl IntoIterator<Item = &'a Value>,
+) -> Result<Value> {
+    let mut acc: i64 = 0;
+    for x in xs {
+        match x {
+            Value::Int(n) => match acc.checked_add(*n) {
+                Some(m) => acc = m,
+                None => {
+                    let err = concat! {
+                        "Addition " acc.to_string() " + " n.to_string() " would overflow."
+                    };
+                    return call.method_span.error(err).err();
+                }
+            },
+            not_int => {
+                let err = concat! {
+                    "Expected integers to add, but found " format_rcl(not_int).into_owned() "."
+                };
+                return call.receiver_span.error(err).err();
+            }
+        }
+    }
+
+    Ok(Value::Int(acc))
+}
+
+builtin_method!("List.sum", () -> Int, const LIST_SUM, builtin_list_sum);
+fn builtin_list_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    builtin_sum_impl(call, list)
+}
+
+builtin_method!("Set.sum", () -> Int, const SET_SUM, builtin_set_sum);
+fn builtin_set_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    builtin_sum_impl(call, set)
+}
+
 builtin_method!(
     "String.split",
     (separator: String) -> [String],

@@ -168,3 +168,16 @@ Return the number of elements in the set. For example:
 // Evaluates to 3.
 {1, 1, 2, 2, 3, 3}.len()
 ```
+
+## sum
+
+```rcl
+Set.sum: (self: Set[Int]) -> Int
+```
+
+Return the sum of the elements in the set. For example:
+
+```rcl
+// Evaluates to 42.
+{3, 7, 11, 21}.sum()
+```

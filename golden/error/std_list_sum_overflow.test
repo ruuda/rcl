@@ -1,0 +1,14 @@
+[0x7fff_ffff_ffff_ffff, 1].sum()
+
+# output:
+stdin:1:28
+  ╷
+1 │ [0x7fff_ffff_ffff_ffff, 1].sum()
+  ╵                            ^~~
+Error: Addition 9223372036854775807 + 1 would overflow.
+
+stdin:1:31
+  ╷
+1 │ [0x7fff_ffff_ffff_ffff, 1].sum()
+  ╵                               ^
+In call to method 'List.sum'.

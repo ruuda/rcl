@@ -37,6 +37,7 @@ const BUILTINS: &[&str] = &[
     "split_lines",
     "starts_with",
     "std",
+    "sum",
     "to_lowercase",
     "to_uppercase",
     "values",
