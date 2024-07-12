@@ -17,7 +17,6 @@ use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{builtin_function, builtin_method, FunctionCall, MethodCall, Value};
-use crate::source::Span;
 use crate::types::AsTypeName;
 
 builtin_function!(
@@ -603,7 +602,10 @@ fn builtin_set_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     Ok(Value::Set(Rc::new(result)))
 }
 
-fn builtin_sum_impl<'a>(span_open: Span, xs: impl IntoIterator<Item = &'a Value>) -> Result<Value> {
+fn builtin_sum_impl<'a>(
+    call: MethodCall,
+    xs: impl IntoIterator<Item = &'a Value>,
+) -> Result<Value> {
     let mut acc: i64 = 0;
     for x in xs {
         match x {
@@ -613,18 +615,14 @@ fn builtin_sum_impl<'a>(span_open: Span, xs: impl IntoIterator<Item = &'a Value>
                     let err = concat! {
                         "Addition " acc.to_string() " + " n.to_string() " would overflow."
                     };
-                    return span_open.error(err).err();
+                    return call.method_span.error(err).err();
                 }
             },
             not_int => {
-                return span_open
-                    .error("Type mismatch in sum.")
-                    .with_body(concat! {
-                        "Expected Int, but found "
-                        format_rcl(not_int).into_owned()
-                        "."
-                    })
-                    .err();
+                let err = concat! {
+                    "Expected integers to add, but found " format_rcl(not_int).into_owned() "."
+                };
+                return call.receiver_span.error(err).err();
             }
         }
     }
@@ -635,13 +633,13 @@ fn builtin_sum_impl<'a>(span_open: Span, xs: impl IntoIterator<Item = &'a Value>
 builtin_method!("List.sum", () -> Int, const LIST_SUM, builtin_list_sum);
 fn builtin_list_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let list = call.receiver.expect_list();
-    builtin_sum_impl(call.call.call_open, list)
+    builtin_sum_impl(call, list)
 }
 
 builtin_method!("Set.sum", () -> Int, const SET_SUM, builtin_set_sum);
 fn builtin_set_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
-    builtin_sum_impl(call.call.call_open, set)
+    builtin_sum_impl(call, set)
 }
 
 builtin_method!(
