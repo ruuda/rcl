@@ -338,22 +338,26 @@ impl<'a> ProgramBuilder<'a> {
                 self.expr_stack.push(chars[i..i + 1].to_string());
             }
             Op::ExprPushDecimal => {
-                // Allow small integers inline, for smaller instruction encoding
-                // and more efficient fuzzing. We only bother to do this for
-                // decimal integers, hexadecimal and binary only matter for the
-                // parser anyway.
                 let k = match n {
+                    // Allow small integers inline, for smaller instruction
+                    // encoding and more efficient fuzzing. We only bother to do
+                    // this for decimal integers, hexadecimal and binary only
+                    // matter for the parser anyway.
                     0..=0xf => n as u64,
-                    _ => self.take_u64(n - 0xf),
+                    // Also include two large integers, to make it likely to
+                    // exercise overflows.
+                    0x10 => 0x07ff_ffff_ffff_ffff,
+                    0x11 => 0x7fff_ffff_ffff_ffff,
+                    _ => self.take_u64(n - 0x11),
                 };
                 self.expr_stack.push(k.to_string());
             }
             Op::ExprPushHexadecimal => {
-                let k = self.take_u64(n);
+                let k = self.take_u64(n.max(1));
                 self.expr_stack.push(format!("0x{k:x}"));
             }
             Op::ExprPushBinary => {
-                let k = self.take_u64(n);
+                let k = self.take_u64(n.max(1));
                 self.expr_stack.push(format!("0b{k:b}"));
             }
             Op::ExprPushLiteral => {
