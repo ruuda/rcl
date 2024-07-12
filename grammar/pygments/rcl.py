@@ -63,6 +63,7 @@ _root_base = [
                 "enumerate",
                 "except",
                 "filter",
+                "flat_map",
                 "fold",
                 "get",
                 "group_by",

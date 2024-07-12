@@ -34,6 +34,7 @@ const BUILTINS: &[&str] = &[
     "enumerate",
     "except",
     "filter",
+    "flat_map",
     "fold",
     "get",
     "group_by",
