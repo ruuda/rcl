@@ -260,3 +260,16 @@ Return the list in reverse.
 // Evaluates to:
 [3, 2, 1]
 ```
+
+## sum
+
+```rcl
+List.sum: (self: List[Int]) -> Int
+```
+
+Return the sum of the elements in the list. For example:
+
+```rcl
+// Evaluates to 42.
+[3, 7, 11, 21].sum()
+```
