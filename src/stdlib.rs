@@ -17,6 +17,7 @@ use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{builtin_function, builtin_method, FunctionCall, MethodCall, Value};
+use crate::source::Span;
 use crate::types::AsTypeName;
 
 builtin_function!(
@@ -600,6 +601,47 @@ fn builtin_set_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
         result.insert(v);
     })?;
     Ok(Value::Set(Rc::new(result)))
+}
+
+fn builtin_sum_impl<'a>(span_open: Span, xs: impl IntoIterator<Item = &'a Value>) -> Result<Value> {
+    let mut acc: i64 = 0;
+    for x in xs {
+        match x {
+            Value::Int(n) => match acc.checked_add(*n) {
+                Some(m) => acc = m,
+                None => {
+                    let err = concat! {
+                        "Addition " acc.to_string() " + " n.to_string() " would overflow."
+                    };
+                    return span_open.error(err).err();
+                }
+            },
+            not_int => {
+                return span_open
+                    .error("Type mismatch in sum.")
+                    .with_body(concat! {
+                        "Expected Int, but found "
+                        format_rcl(not_int).into_owned()
+                        "."
+                    })
+                    .err();
+            }
+        }
+    }
+
+    Ok(Value::Int(acc))
+}
+
+builtin_method!("List.sum", () -> Int, const LIST_SUM, builtin_list_sum);
+fn builtin_list_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    builtin_sum_impl(call.call.call_open, list)
+}
+
+builtin_method!("Set.sum", () -> Int, const SET_SUM, builtin_set_sum);
+fn builtin_set_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    builtin_sum_impl(call.call.call_open, set)
 }
 
 builtin_method!(

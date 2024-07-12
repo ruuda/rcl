@@ -81,6 +81,7 @@ _root_base = [
                 "split_lines",
                 "starts_with",
                 "std",
+                "sum",
                 "to_lowercase",
                 "to_uppercase",
                 "values",

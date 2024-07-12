@@ -70,6 +70,7 @@
 "starts_with"
 "std.range"
 "std.read_file_utf8"
+"sum"
 "to_lowercase"
 "to_uppercase"
 "values"

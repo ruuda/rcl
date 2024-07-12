@@ -443,6 +443,7 @@ impl<'a> Evaluator<'a> {
                     (Value::List(_), "len") => Some(&stdlib::LIST_LEN),
                     (Value::List(_), "map") => Some(&stdlib::LIST_MAP),
                     (Value::List(_), "reverse") => Some(&stdlib::LIST_REVERSE),
+                    (Value::List(_), "sum") => Some(&stdlib::LIST_SUM),
 
                     (Value::Set(_), "contains") => Some(&stdlib::SET_CONTAINS),
                     (Value::Set(_), "except") => Some(&stdlib::SET_EXCEPT),
@@ -452,6 +453,7 @@ impl<'a> Evaluator<'a> {
                     (Value::Set(_), "key_by") => Some(&stdlib::SET_KEY_BY),
                     (Value::Set(_), "len") => Some(&stdlib::SET_LEN),
                     (Value::Set(_), "map") => Some(&stdlib::SET_MAP),
+                    (Value::Set(_), "sum") => Some(&stdlib::SET_SUM),
 
                     _other => None,
                 };
