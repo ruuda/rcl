@@ -531,7 +531,7 @@ impl Loader {
     pub fn load_cli_target(&mut self, target: &Target) -> Result<DocId> {
         match target {
             Target::File(fname) => {
-                let path = self.filesystem.resolve_entrypoint(&fname)?;
+                let path = self.filesystem.resolve_entrypoint(fname)?;
                 self.load_file(path)
             }
             Target::Stdin => self.load_stdin(),
