@@ -10,6 +10,5 @@ specified, the input defaults to stdin.
 
 ## Options
 
-TODO: There should be an option to write html instead of ansi escape codes, or
-some other format that could easily be consumed, for example to integrate with
-Pygments. Or maybe only some directives to compare against an external lexer.
+`rcl highlight` supports [all of the global options](rcl.md#global-options),
+in particular `--color` to select the color mode.
