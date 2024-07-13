@@ -14,7 +14,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Unreleased
+## 0.4.0
+
+Released 2024-07-13.
 
  * Add [`List.map`](type_list.md#map),
    [`List.flat_map`](type_list.md#flat_map),

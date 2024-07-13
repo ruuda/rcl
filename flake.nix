@@ -22,7 +22,7 @@
       forEachSystem (system:
         let
           name = "rcl";
-          version = "0.3.0";
+          version = "0.4.0";
           overlays = [ rust-overlay.overlays.default ];
           pkgs = import nixpkgs { inherit overlays system; };
 
