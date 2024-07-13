@@ -72,18 +72,7 @@ Options:
 
 See also --help for global options.
 
-Build target fields:
-
-  banner: String    A string to prepend to the output file. For example, a
-                    comment to clarify that the file is generated. Defaults
-                    to an empty string.
-  contents: Any     The value to format and write to the output file.
-  format: String    The output format, must be one of the formats supported by
-                    'rcl evaluate --format', see 'rcl evaluate --help'.
-  width: Int        Target width for formatting, as for 'rcl evaluate --width'.
-                    Optional, defaults to 80.
-
-Example:
+Example build file:
 
   {
     "alice.toml": {
@@ -96,6 +85,18 @@ Example:
       format = "toml",
     },
   }
+
+Build target fields:
+
+  banner: String    A string to prepend to the output file. For example, a
+                    comment to clarify that the file is generated. Defaults
+                    to an empty string. Corresponds to 'rcl evaluate --banner',
+                    but unlike --banner, no implicit newline is added here.
+  contents: Any     The value to format and write to the output file.
+  format: String    The output format, must be one of the formats supported by
+                    'rcl evaluate --format', see 'rcl evaluate --help'.
+  width: Int        Target width for formatting, as for 'rcl evaluate --width'.
+                    Optional, defaults to 80.
 "##;
 
 const USAGE_EVAL_QUERY: &str = r#"
