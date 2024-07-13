@@ -14,6 +14,11 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Unreleased
+
+ * Add [`--banner`](rcl_evaluate.md#-banner-message) option to `rcl evaluate`
+   and `rcl query`. This is helpful to include a prefix in generated files.
+
 ## 0.4.0
 
 Released 2024-07-13.

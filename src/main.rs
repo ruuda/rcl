@@ -129,6 +129,13 @@ impl App {
                 rcl::fmt_yaml_stream::format_yaml_stream(value_span, value)?
             }
         };
+
+        // Prepend the banner if the user specified one.
+        let out_doc = match eval_opts.banner.as_ref() {
+            Some(banner) => Doc::lines(banner) + Doc::HardBreak + out_doc,
+            None => out_doc,
+        };
+
         self.print_doc_target(output, style_opts, out_doc)
     }
 

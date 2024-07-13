@@ -67,6 +67,8 @@ Arguments:
              file is bound to the variable 'input'.
 
 Options:
+  --banner <message>       Prepend the message to the output. This can be useful
+                           to add headings or comments to generated files.
   -f --format <format>     Output format, see below for the available formats.
                            Defaults to 'rcl'.
   -o --output <outfile>    Write to the given file instead of stdout.
@@ -159,6 +161,9 @@ pub struct EvalOptions {
     /// See also the depfile documentation from the Ninja build system:
     /// <https://ninja-build.org/manual.html#_depfile>.
     pub output_depfile: Option<String>,
+
+    /// A banner message to prepend to the output.
+    pub banner: Option<String>,
 }
 
 /// Options for commands that pretty-print their output.
@@ -259,6 +264,12 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
 
     while let Some(arg) = args.next() {
         match arg.as_ref() {
+            Arg::Long("banner") => {
+                eval_opts.banner = parse_option! {
+                    args: arg,
+                    |x: &str| Ok::<_, std::convert::Infallible>(Some(x.to_string()))
+                };
+            }
             Arg::Long("check") => {
                 check = true;
             }
@@ -594,9 +605,19 @@ mod test {
         );
         assert_eq!(parse(&["rcl", "e", "infile"]), expected);
 
+        // Test --banner
+        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
+            eval_opts.banner = Some("prefix".to_string());
+        }
+        assert_eq!(parse(&["rcl", "e", "infile", "--banner=prefix"]), expected);
+
         // Test that defaulting to stdin works. If '-' is there we get it
         // explicitly, if it's not, we get it implicitly.
-        if let Cmd::Evaluate { fname, .. } = &mut expected.1 {
+        if let Cmd::Evaluate {
+            fname, eval_opts, ..
+        } = &mut expected.1
+        {
+            eval_opts.banner = None;
             *fname = Target::Stdin;
         }
         assert_eq!(parse(&["rcl", "e", "-"]), expected);

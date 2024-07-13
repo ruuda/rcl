@@ -16,6 +16,12 @@ When no file is specified, the input defaults to stdin.
 
 ## Options
 
+### `--banner <message>`
+
+Prepend the banner message to the output. This can be useful to add a comment
+to a generated file to clarify that the file is generated. RCL implicitly adds
+a line break between the banner and the output.
+
 ### `-f` `--format <format>`
 
 Output in the given format. The following formats are supported:
