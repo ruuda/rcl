@@ -95,7 +95,7 @@ Print usage:
 
 Evaluate an RCL expression to json:
 
-    target/release/rcl eval examples/tags.rcl
+    target/release/rcl eval --format=json examples/tags.rcl
 
 Query an RCL or json document:
 
@@ -122,7 +122,7 @@ Run golden tests:
 
 Check the grammar for ambiguities:
 
-    bison -Werror=all etc/bison/grammar.y
+    bison -Werror=all grammar/bison/grammar.y
 
 Run unit tests and lints:
 
