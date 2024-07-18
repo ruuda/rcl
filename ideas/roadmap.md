@@ -3,20 +3,20 @@
 ## In progress
 
  * Type system.
+ * Add an `rcl build` subcommand.
 
 ## Near term
 
  * Accept an expression through `--expr` for `rcl evaluate`.
- * Actually implement the `--in-place` for `rcl fmt`.
  * Add a `--follow` for `rcl fmt` that follows imports.
- * Add an `rcl build` subcommand.
  * Add `to_lower_ascii`, `to_upper_ascii` functions. Maybe even `to_snake_case`.
+ * Add integer division and modulo methods (or operators, but probably methods
+   are nicer here).
 
 ## Mid-term
 
  * Yaml output mode.
  * Preserve insertion order in dicts and sets, GC'd runtime.
- * Absorb the `highlight` command into `fmt` and make it use the same coloring?
  * Evaluate whether to add a tuple type to describe heterogeneous lists of
    statically known length.
  * Add a spread operator for inside collections, and evaluate whether it should
