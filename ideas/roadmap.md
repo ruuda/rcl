@@ -23,6 +23,10 @@
    supersede the dict/set union operator. It would solve some typing issues, and
    it's easier to format in a pleasant way.
  * Add nested fields to record syntax, i.e. `{x.y = "z"} == {x = {y = "z" }}`.
+ * Mitigate Trojan Source pitfall (https://trojansource.codes/). We can't ban
+   Bidi code points from strings because it would break json compatibility,
+   but we can ban it from comments, and we can make the formatter turn it into
+   escape sequences in strings.
 
 ## Long-term
 
