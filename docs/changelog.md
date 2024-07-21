@@ -23,14 +23,23 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Released 2024-07-13.
 
- * Add [`List.map`](type_list.md#map),
+ * Add methods on `List` and `Set` that can act as alternatives to list
+   comprehensions. These are especially useful for writing queries for
+   [`rcl query`](rcl_query.md) on the command line, because you don’t
+   have to move the cursor to insert `[` in the middle of an expression
+   to wrap something in a comprehension.
+   New methods:
+   [`List.map`](type_list.md#map),
    [`List.flat_map`](type_list.md#flat_map),
    [`List.filter`](type_list.md#filter),
-   and [`List.sum`](type_list.md#sum) methods.
- * Add [`Set.map`](type_set.md#map),
-   [`Set.flat_map`](type_set.md#flat_map),
-   [`Set.filter`](type_set.md#filter),
-   and [`Set.sum`](type_set.md#sum) methods.
+   [`Set.map`](type_set.md#map),
+   [`Set.flat_map`](type_set.md#flat_map), and
+   [`Set.filter`](type_set.md#filter).
+ * Add a `sum` method on `List` and `Set` to sum integers. Summing was already
+   possible with `fold`, but `sum` makes it a lot more ergonomic.
+   New methods:
+   [`List.sum`](type_list.md#sum)
+   and [`Set.sum`](type_set.md#sum).
  * Add support for [`--color=html`](rcl.md#-color-mode) to output
    <abbr>HTML</abbr> spans compatible with Pandoc.
 
