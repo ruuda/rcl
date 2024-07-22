@@ -16,15 +16,18 @@ simple functional programming language that resembles [Python][python] and
    example, import the same user account definitions into Terraform, Tailscale,
    Kubernetes, and Ansible.
 
-RCL can be used through the `rcl` command-line tool that can export documents
-to <abbr>JSON</abbr> and [other formats][output]. It can also be used through
-a native Python module, with an interface similar to the `json` module.
+RCL can be used through [the `rcl` command-line tool][rcl] that can export
+documents to <abbr>JSON</abbr> and [other formats][output]. It can also be used
+through [a native Python module][pythonm], with an interface similar to the
+`json` module.
 
-[python]:  https://www.python.org/
-[nix]:     https://nixos.org/manual/nix/stable/language/
 [jq]:      https://jqlang.github.io/jq/manual/
+[nix]:     https://nixos.org/manual/nix/stable/language/
 [nixpkgs]: https://github.com/nixos/nixpkgs
-[output]:  rcl_evaluate.md#-o-output-format
+[output]:  rcl_evaluate.md#-f-format-format
+[python]:  https://www.python.org/
+[pythonm]: python_bindings.md
+[rcl]:     rcl.md
 
 _**Warning:** While RCL is usable, it is still in an early exploratory stage
 with frequent breaking changes. This is a hobby project without stability
