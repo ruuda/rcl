@@ -263,3 +263,25 @@ Without the typechecker this code would execute just fine, because the
 ill-typed code path is never executed. But this above code is very likely a bug,
 and would fail when the parameters change. Therefore <abbr>RCL</abbr> prefers
 keeping the typechecker simple over making every executable document well-typed.
+
+## Further reading
+
+For more background on the design of the type system and its implementation,
+see the blog post series, <em>A type system for <abbr>RCL</abbr></em>.
+
+ 1. [_Introduction_][blog-1] lays out the requirements of a
+    type system for a configuration language.
+ 2. [_The type system_][blog-2] describes the resulting type
+    system and the theory underpinning it.
+ 3. [_Related work_][blog-3] highlights type systems that
+    inspired <abbr>RCL</abbr>’s type system, and contrasts it with a few other
+    configuration languages.
+ 4. [_Implementing a typechecker in Rust_][blog-4] goes over
+    some of the implementation details, including how the error reporting works.
+
+This series reflects the type system as of <abbr>RCL</abbr> 0.4.0 in July 2024.
+
+[blog-1]: https://ruudvanasseldonk.com/2024/a-type-system-for-rcl-part-1-introduction
+[blog-2]: https://ruudvanasseldonk.com/2024/a-type-system-for-rcl-part-2-the-type-system
+[blog-3]: https://ruudvanasseldonk.com/2024/a-type-system-for-rcl-part-3-related-work
+[blog-4]: https://ruudvanasseldonk.com/2024/implementing-a-typechecker-for-rcl-in-rust
