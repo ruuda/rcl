@@ -1,0 +1,122 @@
+// This example contains a Vega data visualization, see also [1]. You can
+// evaluate this example to json using `rcl je examples/vega.rcl`, and then
+// paste it into [2] to see the chart. The example is based on the default
+// bar chart example at [3].
+// [1]: https://vega.github.io/vega/
+// [2]: https://vega.github.io/editor/#/edited
+// [3]: https://vega.github.io/editor/#/examples/vega/bar-chart
+
+// There is no simple way to change the font in one place in Vega, we have to
+// set all these properties. So write a function, so we can write it once and
+// import it into all our graphics. For the purpose of the example, it is
+// inlined here though.
+let config_font = font => {
+  title = { font = font },
+  axis = { labelFont = font, titleFont = font },
+  legend = { labelFont = font, titleFont = font },
+  header = { labelFont = font, titleFont = font },
+  mark = { font = font },
+  title = { font = font, subtitleFont = font },
+};
+
+let head = {
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  description = "A basic bar chart example.",
+  width = 400,
+  height = 200,
+  padding = 5,
+  config = config_font("Cantarell"),
+};
+
+let data_table = {
+  name = "table",
+  // Note, we inline the data here, but if you have a different json data set,
+  // we could just write `values = import "data.json"` here to include it.
+  values = [
+    { "category": "A", "amount": 28 },
+    { "category": "B", "amount": 55 },
+    { "category": "C", "amount": 43 },
+    { "category": "D", "amount": 91 },
+    { "category": "E", "amount": 81 },
+    { "category": "F", "amount": 53 },
+    { "category": "G", "amount": 19 },
+    { "category": "H", "amount": 87 },
+  ],
+};
+
+let signal_tooltip = {
+  name = "tooltip",
+  value = {},
+  // In the original example, this is a bit verbose. We can distill the data
+  // into its essence here, and generate the expanded form with repeating field
+  // names using a list comperhension below.
+  let on_events = { "rect:pointerover": "datum", "rect:pointerout": "{}" };
+  on = [for event, update in on_events: { events = event, update = update }],
+};
+
+let scales = [
+  {
+    name = "xscale",
+    type = "band",
+    domain = { data = "table", field = "category" },
+    range = "width",
+    // TODO: This should be a float, but RCL does not support those yet.
+    padding = "0.05",
+    round = true,
+  },
+  {
+    name = "yscale",
+    domain = { data = "table", field = "amount" },
+    nice = true,
+    range = "height",
+  },
+];
+
+{
+  for k, v in head: k: v,
+  data = [data_table],
+  signals = [signal_tooltip],
+  scales = scales,
+
+  axes = [
+    { orient = "bottom", scale = "xscale" },
+    { orient = "left", scale = "yscale" },
+  ],
+
+  marks = [
+    {
+      type = "rect",
+      from = { data = "table" },
+      encode = {
+        enter = {
+          width = { band = 1, scale = "xscale" },
+          x = { field = "category", scale = "xscale" },
+          y = { field = "amount", scale = "yscale" },
+          y2 = { scale = "yscale", value = 0 },
+        },
+        hover = { fill = { value = "red" } },
+        update = { fill = { value = "steelblue" } },
+      },
+    },
+    {
+      type = "text",
+      encode = {
+        enter = {
+          align = { value = "center" },
+          baseline = { value = "bottom" },
+          fill = { value = "#333" },
+        },
+        update = {
+          fillOpacity = [
+            { test = "datum === tooltip", value = 0 },
+            { value = 1 },
+          ],
+          text = { signal = "tooltip.amount" },
+          // TODO: Band should be a float here as well.
+          x = { band = "0.5", scale = "xscale", signal = "tooltip.category" },
+          y = { offset = -2, scale = "yscale", signal = "tooltip.amount" },
+        },
+      },
+    },
+  ],
+}
