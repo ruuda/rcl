@@ -41,6 +41,7 @@ let default_options = {
 }
 ```
 
+For a more elaborate introduction, see the [generating files chapter](generating_files.md).
 
 ## Build files
 

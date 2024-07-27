@@ -20,6 +20,7 @@ nav:
       - "Tutorial": "tutorial.md"
       - "Installation": "installation.md"
       - "Syntax highlighting": "syntax_highlighting.md"
+      - "Generating files": "generating_files.md"
       - "Using Ninja": "using_ninja.md"
       - "Changelog": "changelog.md"
   - "Language guide":
