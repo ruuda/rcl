@@ -208,7 +208,13 @@ pub fn execute_build(
                 let mut out_file = loader.open_build_output(target.out_path.as_ref(), buildfile)?;
                 match result.write_bytes_no_markup(&mut out_file) {
                     Ok(()) => continue,
-                    Err(err) => panic!("TODO: Report IO error: {err:?}"),
+                    Err(err) => {
+                        return Error::new(concat! {
+                            "Failed to write to '" Doc::path(target.out_path.as_ref()) "': "
+                            err.to_string()
+                        })
+                        .err()
+                    }
                 }
                 // coverage:on
             }
