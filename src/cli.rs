@@ -71,7 +71,7 @@ Options:
   --dry-run         Print what files we would write to stdout, instead of
                     writing to the file system, which would overwrite existing
                     files.
-  --sandbox <mode>  Sandboxing mode, see 'rcl evaluate --help` for an
+  --sandbox <mode>  Sandboxing mode, see 'rcl evaluate --help' for an
                     explanation of the modes. Defaults to 'workdir'.
 
 See also --help for global options.
@@ -82,7 +82,7 @@ Example build file:
     "alice.toml": {
       contents = { name = "Alice", uid = 42 },
       format = "toml",
-      banner = "# This file is generated from build.rcl.\n",
+      banner = "# This file is generated from build.rcl.",
     },
     "bob.toml": {
       contents = { name = "Bob", uid = 43 },
@@ -92,13 +92,16 @@ Example build file:
 
 Build target fields:
 
-  banner: String    A string to prepend to the output file. For example, a
-                    comment to clarify that the file is generated. Defaults
-                    to an empty string. Corresponds to 'rcl evaluate --banner',
-                    but unlike --banner, no implicit newline is added here.
+  banner: Union[    A string to prepend to the output file. For example, a
+    String,         comment to clarify that the file is generated. Defaults to
+    Null,           null, which means no banner. Corresponds to 'rcl evaluate
+  ]                 --banner'.
+
   contents: Any     The value to format and write to the output file.
+
   format: String    The output format, must be one of the formats supported by
                     'rcl evaluate --format', see 'rcl evaluate --help'.
+
   width: Int        Target width for formatting, as for 'rcl evaluate --width'.
                     Optional, defaults to 80.
 "##;
