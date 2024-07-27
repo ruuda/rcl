@@ -50,7 +50,7 @@ fn get_build_file_type() -> SourcedType {
 
 struct Target {
     out_path: Rc<str>,
-    banner: Rc<str>,
+    banner: Option<Rc<str>>,
     contents: Value,
     format: OutputFormat,
     width: u32,
@@ -74,7 +74,7 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
     // TODO: Would be better to feed in the requirement already during doc evaluation.
     targets_value.is_instance_of(doc_span, &get_build_file_type())?;
 
-    let banner: Rc<str> = "".into();
+    let banner: Option<Rc<str>> = None;
 
     // After we did the typecheck, we can use `expect_` safely here.
     let targets = targets_value.expect_dict();
@@ -101,8 +101,9 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
             };
             match k.expect_string() {
                 "banner" => match v {
-                    Value::String(banner) => target.banner = banner.clone(),
-                    _not_str => return make_error("Banner must be a string.".into()).err(),
+                    Value::String(banner) => target.banner = Some(banner.clone()),
+                    Value::Null => target.banner = None,
+                    _not_str => return make_error("Banner must be a string or null.".into()).err(),
                 },
                 "contents" => contents = Some(v.clone()),
                 "format" => {
@@ -178,10 +179,16 @@ pub fn execute_build(
 
         let mut out_file = loader.open_build_output(target.out_path.as_ref(), buildfile)?;
 
-        let doc = concat! {
-            Doc::lines(target.banner.as_ref())
-            crate::cmd_eval::format_value(target.format, doc_span, &target.contents)?
-        };
+        let mut doc = crate::cmd_eval::format_value(target.format, doc_span, &target.contents)?;
+
+        if let Some(banner) = target.banner.as_ref() {
+            doc = concat! {
+                Doc::lines(banner)
+                Doc::HardBreak
+                doc
+            };
+        }
+
         let print_cfg = Config {
             width: target.width,
         };

@@ -50,7 +50,7 @@ the build file itself. The value is a dict with the following schema:
 
 ```rcl
 type Target = {
-  banner: String,
+  banner: Union[String, Null],
   contents: Any,
   format: String,
   width: Int,
@@ -63,9 +63,9 @@ The following fields are supported:
 
 A string to prepend to the output. This can be useful to add a comment to
 clarify that a file is generated, and point readers at the original source.
-This field is optional and defaults to an empty string. Corresponds to
-[`--banner`](rcl_evaluate.md#-banner-message), although unlike that option,
-`banner` here does not implicitly add a newline.
+This field is optional and defaults to `null`, which means no banner is emitted.
+If the banner is not null, a newline is implicitly added between the banner and
+output. Corresponds to [`--banner`](rcl_evaluate.md#-banner-message).
 
 ### contents
 
