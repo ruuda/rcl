@@ -208,10 +208,9 @@ impl SandboxFilesystem {
         // Before we do any sandboxing checks, resolve the file to an absolute
         // path, following symlinks.
         let path_buf = fs::canonicalize(&path_buf).map_err(|err| {
-            let fname = path_buf.to_string_lossy().into_owned();
             Error::new(concat! {
                 "Failed to access path '"
-                pprint::Doc::highlight(&fname).into_owned()
+                pprint::Doc::path(path_buf)
                 "': "
                 err.to_string()
             })
@@ -223,25 +222,22 @@ impl SandboxFilesystem {
             }
             SandboxMode::Workdir => {
                 if !path_buf.starts_with(&self.workdir) {
-                    let fname = path_buf.to_string_lossy().into_owned();
-                    let workdir_name = self.workdir.to_string_lossy().into_owned();
                     let mut err = Error::new(concat! {
                         "Sandbox policy '"
                         pprint::Doc::highlight("workdir")
                         "' does not allow loading '"
-                        pprint::Doc::highlight(&fname).into_owned()
+                        pprint::Doc::path(&path_buf)
                         "' because it lies outside of '"
-                        pprint::Doc::highlight(&workdir_name).into_owned()
+                        pprint::Doc::path(&self.workdir)
                         "'."
                     });
                     let mut base_dir = self.workdir.clone();
                     while !path_buf.starts_with(&base_dir) {
                         base_dir.pop();
                     }
-                    let base_dir_name = base_dir.to_string_lossy().into_owned();
                     err.set_help(concat! {
                         "Try executing from '"
-                        pprint::Doc::highlight(&base_dir_name).into_owned()
+                        pprint::Doc::path(base_dir)
                         "' or use '"
                         pprint::Doc::highlight("--sandbox=unrestricted")
                         "'."
@@ -326,10 +322,9 @@ impl Filesystem for SandboxFilesystem {
 
     fn load(&self, path: PathLookup) -> Result<Document> {
         let buf = fs::read_to_string(&path.path).map_err(|err| {
-            let fname = path.path.to_string_lossy().into_owned();
             Error::new(concat! {
                 "Failed to read from file '"
-                pprint::Doc::highlight(&fname).into_owned()
+                pprint::Doc::path(&path.path)
                 "': "
                 err.to_string()
             })
@@ -380,10 +375,9 @@ impl Filesystem for SandboxFilesystem {
                 Ok(()) => {}
                 Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
                 Err(err) => {
-                    let err_path = ancestor.to_string_lossy().into_owned();
                     return Error::new(concat! {
                         "Failed to create output directory '"
-                        pprint::Doc::highlight(&err_path).into_owned()
+                        pprint::Doc::path(ancestor)
                         "': "
                         err.to_string()
                     })
@@ -403,10 +397,9 @@ impl Filesystem for SandboxFilesystem {
                     let abs_path = match std::fs::canonicalize(ancestor) {
                         Ok(path) => path,
                         Err(err) => {
-                            let err_path = ancestor.to_string_lossy().into_owned();
                             return Error::new(concat! {
                                 "Failed to resolve output directory '"
-                                pprint::Doc::highlight(&err_path).into_owned()
+                                pprint::Doc::path(ancestor)
                                 "': "
                                 err.to_string()
                             })
@@ -442,16 +435,13 @@ impl Filesystem for SandboxFilesystem {
         }
 
         match std::fs::File::create(&path_buf) {
-            Err(err) => {
-                let err_path = path_buf.to_string_lossy().into_owned();
-                Error::new(concat! {
-                    "Failed to create output file '"
-                    pprint::Doc::highlight(&err_path).into_owned()
-                    "': "
-                    err.to_string()
-                })
-                .err()
-            }
+            Err(err) => Error::new(concat! {
+                "Failed to create output file '"
+                pprint::Doc::path(path_buf)
+                "': "
+                err.to_string()
+            })
+            .err(),
             Ok(f) => Ok(f),
         }
     }

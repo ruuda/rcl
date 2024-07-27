@@ -59,7 +59,7 @@ impl App {
                 // The concat! macro is not exported, we'll make do with a vec here.
                 let parts = vec![
                     "Failed to write to file '".into(),
-                    Doc::highlight(out_path.to_string_lossy().as_ref()).into_owned(),
+                    Doc::path(out_path),
                     "': ".into(),
                     err.to_string().into(),
                 ];
