@@ -1,0 +1,16 @@
+{
+  "out.txt": {
+    // Banner must be a string or null.
+    banner = 42,
+  },
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "out.txt"
+at key "banner"
+Error: Banner must be a string or null.

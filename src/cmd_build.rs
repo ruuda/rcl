@@ -204,11 +204,13 @@ pub fn execute_build(
 
         match mode {
             BuildMode::WriteFilesystem => {
+                // coverage:off -- We don't test writing to the file system in tests.
                 let mut out_file = loader.open_build_output(target.out_path.as_ref(), buildfile)?;
                 match result.write_bytes_no_markup(&mut out_file) {
                     Ok(()) => continue,
                     Err(err) => panic!("TODO: Report IO error: {err:?}"),
                 }
+                // coverage:on
             }
             BuildMode::DryRun => {
                 let mut stdout = std::io::stdout().lock();

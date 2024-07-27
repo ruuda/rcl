@@ -1,0 +1,18 @@
+{
+  "out.txt": {
+    contents = "",
+    format = 42,
+  },
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "out.txt"
+at key "format"
+Error: Invalid output format: 42.
+
+Help: See 'rcl evaluate --help' for supported output formats.

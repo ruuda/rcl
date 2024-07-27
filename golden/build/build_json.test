@@ -1,5 +1,6 @@
 {
   "build_json.test.out": {
+    banner = null,
     format = "json",
     width = 20,
     contents = std.range(0, 20),

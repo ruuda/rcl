@@ -1,0 +1,14 @@
+{
+  "out.txt": {
+    contents = "Hello, world",
+  },
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "out.txt"
+Error: Build targets must have a 'format' field.
