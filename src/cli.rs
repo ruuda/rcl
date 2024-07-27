@@ -566,6 +566,7 @@ mod test {
         Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, OutputTarget, SandboxMode,
         StyleOptions, Target,
     };
+    use crate::cmd_build::BuildMode;
     use crate::markup::MarkupMode;
     use crate::pprint::Config;
 
@@ -844,6 +845,32 @@ mod test {
             *query = "infile".to_string();
         };
         assert_eq!(parse(&["rcl", "q", "infile"]), expected);
+    }
+
+    #[test]
+    fn parse_cmd_build() {
+        let expected_opt = GlobalOptions {
+            markup: None,
+            workdir: None,
+        };
+        let expected_cmd = Cmd::Build {
+            eval_opts: EvalOptions::default(),
+            build_mode: BuildMode::WriteFilesystem,
+            fname: Target::File("build.rcl".to_string()),
+        };
+        let mut expected = (expected_opt, expected_cmd);
+        assert_eq!(parse(&["rcl", "build"]), expected);
+        assert_eq!(parse(&["rcl", "build", "build.rcl"]), expected);
+
+        if let Cmd::Build { fname, .. } = &mut expected.1 {
+            *fname = Target::File("other.rcl".to_string());
+        };
+        assert_eq!(parse(&["rcl", "build", "other.rcl"]), expected);
+
+        if let Cmd::Build { build_mode, .. } = &mut expected.1 {
+            *build_mode = BuildMode::DryRun;
+        };
+        assert_eq!(parse(&["rcl", "build", "--dry-run", "other.rcl"]), expected);
     }
 
     #[test]
