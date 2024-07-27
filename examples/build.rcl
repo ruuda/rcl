@@ -1,0 +1,14 @@
+// This example is meant to be used with `rcl build`, see `rcl build --help`.
+// It writes formatted examples into the `out` directory.
+{
+  "out/github_actions.yml": {
+    contents = import "github_actions.rcl",
+    format = "json",
+    banner = "# This file is generated from github_actions.rcl.",
+  },
+  "out/buckets.toml": {
+    contents = import "buckets.rcl",
+    format = "toml",
+    banner = "# This file is generated from buckets.rcl.",
+  },
+}

@@ -16,6 +16,8 @@ compatibility impact will be clearly marked as such in the changelog.
 
 ## Unreleased
 
+* Add a new [`build` subcommand](rcl_build.md) that acts as a built-in,
+  lightweight alternative to a full build system, for updating generated files.
  * Add [`--banner`](rcl_evaluate.md#-banner-message) option to `rcl evaluate`
    and `rcl query`. This is helpful to include a prefix in generated files.
 

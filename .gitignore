@@ -15,3 +15,6 @@
 
 # MkDocs
 /site
+
+# `rcl build` output for the examples
+/examples/out

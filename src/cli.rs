@@ -10,6 +10,7 @@
 use std::str::FromStr;
 
 use crate::cli_utils::{match_option, parse_option, Arg, ArgIter};
+use crate::cmd_build::BuildMode;
 use crate::error::{Error, Result};
 use crate::loader::SandboxMode;
 use crate::markup::{Markup, MarkupMode};
@@ -22,6 +23,7 @@ Usage:
   rcl [<options>] <command> <arguments>
 
 Commands:
+  build        Write formatted evaluation results to files.
   evaluate     Evaluate a document to an output format.
   format       Auto-format an RCL document.
   highlight    Print a document with syntax highlighting.
@@ -48,6 +50,61 @@ Color modes:
   html    Output HTML tags in the same style as Pandoc.
   none    Do not color output at all.
 "#;
+
+const USAGE_BUILD: &str = r##"
+RCL -- A reasonable configuration language.
+
+Usage:
+  rcl [<options>] build [<buildfile>]
+
+The 'build' command writes formatted values to files. It can be used to update
+many generated files in one command, similar to a build tool like Make or Ninja,
+but with the build targets specified in RCL rather than a makefile. The build
+file is an RCL document that should evaluate to a dict that maps output file
+paths to targets. Targets are dicts with fields as described below.
+
+Arguments:
+  <buildfile>       The file with build targets to process, or '-' for stdin.
+                    Defaults to 'build.rcl' when no file is specified.
+
+Options:
+  --dry-run         Print what files we would write to stdout, instead of
+                    writing to the file system, which would overwrite existing
+                    files.
+  --sandbox <mode>  Sandboxing mode, see 'rcl evaluate --help' for an
+                    explanation of the modes. Defaults to 'workdir'.
+
+See also --help for global options.
+
+Example build file:
+
+  {
+    "alice.toml": {
+      contents = { name = "Alice", uid = 42 },
+      format = "toml",
+      banner = "# This file is generated from build.rcl.",
+    },
+    "bob.toml": {
+      contents = { name = "Bob", uid = 43 },
+      format = "toml",
+    },
+  }
+
+Build target fields:
+
+  banner: Union[    A string to prepend to the output file. For example, a
+    String,         comment to clarify that the file is generated. Defaults to
+    Null,           null, which means no banner. Corresponds to 'rcl evaluate
+  ]                 --banner'.
+
+  contents: Any     The value to format and write to the output file.
+
+  format: String    The output format, must be one of the formats supported by
+                    'rcl evaluate --format', see 'rcl evaluate --help'.
+
+  width: Int        Target width for formatting, as for 'rcl evaluate --width'.
+                    Optional, defaults to 80.
+"##;
 
 const USAGE_EVAL_QUERY: &str = r#"
 RCL -- A reasonable configuration language.
@@ -137,7 +194,7 @@ pub struct GlobalOptions {
 }
 
 /// The available output formats (JSON, RCL).
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum OutputFormat {
     Json,
     Raw,
@@ -217,6 +274,11 @@ pub enum OutputTarget {
 /// The different subcommands supported by the main program.
 #[derive(Debug, Eq, PartialEq)]
 pub enum Cmd {
+    Build {
+        eval_opts: EvalOptions,
+        build_mode: BuildMode,
+        fname: Target,
+    },
     Evaluate {
         eval_opts: EvalOptions,
         style_opts: StyleOptions,
@@ -261,6 +323,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     let mut is_version = false;
     let mut targets: Vec<Target> = Vec::new();
     let mut output = OutputTarget::Stdout;
+    let mut build_mode = BuildMode::WriteFilesystem;
 
     while let Some(arg) = args.next() {
         match arg.as_ref() {
@@ -287,6 +350,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     args: arg,
                     |x: &str| Ok::<_, std::convert::Infallible>(Some(x.to_string()))
                 };
+            }
+            Arg::Long("dry-run") => {
+                build_mode = BuildMode::DryRun;
             }
             Arg::Long("format") | Arg::Short("f") => {
                 eval_opts.format = match_option! {
@@ -333,6 +399,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             Arg::Long("version") => {
                 is_version = true;
                 cmd_help = None;
+            }
+            Arg::Plain("build") if cmd.is_none() => {
+                cmd = Some("build");
             }
             Arg::Plain("evaluate") | Arg::Plain("eval") | Arg::Plain("e") if cmd.is_none() => {
                 cmd = Some("evaluate");
@@ -384,6 +453,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     }
 
     let help_opt = match cmd_help {
+        Some("build") => Some(Cmd::Help { usage: USAGE_BUILD }),
         Some("evaluate") => Some(Cmd::Help {
             usage: USAGE_EVAL_QUERY,
         }),
@@ -403,6 +473,18 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     }
 
     let result = match cmd {
+        Some("build") => {
+            // Unlike other commands, for `rcl build` the input file defaults to
+            // build.rcl instead of stdin.
+            if targets.is_empty() {
+                targets.push(Target::File("build.rcl".to_string()));
+            }
+            Cmd::Build {
+                eval_opts,
+                build_mode,
+                fname: get_unique_target(targets)?,
+            }
+        }
         Some("evaluate") => Cmd::Evaluate {
             eval_opts,
             style_opts,
@@ -487,6 +569,7 @@ mod test {
         Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, OutputTarget, SandboxMode,
         StyleOptions, Target,
     };
+    use crate::cmd_build::BuildMode;
     use crate::markup::MarkupMode;
     use crate::pprint::Config;
 
@@ -765,6 +848,32 @@ mod test {
             *query = "infile".to_string();
         };
         assert_eq!(parse(&["rcl", "q", "infile"]), expected);
+    }
+
+    #[test]
+    fn parse_cmd_build() {
+        let expected_opt = GlobalOptions {
+            markup: None,
+            workdir: None,
+        };
+        let expected_cmd = Cmd::Build {
+            eval_opts: EvalOptions::default(),
+            build_mode: BuildMode::WriteFilesystem,
+            fname: Target::File("build.rcl".to_string()),
+        };
+        let mut expected = (expected_opt, expected_cmd);
+        assert_eq!(parse(&["rcl", "build"]), expected);
+        assert_eq!(parse(&["rcl", "build", "build.rcl"]), expected);
+
+        if let Cmd::Build { fname, .. } = &mut expected.1 {
+            *fname = Target::File("other.rcl".to_string());
+        };
+        assert_eq!(parse(&["rcl", "build", "other.rcl"]), expected);
+
+        if let Cmd::Build { build_mode, .. } = &mut expected.1 {
+            *build_mode = BuildMode::DryRun;
+        };
+        assert_eq!(parse(&["rcl", "build", "--dry-run", "other.rcl"]), expected);
     }
 
     #[test]

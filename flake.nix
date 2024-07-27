@@ -321,7 +321,8 @@
                 "check-examples"
                 { buildInputs = []; }
                 ''
-                for f in ${./examples}/*; do
+                cd ${./examples}/;
+                for f in *.rcl; do
                   ${debugBuild}/bin/rcl evaluate $f
                 done
                 touch $out

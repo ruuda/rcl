@@ -1,0 +1,17 @@
+{
+  "a.txt": {
+    format = "raw",
+    contents = "Contents of a.txt",
+  },
+
+  "b.txt": {
+    format = "raw",
+    contents = "Contents of b.txt",
+  },
+}
+
+# output:
+[1/2] a.txt
+Contents of a.txt
+[2/2] b.txt
+Contents of b.txt

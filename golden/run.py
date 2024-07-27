@@ -35,7 +35,7 @@ OPTIONS
 
   RCL_BIN            Set this environment variable to override the binary to
                      execute, defaults to "target/debug/rcl".
-                      
+
 """
 
 import difflib
@@ -84,6 +84,9 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
 
     # Decide which subcommand to test based on the test directory.
     match os.path.basename(os.path.dirname(fname)):
+        case "build":
+            cmd = ["build", "--dry-run"]
+
         case "error" | "types":
             cmd = ["eval"]
 

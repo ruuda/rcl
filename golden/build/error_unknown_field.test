@@ -1,0 +1,16 @@
+{
+  "out.txt": {
+    contents = "",
+    unknown_field = true,
+  },
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "out.txt"
+at key "unknown_field"
+Error: Unknown build target field: 'unknown_field'.

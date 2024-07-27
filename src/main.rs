@@ -9,8 +9,7 @@ use std::io::Write;
 use std::path::Path;
 
 use rcl::cli::{
-    self, Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputFormat, OutputTarget, StyleOptions,
-    Target,
+    self, Cmd, EvalOptions, FormatTarget, GlobalOptions, OutputTarget, StyleOptions, Target,
 };
 use rcl::error::{Error, Result};
 use rcl::loader::{Loader, SandboxMode};
@@ -60,7 +59,7 @@ impl App {
                 // The concat! macro is not exported, we'll make do with a vec here.
                 let parts = vec![
                     "Failed to write to file '".into(),
-                    Doc::highlight(out_path.to_string_lossy().as_ref()).into_owned(),
+                    Doc::path(out_path),
                     "': ".into(),
                     err.to_string().into(),
                 ];
@@ -120,15 +119,7 @@ impl App {
         value_span: Span,
         value: &Value,
     ) -> Result<()> {
-        let out_doc = match eval_opts.format {
-            OutputFormat::Json => rcl::fmt_json::format_json(value_span, value)?,
-            OutputFormat::Raw => rcl::fmt_raw::format_raw(value_span, value)?,
-            OutputFormat::Rcl => rcl::fmt_rcl::format_rcl(value),
-            OutputFormat::Toml => rcl::fmt_toml::format_toml(value_span, value)?,
-            OutputFormat::YamlStream => {
-                rcl::fmt_yaml_stream::format_yaml_stream(value_span, value)?
-            }
-        };
+        let out_doc = rcl::cmd_eval::format_value(eval_opts.format, value_span, value)?;
 
         // Prepend the banner if the user specified one.
         let out_doc = match eval_opts.banner.as_ref() {
@@ -251,6 +242,38 @@ impl App {
             Cmd::Help { usage } => {
                 println!("{}", usage.trim());
                 std::process::exit(0)
+            }
+
+            Cmd::Build {
+                eval_opts,
+                build_mode,
+                fname,
+            } => {
+                // Evaluation options support a depfile, but this is not implemented
+                // for builds, we'd have to put multiple output filenames in there
+                // and that is not supported right now.
+                if eval_opts.output_depfile.is_some() {
+                    return Error::new("Generating depfiles is not supported for 'rcl build'.")
+                        .err();
+                }
+
+                self.loader
+                    .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
+
+                // TODO: We can make these members, then we can share a lot of code between commands!
+                let mut tracer = self.get_tracer();
+                let mut type_env = typecheck::prelude();
+                let mut value_env = runtime::prelude();
+                let doc = self.loader.load_cli_target(&fname)?;
+
+                // TODO: Would be nice to be able to feed in an expected type.
+                let val = self
+                    .loader
+                    .evaluate(&mut type_env, &mut value_env, doc, &mut tracer)?;
+
+                let full_span = self.loader.get_span(doc);
+
+                rcl::cmd_build::execute_build(&self.loader, build_mode, doc, full_span, val)
             }
 
             Cmd::Evaluate {

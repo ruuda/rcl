@@ -218,6 +218,15 @@ impl<'a> Doc<'a> {
         }
     }
 
+    /// Construct a highlighted document fragment for a file path.
+    ///
+    /// This is expected to be used only in error messages, therefore it's okay
+    /// that we make an owned copy of the path.
+    pub fn path<P: AsRef<std::path::Path>>(path: P) -> Doc<'static> {
+        let path_str = path.as_ref().to_string_lossy();
+        Doc::highlight(&path_str).into_owned()
+    }
+
     /// Construct a new document fragment that only gets emitted in tall mode.
     pub fn tall(value: &'static str) -> Doc<'static> {
         use unicode_width::UnicodeWidthStr;
@@ -467,21 +476,21 @@ pub(crate) use doc_concat as concat;
 
 macro_rules! group {
     { $($fragment:expr)* } => {
-        Doc::Group(Box::new( $crate::pprint::concat! { $($fragment)* } ))
+        crate::pprint::Doc::Group(Box::new( $crate::pprint::concat! { $($fragment)* } ))
     }
 }
 pub(crate) use group;
 
 macro_rules! indent {
     { $($fragment:expr)* } => {
-        Doc::Indent(Box::new( $crate::pprint::concat! { $($fragment)* } ))
+        crate::pprint::Doc::Indent(Box::new( $crate::pprint::concat! { $($fragment)* } ))
     }
 }
 pub(crate) use indent;
 
 macro_rules! flush_indent {
     { $($fragment:expr)* } => {
-        Doc::FlushIndent(Box::new( $crate::pprint::concat! { $($fragment)* } ))
+        crate::pprint::Doc::FlushIndent(Box::new( $crate::pprint::concat! { $($fragment)* } ))
     }
 }
 pub(crate) use flush_indent;

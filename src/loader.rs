@@ -9,6 +9,7 @@
 
 use std::collections::HashMap;
 use std::fs;
+use std::fs::File;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::{env, path};
@@ -21,7 +22,7 @@ use crate::error::{Error, Result};
 use crate::eval::Evaluator;
 use crate::lexer;
 use crate::parser;
-use crate::pprint::{self, concat};
+use crate::pprint::{self, concat, indent};
 use crate::runtime::{Env, Value};
 use crate::source::{Doc, DocId, Span};
 use crate::tracer::Tracer;
@@ -83,16 +84,25 @@ pub struct PathLookup {
 /// ... so I am not going to bother handling this properly at this time.
 pub trait Filesystem {
     /// Return where to load `path` when imported from file `from`.
+    ///
+    /// The `from` path is relative to the working directory.
     fn resolve(&self, path: &str, from: &str) -> Result<PathLookup>;
 
     /// Return where to load `path` when that was a CLI argument.
     fn resolve_entrypoint(&self, path: &str) -> Result<PathLookup>;
 
     /// Return where to write `path` when that was a CLI argument.
-    fn resolve_output(&self, path: &str) -> PathBuf;
+    fn resolve_cli_output(&self, path: &str) -> PathBuf;
 
     /// Load a resolved path from the filesystem.
     fn load(&self, path: PathLookup) -> Result<Document>;
+
+    /// Resolve a target output path relative to the `from` path, and open it.
+    ///
+    /// This creates intermediate directories if needed, and checks the sandbox
+    /// policy at every step along the way. The `from` path is relative to the
+    /// working directory, just like with [`resolve`].
+    fn open_build_output(&self, out_path: &str, from: &str) -> Result<fs::File>;
 
     /// Return `path`, but relative to the working directory, if possible.
     ///
@@ -118,11 +128,14 @@ impl Filesystem for PanicFilesystem {
     fn resolve_entrypoint(&self, _: &str) -> Result<PathLookup> {
         panic!("Should have initialized the filesystem to a real one before resolving.")
     }
-    fn resolve_output(&self, _: &str) -> PathBuf {
+    fn resolve_cli_output(&self, _: &str) -> PathBuf {
         panic!("Should have initialized the filesystem to a real one before resolving.")
     }
     fn load(&self, _: PathLookup) -> Result<Document> {
         panic!("Should have initialized the filesystem to a real one before loading.")
+    }
+    fn open_build_output(&self, _: &str, _: &str) -> Result<File> {
+        panic!("Should have initialized the filesystem to a real one before resolving.")
     }
     fn get_relative_path<'a>(&self, _: &'a Path) -> &'a Path {
         panic!("Should have initialized the filesystem to a real one before resolving.")
@@ -143,11 +156,14 @@ impl Filesystem for VoidFilesystem {
     fn resolve_entrypoint(&self, _: &str) -> Result<PathLookup> {
         Error::new("Void filesystem does not load files.").err()
     }
-    fn resolve_output(&self, _: &str) -> PathBuf {
+    fn resolve_cli_output(&self, _: &str) -> PathBuf {
         panic!("Void filesystem should not be used for output paths.");
     }
     fn load(&self, _: PathLookup) -> Result<Document> {
         Error::new("Void filesystem does not load files.").err()
+    }
+    fn open_build_output(&self, _: &str, _: &str) -> Result<File> {
+        panic!("Void filesystem does not open files.")
     }
     fn get_relative_path<'a>(&self, _: &'a Path) -> &'a Path {
         // It's okay to panic here, `get_relative_path` is only used in features
@@ -192,10 +208,9 @@ impl SandboxFilesystem {
         // Before we do any sandboxing checks, resolve the file to an absolute
         // path, following symlinks.
         let path_buf = fs::canonicalize(&path_buf).map_err(|err| {
-            let fname = path_buf.to_string_lossy().into_owned();
             Error::new(concat! {
                 "Failed to access path '"
-                pprint::Doc::highlight(&fname).into_owned()
+                pprint::Doc::path(path_buf)
                 "': "
                 err.to_string()
             })
@@ -207,25 +222,22 @@ impl SandboxFilesystem {
             }
             SandboxMode::Workdir => {
                 if !path_buf.starts_with(&self.workdir) {
-                    let fname = path_buf.to_string_lossy().into_owned();
-                    let workdir_name = self.workdir.to_string_lossy().into_owned();
                     let mut err = Error::new(concat! {
                         "Sandbox policy '"
                         pprint::Doc::highlight("workdir")
                         "' does not allow loading '"
-                        pprint::Doc::highlight(&fname).into_owned()
+                        pprint::Doc::path(&path_buf)
                         "' because it lies outside of '"
-                        pprint::Doc::highlight(&workdir_name).into_owned()
+                        pprint::Doc::path(&self.workdir)
                         "'."
                     });
                     let mut base_dir = self.workdir.clone();
                     while !path_buf.starts_with(&base_dir) {
                         base_dir.pop();
                     }
-                    let base_dir_name = base_dir.to_string_lossy().into_owned();
                     err.set_help(concat! {
                         "Try executing from '"
-                        pprint::Doc::highlight(&base_dir_name).into_owned()
+                        pprint::Doc::path(base_dir)
                         "' or use '"
                         pprint::Doc::highlight("--sandbox=unrestricted")
                         "'."
@@ -289,7 +301,7 @@ impl Filesystem for SandboxFilesystem {
 
     fn resolve_entrypoint(&self, path: &str) -> Result<PathLookup> {
         // Making the path relative to the workdir is the same for in/outputs.
-        let path_buf = self.resolve_output(path);
+        let path_buf = self.resolve_cli_output(path);
 
         // The entrypoint is specified on the command line and therefore
         // implicitly trusted, it's okay for it to lie outside of the working
@@ -297,7 +309,7 @@ impl Filesystem for SandboxFilesystem {
         self.resolve_absolute(path_buf, SandboxMode::Unrestricted)
     }
 
-    fn resolve_output(&self, path: &str) -> PathBuf {
+    fn resolve_cli_output(&self, path: &str) -> PathBuf {
         if path.starts_with('/') {
             path.into()
         } else {
@@ -310,10 +322,9 @@ impl Filesystem for SandboxFilesystem {
 
     fn load(&self, path: PathLookup) -> Result<Document> {
         let buf = fs::read_to_string(&path.path).map_err(|err| {
-            let fname = path.path.to_string_lossy().into_owned();
             Error::new(concat! {
                 "Failed to read from file '"
-                pprint::Doc::highlight(&fname).into_owned()
+                pprint::Doc::path(&path.path)
                 "': "
                 err.to_string()
             })
@@ -327,6 +338,115 @@ impl Filesystem for SandboxFilesystem {
         };
 
         Ok(doc)
+    }
+
+    fn open_build_output(&self, out_path: &str, from: &str) -> Result<File> {
+        // The initial steps are similar to `resolve`, but we don't need to
+        // support workdir-relative paths with `//`.
+        let mut path_buf = self.workdir.clone();
+
+        if out_path.is_empty() {
+            return Error::new("Output path must not be empty.").err();
+        } else if out_path.starts_with('/') {
+            return Error::new("Writing to absolute paths is not allowed.").err();
+        } else {
+            // The path is relative to the `from` file.
+            path_buf.push(from);
+            path_buf.pop();
+            path_buf.push(out_path);
+        }
+
+        let _workdir_relative = path_buf
+            .strip_prefix(&self.workdir)
+            .expect("The workdir is a prefix by contruction.");
+
+        // Walk all parent directories, from the workdir down deeper, and create
+        // them if needed, and verify that they comply with the sandbox policy.
+        // `.ancestors()` returns the path itself as well, so we `.skip(1)`.
+        let ancestors: Vec<_> = path_buf.ancestors().collect();
+        for ancestor in ancestors.iter().skip(1).rev() {
+            // Ancestors also includes the ancestors of the workdir, but we only
+            // care about what happens inside the workdir.
+            if !ancestor.starts_with(&self.workdir) {
+                continue;
+            }
+
+            match std::fs::create_dir(ancestor) {
+                Ok(()) => {}
+                Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
+                Err(err) => {
+                    return Error::new(concat! {
+                        "Failed to create output directory '"
+                        pprint::Doc::path(ancestor)
+                        "': "
+                        err.to_string()
+                    })
+                    .err();
+                }
+            }
+
+            // By now this path should exist, confirm that the canonicalized
+            // path is still inside the working directory; that we're not
+            // following symlinks that point outside of it to sidestep the
+            // sandbox requirements. This is vulnerable to a TOCTOU issue, but
+            // there is no portable way to sidestep that, and it's a quite
+            // pathological problem, so I'm going to accept the risk.
+            match self.mode {
+                SandboxMode::Unrestricted => {
+                    // The unrestricted policy places no requirements on the
+                    // path, so we don't check anything here.
+                }
+                SandboxMode::Workdir => {
+                    let abs_path = match std::fs::canonicalize(ancestor) {
+                        Ok(path) => path,
+                        Err(err) => {
+                            return Error::new(concat! {
+                                "Failed to resolve output directory '"
+                                pprint::Doc::path(ancestor)
+                                "': "
+                                err.to_string()
+                            })
+                            .err();
+                        }
+                    };
+                    if !abs_path.starts_with(&self.workdir) {
+                        return Error::new(concat! {
+                            "Output directory violates sandbox policy '"
+                            pprint::Doc::highlight("workdir")
+                            "'."
+                        })
+                        .with_body(concat! {
+                            "Refusing to write in this path:"
+                            pprint::Doc::HardBreak pprint::Doc::HardBreak
+                            indent! { pprint::Doc::path(ancestor) }
+                            pprint::Doc::HardBreak pprint::Doc::HardBreak
+                            "Because it resolves to this path:"
+                            pprint::Doc::HardBreak pprint::Doc::HardBreak
+                            indent! { pprint::Doc::path(&abs_path) }
+                            pprint::Doc::HardBreak pprint::Doc::HardBreak
+                            "Which lies outside of the working directory."
+                        })
+                        .with_help(concat! {
+                            "Run with '"
+                            pprint::Doc::highlight("--sandbox=unrestricted")
+                            "' to allow writing outside of the working directory."
+                        })
+                        .err();
+                    }
+                }
+            }
+        }
+
+        match std::fs::File::create(&path_buf) {
+            Err(err) => Error::new(concat! {
+                "Failed to create output file '"
+                pprint::Doc::path(path_buf)
+                "': "
+                err.to_string()
+            })
+            .err(),
+            Ok(f) => Ok(f),
+        }
     }
 
     fn get_relative_path<'a>(&self, path: &'a Path) -> &'a Path {
@@ -380,7 +500,13 @@ impl Loader {
 
     /// Resolve a path specified on the CLI so it respects the workdir.
     pub fn resolve_cli_output_path(&self, path: &str) -> PathBuf {
-        self.filesystem.resolve_output(path)
+        self.filesystem.resolve_cli_output(path)
+    }
+
+    /// Open an output file path specified in a build file.
+    pub fn open_build_output(&self, out_path: &str, from: DocId) -> Result<File> {
+        let from_name = self.get_doc(from).name;
+        self.filesystem.open_build_output(out_path, from_name)
     }
 
     /// Borrow all documents.

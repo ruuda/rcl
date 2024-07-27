@@ -1,0 +1,20 @@
+{
+  "build_toml.test.out": {
+    format = "toml",
+    banner = "# Generated from build_toml.rcl.\n",
+    contents = {
+      some_table = {
+        some_int = 42,
+        some_str = "widget",
+      },
+    },
+  }
+}
+
+# output:
+[1/1] build_toml.test.out
+# Generated from build_toml.rcl.
+
+[some_table]
+some_int = 42
+some_str = "widget"
