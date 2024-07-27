@@ -22,7 +22,7 @@ use crate::error::{Error, Result};
 use crate::eval::Evaluator;
 use crate::lexer;
 use crate::parser;
-use crate::pprint::{self, concat};
+use crate::pprint::{self, concat, indent};
 use crate::runtime::{Env, Value};
 use crate::source::{Doc, DocId, Span};
 use crate::tracer::Tracer;
@@ -365,18 +365,93 @@ impl Filesystem for SandboxFilesystem {
             .strip_prefix(&self.workdir)
             .expect("The workdir is a prefix by contruction.");
 
-        // TODO: Create the directories one by one, check the sandbox policy and
-        // ensure we don't go outside of the workdir if needed.
+        // Walk all parent directories, from the workdir down deeper, and create
+        // them if needed, and verify that they comply with the sandbox policy.
+        // `.ancestors()` returns the path itself aswell, so we `.skip(1)`.
+        let ancestors: Vec<_> = path_buf.ancestors().collect();
+        for ancestor in ancestors.iter().skip(1).rev() {
+            // Ancestors also includes the ancestors of the workdir, but we only
+            // care about what happens inside the workdir.
+            if !ancestor.starts_with(&self.workdir) {
+                continue;
+            }
 
-        let parent_dir = path_buf
-            .parent()
-            .expect("It has a parent because the output path is not empty.");
-        if let Err(err) = std::fs::create_dir_all(parent_dir) {
-            panic!("TODO: Report IO error properly: {err:?}");
+            match std::fs::create_dir(ancestor) {
+                Ok(()) => {}
+                Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
+                Err(err) => {
+                    let err_path = ancestor.to_string_lossy().into_owned();
+                    return Error::new(concat! {
+                        "Failed to create output directory '"
+                        pprint::Doc::highlight(&err_path).into_owned()
+                        "': "
+                        err.to_string()
+                    })
+                    .err();
+                }
+            }
+
+            // By now this path should exist, confirm that the canonicalized
+            // path is still inside the working directory; that we're not
+            // following symlinks that point outside of it to sidestep the
+            // sandbox requirements. This is vulnerable to a TOCTOU issue, but
+            // there is no portable way to sidestep that, and it's a quite
+            // pathological problem, so I'm going to accept the risk.
+            match self.mode {
+                SandboxMode::Unrestricted => {}
+                SandboxMode::Workdir => {
+                    let abs_path = match std::fs::canonicalize(ancestor) {
+                        Ok(path) => path,
+                        Err(err) => {
+                            let err_path = ancestor.to_string_lossy().into_owned();
+                            return Error::new(concat! {
+                                "Failed to resolve output directory '"
+                                pprint::Doc::highlight(&err_path).into_owned()
+                                "': "
+                                err.to_string()
+                            })
+                            .err();
+                        }
+                    };
+                    if !abs_path.starts_with(&self.workdir) {
+                        return Error::new(concat! {
+                            "Output directory violates sandbox policy '"
+                            pprint::Doc::highlight("workdir")
+                            "'."
+                        })
+                        .with_body(concat! {
+                            "Refusing to write to this path:"
+                            pprint::Doc::HardBreak pprint::Doc::HardBreak
+                            indent! { pprint::Doc::path(ancestor) }
+                            pprint::Doc::HardBreak pprint::Doc::HardBreak
+                            "Because it resolves to this path:"
+                            pprint::Doc::HardBreak pprint::Doc::HardBreak
+                            indent! { pprint::Doc::path(&abs_path) }
+                            pprint::Doc::HardBreak pprint::Doc::HardBreak
+                            "Which lies outside of the working directory."
+                        })
+                        .with_help(concat! {
+                            "Run with '"
+                            pprint::Doc::highlight("--sandbox=unrestricted")
+                            "' to allow writing outside of the working directory."
+                        })
+                        .err();
+                    }
+                }
+            }
         }
 
-        match std::fs::File::create(path_buf) {
-            Err(err) => panic!("TODO: Report IO error properly: {err:?}"),
+        match std::fs::File::create(&path_buf) {
+            Err(err) => {
+                let err_path = path_buf.to_string_lossy().into_owned();
+                Error::new(concat! {
+                    "Failed to create output file '"
+                    pprint::Doc::highlight(&err_path).into_owned()
+                    "': "
+                    err.to_string()
+                })
+                .err()
+            }
             Ok(f) => Ok(f),
         }
     }

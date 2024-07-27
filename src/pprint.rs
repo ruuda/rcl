@@ -467,21 +467,21 @@ pub(crate) use doc_concat as concat;
 
 macro_rules! group {
     { $($fragment:expr)* } => {
-        Doc::Group(Box::new( $crate::pprint::concat! { $($fragment)* } ))
+        crate::pprint::Doc::Group(Box::new( $crate::pprint::concat! { $($fragment)* } ))
     }
 }
 pub(crate) use group;
 
 macro_rules! indent {
     { $($fragment:expr)* } => {
-        Doc::Indent(Box::new( $crate::pprint::concat! { $($fragment)* } ))
+        crate::pprint::Doc::Indent(Box::new( $crate::pprint::concat! { $($fragment)* } ))
     }
 }
 pub(crate) use indent;
 
 macro_rules! flush_indent {
     { $($fragment:expr)* } => {
-        Doc::FlushIndent(Box::new( $crate::pprint::concat! { $($fragment)* } ))
+        crate::pprint::Doc::FlushIndent(Box::new( $crate::pprint::concat! { $($fragment)* } ))
     }
 }
 pub(crate) use flush_indent;
