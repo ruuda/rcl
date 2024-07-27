@@ -46,5 +46,6 @@ nav:
       - "rcl highlight": "rcl_highlight.md"
       - "rcl query": "rcl_query.md"
   - "Development":
+      - "About": "about.md"
       - "Testing": "testing.md"
       - "Tree-sitter": "tree_sitter.md"

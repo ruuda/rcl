@@ -1,12 +1,12 @@
-# RCL
+# The RCL Configuration Language
 
-Ruud’s Configuration Language, <abbr>RCL</abbr> for short, is a domain-specific
-language optimized for specifying human-written data with just enough abstraction
-features to avoid repetition. It is a superset of json that extends it into a
-simple functional programming language that resembles [Python][python] and
-[Nix][nix]. Use cases include:
+RCL is a domain-specific language optimized for specifying human-written data
+with just enough abstraction features to avoid repetition. It is a superset
+of <abbr>JSON</abbr> that extends it into a simple functional programming
+language that resembles [Python][python] and [Nix][nix]. Use cases include:
 
- * Querying json documents, like [`jq`][jq], but with a more familiar language.
+ * Querying <abbr>JSON</abbr> documents, like [`jq`][jq], but with a more
+   familiar language.
  * Generating repetitive configuration files, such as GitHub Actions workflows
    or Terraform configuration.
  * Enabling large repositories to split configuration into small reusable pieces
