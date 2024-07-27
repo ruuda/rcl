@@ -1,0 +1,22 @@
+{
+  "build_yaml.test.out": {
+    format = "yaml-stream",
+    banner = "# Generated from build_yaml.rcl.",
+    contents = [
+      for i, name in ["foo", "bar", "baz"].enumerate():
+      {
+        name = name,
+        rank = i,
+      },
+    ],
+  }
+}
+
+# output:
+# Generated from build_yaml.rcl.
+---
+{"name": "foo", "rank": 0}
+---
+{"name": "bar", "rank": 1}
+---
+{"name": "baz", "rank": 2}

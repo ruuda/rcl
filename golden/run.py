@@ -35,7 +35,7 @@ OPTIONS
 
   RCL_BIN            Set this environment variable to override the binary to
                      execute, defaults to "target/debug/rcl".
-                      
+
 """
 
 import difflib
@@ -82,8 +82,15 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
     # Allow overriding the binary that we run.
     rcl_bin = os.getenv("RCL_BIN", default="target/debug/rcl")
 
+    # For some files tests, we read the output from a file instead of stdout.
+    output_file: Optional[str] = None
+
     # Decide which subcommand to test based on the test directory.
     match os.path.basename(os.path.dirname(fname)):
+        case "build":
+            cmd = ["build"]
+            output_file = fname + ".out"
+
         case "error" | "types":
             cmd = ["eval"]
 
@@ -138,6 +145,19 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
         STRIP_ESCAPES.sub("", line).replace(common_root, "/WORKDIR")
         for line in result.stdout.splitlines() + result.stderr.splitlines()
     ]
+
+    # For some commands, we are interested in what they wrote to a file rather
+    # than stdout. In that case, read the file.
+    if output_file is not None and result.returncode == 0:
+        try:
+            with open(output_file, "r", encoding="utf-8") as out_file:
+                output_lines = out_file.read().splitlines()
+        except FileNotFoundError:
+            return (
+                f"{RED}!!! {fname_friendly}\n"
+                "Test did not produce an output file at expected path '"
+                f"{fname_friendly}.out'.{RESET}"
+            )
 
     report_lines: List[str] = []
 
