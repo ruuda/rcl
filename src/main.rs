@@ -244,7 +244,11 @@ impl App {
                 std::process::exit(0)
             }
 
-            Cmd::Build { eval_opts, fname } => {
+            Cmd::Build {
+                eval_opts,
+                build_mode,
+                fname,
+            } => {
                 // Evaluation options support a depfile, but this is not implemented
                 // for builds, we'd have to put multiple output filenames in there
                 // and that is not supported right now.
@@ -267,10 +271,9 @@ impl App {
                     .loader
                     .evaluate(&mut type_env, &mut value_env, doc, &mut tracer)?;
 
-                // TODO: Need to get last inner span.
                 let full_span = self.loader.get_span(doc);
 
-                rcl::cmd_build::execute_build(&self.loader, doc, full_span, val)
+                rcl::cmd_build::execute_build(&self.loader, build_mode, doc, full_span, val)
             }
 
             Cmd::Evaluate {

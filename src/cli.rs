@@ -10,6 +10,7 @@
 use std::str::FromStr;
 
 use crate::cli_utils::{match_option, parse_option, Arg, ArgIter};
+use crate::cmd_build::BuildMode;
 use crate::error::{Error, Result};
 use crate::loader::SandboxMode;
 use crate::markup::{Markup, MarkupMode};
@@ -67,6 +68,9 @@ Arguments:
                     Defaults to 'build.rcl' when no file is specified.
 
 Options:
+  --dry-run         Print what files we would write to stdout, instead of
+                    writing to the file system, which would overwrite existing
+                    files.
   --sandbox <mode>  Sandboxing mode, see 'rcl evaluate --help` for an
                     explanation of the modes. Defaults to 'workdir'.
 
@@ -269,6 +273,7 @@ pub enum OutputTarget {
 pub enum Cmd {
     Build {
         eval_opts: EvalOptions,
+        build_mode: BuildMode,
         fname: Target,
     },
     Evaluate {
@@ -315,6 +320,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     let mut is_version = false;
     let mut targets: Vec<Target> = Vec::new();
     let mut output = OutputTarget::Stdout;
+    let mut build_mode = BuildMode::WriteFilesystem;
 
     while let Some(arg) = args.next() {
         match arg.as_ref() {
@@ -341,6 +347,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     args: arg,
                     |x: &str| Ok::<_, std::convert::Infallible>(Some(x.to_string()))
                 };
+            }
+            Arg::Long("dry-run") => {
+                build_mode = BuildMode::DryRun;
             }
             Arg::Long("format") | Arg::Short("f") => {
                 eval_opts.format = match_option! {
@@ -469,6 +478,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             }
             Cmd::Build {
                 eval_opts,
+                build_mode,
                 fname: get_unique_target(targets)?,
             }
         }

@@ -9,6 +9,6 @@
   "out/buckets.toml": {
     contents = import "buckets.rcl",
     format = "toml",
-    banner = "# This file is generated from buckets.rcl.\n\n",
+    banner = "# This file is generated from buckets.rcl.\n",
   },
 }

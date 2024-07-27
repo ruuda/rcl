@@ -84,6 +84,12 @@ This field is optional and defaults to 80.
 
 ## Options
 
+### `--dry-run`
+
+By default, `rcl build` writes the evaluated contents of a build target to the
+target file, overwriting it if it exists. With `--dry-run`, `rcl build` prints
+the contents that it would write to the file to stdout instead.
+
 ### `--sandbox <mode>`
 
 See [`--sandbox` in `rcl evaluate`](rcl_evaluate.md#-sandbox-mode). Sandbox

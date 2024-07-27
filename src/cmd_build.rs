@@ -19,6 +19,15 @@ use crate::source::{DocId, Span};
 use crate::type_source::Source;
 use crate::types::{Dict, SourcedType, Type};
 
+/// What to do with an evaluated build target.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum BuildMode {
+    /// Print to stdout, do not write to the file system.
+    DryRun,
+    /// Write to the target file, overwriting any existing file there.
+    WriteFilesystem,
+}
+
 /// Return the type to typecheck a build file against.
 fn get_build_file_type() -> SourcedType {
     // TODO: Once we have record types, we can turn this into a record.
@@ -165,6 +174,7 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
 /// Take a build specification and write the outputs to files.
 pub fn execute_build(
     loader: &Loader,
+    mode: BuildMode,
     buildfile: DocId,
     doc_span: Span,
     targets_value: Value,
@@ -175,9 +185,7 @@ pub fn execute_build(
     })?;
 
     for (i, target) in targets.iter().enumerate() {
-        println!("[{}/{}] Writing {}", i + 1, targets.len(), target.out_path);
-
-        let mut out_file = loader.open_build_output(target.out_path.as_ref(), buildfile)?;
+        println!("[{}/{}] {}", i + 1, targets.len(), target.out_path);
 
         let mut doc = crate::cmd_eval::format_value(target.format, doc_span, &target.contents)?;
 
@@ -194,9 +202,20 @@ pub fn execute_build(
         };
         let result = doc.println(&print_cfg);
 
-        match result.write_bytes_no_markup(&mut out_file) {
-            Ok(()) => continue,
-            Err(err) => panic!("TODO: Report IO error: {err:?}"),
+        match mode {
+            BuildMode::WriteFilesystem => {
+                let mut out_file = loader.open_build_output(target.out_path.as_ref(), buildfile)?;
+                match result.write_bytes_no_markup(&mut out_file) {
+                    Ok(()) => continue,
+                    Err(err) => panic!("TODO: Report IO error: {err:?}"),
+                }
+            }
+            BuildMode::DryRun => {
+                let mut stdout = std::io::stdout().lock();
+                // Ignore the result here, if we fail to write to stdout,
+                // then we have no good way of reporting the error anyway.
+                let _ = result.write_bytes_no_markup(&mut stdout);
+            }
         }
     }
 

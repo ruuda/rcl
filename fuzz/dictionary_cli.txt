@@ -10,6 +10,7 @@
 "--check"
 "--color"
 "--directory"
+"--dry-run"
 "--format"
 "--help"
 "--in-place"
