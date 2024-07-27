@@ -12,6 +12,7 @@
 }
 
 # output:
+[1/1] build_toml.test.out
 # Generated from build_toml.rcl.
 
 [some_table]

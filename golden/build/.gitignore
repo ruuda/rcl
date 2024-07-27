@@ -1,3 +1,0 @@
-# The tests for 'rcl build' write output files to this directory.
-# These should not be checked in.
-*.out

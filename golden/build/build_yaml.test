@@ -13,6 +13,7 @@
 }
 
 # output:
+[1/1] build_yaml.test.out
 # Generated from build_yaml.rcl.
 ---
 {"name": "foo", "rank": 0}
