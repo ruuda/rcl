@@ -1,4 +1,5 @@
 # Commands
+"build"
 "evaluate"
 "fmt"
 "format"

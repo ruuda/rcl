@@ -28,7 +28,7 @@ The following `build.rcl` writes two files to the `users` directory:
 
 ```rcl
 let default_options = {
-  banner = "# This file is generated from build.rcl.\n",
+  banner = "# This file is generated from build.rcl.",
   format = "toml",
 };
 {
@@ -74,8 +74,8 @@ The value to write to the file in the desired format.
 
 ### format
 
-The output format. This must be one of the formats supported by
-[`--format`](rcl_evaluate.md#-f-format-format).
+The output format (`json`, `toml`, etc.). This must be one of the formats
+supported by [`--format`](rcl_evaluate.md#-f-format-format).
 
 ### width
 

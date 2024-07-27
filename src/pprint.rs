@@ -221,7 +221,7 @@ impl<'a> Doc<'a> {
     /// Construct a highlighted document fragment for a file path.
     ///
     /// This is expected to be used only in error messages, therefore it's okay
-    /// that we an owned copy of the path.
+    /// that we make an owned copy of the path.
     pub fn path<P: AsRef<std::path::Path>>(path: P) -> Doc<'static> {
         let path_str = path.as_ref().to_string_lossy();
         Doc::highlight(&path_str).into_owned()

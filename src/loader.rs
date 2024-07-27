@@ -362,7 +362,7 @@ impl Filesystem for SandboxFilesystem {
 
         // Walk all parent directories, from the workdir down deeper, and create
         // them if needed, and verify that they comply with the sandbox policy.
-        // `.ancestors()` returns the path itself aswell, so we `.skip(1)`.
+        // `.ancestors()` returns the path itself as well, so we `.skip(1)`.
         let ancestors: Vec<_> = path_buf.ancestors().collect();
         for ancestor in ancestors.iter().skip(1).rev() {
             // Ancestors also includes the ancestors of the workdir, but we only
@@ -392,7 +392,10 @@ impl Filesystem for SandboxFilesystem {
             // there is no portable way to sidestep that, and it's a quite
             // pathological problem, so I'm going to accept the risk.
             match self.mode {
-                SandboxMode::Unrestricted => {}
+                SandboxMode::Unrestricted => {
+                    // The unrestricted policy places no requirements on the
+                    // path, so we don't check anything here.
+                }
                 SandboxMode::Workdir => {
                     let abs_path = match std::fs::canonicalize(ancestor) {
                         Ok(path) => path,
@@ -413,7 +416,7 @@ impl Filesystem for SandboxFilesystem {
                             "'."
                         })
                         .with_body(concat! {
-                            "Refusing to write to this path:"
+                            "Refusing to write in this path:"
                             pprint::Doc::HardBreak pprint::Doc::HardBreak
                             indent! { pprint::Doc::path(ancestor) }
                             pprint::Doc::HardBreak pprint::Doc::HardBreak
