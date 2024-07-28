@@ -14,7 +14,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Unreleased
+## 0.5.0
+
+Released 2024-07-28.
 
 * Add a new [`build` subcommand](rcl_build.md) that acts as a built-in,
   lightweight alternative to a full build system, for updating generated files.
