@@ -398,15 +398,13 @@ impl<'a> Parser<'a> {
             "To match this 'if'.",
         )?;
 
-        // If a user wrote `else:`, add friendly error to clarify that there
-        // shouldn't be a colon. For symmetry with `if cond:`, one might expect
-        // the colon to be there.
+        // Allow a colon directly after `else` (with no tokens in between), but
+        // do not demand it. I was ambivalent about it in the past, up to RCL
+        // 0.5.0 the syntax was to omit the colon, but I think it makes more
+        // sense to have it. It should become mandatory in some future release,
+        // but for now it can be optional. TODO: Make it mandatory.
         if let Some(Token::Colon) = self.peek() {
-            return self
-                .consume()
-                .error("Expected an expression after 'else'.")
-                .with_help("In an if-else expression, there is no ':' after 'else'.")
-                .err();
+            self.consume();
         }
 
         let (else_span, else_body) = self.parse_expr()?;
