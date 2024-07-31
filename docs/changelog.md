@@ -14,12 +14,21 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Unreleased
+
+ * If-else expressions now optionally accept a colon after `else`, and this is
+   the new recommended form used by the autoformatter. What used to be
+   `if cond: then-expr else else-expr` is now `if cond: then-expr else: else-expr`.
+   For compatibility the colon is optional for now. It will likely become
+   mandatory in a future release. In that case it will be clearly marked as
+   a change with compatibility impact in the release notes.
+
 ## 0.5.0
 
 Released 2024-07-28.
 
-* Add a new [`build` subcommand](rcl_build.md) that acts as a built-in,
-  lightweight alternative to a full build system, for updating generated files.
+ * Add a new [`build` subcommand](rcl_build.md) that acts as a built-in,
+   lightweight alternative to a full build system, for updating generated files.
  * Add [`--banner`](rcl_evaluate.md#-banner-message) option to `rcl evaluate`
    and `rcl query`. This is helpful to include a prefix in generated files.
 
