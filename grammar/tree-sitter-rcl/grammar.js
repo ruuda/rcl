@@ -139,6 +139,7 @@ module.exports = grammar({
       ":",
       field("then", $._expr),
       "else",
+      optional(":"),
       field("else", $._expr),
     ),
 

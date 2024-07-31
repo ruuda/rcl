@@ -1,4 +1,5 @@
 // This should become one line because there are no comments.
+// The else should gain a colon.
 let c1 =
   if true:
   1
@@ -9,7 +10,7 @@ let c1 =
 let c2 = if
   widget.enabled:
   // Frobnication is only effective on enabled widgets.
-  widget.frobnicated() else
+  widget.frobnicated() else:
   // Disabled widgets we return as-is.
   widget;
 
@@ -17,14 +18,15 @@ let c2 = if
 
 # output:
 // This should become one line because there are no comments.
-let c1 = if true: 1 else 0;
+// The else should gain a colon.
+let c1 = if true: 1 else: 0;
 
 // A comment can be inside one of the bodies, which forces multiline mode.
 let c2 =
   if widget.enabled:
     // Frobnication is only effective on enabled widgets.
     widget.frobnicated()
-  else
+  else:
     // Disabled widgets we return as-is.
     widget;
 

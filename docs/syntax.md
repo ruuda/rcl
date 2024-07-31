@@ -251,12 +251,12 @@ An if-else expression evaluates to the _then_ or _else_ part depending on the
 condition:
 
 ```rcl
-let log_level = if flags.contains("--verbose"): 5 else 1;
+let log_level = if flags.contains("--verbose"): 5 else: 1;
 
 let rustc_codegen_opts =
   if config.is_debug:
     { opt-level = 0, debuginfo = 2 }
-  else
+  else:
     { opt-level = 2, target-cpu = "native" };
 ```
 
@@ -355,7 +355,7 @@ let target_os = {
   if server.year_acquired >= 2021:
   server.name:
   // This 'if' is part of an if-else expression.
-  (if server.year_acquired >= 2023: "ubuntu:22.04" else "ubuntu:20.04")
+  (if server.year_acquired >= 2023: "ubuntu:22.04" else: "ubuntu:20.04")
 };
 ```
 

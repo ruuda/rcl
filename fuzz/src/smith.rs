@@ -170,7 +170,7 @@ define_ops! {
     0x52 => ExprAssert,
     /// Replace the top 2 elements with `trace {0}; {2}`.
     0x53 => ExprTrace,
-    /// Replace the top 3 elements with `if {0}: {1} else {2}`.
+    /// Replace the top 3 elements with `if {0}: {1} else: {2}`.
     0x54 => ExprIfElse,
     /// Replace the top 2 elements with `if {0}: {1}`.
     0x55 => ExprIf,
@@ -497,7 +497,7 @@ impl<'a> ProgramBuilder<'a> {
                 let body_then = self.expr_stack.pop()?;
                 let body_else = self.expr_stack.pop()?;
                 self.expr_stack
-                    .push(format!("if {condition}: {body_then} else {body_else}"));
+                    .push(format!("if {condition}: {body_then} else: {body_else}"));
             }
             Op::ExprIf => {
                 let condition = self.expr_stack.pop()?;

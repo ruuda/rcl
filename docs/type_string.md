@@ -121,7 +121,7 @@ Return the string without the given prefix. When `self` does not start with
 let remove_prefix = (str, prefix) =>
   if str.starts_with(prefix):
     str.remove_prefix(prefix)
-  else
+  else:
     str;
 ```
 
@@ -145,7 +145,7 @@ Return the string without the given suffix. When `self` does not end with
 let remove_suffix = (str, suffix) =>
   if str.ends_with(suffix):
     str.remove_suffix(suffix)
-  else
+  else:
     str;
 ```
 

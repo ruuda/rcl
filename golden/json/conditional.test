@@ -1,6 +1,7 @@
 [
+  // For now, both with and without colon is allowed.
   (if true: "true" else "false"),
-  (if false: "true" else "false"),
+  (if false: "true" else: "false"),
 ]
 
 # output:

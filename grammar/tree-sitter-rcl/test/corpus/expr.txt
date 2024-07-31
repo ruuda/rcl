@@ -367,11 +367,25 @@ import
     (comment)
     (string (string_double))))
 
-===========
-Conditional
-===========
+=========================
+Conditional without colon
+=========================
 
 if true: null else false
+
+---
+
+(source_file
+  (expr_if
+    condition: (bool)
+    then: (null)
+    else: (bool)))
+
+======================
+Conditional with colon
+======================
+
+if true: null else: false
 
 ---
 
