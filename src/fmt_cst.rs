@@ -426,7 +426,7 @@ impl<'a> Formatter<'a> {
                         Doc::Sep
                         indent! { self.expr(then_body) }
                         Doc::Sep
-                        Doc::str("else").with_markup(Markup::Keyword)
+                        Doc::str("else").with_markup(Markup::Keyword) ":"
                         Doc::Sep
                         indent! { self.expr(else_body) }
                     }
