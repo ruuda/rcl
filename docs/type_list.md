@@ -120,8 +120,8 @@ accumulator value.
 [2, 3, 5, 7, 11].fold(
   { min = 99, max = 0 },
   (acc, x) => {
-    min = if acc.min < x: acc.min else x,
-    max = if acc.max > x: acc.max else x,
+    min = if acc.min < x: acc.min else: x,
+    max = if acc.max > x: acc.max else: x,
   },
 )
 // Evaluates to:
