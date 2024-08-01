@@ -854,7 +854,18 @@ impl<'a> TypeChecker<'a> {
             }
             Yield::Assoc { op_span, key_span, key, value_span, value } => match &mut seq_type {
                 SeqType::SetOrDict => {
-                    let k = self.check_expr(type_any(), *key_span, key)?;
+                    let k = match self.check_expr(type_any(), *key_span, key) {
+                        Err(err) if matches!(key.as_ref(), Expr::Var { .. }) => {
+                            err.with_note(*op_span, concat! {
+                                "For unquoted string literals use the record syntax. (replace '" 
+                                Doc::highlight(":")
+                                "' with '"
+                                Doc::highlight("=")
+                                "')"
+                            }).err()
+                        }
+                        other => other,
+                    }?;
                     let v = self.check_expr(type_any(), *value_span, value)?;
                     Ok(SeqType::UntypedDict(*op_span, k, v))
                 }
