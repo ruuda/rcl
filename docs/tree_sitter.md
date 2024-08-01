@@ -51,6 +51,9 @@ look for different scopes.
  * [Helix supported scopes](https://docs.helix-editor.com/themes.html#syntax-highlighting)
  * [Neovim supported scopes](https://neovim.io/doc/user/treesitter#treesitter-highlight)
  * [Tree-sitter <abbr>CLI</abbr> supported scopes](https://github.com/tree-sitter/tree-sitter/blob/v0.22.1/highlight/README.md)
+ * Zed scopes appear undocumented,
+   but other [extensions](https://github.com/zed-industries/extensions)
+   can be used as examples.
 
 ## Using the parser
 
