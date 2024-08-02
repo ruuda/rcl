@@ -8,4 +8,4 @@ repository = "https://github.com/rcl-lang/zed-rcl"
 
 [grammars.rcl]
 repository = "https://github.com/rcl-lang/tree-sitter-rcl"
-commit = "c206db926f2d2f33c5f666ee6211dc6bc309722c"
+commit = "c7cd31054e54411165acb968091e3e44172cb65c"
