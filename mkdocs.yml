@@ -48,4 +48,5 @@ nav:
   - "Development":
       - "About": "about.md"
       - "Testing": "testing.md"
+      - "Grammars": "grammars.md"
       - "Tree-sitter": "tree_sitter.md"

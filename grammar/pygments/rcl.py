@@ -5,6 +5,9 @@
 # you may not use this file except in compliance with the License.
 # A copy of the License has been included in the root of the repository.
 
+# This is a Pygments lexer that can be dropped into a Pygments source tree to
+# add support for RCL. See also docs/syntax_highlighting.md.
+
 # To test this lexer:
 # python -m pygments -x -l grammar/pygments/rcl.py:RclLexer examples/tags.rcl
 # See also <https://pygments.org/docs/lexerdevelopment/>.
