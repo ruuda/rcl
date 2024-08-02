@@ -51,8 +51,31 @@ look for different scopes.
  * [Helix supported scopes](https://docs.helix-editor.com/themes.html#syntax-highlighting)
  * [Neovim supported scopes](https://neovim.io/doc/user/treesitter#treesitter-highlight)
  * [Tree-sitter <abbr>CLI</abbr> supported scopes](https://github.com/tree-sitter/tree-sitter/blob/v0.22.1/highlight/README.md)
+ * Zed scopes appear undocumented,
+   but other [extensions](https://github.com/zed-industries/extensions)
+   can be used as examples.
+
+## Testing
+
+Aside from Tree-sitter specific tests, there is a fuzzer that verifies that
+any output that is accepted by <abbr>RCL</abbr>’s parser is also accepted by
+Tree-sitter. It can help to ensure that the grammars remain in sync. To run it:
+
+    cargo +nightly-2023-06-03 fuzz run fuzz_tree_sitter
+
+See also the [testing chapter](testing.md#running-the-fuzzers).
 
 ## Using the parser
 
 See the [syntax highlighting chapter](syntax_highlighting.md) for how to put the
 parser to use.
+
+## External repository
+
+The `grammar/tree-sitter-rcl` directory in the repository is the source of truth
+for the grammar. It is in the main repository to make it easy to keep in sync
+with the parser. Unfortunately many tools based on Tree-sitter assume that
+Tree-sitter grammars live in a dedicated repository, and often they expect
+generated files to be checked in too. For this purpose, there is a dedicated
+repository: <https://github.com/rcl-lang/tree-sitter-rcl>. The script
+`tools/update_repos.py` can update a checkout of this repository automatically.

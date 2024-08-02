@@ -1,0 +1,14 @@
+name = "RCL"
+grammar = "rcl"
+path_suffixes = ["rcl"]
+line_comments = ["// "]
+autoclose_before = ":=.,}])` \n\t\""
+brackets = [
+    { start = "{", end = "}", close = true, newline = false },
+    { start = "[", end = "]", close = true, newline = false },
+    { start = "(", end = ")", close = true, newline = false },
+    { start = "\"", end = "\"", close = true, newline = false, not_in = ["comment", "string"] },
+    { start = "f\"", end = "\"", close = true, newline = false, not_in = ["comment", "string"] },
+    { start = "\"\"\"", end = "\"\"\"", close = true, newline = false, not_in = ["comment", "string"] },
+    { start = "f\"\"\"", end = "\"\"\"", close = true, newline = false, not_in = ["comment", "string"] },
+]

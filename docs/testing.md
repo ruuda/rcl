@@ -67,6 +67,26 @@ pretty-printer. They verify the following properties:
  * **The toml output can be parsed by Serde.** Same as above, but for toml
    output.
 
+## Running the fuzzers
+
+To run the fuzzers you need [`cargo-fuzz`][cargo-fuzz] and a nightly toolchain.
+Then start e.g. the smith fuzzer or source-based fuzzer:
+
+    cargo +nightly-2023-06-03 fuzz run fuzz_smith -- -timeout=3
+    cargo +nightly-2023-06-03 fuzz run fuzz_source -- -dict=fuzz/dictionary.txt -timeout=3
+
+Unlike the other fuzzers, the inputs to the smith fuzzer are not human-readable.
+To see what kind of inputs the fuzzer is exploring, you can use the `smithctl`
+program to interpret the smith programs:
+
+    cargo build --manifest-path=fuzz/Cargo.toml --bin smithctl
+
+To print all inputs discovered in the past 5 minutes:
+
+    fd . fuzz/corpus/fuzz_smith --changed-within 5m --exec target/debug/smithctl print
+
+[cargo-fuzz]: https://github.com/rust-fuzz/cargo-fuzz
+
 ## Unit tests
 
 There is less of a focus on unit tests. Constructing all the right environment

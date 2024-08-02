@@ -85,6 +85,12 @@ The directory `grammar/rcl.vim` contains support for highlighting in Vim.
 You can symlink the contents into your `~/.vim`, or use a plugin manager like
 Pathogen and symlink the directory into `~/.vim/bundle`.
 
+## Zed
+
+The directory `grammar/zed` contains a Zed extension. You can install it from
+the Zed command pannel with the _zed: install dev extension_ command, and
+picking the `grammar/zed` directory.
+
 ## External
 
 Aside from editor support, [`rcl highlight`](rcl_highlight.md) will highlight an
