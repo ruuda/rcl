@@ -857,11 +857,11 @@ impl<'a> TypeChecker<'a> {
                     let k = match self.check_expr(type_any(), *key_span, key) {
                         Err(err) if matches!(key.as_ref(), Expr::Var { .. }) => {
                             err.with_note(*op_span, concat! {
-                                "For unquoted string literals use the record syntax. (replace '" 
+                                "To use unquoted keys, replace '" 
                                 Doc::highlight(":")
                                 "' with '"
                                 Doc::highlight("=")
-                                "')"
+                                "'."
                             }).err()
                         }
                         other => other,
