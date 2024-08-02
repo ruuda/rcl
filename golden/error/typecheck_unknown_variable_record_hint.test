@@ -1,0 +1,16 @@
+{
+  user-wants-literal-text: "but used json syntax"
+}
+
+# output:
+stdin:2:3
+  ╷
+2 │   user-wants-literal-text: "but used json syntax"
+  ╵   ^~~~~~~~~~~~~~~~~~~~~~~
+Error: Unknown variable.
+
+stdin:2:26
+  ╷
+2 │   user-wants-literal-text: "but used json syntax"
+  ╵                          ^
+Note: To use unquoted keys, replace ':' with '='.
