@@ -1,0 +1,8 @@
+1e6
+
+# output:
+stdin:1:1
+  ╷
+1 │ 1e6
+  ╵ ^~~
+Error: Overflow in integer literal.
