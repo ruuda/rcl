@@ -49,6 +49,7 @@ pub enum Mode {
     EvalJsonCheck { width: u32 },
     EvalTomlCheck { width: u32 },
     EvalFormat { width: u32 },
+    EvalJsonSuperset,
 }
 
 pub fn fuzz_main(mode: Mode, input: &str) {
@@ -95,6 +96,9 @@ fn fuzz_main_impl(loader: &mut Loader, mode: Mode, input: &str) -> Result<()> {
         Mode::EvalFormat { width } => {
             cfg.width = width;
             let _ = fuzz_eval_format(loader, input, cfg);
+        }
+        Mode::EvalJsonSuperset => {
+            fuzz_eval_json_superset(loader, input);
         }
     };
 
@@ -205,4 +209,20 @@ fn fuzz_eval_format(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Re
     let out2 = run_fmt(loader, &out1, &cfg)?;
     assert_eq!(out1, out2, "Formatting after evaluation should be a no-op.");
     Ok(())
+}
+
+/// Check that any json that Serde can parse, can be evaluated as RCL.
+///
+/// This is the closest we can get to testing that RCL is a json superset.
+fn fuzz_eval_json_superset(loader: &mut Loader, input: &str) {
+    // First try to deserialize the input using Serde. If this fails, then we
+    // don't even attempt RCL; this is about json supersets.
+    use serde::de::IgnoredAny;
+    use serde_json::Result;
+    let result: Result<IgnoredAny> = serde_json::de::from_str(input);
+    if result.is_err() {
+        return;
+    }
+
+    eval(loader, input).expect("If Serde can parse it, RCL should be able to.");
 }
