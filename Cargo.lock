@@ -343,6 +343,7 @@ dependencies = [
  "arbitrary",
  "libfuzzer-sys",
  "rcl",
+ "serde",
  "serde_json",
  "toml",
  "tree-sitter",
