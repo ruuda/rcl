@@ -224,15 +224,8 @@ impl<'a> Abstractor<'a> {
             }
 
             CExpr::NumDecimal(span) => {
-                // TODO: Handle floats.
                 let num_str = span.resolve(self.input).replace('_', "");
-                match i64::from_str_radix(&num_str, 10) {
-                    Ok(i) => AExpr::IntegerLit(i),
-                    Err(..) => {
-                        let err = span.error("Overflow in integer literal.");
-                        return Err(err.into());
-                    }
-                }
+                parse_decimal(*span, &num_str)?
             }
 
             CExpr::IfThenElse {
@@ -468,5 +461,16 @@ impl<'a> Abstractor<'a> {
             },
         };
         Ok(result)
+    }
+}
+
+/// Parse a decimal literal (integer or float).
+///
+/// Expects underscores to have been removed already, as well as leading minus
+/// signs (those are unary operators, not part of the literal).
+pub fn parse_decimal(span: Span, num_str: &str) -> Result<AExpr> {
+    match i64::from_str_radix(&num_str, 10) {
+        Ok(i) => Ok(AExpr::IntegerLit(i)),
+        Err(..) => span.error("Overflow in integer literal.").err(),
     }
 }
