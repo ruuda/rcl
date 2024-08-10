@@ -178,6 +178,16 @@ fn fuzz_eval_json_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -
     let json_str = json_doc.println(&cfg).to_string_no_markup();
     match serde_json::from_str::<serde_json::Value>(&json_str[..]) {
         Ok(..) => Ok(()),
+        // RCL accepts numbers with larger exponents than what Serde accepts.
+        // This is not a bug in the json output but a (reasonable) implementation
+        // limitation of Serde, so we do allow this mismatch.
+        Err(err)
+            if err.is_syntax()
+                && json_str.contains("e")
+                && err.to_string().contains("number out of range") =>
+        {
+            Ok(())
+        }
         Err(err) => panic!("RCL output should be parseable, but got {err:?}"),
     }
 }
