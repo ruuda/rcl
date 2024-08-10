@@ -21,13 +21,13 @@ pub fn format_type(type_: &Type) -> Doc {
     match type_ {
         // For primitive types the short name is the full name.
         Type::Any
-        | Type::Void
         | Type::Bool
-        | Type::Int
         | Type::Float
-        | Type::Num
+        | Type::Int
         | Type::Null
-        | Type::String => Doc::from(type_.short_name()).with_markup(Markup::Type),
+        | Type::Num
+        | Type::String
+        | Type::Void => Doc::from(type_.short_name()).with_markup(Markup::Type),
 
         // Collection types.
         Type::Dict(kv) => concat! {
