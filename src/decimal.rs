@@ -9,11 +9,11 @@
 
 /// A rational number of the form `a × 10^n`.
 #[derive(Copy, Clone, Debug)]
-struct Decimal {
+pub struct Decimal {
     /// The value `a` (the "numerator").
-    numer: i64,
+    pub numer: i64,
     /// The exponent `n`.
-    exponent: i16,
+    pub exponent: i16,
 }
 
 impl From<i64> for Decimal {
@@ -26,7 +26,7 @@ impl From<i64> for Decimal {
 }
 
 #[derive(Debug)]
-enum ParseResult {
+pub enum ParseResult {
     Int(i64),
     Decimal(Decimal),
 }
@@ -36,7 +36,7 @@ impl Decimal {
     ///
     /// Assumes the string is already validated (by the lexer), panics on
     /// unknown characters. Returns `None` on overflow.
-    fn parse_str(dec: &str) -> Option<ParseResult> {
+    pub fn parse_str(dec: &str) -> Option<ParseResult> {
         let mut n: i64 = 0;
         let mut exponent: i16 = 0;
         let mut dec_point: i16 = 0;
@@ -219,6 +219,8 @@ impl PartialEq for Decimal {
 
 impl Eq for Decimal {}
 
+/* TODO: Restore the Rational type when we need it.
+
 /// A rational number.
 #[derive(Copy, Clone, Debug)]
 struct Rational {
@@ -273,6 +275,8 @@ impl Rational {
         Some(result)
     }
 }
+
+*/
 
 #[cfg(test)]
 mod test {

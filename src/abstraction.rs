@@ -469,7 +469,7 @@ impl<'a> Abstractor<'a> {
 /// Expects underscores to have been removed already, as well as leading minus
 /// signs (those are unary operators, not part of the literal).
 pub fn parse_decimal(span: Span, num_str: &str) -> Result<AExpr> {
-    match i64::from_str_radix(&num_str, 10) {
+    match i64::from_str_radix(num_str, 10) {
         Ok(i) => Ok(AExpr::IntegerLit(i)),
         Err(..) => span.error("Overflow in integer literal.").err(),
     }
