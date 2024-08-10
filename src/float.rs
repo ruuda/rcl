@@ -25,7 +25,62 @@ impl From<i64> for Decimal {
     }
 }
 
+#[derive(Debug)]
+enum ParseResult {
+    Int(i64),
+    Decimal(Decimal),
+}
+
 impl Decimal {
+    /// Parse a json number into either a decimal or an integer.
+    ///
+    /// Assumes the string is already validated (by the lexer), panics on
+    /// unknown characters. Returns `None` on overflow.
+    fn parse_str(dec: &str) -> Option<ParseResult> {
+        let mut n: i64 = 0;
+        let mut exponent: i16 = 0;
+        let mut dec_point: i16 = 0;
+        let mut is_int = true;
+        let mut is_exp = false;
+        let mut exp_sign = 1;
+
+        for ch in dec.as_bytes() {
+            match ch {
+                b'0'..=b'9' if is_exp => {
+                    exponent = exponent.checked_mul(10)?.checked_add((ch - b'0') as i16)?;
+                }
+                b'0'..=b'9' => {
+                    n = n.checked_mul(10)?.checked_add((ch - b'0') as i64)?;
+                    dec_point += if is_int { 0 } else { 1 };
+                }
+                b'.' => {
+                    is_int = false;
+                }
+                b'+' => {}
+                b'-' => {
+                    debug_assert!(is_exp, "Minus is only valid inside exponent.");
+                    exp_sign = -1;
+                }
+                b'e' | b'E' => {
+                    is_int = false;
+                    is_exp = true;
+                }
+                bad_byte => panic!("Invalid input byte for 'parse_str': 0x{bad_byte:x}"),
+            }
+        }
+
+        if is_int {
+            Some(ParseResult::Int(n))
+        } else {
+            Some(ParseResult::Decimal(Decimal {
+                numer: n,
+                // The first multiply does not overflow because the negative
+                // range of a signed int is one larger than the positive range.
+                exponent: (exponent * exp_sign).checked_sub(dec_point)?,
+            }))
+        }
+    }
+
     /// Format the number in scientific notation with exponent.
     ///
     /// Expects the numerator to be already converted to string.
@@ -194,7 +249,58 @@ impl Rational {
 
 #[cfg(test)]
 mod test {
-    use super::Decimal;
+    use super::{Decimal, ParseResult};
+
+    fn assert_parse_decimal(num: &str, expected_numer: i64, expected_exponent: i16) {
+        let result = Decimal::parse_str(num);
+        let is_ok = match result {
+            Some(ParseResult::Decimal(d)) => {
+                d.numer == expected_numer && d.exponent == expected_exponent
+            }
+            _ => false,
+        };
+
+        assert!(
+            is_ok,
+            "Expected '{num}' to parse as {expected_numer}e{expected_exponent}, but got {result:#?}"
+        );
+    }
+
+    #[test]
+    fn decimal_parse_str_parses_int() {
+        assert!(matches!(Decimal::parse_str("0"), Some(ParseResult::Int(0))));
+        assert!(matches!(Decimal::parse_str("1"), Some(ParseResult::Int(1))));
+        assert!(matches!(
+            Decimal::parse_str("10"),
+            Some(ParseResult::Int(10))
+        ));
+        assert!(matches!(
+            Decimal::parse_str(&i64::MAX.to_string()),
+            Some(ParseResult::Int(i64::MAX))
+        ));
+        assert!(matches!(
+            Decimal::parse_str(&(i64::MAX as u64 + 1).to_string()),
+            None
+        ));
+    }
+
+    #[test]
+    fn decimal_parse_str_parses_decimal() {
+        assert_parse_decimal("0.0", 0, -1);
+        assert_parse_decimal("0.", 0, 0);
+        assert_parse_decimal("10.0", 100, -1);
+        assert_parse_decimal("0.1", 1, -1);
+    }
+
+    #[test]
+    fn decimal_parse_str_parses_exponent() {
+        assert_parse_decimal("0e0", 0, 0);
+        assert_parse_decimal("1.0e42", 10, 41);
+        assert_parse_decimal("1.0e+42", 10, 41);
+        assert_parse_decimal("1.0e-42", 10, -43);
+        assert_parse_decimal("0.00500e5", 500, 0);
+        assert_parse_decimal("300e-3", 300, -3);
+    }
 
     #[test]
     fn decimal_format_works() {
