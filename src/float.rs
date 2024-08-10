@@ -179,18 +179,45 @@ impl Decimal {
 
 impl PartialEq for Decimal {
     fn eq(&self, other: &Decimal) -> bool {
+        // The case below assumes that on factor overflow the two are not equal,
+        // but this is not the case when the numerator is 0, so we need to check
+        // for that first.
+        if self.numer == 0 && other.numer == 0 {
+            return true;
+        }
+
         match self.exponent as i32 - other.exponent as i32 {
             0 => self.numer == other.numer,
             n if n > 0 => {
-                // TODO: Normalize, then compare.
-                panic!("TODO: Normalize, then compare.");
+                // `self` has excess exponent, try to move that excess into the
+                // numerator so we can compare.
+                let (factor, did_overflow) = 10_i64.overflowing_pow(n as u32);
+                if did_overflow {
+                    return false;
+                }
+                let self_numer = match self.numer.checked_mul(factor) {
+                    Some(m) => m,
+                    None => return false,
+                };
+                self_numer == other.numer
             }
-            _ => {
-                panic!("TODO: Normalize, then compare.");
+            n => {
+                // Same as above, but now `other` has the excess exponent.
+                let (factor, did_overflow) = 10_i64.overflowing_pow((-n) as u32);
+                if did_overflow {
+                    return false;
+                }
+                let other_numer = match other.numer.checked_mul(factor) {
+                    Some(m) => m,
+                    None => return false,
+                };
+                self.numer == other_numer
             }
         }
     }
 }
+
+impl Eq for Decimal {}
 
 /// A rational number.
 #[derive(Copy, Clone, Debug)]
@@ -255,6 +282,9 @@ mod test {
         let result = Decimal::parse_str(num);
         let is_ok = match result {
             Some(ParseResult::Decimal(d)) => {
+                // Note, we explicitly check the numerator and exponent here,
+                // we don't want equivalence (mathematical equality) of the
+                // decimals, we check the representation (structural equality).
                 d.numer == expected_numer && d.exponent == expected_exponent
             }
             _ => false,
@@ -379,5 +409,25 @@ mod test {
             exponent: -13,
         };
         assert_eq!(&x.format(), "1.0e-13");
+    }
+
+    #[test]
+    fn decimal_parse_after_format_is_identity() {
+        // This test is only a quick verification; the same property will be
+        // exercised more thoroughly by the fuzzer that verifies that evaluation
+        // to json is idempotent. We don't test negative numerators here because
+        // in the full parser the - is a unary operator, not part of the number.
+        for numer in (0..999).step_by(7) {
+            for exponent in (-999..999).step_by(11) {
+                let d1 = Decimal { numer, exponent };
+                let s = d1.format();
+                match Decimal::parse_str(&s).unwrap() {
+                    ParseResult::Int(..) => panic!("Formatting a decimal should parse as decimal."),
+                    ParseResult::Decimal(d2) => {
+                        assert_eq!(d1, d2);
+                    }
+                }
+            }
+        }
     }
 }
