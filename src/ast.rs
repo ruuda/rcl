@@ -12,6 +12,7 @@ use std::rc::Rc;
 
 pub use crate::cst::{BinOp, UnOp};
 
+use crate::decimal::Decimal;
 use crate::source::Span;
 use crate::types::{self, SourcedType};
 
@@ -136,8 +137,10 @@ pub enum Expr {
     StringLit(Rc<str>),
 
     /// An integer literal.
-    /// TODO: This should be a bigint.
     IntegerLit(i64),
+
+    /// A decimal literal.
+    DecimalLit(Decimal),
 
     /// A format string, with string literals and hole contents interleaved.
     Format(Vec<FormatFragment>),

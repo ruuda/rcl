@@ -348,6 +348,8 @@ impl<'a> Evaluator<'a> {
 
             Expr::IntegerLit(i) => Ok(Value::Int(*i)),
 
+            Expr::DecimalLit(d) => Ok(Value::Decimal(*d)),
+
             Expr::StringLit(s) => Ok(Value::String(s.clone())),
 
             Expr::Format(fragments) => self.eval_format(env, fragments),

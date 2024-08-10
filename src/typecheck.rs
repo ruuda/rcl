@@ -39,6 +39,7 @@ fn get_primitive_type(name: &str) -> Option<Type> {
         "Any" => Some(Type::Any),
         "Bool" => Some(Type::Bool),
         "Int" => Some(Type::Int),
+        "Float" => Some(Type::Float),
         "Null" => Some(Type::Null),
         "String" => Some(Type::String),
         "Void" => Some(Type::Void),
@@ -377,6 +378,7 @@ impl<'a> TypeChecker<'a> {
             Expr::NullLit => type_literal(expr_span, Type::Null).is_subtype_of(expected).check(expr_span)?,
             Expr::BoolLit(..) => type_literal(expr_span, Type::Bool).is_subtype_of(expected).check(expr_span)?,
             Expr::IntegerLit(..) => type_literal(expr_span, Type::Int).is_subtype_of(expected).check(expr_span)?,
+            Expr::DecimalLit(..) => type_literal(expr_span, Type::Float).is_subtype_of(expected).check(expr_span)?,
             Expr::StringLit(..) => type_literal(expr_span, Type::String).is_subtype_of(expected).check(expr_span)?,
 
             Expr::Format(fragments) => {
@@ -647,6 +649,7 @@ impl<'a> TypeChecker<'a> {
         // to an int, and if we report only one type error, that seems like it
         // should come first, as it comes first in the evaluation order too.
         let (body_type, result_type) = match op {
+            // TODO: Extend this to support float and generic numbers.
             UnOp::Neg => (Type::Int, Type::Int),
             UnOp::Not => (Type::Bool, Type::Bool),
         };
@@ -664,6 +667,7 @@ impl<'a> TypeChecker<'a> {
         rhs: &mut Expr,
     ) -> Result<SourcedType> {
         let (arg_type, result_type) = match op {
+            // TODO: Extend this with support for float and generic numbers.
             BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => (Type::Int, Type::Int),
             BinOp::And | BinOp::Or => (Type::Bool, Type::Bool),
             // Comparison operators make sense on many types (Int, String), even

@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{CallArg, Expr};
+use crate::decimal::Decimal;
 use crate::error::{IntoError, PathElement, Result};
 use crate::eval::Evaluator;
 use crate::fmt_rcl::format_rcl;
@@ -153,8 +154,9 @@ pub enum Value {
 
     Bool(bool),
 
-    // TODO: Should be a bigint.
     Int(i64),
+
+    Decimal(Decimal),
 
     String(Rc<str>),
 

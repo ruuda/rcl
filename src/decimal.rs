@@ -7,6 +7,8 @@
 
 //! Implementation of decimal and rational numbers for use in the interpreter.
 
+use std::cmp::Ordering;
+
 /// A rational number of the form `a × 10^n`.
 #[derive(Copy, Clone, Debug)]
 pub struct Decimal {
@@ -218,6 +220,22 @@ impl PartialEq for Decimal {
 }
 
 impl Eq for Decimal {}
+
+impl Ord for Decimal {
+    fn cmp(&self, other: &Decimal) -> Ordering {
+        if self.numer == 0 && other.numer == 0 {
+            return Ordering::Equal;
+        }
+
+        unimplemented!("TODO: Implement Decimal::cmp.");
+    }
+}
+
+impl PartialOrd for Decimal {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 /* TODO: Restore the Rational type when we need it.
 

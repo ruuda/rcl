@@ -41,6 +41,10 @@ pub enum Type {
     /// The primitive type `Int`.
     Int,
 
+    /// The primitive type `Float`.
+    Float,
+
+    // TODO: Add a `Num` type as supertype for Int and Float.
     /// The primitive type `String`.
     String,
 
@@ -65,7 +69,13 @@ impl Type {
     pub fn is_atom(&self) -> bool {
         matches!(
             self,
-            Type::Bool | Type::Int | Type::Null | Type::String | Type::Void | Type::Any,
+            Type::Bool
+                | Type::Int
+                | Type::Float
+                | Type::Null
+                | Type::String
+                | Type::Void
+                | Type::Any,
         )
     }
 
@@ -80,6 +90,7 @@ impl Type {
             Type::Null => "Null",
             Type::Bool => "Bool",
             Type::Int => "Int",
+            Type::Float => "Float",
             Type::String => "String",
             Type::Dict(..) => "Dict",
             Type::List(..) => "List",
@@ -436,6 +447,7 @@ impl SourcedType {
             // If we have matching primitive types, they are preserved.
             (Type::Bool, Type::Bool) => (Type::Bool, src_meet),
             (Type::Int, Type::Int) => (Type::Int, src_meet),
+            (Type::Float, Type::Float) => (Type::Float, src_meet),
             (Type::Null, Type::Null) => (Type::Null, src_meet),
             (Type::String, Type::String) => (Type::String, src_meet),
 
@@ -518,6 +530,7 @@ impl SourcedType {
             // or will it work fine like this?
             (Type::Bool, Type::Bool) => TypeDiff::Ok(other.clone()),
             (Type::Int, Type::Int) => TypeDiff::Ok(other.clone()),
+            (Type::Float, Type::Float) => TypeDiff::Ok(other.clone()),
             (Type::Null, Type::Null) => TypeDiff::Ok(other.clone()),
             (Type::String, Type::String) => TypeDiff::Ok(other.clone()),
 
@@ -729,6 +742,7 @@ pub fn builtin(type_: Type) -> SourcedType {
 macro_rules! make_type {
     (Any) => { builtin(Type::Any) };
     (Int) => { builtin(Type::Int) };
+    (Float) => { builtin(Type::Float) };
     (Bool) => { builtin(Type::Bool) };
     (String) => { builtin(Type::String) };
     ([$elem:tt]) => { builtin(Type::List(Rc::new(make_type!($elem)))) };
