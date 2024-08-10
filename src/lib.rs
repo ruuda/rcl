@@ -22,6 +22,7 @@ pub mod cst;
 pub mod env;
 pub mod error;
 pub mod eval;
+pub mod float;
 pub mod fmt_cst;
 pub mod fmt_json;
 pub mod fmt_raw;
