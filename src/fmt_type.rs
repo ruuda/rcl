@@ -25,6 +25,7 @@ pub fn format_type(type_: &Type) -> Doc {
         | Type::Bool
         | Type::Int
         | Type::Float
+        | Type::Num
         | Type::Null
         | Type::String => Doc::from(type_.short_name()).with_markup(Markup::Type),
 
