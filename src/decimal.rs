@@ -177,6 +177,14 @@ impl Decimal {
         }
         Some(normed)
     }
+
+    pub fn checked_neg(&self) -> Option<Decimal> {
+        let result = Decimal {
+            numer: self.numer.checked_neg()?,
+            exponent: self.exponent,
+        };
+        Some(result)
+    }
 }
 
 impl PartialEq for Decimal {

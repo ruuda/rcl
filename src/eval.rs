@@ -828,6 +828,15 @@ impl<'a> Evaluator<'a> {
                     op_span.error(err).err()
                 }
             },
+            (UnOp::Neg, Value::Decimal(d)) => match d.checked_neg() {
+                Some(nd) => Ok(Value::Decimal(nd)),
+                None => {
+                    let err = concat! {
+                        "Negation of " d.format() " would overflow."
+                    };
+                    op_span.error(err).err()
+                }
+            },
             _ => unreachable!("Invalid cases are prevented by the typechecker."),
         }
     }
