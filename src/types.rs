@@ -71,14 +71,14 @@ impl Type {
     pub fn is_atom(&self) -> bool {
         matches!(
             self,
-            Type::Bool
-                | Type::Int
+            Type::Any
+                | Type::Bool
                 | Type::Float
-                | Type::Num
+                | Type::Int
                 | Type::Null
+                | Type::Num
                 | Type::String
                 | Type::Void
-                | Type::Any,
         )
     }
 
