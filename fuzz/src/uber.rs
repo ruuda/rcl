@@ -224,5 +224,15 @@ fn fuzz_eval_json_superset(loader: &mut Loader, input: &str) {
         return;
     }
 
-    eval(loader, input).expect("If Serde can parse it, RCL should be able to.");
+    match eval(loader, input) {
+        Ok(..) => {
+            // Works as intended.
+        }
+        Err(err) if format!("{err:?}").contains("Overflow") => {
+            // We allow overflow errors, there are cases where Serde parses a
+            // long float but then loses precision, we reject it at the parser
+            // stage instead of losing precision.
+        }
+        Err(err) => panic!("If serde can parse it, RCL should be able to, but got: {err:?}"),
+    }
 }
