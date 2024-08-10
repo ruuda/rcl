@@ -10,4 +10,4 @@ stdin:5:3
   ╷
 5 │   9223372036854775808,
   ╵   ^~~~~~~~~~~~~~~~~~~
-Error: Overflow in integer literal.
+Error: Overflow in number literal.
