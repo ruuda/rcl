@@ -40,6 +40,7 @@ fn get_primitive_type(name: &str) -> Option<Type> {
         "Bool" => Some(Type::Bool),
         "Int" => Some(Type::Int),
         "Float" => Some(Type::Float),
+        "Num" => Some(Type::Num),
         "Null" => Some(Type::Null),
         "String" => Some(Type::String),
         "Void" => Some(Type::Void),
