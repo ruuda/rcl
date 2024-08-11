@@ -267,7 +267,49 @@ impl Ord for Decimal {
             return Ordering::Equal;
         }
 
-        unimplemented!("TODO: Implement Decimal::cmp.");
+        if self.exponent == other.exponent {
+            return self.numer.cmp(&other.numer);
+        }
+
+        if self.exponent <= other.exponent {
+            // This is a case like 0.1 cmp 1.0. Try to rescale ourselves to be
+            // in the same range as the other. That loses precision, but we can
+            // get a lower and upper bound of where we are and that might be
+            // sufficient to complete the comparison.
+            // TODO: Beware overflow.
+            let factor = 10_i64.pow((other.exponent - self.exponent) as u32);
+
+            // Scale ourselves down to the same range of the other. We lose
+            // precision, so we have an inclusive lower bound and exclusive
+            // upper bound of where `self` is on this scale compared to the
+            // other.
+            // TODO: This fails for negative numbers.
+            let self_lower = self.numer / factor;
+            let self_upper = self_lower + 1;
+
+            if self_lower > other.numer {
+                return Ordering::Greater;
+            }
+            if self_upper <= other.numer {
+                return Ordering::Less;
+            }
+
+            debug_assert_eq!(self_lower, other.numer);
+
+            // If the scaled version is equal, if the scaled version is exact
+            // then the two numbers are equal. If the scaled version lost some
+            // digits, then it means `self` is in between `self_lower` and
+            // `self_upper` so it's greater than the other number.
+            if self.numer == self_lower * factor {
+                Ordering::Equal
+            } else {
+                Ordering::Greater
+            }
+        } else {
+            // The case where other's exponent is larger is symmetric, we can
+            // use the same code but just reverse the outcome.
+            other.cmp(self).reverse()
+        }
     }
 }
 
@@ -356,6 +398,13 @@ mod test {
             is_ok,
             "Expected '{num}' to parse as {expected_numer}e{expected_exponent}, but got {result:#?}"
         );
+    }
+
+    /// Shorthand to make tests briefer.
+    ///
+    /// But also less readable, we don't make this `Decimal::new`.
+    fn decimal(numer: i64, exponent: i16) -> Decimal {
+        Decimal { numer, exponent }
     }
 
     #[test]
@@ -513,5 +562,61 @@ mod test {
                 }
             }
         }
+    }
+
+    #[test]
+    fn decimal_ord_works() {
+        let p1e0 = decimal(1, 0);
+        let p2e0 = decimal(2, 0);
+        let p10e0 = decimal(10, 0);
+        let p11e0 = decimal(11, 0);
+
+        let p1e1 = decimal(1, 1);
+        let p2e1 = decimal(2, 1);
+        let p10e1 = decimal(10, 1);
+        let p11e1 = decimal(11, 1);
+
+        let p1en1 = decimal(1, -1);
+        let p2en1 = decimal(2, -1);
+        let p10en1 = decimal(10, -1);
+        let p11en1 = decimal(11, -1);
+
+        let n1e0 = decimal(-1, 0);
+        let n2e0 = decimal(-2, 0);
+        let n10e0 = decimal(-10, 0);
+        let n11e0 = decimal(-11, 0);
+
+        assert!(p1e0 < p2e0);
+        assert!(p2e0 < p10e0);
+        assert!(p10e0 < p11e0);
+
+        assert!(p1e0 < p1e1);
+        assert!(p2e0 < p1e1);
+        assert!(p10e0 == p1e1);
+        assert!(p11e0 > p1e1);
+        assert!(p11e0 < p2e1);
+        assert!(p11e0 < p10e1);
+
+        assert!(p1en1 < p1e0);
+        assert!(p2en1 < p1e0);
+        assert!(p10en1 == p1e0);
+        assert!(p10en1 < p1e1);
+        assert!(p11en1 > p1e0);
+        assert!(p11en1 < p2e0);
+
+        assert!(p11e1 > p11en1);
+        assert!(p11en1 < p11e1);
+
+        assert!(n1e0 > n2e0);
+        assert!(n2e0 > n10e0);
+        assert!(n10e0 > n11e0);
+
+        assert!(n1e0 < p1e0);
+        assert!(n1e0 < p1e1);
+        assert!(n11e0 < p1e1);
+        assert!(n11e0 < p10e0);
+
+        assert!(n1e0 < p1en1);
+        assert!(n1e0 < p10en1);
     }
 }
