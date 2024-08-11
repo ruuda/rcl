@@ -45,15 +45,40 @@ impl Decimal {
         let mut is_int = true;
         let mut is_exp = false;
         let mut exp_sign = 1;
+        let mut is_precise = true;
 
         for ch in dec.as_bytes() {
             match ch {
                 b'0'..=b'9' if is_exp => {
                     exponent = exponent.checked_mul(10)?.checked_add((ch - b'0') as i16)?;
                 }
+                b'0'..=b'9' if !is_precise => {
+                    // If the mantissa is already saturated, but we keep getting
+                    // more digits, then we drop those digits, but we do need to
+                    // adjust the exponent if the digits are before the decimal
+                    // point.
+                    dec_point -= if is_int { 1 } else { 0 };
+                }
                 b'0'..=b'9' => {
-                    n = n.checked_mul(10)?.checked_add((ch - b'0') as i64)?;
-                    dec_point += if is_int { 0 } else { 1 };
+                    match n
+                        .checked_mul(10)
+                        .and_then(|n10| n10.checked_add((ch - b'0') as i64))
+                    {
+                        // We added one digit to the mantissa and it still fits.
+                        Some(m) => {
+                            n = m;
+                            dec_point += if is_int { 0 } else { 1 };
+                        }
+                        // The mantissa is saturated, we switch to dropping
+                        // digits. If appropriate and when possible, round up
+                        // the last digit we had.
+                        None => {
+                            let round_up = *ch >= b'5';
+                            n = n.saturating_add(if round_up { 1 } else { 0 });
+                            dec_point -= if is_int { 1 } else { 0 };
+                            is_precise = false;
+                        }
+                    }
                 }
                 b'.' => {
                     is_int = false;
@@ -72,7 +97,14 @@ impl Decimal {
         }
 
         if is_int {
-            Some(ParseResult::Int(n))
+            // For integers, if the literal is too large to fit in an i64 and we
+            // switched to imprecise, we don't want to implicitly turn that
+            // integer literal into a float, so treat that as overflow.
+            if is_precise {
+                Some(ParseResult::Int(n))
+            } else {
+                None
+            }
         } else {
             Some(ParseResult::Decimal(Decimal {
                 numer: n,
@@ -91,7 +123,7 @@ impl Decimal {
 
         // We want to use the width of the string to determine the exponent,
         // but that fails for 0, so handle this special case now to simplify
-        // the remaining code. We might return 0e0 but it would be dead code
+        // the remaining code. We might return 0e0, but it would be dead code
         // as long as this method is not exposed to users, so for now panic.
         debug_assert_ne!(self.numer, 0, "format_scientific is not meant to format 0.");
 
@@ -350,6 +382,28 @@ mod test {
         assert_parse_decimal("0.", 0, 0);
         assert_parse_decimal("10.0", 100, -1);
         assert_parse_decimal("0.1", 1, -1);
+    }
+
+    #[test]
+    fn decimal_parse_str_parses_decimal_imprecise() {
+        // This magic number is the overflow point.
+        assert_eq!(i64::MAX, 9223372036854775807);
+
+        // Without the switch to imprecise parsing, we'd overflow the i64
+        // mantissa, and we would not be able to parse this, but with the switch
+        // we can handle arbitrarily long decimals (but not in full precision).
+        // In the case below the overflow happens before the decimal point. We
+        // also test that rounding works as expected.
+        assert_parse_decimal("9223372036854775807.0", 9223372036854775807, 0);
+        assert_parse_decimal("9223372036854775808.0", 922337203685477581, 1);
+        assert_parse_decimal("9223372036854775814.0", 922337203685477581, 1);
+        assert_parse_decimal("9223372036854775815.0", 922337203685477582, 1);
+
+        // And here it happens after the decimal point.
+        assert_parse_decimal("0.9223372036854775807", 9223372036854775807, -19);
+        assert_parse_decimal("0.9223372036854775808", 922337203685477581, -18);
+        assert_parse_decimal("0.9223372036854775814", 922337203685477581, -18);
+        assert_parse_decimal("0.9223372036854775815", 922337203685477582, -18);
     }
 
     #[test]

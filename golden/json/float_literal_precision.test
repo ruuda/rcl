@@ -1,0 +1,24 @@
+[
+  // These are all preserved exactly. The magic number is i64::MAX (2^63).
+  9223372036854775807.0,
+  0.9223372036854775807,
+
+  // These lose precision in the least significant digits, limited by i64.
+  9223372036854775808.0,
+  0.9223372036854775808,
+
+  // This one technically loses precision during the parse, but we only drop
+  // zeros so the outcome is still exact. The printed format could be nicer
+  // though in this case, although in general it is nice to preserve the
+  // number of decimals in the input.
+  1.000000000000000000000000000000000000,
+]
+
+# output:
+[
+  9.223372036854775807e18,
+  9.223372036854775807e-1,
+  9.22337203685477581e18,
+  9.22337203685477581e-1,
+  1.000000000000000000e0
+]
