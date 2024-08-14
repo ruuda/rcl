@@ -283,8 +283,20 @@ impl Ord for Decimal {
             // in the same range as the other. That loses precision, but we can
             // get a lower and upper bound of where we are and that might be
             // sufficient to complete the comparison.
-            // TODO: Beware overflow.
-            let factor = 10_i64.pow((other.exponent - self.exponent) as u32);
+            let factor = match 10_i64.checked_pow((other.exponent - self.exponent) as u32) {
+                Some(n) => n,
+                None => {
+                    // This number is so much smaller than the other one that we
+                    // can't even put them on the same scale.
+                    return match (self.numer.signum(), other.numer.signum()) {
+                        (_, 1) => Ordering::Less,
+                        (_, -1) => Ordering::Greater,
+                        (-1, 0) => Ordering::Less,
+                        (1, 0) => Ordering::Greater,
+                        _ => unreachable!("We handled (0, 0) before and signum returns no others."),
+                    };
+                }
+            };
 
             // Scale ourselves down to the same range of the other. We lose
             // precision, so we have an inclusive lower bound and exclusive
@@ -581,6 +593,8 @@ mod test {
 
     #[test]
     fn decimal_ord_works() {
+        // TODO: Instead of "decimal" shorthand, write as strings and parse
+        // them, that would make the tests way more readable.
         let p1e0 = decimal(1, 0);
         let p2e0 = decimal(2, 0);
         let p10e0 = decimal(10, 0);
@@ -633,5 +647,13 @@ mod test {
 
         assert!(n1e0 < p1en1);
         assert!(n1e0 < p10en1);
+
+        let p1e100 = decimal(1, 100);
+        let n1e100 = decimal(-1, 100);
+        assert!(p1e100 > p1e1);
+        assert!(p1e100 > n1e0);
+        assert!(n1e100 < p1e100);
+        assert!(n1e100 < p1e1);
+        assert!(n1e100 < n1e0);
     }
 }
