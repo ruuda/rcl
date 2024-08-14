@@ -201,6 +201,11 @@ fn fuzz_eval_toml_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -
     let toml_str = toml_doc.println(&cfg).to_string_no_markup();
     match toml::from_str::<toml::Value>(&toml_str[..]) {
         Ok(..) => Ok(()),
+        Err(err) if err.message().contains("invalid floating-point number") => {
+            // RCL supports larger exponents on floats than what the toml crate
+            // admits, this is an intentional incompatibility.
+            Ok(())
+        }
         Err(err) => panic!("RCL output should be parseable, but got {err:?}"),
     }
 }
