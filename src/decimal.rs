@@ -129,12 +129,13 @@ impl Decimal {
 
         // We are going to put one digit before the decimal points and the
         // others after it, so we need to adjust the exponent for that.
-        let implicit_exponent = result.len() as i16 - 1;
-        result.insert(1, '.');
+        let sign_len = if self.numer < 0 { 1 } else { 0 };
+        let implicit_exponent = result.len() as i16 - sign_len - 1;
+        result.insert(1 + sign_len as usize, '.');
 
         // Ensure there is always something after the decimal point, even when
         // there are no significant digits there.
-        if result.len() == 2 {
+        if result.len() == 2 + sign_len as usize {
             result.push('0');
         }
 
@@ -159,28 +160,34 @@ impl Decimal {
         // digits. Let's say that numbers with up to 12 digits before or after
         // the decimal point are okay to print in normal notation, but when we
         // get beyond that, we switch to scientific notation.
-        let digits_before_point = (result.len() as i16 + self.exponent).max(0);
+        let sign_len = if self.numer < 0 { 1 } else { 0 };
+        let n = result.len() as i16 - sign_len;
+        let digits_before_point = (n + self.exponent).max(0);
         let digits_after_point = (-self.exponent).max(0);
 
         if digits_before_point > 12 || digits_after_point > 12 {
             return self.format_scientific(result);
         }
 
-        if digits_before_point >= result.len() as i16 {
-            for _ in 0..digits_before_point - result.len() as i16 {
+        if digits_before_point >= n {
+            for _ in 0..digits_before_point - n {
                 result.push('0');
             }
             result.push_str(".0");
             return result;
         }
 
-        if digits_after_point >= result.len() as i16 {
+        if digits_after_point >= n {
             let mut final_result = String::with_capacity(digits_after_point as usize + 2);
-            final_result.push_str("0.");
-            for _ in 0..digits_after_point - result.len() as i16 {
+            if self.numer < 0 {
+                final_result.push_str("-0.");
+            } else {
+                final_result.push_str("0.");
+            }
+            for _ in 0..digits_after_point - n {
                 final_result.push('0');
             }
-            final_result.push_str(&result);
+            final_result.push_str(&result[sign_len as usize..]);
             return final_result;
         }
 
@@ -190,7 +197,7 @@ impl Decimal {
 
         // If the exponent was thas that negative, we would have been in the
         // case where the entire number was behind the point.
-        debug_assert!(-self.exponent < result.len() as i16);
+        debug_assert!(-self.exponent < n);
 
         // So we are in the case where the decimal point is inside the string.
         result.insert(result.len() - digits_after_point as usize, '.');
@@ -542,6 +549,14 @@ mod test {
             exponent: -13,
         };
         assert_eq!(&x.format(), "1.0e-13");
+    }
+
+    #[test]
+    fn decimal_format_handles_negative_numbers() {
+        assert_eq!(&decimal(-1, 2).format(), "-100.0");
+        assert_eq!(&decimal(-1, -2).format(), "-0.01");
+        assert_eq!(&decimal(-9000009, -14).format(), "-9.000009e-8");
+        assert_eq!(&decimal(-7, 25).format(), "-7.0e25");
     }
 
     #[test]
