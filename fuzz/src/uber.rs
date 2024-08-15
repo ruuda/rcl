@@ -243,12 +243,18 @@ fn fuzz_eval_json_superset(loader: &mut Loader, input: &str) {
         Ok(..) => {
             // Works as intended.
         }
-        Err(err) if format!("{err:?}").contains("Overflow") => {
-            // In cases of a large integer or large exponent, Serde parses it
-            // into a different data type or into a float that goes Inf, but RCL
-            // cannot represent those, so the incompatibility here is
-            // intentional.
+        Err(err) => {
+            let msg = format!("{err:?}");
+            if msg.contains("Overflow") {
+                // In cases of a large integer or large exponent, Serde parses
+                // it into a different data type or into a float that goes Inf,
+                // but RCL cannot represent those, so the incompatibility here
+                // is intentional.
+            } else if msg.contains("not a Unicode scalar value") {
+                // RCL does not support surrogate pairs on purpose.
+            } else {
+                panic!("If Serde can parse it, RCL should be able to, but got: {msg}");
+            }
         }
-        Err(err) => panic!("If Serde can parse it, RCL should be able to, but got: {err:?}"),
     }
 }
