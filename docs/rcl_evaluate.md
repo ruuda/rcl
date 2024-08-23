@@ -7,6 +7,7 @@ Shorthands:
     rcl eval
     rcl e   (uses default --format=rcl)
     rcl je  (sets --format=json)
+    rcl re  (sets --format=raw)
 
 ## Description
 

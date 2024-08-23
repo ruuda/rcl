@@ -22,6 +22,8 @@ compatibility impact will be clearly marked as such in the changelog.
    For compatibility the colon is optional for now. It will likely become
    mandatory in a future release. In that case it will be clearly marked as
    a change with compatibility impact in the release notes.
+ * Add `rcl re` as a shorthand for `rcl evaluate --format=raw` and `rcl rq` as
+   a shorthand for `rcl query --format=raw`.
 
 ## 0.5.0
 

@@ -6,6 +6,7 @@ Shorthands:
 
     rcl q   (uses default --format=rcl)
     rcl jq  (sets --format=json)
+    rcl rq  (sets --format=raw)
 
 ## Description
 

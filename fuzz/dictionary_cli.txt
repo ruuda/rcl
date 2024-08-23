@@ -6,6 +6,12 @@
 "highlight"
 "query"
 
+# Shorthands
+"je"
+"jq"
+"re"
+"rq"
+
 # Options
 "--banner"
 "--check"

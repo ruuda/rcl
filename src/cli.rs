@@ -33,8 +33,8 @@ Command shorthands:
   e, eval      Alias for 'evaluate'.
   f, fmt       Alias for 'format'.
   h            Alias for 'highlight'.
-  jq           Alias for 'query --format=json'.
-  je           Alias for 'eval --format=json'.
+  je, jq       Alias for 'eval' and 'query' respectively with '--format=json'.
+  re, rq       Alias for 'eval' and 'query' respectively with '--format=raw'.
   q            Alias for 'query'.
 
 Global options:
@@ -410,12 +410,20 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 cmd = Some("evaluate");
                 eval_opts.format = OutputFormat::Json;
             }
+            Arg::Plain("re") if cmd.is_none() => {
+                cmd = Some("evaluate");
+                eval_opts.format = OutputFormat::Raw;
+            }
             Arg::Plain("query") | Arg::Plain("q") if cmd.is_none() => {
                 cmd = Some("query");
             }
             Arg::Plain("jq") if cmd.is_none() => {
                 cmd = Some("query");
                 eval_opts.format = OutputFormat::Json;
+            }
+            Arg::Plain("rq") if cmd.is_none() => {
+                cmd = Some("query");
+                eval_opts.format = OutputFormat::Raw;
             }
             Arg::Plain("format") | Arg::Plain("fmt") | Arg::Plain("f") if cmd.is_none() => {
                 cmd = Some("format");
@@ -669,6 +677,7 @@ mod test {
             eval_opts.format = OutputFormat::Raw;
         }
         assert_eq!(parse(&["rcl", "e", "infile", "-fraw"]), expected);
+        assert_eq!(parse(&["rcl", "re", "infile"]), expected);
 
         // Test --sandbox.
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
@@ -835,6 +844,11 @@ mod test {
             eval_opts.format = OutputFormat::Json
         };
         assert_eq!(parse(&["rcl", "jq", "infile", "input.name"]), expected);
+
+        if let Cmd::Query { eval_opts, .. } = &mut expected.1 {
+            eval_opts.format = OutputFormat::Raw
+        };
+        assert_eq!(parse(&["rcl", "rq", "infile", "input.name"]), expected);
 
         if let Cmd::Query {
             eval_opts,
