@@ -224,6 +224,13 @@ impl Decimal {
         };
         Some(result)
     }
+
+    /// Convert to a float. For many decimals this will be a lossy operation.
+    pub fn to_f64_lossy(&self) -> f64 {
+        let n = self.numer as f64;
+        let exp = 10.0_f64.powi(self.exponent as i32);
+        n * exp
+    }
 }
 
 impl PartialEq for Decimal {
