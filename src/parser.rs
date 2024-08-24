@@ -86,23 +86,27 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Return the token under the cursor, if there is one.
-    fn peek(&self) -> Option<Token> {
+    /// Return the token under the cursor.
+    fn peek(&self) -> Token {
         self.peek_n(0)
     }
 
     /// Return the next code token, ignoring whitespace and non-code.
-    fn peek_past_non_code(&self) -> Option<Token> {
+    fn peek_past_non_code(&self) -> Token {
         self.tokens[self.cursor..]
             .iter()
             .filter(|t| !matches!(t.0, Token::Blank | Token::LineComment | Token::Shebang))
             .map(|t| t.0)
             .next()
+            .unwrap_or(Token::Eof)
     }
 
     /// Return the token `offset` tokens after the cursor, if there is one.
-    fn peek_n(&self, offset: usize) -> Option<Token> {
-        self.tokens.get(self.cursor + offset).map(|t| t.0)
+    fn peek_n(&self, offset: usize) -> Token {
+        self.tokens
+            .get(self.cursor + offset)
+            .map(|t| t.0)
+            .unwrap_or(Token::Eof)
     }
 
     /// Return the span under the cursor, or end of document otherwise.
@@ -228,9 +232,9 @@ impl<'a> Parser<'a> {
 
         loop {
             match self.peek() {
-                Some(Token::LineComment) => result.push(NonCode::LineComment(self.consume())),
-                Some(Token::Shebang) => result.push(NonCode::Shebang(self.consume())),
-                Some(Token::Blank) => result.push(NonCode::Blank(self.consume())),
+                Token::LineComment => result.push(NonCode::LineComment(self.consume())),
+                Token::Shebang => result.push(NonCode::Shebang(self.consume())),
+                Token::Blank => result.push(NonCode::Blank(self.consume())),
                 _ => {
                     // If it's not a space, then this is the last location where
                     // a comment could have been inserted. Record that, so we
@@ -246,7 +250,7 @@ impl<'a> Parser<'a> {
 
     /// Skip over any blank line tokens.
     fn skip_blanks(&mut self) {
-        while let Some(Token::Blank) = self.peek() {
+        while self.peek() == Token::Blank {
             self.consume();
         }
     }
@@ -255,10 +259,10 @@ impl<'a> Parser<'a> {
     fn skip_non_code(&mut self) -> Result<()> {
         loop {
             match self.peek() {
-                Some(Token::Blank) => {
+                Token::Blank => {
                     self.consume();
                 }
-                Some(Token::LineComment) => {
+                Token::LineComment => {
                     return self
                         .error("A comment is not allowed here.")
                         .with_note(
@@ -275,7 +279,7 @@ impl<'a> Parser<'a> {
     /// Expect an identifier.
     fn parse_ident(&mut self) -> Result<Span> {
         match self.peek() {
-            Some(Token::Ident) => Ok(self.consume()),
+            Token::Ident => Ok(self.consume()),
             _ => self.error("Expected an identifier here.").err(),
         }
     }
@@ -283,7 +287,7 @@ impl<'a> Parser<'a> {
     /// Consume the given token, report an error otherwise.
     fn parse_token(&mut self, expected: Token, error: &'static str) -> Result<Span> {
         match self.peek() {
-            Some(token) if token == expected => Ok(self.consume()),
+            token if token == expected => Ok(self.consume()),
             _ => self.error(error).err(),
         }
     }
@@ -297,7 +301,7 @@ impl<'a> Parser<'a> {
         note: &'static str,
     ) -> Result<Span> {
         match self.peek() {
-            Some(token) if token == expected => Ok(self.consume()),
+            token if token == expected => Ok(self.consume()),
             _ => self.error(error).with_note(note_span, note).err(),
         }
     }
@@ -324,7 +328,7 @@ impl<'a> Parser<'a> {
             let begin = self.peek_span();
 
             match self.peek() {
-                Some(Token::KwAssert | Token::KwLet | Token::KwTrace) => {
+                Token::KwAssert | Token::KwLet | Token::KwTrace => {
                     let stmt = self.parse_stmt()?;
                     let prefixed = Prefixed {
                         prefix,
@@ -368,7 +372,7 @@ impl<'a> Parser<'a> {
     /// Parse an expression that is known to not be a statement.
     fn parse_expr_no_stmt(&mut self) -> Result<Expr> {
         match self.peek() {
-            Some(Token::KwIf) => self.parse_expr_if(),
+            Token::KwIf => self.parse_expr_if(),
             _ => Ok(self.parse_expr_op()?.1),
         }
     }
@@ -403,7 +407,7 @@ impl<'a> Parser<'a> {
         // 0.5.0 the syntax was to omit the colon, but I think it makes more
         // sense to have it. It should become mandatory in some future release,
         // but for now it can be optional. TODO: Make it mandatory.
-        if let Some(Token::Colon) = self.peek() {
+        if self.peek() == Token::Colon {
             self.consume();
         }
 
@@ -435,9 +439,9 @@ impl<'a> Parser<'a> {
     #[inline]
     fn parse_stmt(&mut self) -> Result<Stmt> {
         match self.peek() {
-            Some(Token::KwAssert) => self.parse_stmt_assert(),
-            Some(Token::KwLet) => self.parse_stmt_let(),
-            Some(Token::KwTrace) => self.parse_stmt_trace(),
+            Token::KwAssert => self.parse_stmt_assert(),
+            Token::KwLet => self.parse_stmt_let(),
+            Token::KwTrace => self.parse_stmt_trace(),
             _ => panic!("Should only be called at 'assert', 'let', or 'trace'."),
         }
     }
@@ -453,8 +457,8 @@ impl<'a> Parser<'a> {
         // then explain that the message is not optional (unlike in Python).
         self.skip_non_code()?;
         match self.peek() {
-            Some(Token::Comma) => self.consume(),
-            Some(Token::Semicolon) => {
+            Token::Comma => self.consume(),
+            Token::Semicolon => {
                 return self
                     .error("Expected ',' here between the assertion condition and message.")
                     .with_help(
@@ -501,7 +505,7 @@ impl<'a> Parser<'a> {
         // Parse the optional type signature, and then the '='.
         self.skip_non_code()?;
         let type_: Option<Box<Type>> = match self.peek() {
-            Some(Token::Colon) => {
+            Token::Colon => {
                 self.consume();
                 self.skip_non_code()?;
                 let type_ = self.parse_type_expr()?;
@@ -509,8 +513,8 @@ impl<'a> Parser<'a> {
                 // something that looks like it might be part of a function
                 // type, educate the user about how to do that.
                 match self.peek() {
-                    Some(Token::Eq1) => self.consume(),
-                    Some(Token::FatArrow) => {
+                    Token::Eq1 => self.consume(),
+                    Token::FatArrow => {
                         return self
                             .error("Expected '=' after type annotation.")
                             .with_help(
@@ -519,7 +523,7 @@ impl<'a> Parser<'a> {
                             )
                             .err();
                     }
-                    Some(Token::ThinArrow) => {
+                    Token::ThinArrow => {
                         return self
                             .error("Expected '=' after type annotation.")
                             .with_help("Function types require parentheses, e.g. '(Int) -> Bool'.")
@@ -529,7 +533,7 @@ impl<'a> Parser<'a> {
                 };
                 Some(Box::new(type_))
             }
-            Some(Token::Eq1) => {
+            Token::Eq1 => {
                 self.consume();
                 None
             }
@@ -582,7 +586,7 @@ impl<'a> Parser<'a> {
 
     /// Return an error with hint if there is a known bad unary operator under the cursor.
     fn check_bad_unop(&self) -> Result<()> {
-        if let Some(Token::Bang) = self.peek() {
+        if self.peek() == Token::Bang {
             return self
                 .error("Invalid operator. Negation is written with keyword 'not' instead of '!'.")
                 .err();
@@ -608,8 +612,8 @@ impl<'a> Parser<'a> {
     fn look_ahead_is_function(&mut self) -> bool {
         let mut offset = 0;
         match self.peek() {
-            Some(Token::Ident) => offset = 1,
-            Some(Token::LParen) => {
+            Token::Ident => offset = 1,
+            Token::LParen => {
                 // Find the next closing paren, and continue parsing from there.
                 // We don't have to be exact here, because this is only used to
                 // look ahead to see if we should parse a lambda or expr. We
@@ -621,11 +625,11 @@ impl<'a> Parser<'a> {
                 // trying to parse an expression and failing on the `,`.
                 for i in 1.. {
                     match self.peek_n(i) {
-                        Some(Token::RParen) => {
+                        Token::RParen => {
                             offset = i + 1;
                             break;
                         }
-                        None => unreachable!("The lexer returns balanced parens."),
+                        Token::Eof => unreachable!("The lexer returns balanced parens."),
                         _ => continue,
                     }
                 }
@@ -634,9 +638,9 @@ impl<'a> Parser<'a> {
         };
         for i in offset.. {
             match self.peek_n(i) {
-                Some(Token::LineComment) => continue,
-                Some(Token::Blank) => continue,
-                Some(Token::FatArrow) => return true,
+                Token::LineComment => continue,
+                Token::Blank => continue,
+                Token::FatArrow => return true,
                 _ => return false,
             }
         }
@@ -647,7 +651,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_function(&mut self) -> Result<(Span, Expr)> {
         let begin = self.peek_span();
         let args = match self.peek() {
-            Some(Token::Ident) => {
+            Token::Ident => {
                 let prefixed = Prefixed {
                     prefix: [].into(),
                     inner: self.consume(),
@@ -658,7 +662,7 @@ impl<'a> Parser<'a> {
                     trailing_comma: false,
                 }
             }
-            Some(Token::LParen) => {
+            Token::LParen => {
                 self.push_bracket()?;
                 let args = self.parse_function_args()?;
                 self.pop_bracket()?;
@@ -684,7 +688,7 @@ impl<'a> Parser<'a> {
         // First we check all the rules for prefix unary operators.
         self.check_bad_unop()?;
 
-        if self.peek().and_then(to_unop).is_some() {
+        if to_unop(self.peek()).is_some() {
             return self.parse_expr_unop();
         }
 
@@ -693,7 +697,7 @@ impl<'a> Parser<'a> {
         if self.look_ahead_is_function() {
             return self.parse_expr_function();
         }
-        if self.peek() == Some(Token::KwImport) {
+        if self.peek() == Token::KwImport {
             return self.parse_expr_import();
         }
 
@@ -707,7 +711,7 @@ impl<'a> Parser<'a> {
         let mut allowed_span = None;
         loop {
             self.skip_non_code()?;
-            match self.peek().and_then(to_binop) {
+            match to_binop(self.peek()) {
                 Some(op) if allowed_op.is_none() || allowed_op == Some(op) => {
                     let span = self.consume();
                     self.skip_non_code()?;
@@ -738,16 +742,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr_unop(&mut self) -> Result<(Span, Expr)> {
-        let op = self
-            .peek()
-            .and_then(to_unop)
-            .expect("Should only call this with unop under cursor.");
+        let op = to_unop(self.peek()).expect("Should only call this with unop under cursor.");
         let span = self.consume();
         self.skip_non_code()?;
         self.check_bad_unop()?;
 
         // Nested unary expressions are okay.
-        let (body_span, body) = if self.peek().and_then(to_unop).is_some() {
+        let (body_span, body) = if to_unop(self.peek()).is_some() {
             self.parse_expr_unop()?
         } else {
             self.parse_expr_not_op()?
@@ -766,7 +767,7 @@ impl<'a> Parser<'a> {
         // parse error is confusing, about unexpected content after the end
         // of the expression/document.
         self.skip_non_code()?;
-        if self.peek().and_then(to_binop).is_some() {
+        if to_binop(self.peek()).is_some() {
             return self
                 .error("Parentheses are needed to clarify the precedence of this operator.")
                 .with_note(
@@ -795,14 +796,14 @@ impl<'a> Parser<'a> {
             inner_span = self.span_from(begin);
             self.skip_non_code()?;
             match self.peek() {
-                Some(Token::LParen) => {
+                Token::LParen => {
                     let open = self.push_bracket()?;
                     let args = self.parse_call_args()?;
                     let close = self.pop_bracket()?;
                     let chain_expr = Chain::Call { open, close, args };
                     chain.push((inner_span, chain_expr));
                 }
-                Some(Token::LBracket) => {
+                Token::LBracket => {
                     let open = self.push_bracket()?;
                     let (index_span, index) = self.parse_expr()?;
                     let close = self.pop_bracket()?;
@@ -814,7 +815,7 @@ impl<'a> Parser<'a> {
                     };
                     chain.push((inner_span, chain_expr));
                 }
-                Some(Token::Dot) => {
+                Token::Dot => {
                     self.consume();
                     self.skip_non_code()?;
                     let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
@@ -841,7 +842,7 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_term(&mut self) -> Result<Expr> {
         match self.peek() {
-            Some(Token::LBrace) => {
+            Token::LBrace => {
                 let open = self.push_bracket()?;
                 let elements = self.parse_seqs()?;
                 let close = self.pop_bracket()?;
@@ -852,7 +853,7 @@ impl<'a> Parser<'a> {
                 };
                 Ok(result)
             }
-            Some(Token::LBracket) => {
+            Token::LBracket => {
                 let open = self.push_bracket()?;
                 let elements = self.parse_seqs()?;
                 let close = self.pop_bracket()?;
@@ -863,7 +864,7 @@ impl<'a> Parser<'a> {
                 };
                 Ok(result)
             }
-            Some(Token::LParen) => {
+            Token::LParen => {
                 let open = self.push_bracket()?;
                 let (body_span, body) = self.parse_expr()?;
                 let close = self.pop_bracket()?;
@@ -875,22 +876,23 @@ impl<'a> Parser<'a> {
                 };
                 Ok(result)
             }
-            Some(Token::QuoteOpen(prefix, style)) => self.parse_string(prefix, style),
-            Some(Token::KwNull) => Ok(Expr::NullLit(self.consume())),
-            Some(Token::KwTrue) => Ok(Expr::BoolLit(self.consume(), true)),
-            Some(Token::KwFalse) => Ok(Expr::BoolLit(self.consume(), false)),
-            Some(Token::NumHexadecimal) => Ok(Expr::NumHexadecimal(self.consume())),
-            Some(Token::NumBinary) => Ok(Expr::NumBinary(self.consume())),
-            Some(Token::NumDecimal) => Ok(Expr::NumDecimal(self.consume())),
-            Some(Token::Ident) => Ok(Expr::Var(self.consume())),
+            Token::QuoteOpen(prefix, style) => self.parse_string(prefix, style),
+            Token::KwNull => Ok(Expr::NullLit(self.consume())),
+            Token::KwTrue => Ok(Expr::BoolLit(self.consume(), true)),
+            Token::KwFalse => Ok(Expr::BoolLit(self.consume(), false)),
+            Token::NumHexadecimal => Ok(Expr::NumHexadecimal(self.consume())),
+            Token::NumBinary => Ok(Expr::NumBinary(self.consume())),
+            Token::NumDecimal => Ok(Expr::NumDecimal(self.consume())),
+            Token::Ident => Ok(Expr::Var(self.consume())),
 
             // Some tokens are valid starts of an expression, but just not at
             // the term level. For those, we can recommend the user to wrap
             // everything in parens, because then it would be allowed.
-            Some(Token::KwLet | Token::KwAssert | Token::KwTrace | Token::KwIf) => self
+            Token::KwLet | Token::KwAssert | Token::KwTrace | Token::KwIf => self
                 .error("Expected a term here.")
                 .with_help("If this should be an expression, try wrapping it in parentheses.")
                 .err(),
+
             _ => self.error("Expected a term here.").err(),
         }
     }
@@ -949,13 +951,13 @@ impl<'a> Parser<'a> {
 
         loop {
             match self.peek() {
-                Some(Token::StringInner) => {
+                Token::StringInner => {
                     self.parse_string_inner(style, &mut parts)?;
                 }
-                Some(Token::Escape(esc)) => {
+                Token::Escape(esc) => {
                     parts.push(StringPart::Escape(self.consume(), esc));
                 }
-                Some(Token::HoleOpen) => {
+                Token::HoleOpen => {
                     // Consume the opening `{`.
                     let hole_open = self.consume();
                     let (span, expr) = self.parse_expr()?;
@@ -968,7 +970,7 @@ impl<'a> Parser<'a> {
                     )?;
                     has_hole = true;
                 }
-                Some(Token::QuoteClose) => {
+                Token::QuoteClose => {
                     let close = self.consume();
                     if prefix == StringPrefix::Format && !has_hole {
                         let span = open.union(close);
@@ -997,7 +999,7 @@ impl<'a> Parser<'a> {
 
         loop {
             let prefix = self.parse_non_code();
-            if self.peek() == Some(Token::RParen) {
+            if self.peek() == Token::RParen {
                 let final_result = List {
                     elements: result.into_boxed_slice(),
                     suffix: prefix,
@@ -1016,8 +1018,8 @@ impl<'a> Parser<'a> {
 
             self.skip_non_code()?;
             match self.peek() {
-                Some(Token::RParen) => continue,
-                Some(Token::Comma) => {
+                Token::RParen => continue,
+                Token::Comma => {
                     self.consume();
                     trailing_comma = true;
                     continue;
@@ -1039,7 +1041,7 @@ impl<'a> Parser<'a> {
         let mut trailing_comma = false;
 
         loop {
-            if self.peek_past_non_code() == Some(Token::RParen) {
+            if self.peek_past_non_code() == Token::RParen {
                 let suffix = self.parse_non_code();
                 let final_result = List {
                     elements: result.into_boxed_slice(),
@@ -1054,8 +1056,8 @@ impl<'a> Parser<'a> {
 
             self.skip_non_code()?;
             match self.peek() {
-                Some(Token::RParen) => continue,
-                Some(Token::Comma) => {
+                Token::RParen => continue,
+                Token::Comma => {
                     self.consume();
                     trailing_comma = true;
                     continue;
@@ -1081,7 +1083,7 @@ impl<'a> Parser<'a> {
 
         loop {
             let prefix = self.parse_non_code();
-            if matches!(self.peek(), Some(Token::RBrace | Token::RBracket)) {
+            if matches!(self.peek(), Token::RBrace | Token::RBracket) {
                 let final_result = List {
                     elements: result.into_boxed_slice(),
                     suffix: prefix,
@@ -1097,18 +1099,18 @@ impl<'a> Parser<'a> {
 
             self.skip_non_code()?;
             match self.peek() {
-                Some(Token::RBrace | Token::RBracket) => continue,
-                tok if tok == Some(Token::Comma) => {
+                Token::RBrace | Token::RBracket => continue,
+                Token::Comma => {
                     self.consume();
                     trailing_comma = true;
                     continue;
                 }
                 // All of the next tokens are unexpected, but we add special
                 // errors for them to help the user along.
-                Some(Token::Semicolon) => {
+                Token::Semicolon => {
                     return self.error("Expected ',' instead of ';' here.").err();
                 }
-                Some(Token::KwElse) => {
+                Token::KwElse => {
                     return self
                         .pop_bracket()
                         .expect_err("We are in a seq.")
@@ -1127,7 +1129,7 @@ impl<'a> Parser<'a> {
                 // as the problem, because it is. The pop will fail. If we see
                 // an '=' maybe the user tried to make a key-value mapping and
                 // we can report a better error.
-                Some(Token::Eq1) => {
+                Token::Eq1 => {
                     return self
                         .pop_bracket()
                         .expect_err("We are in a seq.")
@@ -1174,8 +1176,8 @@ impl<'a> Parser<'a> {
             // TODO: Would need to skip noncode here ... maybe it's better to
             // parse an expression, and re-interpret it later if it reads like a
             // variable access?
-            (Some(Token::Ident), Some(Token::Eq1)) => self.parse_seq_assoc_ident()?,
-            (Some(Token::KwAssert | Token::KwLet | Token::KwTrace), _) => {
+            (Token::Ident, Token::Eq1) => self.parse_seq_assoc_ident()?,
+            (Token::KwAssert | Token::KwLet | Token::KwTrace, _) => {
                 let stmt = self.parse_stmt()?;
                 let (body_span, body) = self.parse_prefixed_seq()?;
                 Seq::Stmt {
@@ -1184,13 +1186,13 @@ impl<'a> Parser<'a> {
                     body: Box::new(body),
                 }
             }
-            (Some(Token::KwFor), _) => self.parse_seq_for()?,
-            (Some(Token::KwIf), _) => self.parse_seq_if()?,
+            (Token::KwFor, _) => self.parse_seq_for()?,
+            (Token::KwIf, _) => self.parse_seq_if()?,
             _ => {
                 let (expr_span, expr) = self.parse_expr_op()?;
                 self.skip_non_code()?;
                 match self.peek() {
-                    Some(Token::Colon) => {
+                    Token::Colon => {
                         let op = self.consume();
                         self.skip_non_code()?;
                         let (value_span, value) = self.parse_expr()?;
@@ -1244,7 +1246,7 @@ impl<'a> Parser<'a> {
 
             self.skip_non_code()?;
             match self.peek() {
-                Some(Token::Comma) => {
+                Token::Comma => {
                     self.consume();
                     continue;
                 }
@@ -1299,7 +1301,7 @@ impl<'a> Parser<'a> {
     fn parse_type_expr(&mut self) -> Result<Type> {
         // If it starts with a `(`, then that is the start of an argument list,
         // and we are parsing a function type.
-        if let Some(Token::LParen) = self.peek() {
+        if self.peek() == Token::LParen {
             return self.parse_type_function();
         }
 
@@ -1310,7 +1312,7 @@ impl<'a> Parser<'a> {
         // Optionally, the term can be followed by `[` to instantiate a generic
         // type.
         self.skip_non_code()?;
-        if let (Type::Term(name), Some(Token::LBracket)) = (&term, self.peek()) {
+        if let (Type::Term(name), Token::LBracket) = (&term, self.peek()) {
             self.push_bracket()?;
             let args = self.parse_types()?;
             self.pop_bracket()?;
@@ -1351,7 +1353,7 @@ impl<'a> Parser<'a> {
 
         loop {
             let prefix = self.parse_non_code();
-            if matches!(self.peek(), Some(Token::RParen | Token::RBracket)) {
+            if matches!(self.peek(), Token::RParen | Token::RBracket) {
                 let final_result = List {
                     elements: result.into_boxed_slice(),
                     suffix: prefix,
@@ -1370,8 +1372,8 @@ impl<'a> Parser<'a> {
 
             self.skip_non_code()?;
             match self.peek() {
-                Some(Token::RParen | Token::RBracket) => continue,
-                Some(Token::Comma) => {
+                Token::RParen | Token::RBracket => continue,
+                Token::Comma => {
                     self.consume();
                     trailing_comma = true;
                     continue;
@@ -1389,7 +1391,7 @@ impl<'a> Parser<'a> {
 
     fn parse_type_term(&mut self) -> Result<Type> {
         match self.peek() {
-            Some(Token::Ident) => {
+            Token::Ident => {
                 let span = self.consume();
                 Ok(Type::Term(span))
             }
@@ -1401,7 +1403,7 @@ impl<'a> Parser<'a> {
     /// Confirm that there is no trailing content left to parse.
     fn parse_eof(&mut self) -> Result<()> {
         self.skip_non_code()?;
-        if self.peek().is_some() {
+        if self.peek() != Token::Eof {
             return self
                 .error("Unexpected content after the main expression.")
                 .err();

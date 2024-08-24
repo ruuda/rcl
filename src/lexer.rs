@@ -211,6 +211,13 @@ pub enum Token {
 
     /// `|`
     Pipe,
+
+    /// End of file.
+    ///
+    /// This token is not returned by the lexer, but it's used internally in the
+    /// parser to return when it runs out of tokens, to avoid having to use
+    /// `Option` everywhere.
+    Eof,
 }
 
 /// A state in the state stack of the lexer.
