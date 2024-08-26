@@ -87,9 +87,14 @@ Pathogen and symlink the directory into `~/.vim/bundle`.
 
 ## Zed
 
-The directory `grammar/zed` contains a Zed extension. You can install it from
-the Zed command pannel with the _zed: install dev extension_ command, and
-picking the `grammar/zed` directory.
+The [Zed extension](https://github.com/rcl-lang/zed-rcl) is available from the
+Zed extension registry. Open the command panel, search for _zed: extensions_,
+then search for _<abbr>RCL</abbr>_ in the search box.
+
+If you want to install a development version of the extension, the extension
+is developed in the main repository. You can install it from the Zed command
+panel with the _zed: install dev extension_ command, and picking the `grammar/zed`
+directory.
 
 ## External
 
