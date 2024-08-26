@@ -121,7 +121,7 @@ impl PartialEq for FunctionArg {
 
 impl PartialOrd for FunctionArg {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.type_.partial_cmp(&other.type_)
+        Some(self.cmp(other))
     }
 }
 
