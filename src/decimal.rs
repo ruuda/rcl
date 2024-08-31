@@ -310,9 +310,12 @@ impl Ord for Decimal {
             // precision, so we have an inclusive lower bound and exclusive
             // upper bound of where `self` is on this scale compared to the
             // other.
-            // TODO: This fails for negative numbers.
-            let self_lower = self.numer / factor;
-            let self_upper = self_lower + 1;
+            // TODO: Is there a more elegant way to do all of this? It's all so ad-hoc :/
+            let (self_lower, self_upper) = if self.numer >= 0 {
+                (self.numer / factor, 1 + self.numer / factor)
+            } else {
+                (self.numer / factor - 1, self.numer / factor)
+            };
 
             if self_lower > other.numer {
                 return Ordering::Greater;
@@ -620,9 +623,13 @@ mod test {
         assert_cmp("-1e100 < 1e1");
         assert_cmp("-1e100 < -1e0");
 
-        // This one is a regression test, the fuzzer found an overflow when
-        // subtracting the exponents.
+        // This one is a regression test, the fuzz_smith fuzzer found an
+        // overflow when subtracting the exponents.
         assert_cmp("5.0e-6504 < 5.0e26505");
         assert_cmp("5.0e26505 > 5.0e-6504");
+
+        // This is a regression test for a bug found by the fuzz_decimal fuzzer.
+        assert_cmp("-0.1 < 0e0");
+        assert_cmp("0.1 > 0e0");
     }
 }
