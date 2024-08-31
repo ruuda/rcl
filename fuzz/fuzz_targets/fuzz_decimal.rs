@@ -43,22 +43,25 @@ fuzz_target!(|input: Input| -> Corpus {
                 Some(c) => c,
             };
 
-            let a_str = a.0.to_string();
-            let b_str = b.0.to_string();
-
+            // The Display impl does not print using scientific notation, but
+            // the Debug impl does. We need that otherwise we get enormous
+            // strings where RCL's parser fails due to overflow.
+            let a_str = format!("{:?}", a.0);
             // TODO: Add support for negative numbers in parse_str, dedup between the test.
             let mut a_dec = match Decimal::parse_str(a_str.trim_matches('-')) {
                 Some(ParseResult::Decimal(d)) => d,
                 Some(ParseResult::Int(i)) => Decimal::from(i),
-                _ => return Corpus::Reject,
+                _ => panic!("Failed to parse: {a_str}"),
             };
             if a_str.starts_with("-") {
                 a_dec.numer = -a_dec.numer;
             }
+
+            let b_str = format!("{:?}", b.0);
             let mut b_dec = match Decimal::parse_str(b_str.trim_matches('-')) {
                 Some(ParseResult::Decimal(d)) => d,
                 Some(ParseResult::Int(i)) => Decimal::from(i),
-                _ => return Corpus::Reject,
+                _ => panic!("Failed to parse: {b_str}"),
             };
             if b_str.starts_with("-") {
                 b_dec.numer = -b_dec.numer;
@@ -69,6 +72,16 @@ fuzz_target!(|input: Input| -> Corpus {
                 decimal_ord, f64_ord,
                 "Compare {a_dec:?} vs. {b_dec:?} does not match f64 comparison.",
             );
+
+            let rev_decimal_ord = b_dec.cmp(&a_dec);
+            assert_eq!(
+                rev_decimal_ord.reverse(),
+                f64_ord,
+                "Decimal::cmp should be antisymmetric.",
+            );
+
+            assert_eq!(a_dec, a_dec, "Decimals should be equal to themselves.");
+            assert_eq!(b_dec, b_dec, "Decimals should be equal to themselves.");
 
             Corpus::Keep
         }
