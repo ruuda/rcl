@@ -39,6 +39,8 @@ fn get_primitive_type(name: &str) -> Option<Type> {
         "Any" => Some(Type::Any),
         "Bool" => Some(Type::Bool),
         "Int" => Some(Type::Int),
+        "Float" => Some(Type::Float),
+        "Num" => Some(Type::Num),
         "Null" => Some(Type::Null),
         "String" => Some(Type::String),
         "Void" => Some(Type::Void),
@@ -377,6 +379,7 @@ impl<'a> TypeChecker<'a> {
             Expr::NullLit => type_literal(expr_span, Type::Null).is_subtype_of(expected).check(expr_span)?,
             Expr::BoolLit(..) => type_literal(expr_span, Type::Bool).is_subtype_of(expected).check(expr_span)?,
             Expr::IntegerLit(..) => type_literal(expr_span, Type::Int).is_subtype_of(expected).check(expr_span)?,
+            Expr::DecimalLit(..) => type_literal(expr_span, Type::Float).is_subtype_of(expected).check(expr_span)?,
             Expr::StringLit(..) => type_literal(expr_span, Type::String).is_subtype_of(expected).check(expr_span)?,
 
             Expr::Format(fragments) => {
@@ -646,12 +649,23 @@ impl<'a> TypeChecker<'a> {
         // that's an error. But there's *another* error, which is applying `not`
         // to an int, and if we report only one type error, that seems like it
         // should come first, as it comes first in the evaluation order too.
-        let (body_type, result_type) = match op {
-            UnOp::Neg => (Type::Int, Type::Int),
-            UnOp::Not => (Type::Bool, Type::Bool),
-        };
-        self.check_expr(&type_operator(op_span, body_type), body_span, body)?;
-        Ok(type_operator(op_span, result_type))
+        match op {
+            UnOp::Not => {
+                self.check_expr(&type_operator(op_span, Type::Bool), body_span, body)?;
+                Ok(type_operator(op_span, Type::Bool))
+            }
+            UnOp::Neg => {
+                // We can negate Int and Float, so we pass in Num as expectation,
+                // even when we might have a top-level expectation that is more
+                // precise (specifically Int or Float). This means that we will
+                // not report the violated expectation as deep as we could, but
+                // the inferred type will carry a source so we can still highlight
+                // where it came from.
+                let expected = type_operator(op_span, Type::Num);
+                let inner_type = self.check_expr(&expected, body_span, body)?;
+                Ok(inner_type)
+            }
+        }
     }
 
     fn check_binop(
@@ -664,6 +678,7 @@ impl<'a> TypeChecker<'a> {
         rhs: &mut Expr,
     ) -> Result<SourcedType> {
         let (arg_type, result_type) = match op {
+            // TODO: Extend this with support for float and generic numbers.
             BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => (Type::Int, Type::Int),
             BinOp::And | BinOp::Or => (Type::Bool, Type::Bool),
             // For now we allow comparison only on integers. It should probably

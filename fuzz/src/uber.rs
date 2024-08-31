@@ -49,6 +49,7 @@ pub enum Mode {
     EvalJsonCheck { width: u32 },
     EvalTomlCheck { width: u32 },
     EvalFormat { width: u32 },
+    EvalJsonSuperset,
 }
 
 pub fn fuzz_main(mode: Mode, input: &str) {
@@ -95,6 +96,9 @@ fn fuzz_main_impl(loader: &mut Loader, mode: Mode, input: &str) -> Result<()> {
         Mode::EvalFormat { width } => {
             cfg.width = width;
             let _ = fuzz_eval_format(loader, input, cfg);
+        }
+        Mode::EvalJsonSuperset => {
+            fuzz_eval_json_superset(loader, input);
         }
     };
 
@@ -174,6 +178,16 @@ fn fuzz_eval_json_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -
     let json_str = json_doc.println(&cfg).to_string_no_markup();
     match serde_json::from_str::<serde_json::Value>(&json_str[..]) {
         Ok(..) => Ok(()),
+        // RCL accepts numbers with larger exponents than what Serde accepts.
+        // This is not a bug in the json output but a (reasonable) implementation
+        // limitation of Serde, so we do allow this mismatch.
+        Err(err)
+            if err.is_syntax()
+                && json_str.contains("e")
+                && err.to_string().contains("number out of range") =>
+        {
+            Ok(())
+        }
         Err(err) => panic!("RCL output should be parseable, but got {err:?}"),
     }
 }
@@ -187,6 +201,11 @@ fn fuzz_eval_toml_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -
     let toml_str = toml_doc.println(&cfg).to_string_no_markup();
     match toml::from_str::<toml::Value>(&toml_str[..]) {
         Ok(..) => Ok(()),
+        Err(err) if err.message().contains("invalid floating-point number") => {
+            // RCL supports larger exponents on floats than what the toml crate
+            // admits, this is an intentional incompatibility.
+            Ok(())
+        }
         Err(err) => panic!("RCL output should be parseable, but got {err:?}"),
     }
 }
@@ -205,4 +224,37 @@ fn fuzz_eval_format(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Re
     let out2 = run_fmt(loader, &out1, &cfg)?;
     assert_eq!(out1, out2, "Formatting after evaluation should be a no-op.");
     Ok(())
+}
+
+/// Check that any json that Serde can parse, can be evaluated as RCL.
+///
+/// This is the closest we can get to testing that RCL is a json superset.
+fn fuzz_eval_json_superset(loader: &mut Loader, input: &str) {
+    // First try to deserialize the input using Serde. If this fails, then we
+    // don't even attempt RCL; this is about json supersets.
+    use serde::de::IgnoredAny;
+    use serde_json::Result;
+    let result: Result<IgnoredAny> = serde_json::de::from_str(input);
+    if result.is_err() {
+        return;
+    }
+
+    match eval(loader, input) {
+        Ok(..) => {
+            // Works as intended.
+        }
+        Err(err) => {
+            let msg = format!("{err:?}");
+            if msg.contains("Overflow") {
+                // In cases of a large integer or large exponent, Serde parses
+                // it into a different data type or into a float that goes Inf,
+                // but RCL cannot represent those, so the incompatibility here
+                // is intentional.
+            } else if msg.contains("not a Unicode scalar value") {
+                // RCL does not support surrogate pairs on purpose.
+            } else {
+                panic!("If Serde can parse it, RCL should be able to, but got: {msg}");
+            }
+        }
+    }
 }

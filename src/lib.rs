@@ -19,6 +19,7 @@ pub mod cli;
 pub mod cmd_build;
 pub mod cmd_eval;
 pub mod cst;
+pub mod decimal;
 pub mod env;
 pub mod error;
 pub mod eval;

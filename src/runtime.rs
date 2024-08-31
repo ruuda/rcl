@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{CallArg, Expr};
+use crate::decimal::Decimal;
 use crate::error::{IntoError, PathElement, Result};
 use crate::eval::Evaluator;
 use crate::fmt_rcl::format_rcl;
@@ -153,8 +154,12 @@ pub enum Value {
 
     Bool(bool),
 
-    // TODO: Should be a bigint.
     Int(i64),
+
+    // TODO: Should probably be renamed to Float, and I should just add a
+    // denominator to my existing decimal type if I want to represent fractions
+    // exactly.
+    Decimal(Decimal),
 
     String(Rc<str>),
 
@@ -230,7 +235,11 @@ impl Value {
             (Type::Null, Value::Null) => return Ok(()),
             (Type::Bool, Value::Bool(..)) => return Ok(()),
             (Type::Int, Value::Int(..)) => return Ok(()),
+            (Type::Float, Value::Decimal(..)) => return Ok(()),
             (Type::String, Value::String(..)) => return Ok(()),
+
+            // Int and Float are numbers.
+            (Type::Num, Value::Int(..) | Value::Decimal(..)) => return Ok(()),
 
             // For compound types, we descend into them to check.
             (Type::List(elem_type), Value::List(elems)) => {
