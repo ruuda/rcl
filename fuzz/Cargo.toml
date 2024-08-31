@@ -8,7 +8,7 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-arbitrary = "1.3.0"
+arbitrary = { version = "1.3.0", features = ["derive"] }
 libfuzzer-sys = "0.4.7"
 rcl = { path = ".." }
 serde = "1.0.114"
@@ -32,6 +32,12 @@ path = "tools/smithctl.rs"
 [[bin]]
 name = "fuzz_cli"
 path = "fuzz_targets/fuzz_cli.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_decimal"
+path = "fuzz_targets/fuzz_decimal.rs"
 test = false
 doc = false
 
