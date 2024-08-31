@@ -408,6 +408,7 @@ impl Rational {
 #[cfg(test)]
 mod test {
     use super::{Decimal, ParseResult};
+    use std::cmp::Ordering;
 
     fn assert_parse_decimal(num: &str, expected_numer: i64, expected_exponent: i16) {
         let result = Decimal::parse_str(num);
@@ -424,6 +425,42 @@ mod test {
         assert!(
             is_ok,
             "Expected '{num}' to parse as {expected_numer}e{expected_exponent}, but got {result:#?}"
+        );
+    }
+
+    fn assert_cmp(expr: &str) {
+        let mut parts = expr.split(' ');
+        let lhs_str = parts.next().unwrap();
+        let cmp_str = parts.next().unwrap();
+        let rhs_str = parts.next().unwrap();
+        let mut lhs = match Decimal::parse_str(lhs_str.trim_matches('-')) {
+            Some(ParseResult::Decimal(d)) => d,
+            _ => panic!("Expected a decimal as left-hand side, not '{lhs_str}'."),
+        };
+        let mut rhs = match Decimal::parse_str(rhs_str.trim_matches('-')) {
+            Some(ParseResult::Decimal(d)) => d,
+            _ => panic!("Expected a decimal as right-hand side, not '{rhs_str}'."),
+        };
+
+        // The minus sign is not built into decimal parsing as it's an operator
+        // in the language, so we handle it as a special case here.
+        if lhs_str.as_bytes()[0] == b'-' {
+            lhs.numer = -lhs.numer;
+        }
+        if rhs_str.as_bytes()[0] == b'-' {
+            rhs.numer = -rhs.numer;
+        }
+
+        let expected_ord = match cmp_str {
+            "<" => Ordering::Less,
+            ">" => Ordering::Greater,
+            "=" => Ordering::Equal,
+            _ => panic!("Unexpected comparison '{cmp_str}', need one of <, >, =."),
+        };
+        assert_eq!(
+            lhs.cmp(&rhs),
+            expected_ord,
+            "Unexpected comparison result for {lhs_str} ({lhs:?}) vs. {rhs_str} ({rhs:?}).",
         );
     }
 
@@ -494,81 +531,24 @@ mod test {
 
     #[test]
     fn decimal_format_works() {
-        let x = Decimal {
-            numer: 0,
-            exponent: 0,
-        };
-        assert_eq!(&x.format(), "0.0");
-
-        let x = Decimal {
-            numer: 1,
-            exponent: 0,
-        };
-        assert_eq!(&x.format(), "1.0");
-
-        let x = Decimal {
-            numer: 1,
-            exponent: 1,
-        };
-        assert_eq!(&x.format(), "10.0");
-
-        let x = Decimal {
-            numer: 1,
-            exponent: -1,
-        };
-        assert_eq!(&x.format(), "0.1");
+        assert_eq!(decimal(0, 0).format(), "0.0");
+        assert_eq!(decimal(1, 0).format(), "1.0");
+        assert_eq!(decimal(1, 1).format(), "10.0");
+        assert_eq!(decimal(1, -1).format(), "0.1");
 
         // Note, the numerator matters for how many decimals we get!
-        let x = Decimal {
-            numer: 10,
-            exponent: -2,
-        };
-        assert_eq!(&x.format(), "0.10");
-
-        let x = Decimal {
-            numer: 10,
-            exponent: -1,
-        };
-        assert_eq!(&x.format(), "1.0");
-
-        let x = Decimal {
-            numer: 1,
-            exponent: -6,
-        };
-        assert_eq!(&x.format(), "0.000001");
-
-        let x = Decimal {
-            numer: 1,
-            exponent: 6,
-        };
-        assert_eq!(&x.format(), "1000000.0");
+        assert_eq!(decimal(10, -2).format(), "0.10");
+        assert_eq!(decimal(10, -1).format(), "1.0");
+        assert_eq!(decimal(1, -6).format(), "0.000001");
+        assert_eq!(decimal(1, 6).format(), "1000000.0");
     }
 
     #[test]
     fn decimal_format_switches_to_scientific() {
-        let x = Decimal {
-            numer: 1,
-            exponent: 11,
-        };
-        assert_eq!(&x.format(), "100000000000.0");
-
-        let x = Decimal {
-            numer: 1,
-            exponent: 12,
-        };
-        assert_eq!(&x.format(), "1.0e12");
-
-        let x = Decimal {
-            numer: 1,
-            exponent: -12,
-        };
-        assert_eq!(&x.format(), "0.000000000001");
-
-        let x = Decimal {
-            numer: 1,
-            exponent: -13,
-        };
-        assert_eq!(&x.format(), "1.0e-13");
+        assert_eq!(decimal(1, 11).format(), "100000000000.0");
+        assert_eq!(decimal(1, 12).format(), "1.0e12");
+        assert_eq!(decimal(1, -12).format(), "0.000000000001");
+        assert_eq!(decimal(1, -13).format(), "1.0e-13");
     }
 
     #[test]
@@ -601,67 +581,43 @@ mod test {
 
     #[test]
     fn decimal_ord_works() {
-        // TODO: Instead of "decimal" shorthand, write as strings and parse
-        // them, that would make the tests way more readable.
-        let p1e0 = decimal(1, 0);
-        let p2e0 = decimal(2, 0);
-        let p10e0 = decimal(10, 0);
-        let p11e0 = decimal(11, 0);
+        assert_cmp("1e0 < 2e0");
+        assert_cmp("2e0 < 10e0");
+        assert_cmp("10e0 < 11e0");
 
-        let p1e1 = decimal(1, 1);
-        let p2e1 = decimal(2, 1);
-        let p10e1 = decimal(10, 1);
-        let p11e1 = decimal(11, 1);
+        assert_cmp("1e0 < 1e1");
+        assert_cmp("2e0 < 1e1");
+        assert_cmp("10e0 = 1e1");
+        assert_cmp("11e0 > 1e1");
+        assert_cmp("11e0 < 2e1");
+        assert_cmp("11e0 < 10e1");
 
-        let p1en1 = decimal(1, -1);
-        let p2en1 = decimal(2, -1);
-        let p10en1 = decimal(10, -1);
-        let p11en1 = decimal(11, -1);
+        assert_cmp("1e-1 < 1e0");
+        assert_cmp("2e-1 < 1e0");
+        assert_cmp("10e-1 = 1e0");
+        assert_cmp("10e-1 < 1e1");
+        assert_cmp("11e-1 > 1e0");
+        assert_cmp("11e-1 < 2e0");
 
-        let n1e0 = decimal(-1, 0);
-        let n2e0 = decimal(-2, 0);
-        let n10e0 = decimal(-10, 0);
-        let n11e0 = decimal(-11, 0);
+        assert_cmp("11e1 > 11e-1");
+        assert_cmp("11e-1 < 11e1");
 
-        assert!(p1e0 < p2e0);
-        assert!(p2e0 < p10e0);
-        assert!(p10e0 < p11e0);
+        assert_cmp("-1e0 > -2e0");
+        assert_cmp("-2e0 > -10e0");
+        assert_cmp("-10e0 > -11e0");
 
-        assert!(p1e0 < p1e1);
-        assert!(p2e0 < p1e1);
-        assert!(p10e0 == p1e1);
-        assert!(p11e0 > p1e1);
-        assert!(p11e0 < p2e1);
-        assert!(p11e0 < p10e1);
+        assert_cmp("-1e0 < 1e0");
+        assert_cmp("-1e0 < 1e1");
+        assert_cmp("-11e0 < 1e1");
+        assert_cmp("-11e0 < 10e0");
 
-        assert!(p1en1 < p1e0);
-        assert!(p2en1 < p1e0);
-        assert!(p10en1 == p1e0);
-        assert!(p10en1 < p1e1);
-        assert!(p11en1 > p1e0);
-        assert!(p11en1 < p2e0);
+        assert_cmp("-1e0 < 1e-1");
+        assert_cmp("-1e0 < 10e-1");
 
-        assert!(p11e1 > p11en1);
-        assert!(p11en1 < p11e1);
-
-        assert!(n1e0 > n2e0);
-        assert!(n2e0 > n10e0);
-        assert!(n10e0 > n11e0);
-
-        assert!(n1e0 < p1e0);
-        assert!(n1e0 < p1e1);
-        assert!(n11e0 < p1e1);
-        assert!(n11e0 < p10e0);
-
-        assert!(n1e0 < p1en1);
-        assert!(n1e0 < p10en1);
-
-        let p1e100 = decimal(1, 100);
-        let n1e100 = decimal(-1, 100);
-        assert!(p1e100 > p1e1);
-        assert!(p1e100 > n1e0);
-        assert!(n1e100 < p1e100);
-        assert!(n1e100 < p1e1);
-        assert!(n1e100 < n1e0);
+        assert_cmp("1e100 > 1e1");
+        assert_cmp("1e100 > -1e0");
+        assert_cmp("-1e100 < 1e100");
+        assert_cmp("-1e100 < 1e1");
+        assert_cmp("-1e100 < -1e0");
     }
 }
