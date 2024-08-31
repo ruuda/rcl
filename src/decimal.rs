@@ -619,5 +619,10 @@ mod test {
         assert_cmp("-1e100 < 1e100");
         assert_cmp("-1e100 < 1e1");
         assert_cmp("-1e100 < -1e0");
+
+        // This one is a regression test, the fuzzer found an overflow when
+        // subtracting the exponents.
+        assert_cmp("5.0e-6504 < 5.0e26505");
+        assert_cmp("5.0e26505 > 5.0e-6504");
     }
 }
