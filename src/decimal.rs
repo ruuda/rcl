@@ -290,7 +290,8 @@ impl Ord for Decimal {
             // in the same range as the other. That loses precision, but we can
             // get a lower and upper bound of where we are and that might be
             // sufficient to complete the comparison.
-            let factor = match 10_i64.checked_pow((other.exponent - self.exponent) as u32) {
+            let exp_diff = other.exponent.checked_sub(self.exponent);
+            let factor = match exp_diff.and_then(|d| 10_i64.checked_pow(d as u32)) {
                 Some(n) => n,
                 None => {
                     // This number is so much smaller than the other one that we
