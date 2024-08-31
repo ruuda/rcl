@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{BinOp, CallArg, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
+use crate::decimal::Decimal;
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
@@ -926,6 +927,11 @@ impl<'a> Evaluator<'a> {
                     }
                 }
             }
+            (
+                BinOp::Lt | BinOp::LtEq | BinOp::Gt | BinOp::GtEq,
+                lhs @ Value::Int(..) | lhs @ Value::Decimal(..),
+                rhs @ Value::Int(..) | rhs @ Value::Decimal(..),
+            ) => Ok(Value::Bool(self.eval_num_cmp(op, &lhs, &rhs))),
             // We allow comparing any two values, even if they are not of the
             // same type. I would prefer to make nonsensical comparisons a type
             // error (e.g. `1 < "2"` should return "Int and String incomparable",
@@ -940,6 +946,24 @@ impl<'a> Evaluator<'a> {
             (BinOp::Eq, x, y) => Ok(Value::Bool(x == y)),
             (BinOp::Neq, x, y) => Ok(Value::Bool(x != y)),
             _ => unreachable!("Invalid cases are prevented by the typechecker."),
+        }
+    }
+
+    fn eval_num_cmp(&self, op: BinOp, lhs: &Value, rhs: &Value) -> bool {
+        // TODO: Could abstract into a `apply_num`, so we can reuse it for Add etc.
+        let ord = match (lhs, rhs) {
+            (Value::Int(x), Value::Int(y)) => x.cmp(y),
+            (Value::Int(x), Value::Decimal(y)) => Decimal::from(*x).cmp(y),
+            (Value::Decimal(x), Value::Int(y)) => x.cmp(&Decimal::from(*y)),
+            (Value::Decimal(x), Value::Decimal(y)) => x.cmp(y),
+            _ => panic!("Should only call `eval_num_cmp` with num inputs."),
+        };
+        match op {
+            BinOp::Lt => ord.is_lt(),
+            BinOp::LtEq => ord.is_le(),
+            BinOp::Gt => ord.is_gt(),
+            BinOp::GtEq => ord.is_ge(),
+            _ => panic!("Should only call `eval_num_cmp` with inequality binop."),
         }
     }
 
