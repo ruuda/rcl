@@ -30,6 +30,7 @@ nav:
       - "Imports": "imports.md"
       - "Functions": "functions.md"
       - "Types": "types.md"
+      - "Numbers": "numbers.md"
       - "Glossary": "glossary.md"
   - "Language reference":
       - "Standard library": "stdlib.md"
