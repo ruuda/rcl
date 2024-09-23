@@ -60,7 +60,12 @@ query into the `queries` subdirectory:
 cp /checkout/rcl/grammar/tree-sitter-rcl/queries/highlights_nvim.scm /pasers-path/queries/rcl/highlights.scm
 ```
 
-Then `:set filetype=rcl` on a buffer to highlight as <abbr>RCL</abbr>.
+Then either `:set filetype=rcl` on a buffer to highlight as <abbr>RCL</abbr>,
+or enable autodetection on filextension.
+
+```lua
+vim.cmd "au BufNewFile,BufRead *.rcl  setf rcl"
+```
 
 [nvim-ts]: https://github.com/nvim-treesitter/nvim-treesitter
 [nvim-ts-highlight]: https://github.com/nvim-treesitter/nvim-treesitter/blob/57205313dda0ac82ac69e21d5e2a80f3297c14cc/README.md#highlight
