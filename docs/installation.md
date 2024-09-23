@@ -10,10 +10,40 @@ source, but you can also use one of the options below that automate the process.
 The repository includes a Nix flake. You can run <abbr>RCL</abbr> with a
 [flake-enabled][flakes] version of [Nix][nix], such as Nix 2.18:
 
+Try a one shot command.
+
     nix run 'github:ruuda/rcl?ref=v0.5.0' -- --help
 
+Try rcl in an ephemeral shell.
+
+    nix-shell -p https://github.com/ruuda/rcl
+
+Install globally by adding rcl to your system packages.
+
+```nix
+# flake.nix
+{
+  description = "My NixOS configuration";
+  inputs = {
+    rcl.url = "github:/ruuda/rcl";
+  }
+}
+```
+
+```nix
+# default.nix
+environment.systemPackages = with pkgs; let
+  rcl =
+    # You may want to disable rust tests to prevent system wide build failure.
+    inputs.rcl.packages.${system}.default.overrideAttrs
+    (finalAttrs: previousAttrs: {doCheck = false;});
+in [
+  rcl
+];
+```
+
 [flakes]: https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake
-[nix]:    https://nixos.org/download
+[nix]: https://nixos.org/download
 
 The Nix flake also includes the Python module:
 
@@ -44,7 +74,7 @@ To build a static binary rather than a dynamically linked one:
     cargo build --release --target x86_64-unknown-linux-musl
     cp target/x86_64-unknown-linux-musl/release/rcl ~/.local/bin
 
-[cargo]:  https://doc.rust-lang.org/cargo/guide/
+[cargo]: https://doc.rust-lang.org/cargo/guide/
 [rustup]: https://rust-lang.github.io/rustup/index.html
 
 ## Python module from source
