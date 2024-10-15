@@ -699,7 +699,6 @@ impl Loader {
         Ok(())
     }
 
-    #[cfg(unix)]
     pub fn write_depfile(
         &self,
         target: &crate::cli::OutputTarget,
@@ -723,7 +722,18 @@ impl Loader {
             }
         };
 
-        self.write_depfile_impl(&resolved_target, &resolved_depfile)
-            .map_err(|err| Error::new(format!("Failed to write depfile: {}.", err)).into())
+        #[cfg(unix)]
+        {
+            self.write_depfile_impl(&resolved_target, &resolved_depfile)
+                .map_err(|err| Error::new(format!("Failed to write depfile: {}.", err)).into())
+        }
+
+        // TODO: Implement depfile support on platforms where we can't convert
+        // Path to bytes so easily, or refactor `write_depfile_impl` to not
+        // depend on that assumption.
+        #[cfg(not(unix))]
+        {
+            Error::new("Depfile support is not yet implemented on non-Unix platforms.").err()
+        }
     }
 }
