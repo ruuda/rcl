@@ -11,6 +11,13 @@ unicode-width = "0.1.10"
 [workspace]
 members = ["fuzz", "pyrcl", "grammar/tree-sitter-rcl", "wasm"]
 
+# Since Rust 1.80 we need to add the incantation below to avoid a warning about
+# cfg(fuzzing), see <https://blog.rust-lang.org/2024/05/06/check-cfg.html>.
+# But *before* Rust 1.80, this section itself causes a warning! So for now we
+# leave this disabled, and we are compatible with the rust-toolchain.toml version.
+# [lints.rust]
+# unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
+
 [profile.release]
 lto = "thin"
 panic = "abort"
