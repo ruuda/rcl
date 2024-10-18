@@ -34,6 +34,7 @@ fn build_python_value(py: Python, v: &Value) -> PyResult<PyObject> {
         Value::Null => PyNone::get(py).into(),
         Value::Bool(b) => b.to_object(py),
         Value::Int(i) => i.to_object(py),
+        Value::Decimal(d) => d.to_f64().to_object(py),
         Value::String(s) => s.to_object(py),
         Value::List(xs) => {
             let values = xs

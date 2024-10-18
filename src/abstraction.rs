@@ -224,12 +224,13 @@ impl<'a> Abstractor<'a> {
             }
 
             CExpr::NumDecimal(span) => {
-                // TODO: Handle floats.
+                use crate::decimal::{Decimal, ParseResult};
                 let num_str = span.resolve(self.input).replace('_', "");
-                match i64::from_str_radix(&num_str, 10) {
-                    Ok(i) => AExpr::IntegerLit(i),
-                    Err(..) => {
-                        let err = span.error("Overflow in integer literal.");
+                match Decimal::parse_str(&num_str) {
+                    Some(ParseResult::Int(n)) => AExpr::IntegerLit(n),
+                    Some(ParseResult::Decimal(d)) => AExpr::DecimalLit(d),
+                    None => {
+                        let err = span.error("Overflow in number literal.");
                         return Err(err.into());
                     }
                 }
