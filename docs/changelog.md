@@ -14,7 +14,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Unreleased
+## 0.6.0
+
+Released 2024-12-01.
 
  * If-else expressions now optionally accept a colon after `else`, and this is
    the new recommended form used by the autoformatter. What used to be
@@ -24,6 +26,14 @@ compatibility impact will be clearly marked as such in the changelog.
    a change with compatibility impact in the release notes.
  * Add `rcl re` as a shorthand for `rcl evaluate --format=raw` and `rcl rq` as
    a shorthand for `rcl query --format=raw`.
+ * An [extension for the Zed editor](syntax_highlighting.md#zed) is now available.
+ * Ensure compatibility with Rust 1.77 and later. While <abbr>RCL</abbr> could
+   already be compiled with these versions, [a breaking change in 1.77][rust-align]
+   made the tests fail, and impacted memory usage.
+
+Thanks to Dennis Frenken and areskill for contributing to this release.
+
+[rust-align]: https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
 
 ## 0.5.0
 
