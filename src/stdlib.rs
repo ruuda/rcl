@@ -970,6 +970,19 @@ fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
 }
 
 builtin_method!(
+    "List.sort",
+    () -> [Any],
+    const LIST_SORT,
+    builtin_list_sort
+);
+fn builtin_list_sort(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    let mut sorted: Vec<_> = list.to_vec();
+    sorted.sort();
+    Ok(Value::List(Rc::new(sorted)))
+}
+
+builtin_method!(
     "List.enumerate",
     () -> {Int: Any},
     const LIST_ENUMERATE,
