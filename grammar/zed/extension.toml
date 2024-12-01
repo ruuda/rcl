@@ -1,7 +1,7 @@
 id = "rcl"
 name = "RCL"
 description = "Support for the RCL configuration language."
-version = "0.5.0"
+version = "0.6.0"
 schema_version = 1
 authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
 repository = "https://github.com/rcl-lang/zed-rcl"
