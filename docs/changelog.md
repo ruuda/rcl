@@ -14,6 +14,10 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Unreleased
+
+ * Add [`List.sort`](type_list.md#sort) method.
+
 ## 0.6.0
 
 Released 2024-12-01.

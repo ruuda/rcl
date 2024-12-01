@@ -261,6 +261,22 @@ Return the list in reverse.
 [3, 2, 1]
 ```
 
+## sort
+
+```rcl
+List.sort: (self: List[T]) -> List[T]
+```
+
+Return a sorted version of the list. Elements of the same type will be sorted
+with respect to each other. The relative order of elements of different types
+is an implementation detail that may change between versions.
+
+```rcl
+[11, 5, 7].sort()
+// Evaluates to:
+[5, 7, 11]
+```
+
 ## sum
 
 ```rcl

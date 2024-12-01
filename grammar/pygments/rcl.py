@@ -80,6 +80,7 @@ _root_base = [
                 "remove_suffix",
                 "replace",
                 "reverse",
+                "sort",
                 "split",
                 "split_lines",
                 "starts_with",
