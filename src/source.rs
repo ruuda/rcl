@@ -53,7 +53,12 @@ pub struct Span {
     /// While 32 bit offset may be too constraining for a language that can also
     /// be a data format, 48 bits of offset enables documents of 252 TiB, which
     /// ought to be enough for a single document.
-    data: u128,
+    ///
+    /// We pack the data in two `u64`s rather than a single `u128`, to ensure
+    /// the alignment is still only 8 bytes rather than 16. See also
+    /// <https://blog.rust-lang.org/2024/03/30/i128-layout-update.html>.
+    low: u64,
+    high: u64,
 }
 
 impl fmt::Debug for Span {
@@ -63,6 +68,24 @@ impl fmt::Debug for Span {
 }
 
 impl Span {
+    /// Pack the aligned u128 into possibly less aligned u64s.
+    ///
+    /// This should be optimized away, it's only here to work around the u128
+    /// alignment breakage in Rust 1.77.
+    #[inline(always)]
+    fn new_split(data: u128) -> Span {
+        Span {
+            low: (data & u64::MAX as u128) as u64,
+            high: ((data >> 64) & u64::MAX as u128) as u64,
+        }
+    }
+
+    /// Unpack the u64s into a single u128.
+    #[inline(always)]
+    fn data(&self) -> u128 {
+        self.low as u128 | (self.high as u128) << 64
+    }
+
     #[inline(always)]
     pub fn new(doc: DocId, start: usize, end: usize) -> Span {
         // We could turn this into a proper error and report it, but it would
@@ -77,27 +100,25 @@ impl Span {
             // coverage:on
         );
         debug_assert!(end >= start);
-        Span {
-            data: (start as u128) | ((end as u128) << 48) | ((doc.0 as u128) << 96),
-        }
+        Self::new_split((start as u128) | ((end as u128) << 48) | ((doc.0 as u128) << 96))
     }
 
     /// Id of the document that this span belongs to.
     #[inline(always)]
     pub fn doc(&self) -> DocId {
-        DocId(((self.data >> 96) & 0xffff_ffff) as u32)
+        DocId(((self.data() >> 96) & 0xffff_ffff) as u32)
     }
 
     /// Start byte offset of the span, inclusive.
     #[inline(always)]
     pub fn start(&self) -> usize {
-        (self.data & 0xffff_ffff_ffff) as usize
+        (self.data() & 0xffff_ffff_ffff) as usize
     }
 
     /// End byte offset of the span, exclusive.
     #[inline(always)]
     pub fn end(&self) -> usize {
-        ((self.data >> 48) & 0xffff_ffff_ffff) as usize
+        ((self.data() >> 48) & 0xffff_ffff_ffff) as usize
     }
 
     /// Length of this span in bytes.
