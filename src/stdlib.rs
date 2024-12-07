@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::CallArg;
-use crate::error::{IntoError, Result};
+use crate::error::{IntoError, PathElement, Result};
 use crate::eval::Evaluator;
 use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
@@ -997,4 +997,47 @@ fn builtin_list_enumerate(_eval: &mut Evaluator, call: MethodCall) -> Result<Val
         .map(|(v, i)| (Value::Int(i), v.clone()))
         .collect();
     Ok(Value::Dict(Rc::new(kv)))
+}
+
+/// Shared implementation for `List.all` and `List.any`.
+///
+/// Note, we could have a specialized impl for both, and then short-circuit them,
+/// but I think type safety is more important than performance here, and the list
+/// is materialized anyway, so traversing the entire list is not such a big deal.
+/// For e.g. `[true, false, "bobcat"].any()`, we want to report an error rather
+/// than evaluating to `true`, because this is likely a bug.
+fn builtin_list_all_impl(call: MethodCall, name: &'static str) -> Result<bool> {
+    let list = call.receiver.expect_list();
+    let mut all_true = true;
+    for (i, elem) in list.iter().enumerate() {
+        match elem {
+            Value::Bool(true) => continue,
+            Value::Bool(false) => all_true = false,
+            not_bool => {
+                return call
+                    .receiver_span
+                    .error("Type mismatch.")
+                    .with_path(vec![PathElement::Index(i)])
+                    .with_body(concat! {
+                        "'" Doc::highlight(name) "' takes a list of "
+                        "Bool".format_type()
+                        ", but found "
+                        format_rcl(not_bool).into_owned()
+                        "."
+                    })
+                    .err();
+            }
+        }
+    }
+    Ok(all_true)
+}
+
+builtin_method!("List.all", () -> Bool, const LIST_ALL, builtin_list_all);
+fn builtin_list_all(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    Ok(Value::Bool(builtin_list_all_impl(call, "List.all")?))
+}
+
+builtin_method!("List.any", () -> Bool, const LIST_ANY, builtin_list_any);
+fn builtin_list_any(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    Ok(Value::Bool(!builtin_list_all_impl(call, "List.any")?))
 }

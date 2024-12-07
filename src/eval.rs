@@ -432,6 +432,8 @@ impl<'a> Evaluator<'a> {
                         };
                     }
 
+                    (Value::List(_), "all") => Some(&stdlib::LIST_ALL),
+                    (Value::List(_), "any") => Some(&stdlib::LIST_ANY),
                     (Value::List(_), "contains") => Some(&stdlib::LIST_CONTAINS),
                     (Value::List(_), "enumerate") => Some(&stdlib::LIST_ENUMERATE),
                     (Value::List(_), "filter") => Some(&stdlib::LIST_FILTER),
