@@ -13,6 +13,8 @@ use crate::markup::{Markup, MarkupString};
 // TODO: These are now unused. Bring back highlighting of builtins.
 #[allow(dead_code)]
 const BUILTINS: &[&str] = &[
+    "all",
+    "any",
     "chars",
     "contains",
     "empty_set",
