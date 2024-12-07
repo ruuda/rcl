@@ -2,6 +2,50 @@
 
 The `List` type has the following methods.
 
+## all
+
+```rcl
+List.all: (self: List[T], predicate: T -> Bool) -> Bool
+```
+
+Return whether the predicate is true for all elements in the list. For example:
+
+```rcl
+// Evaluates to true.
+[11, 17, 42].all(x => x > 0)
+
+// Evaluates to false.
+[11, 17, 42].all(x => x > 20)
+
+// Evaluates to true.
+[].all(x => false)
+```
+
+This method short-circuits: when the outcome is decided, it will not call the
+predicate for the remaining elements in the list.
+
+## any
+
+```rcl
+List.any: (self: List[T], predicate: T -> Bool) -> Bool
+```
+
+Return whether the predicate is true for any element in the list. For example:
+
+```rcl
+// Evaluates to true.
+[11, 17, 42].any(x => x > 17)
+
+// Evaluates to false.
+[11, 17, 42].any(x => x > 42)
+
+// Evaluates to false.
+[].any(x => true)
+```
+
+This method short-circuits: when the outcome is decided, it will not call the
+predicate for the remaining elements in the list.
+
 ## contains
 
 ```rcl

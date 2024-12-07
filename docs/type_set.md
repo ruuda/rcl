@@ -2,6 +2,52 @@
 
 The `Set` type has the following methods.
 
+## all
+
+```rcl
+Set.all: (self: Set[T], predicate: T -> Bool) -> Bool
+```
+
+Return whether the predicate is true for all elements in the set. For example:
+
+```rcl
+// Evaluates to true.
+{11, 17, 42}.all(x => x > 0)
+
+// Evaluates to false.
+{11, 17, 42}.all(x => x > 20)
+
+// Evaluates to true.
+// TODO: Define std.empty_set
+std.empty_set.all(x => false)
+```
+
+This method short-circuits: when the outcome is decided, it will not call the
+predicate for the remaining elements in the set.
+
+## any
+
+```rcl
+Set.any: (self: Set[T], predicate: T -> Bool) -> Bool
+```
+
+Return whether the predicate is true for any element in the set. For example:
+
+```rcl
+// Evaluates to true.
+{11, 17, 42}.any(x => x > 17)
+
+// Evaluates to false.
+{11, 17, 42}.any(x => x > 42)
+
+// Evaluates to false.
+// TODO: Define std.empty_set
+std.empty_set.any(x => true)
+```
+
+This method short-circuits: when the outcome is decided, it will not call the
+predicate for the remaining elements in the set.
+
 ## contains
 
 ```rcl
