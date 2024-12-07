@@ -1,0 +1,32 @@
+let x = (long_arg_a, long_arg_b, long_arg_c, long_arg_d, long_arg_e) => false;
+// This triggers a type error that contains a long type signature.
+// In the past the line wrapping of the arguments was not great,
+// this is a regression test for the right format.
+-x
+
+# output:
+stdin:5:2
+  ╷
+5 │ -x
+  ╵  ^
+Error: Type mismatch. Expected Int but found this type:
+
+  (
+    long_arg_a: Any,
+    long_arg_b: Any,
+    long_arg_c: Any,
+    long_arg_d: Any,
+    long_arg_e: Any,
+  ) -> Bool
+
+stdin:5:1
+  ╷
+5 │ -x
+  ╵ ^
+Note: Expected Int because of this operator.
+
+stdin:1:9
+  ╷
+1 │ let x = (long_arg_a, long_arg_b, long_arg_c, long_arg_d, long_arg_e) => false;
+  ╵         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Note: Found Function because of this value.

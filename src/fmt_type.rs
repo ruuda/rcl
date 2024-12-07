@@ -65,12 +65,15 @@ fn format_types<'a, Types: IntoIterator<Item = (Option<&'a str>, &'a Type)>>(
 ) -> Doc<'a> {
     let mut parts = Vec::new();
     for (optional_name, t) in types {
+        // We put the name and the type together in a group, so that in tall
+        // mode, we get a `name: Type` per line as long as that fits.
         if let Some(name) = optional_name {
-            parts.push(name.into());
-            parts.push(":".into());
-            parts.push(Doc::Sep);
+            let group = group! { name ":" Doc::Sep format_type(t) };
+            parts.push(group);
+        } else {
+            parts.push(format_type(t));
         }
-        parts.push(format_type(t));
+
         parts.push(concat! { "," Doc::Sep });
     }
 
