@@ -1,6 +1,5 @@
 {
-  let empty_set: Set[Void] = {};
-  a = empty_set.any(x => x),
+  a = std.empty_set.any(x => x),
   b = {1, 2, 3}.any(x => x > 2),
   c = {1, 2, 3}.any(x => x > 10),
   // The assertion is never hit, we never evaluate the predicate on the third element.

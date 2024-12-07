@@ -18,7 +18,6 @@ Return whether the predicate is true for all elements in the set. For example:
 {11, 17, 42}.all(x => x > 20)
 
 // Evaluates to true.
-// TODO: Define std.empty_set
 std.empty_set.all(x => false)
 ```
 
@@ -41,7 +40,6 @@ Return whether the predicate is true for any element in the set. For example:
 {11, 17, 42}.any(x => x > 42)
 
 // Evaluates to false.
-// TODO: Define std.empty_set
 std.empty_set.any(x => true)
 ```
 

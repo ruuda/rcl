@@ -1,6 +1,5 @@
 {
-  let empty_set: Set[Void] = {};
-  a = empty_set.all(x => x),
+  a = std.empty_set.all(x => x),
   b = {1, 2, 3}.all(x => x > 2),
   c = {1, 2, 3}.all(x => x > 0),
   // The assertion is never hit, we never evaluate the predicate on the third element.
