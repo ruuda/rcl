@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::CallArg;
-use crate::error::{IntoError, PathElement, Result};
+use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
 use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
@@ -643,6 +643,146 @@ fn builtin_set_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     builtin_sum_impl(call, set)
 }
 
+/// Which function to implement in [`builtin_any_all_impl`].
+enum AllAny {
+    All,
+    Any,
+}
+
+/// Shared implementation for `{List,Set}.{any,all}`.
+#[inline(always)]
+fn builtin_all_any_impl<'a>(
+    eval: &'a mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    mode: AllAny,
+    xs: impl IntoIterator<Item = &'a Value>,
+) -> Result<bool> {
+    let predicate = &call.call.args[0].value;
+    let predicate_span = call.call.args[0].span;
+
+    for x in xs {
+        // The call that we construct here is internal, there is no span in the
+        // source code that we could point at. Point at the argument so we still
+        // have something to highlight.
+        let args = [CallArg {
+            span: predicate_span,
+            value: x.clone(),
+        }];
+        let call = FunctionCall {
+            call_open: predicate_span,
+            call_close: predicate_span,
+            args: &args,
+        };
+        let result = eval
+            .eval_call(predicate_span, predicate, call)
+            .map_err(|mut err| {
+                // If the call includes a call frame for this call, then replace
+                // it with a more descriptive message, since the span is a bit
+                // misleading.
+                err.replace_call_frame(
+                    predicate_span,
+                    concat! { "In internal call to predicate from '" Doc::highlight(name) "'." },
+                );
+                err
+            })?;
+        match result {
+            Value::Bool(true) => match mode {
+                AllAny::All => continue,
+                AllAny::Any => return Ok(true),
+            },
+            Value::Bool(false) => match mode {
+                AllAny::All => return Ok(false),
+                AllAny::Any => continue,
+            },
+            not_bool => {
+                return predicate_span
+                    .error("Type mismatch.")
+                    .with_body(concat! {
+                        "Expected predicate for '" Doc::highlight(name) "' to return "
+                        "Bool".format_type()
+                        ", but it returned "
+                        format_rcl(&not_bool).into_owned()
+                        "."
+                    })
+                    .err();
+            }
+        }
+    }
+    match mode {
+        AllAny::All => Ok(true),
+        AllAny::Any => Ok(false),
+    }
+}
+
+builtin_method!(
+    "List.all",
+    (predicate: (fn (element: Any) -> Bool)) -> Bool,
+    const LIST_ALL,
+    builtin_list_all
+);
+fn builtin_list_all(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    Ok(Value::Bool(builtin_all_any_impl(
+        eval,
+        call,
+        "List.all",
+        AllAny::All,
+        list,
+    )?))
+}
+
+builtin_method!(
+    "List.any",
+    (predicate: (fn (element: Any) -> Bool)) -> Bool,
+    const LIST_ANY,
+    builtin_list_any
+);
+fn builtin_list_any(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    Ok(Value::Bool(builtin_all_any_impl(
+        eval,
+        call,
+        "List.any",
+        AllAny::Any,
+        list,
+    )?))
+}
+
+builtin_method!(
+    "Set.all",
+    (predicate: (fn (element: Any) -> Bool)) -> Bool,
+    const SET_ALL,
+    builtin_set_all
+);
+fn builtin_set_all(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    Ok(Value::Bool(builtin_all_any_impl(
+        eval,
+        call,
+        "Set.all",
+        AllAny::All,
+        list,
+    )?))
+}
+
+builtin_method!(
+    "Set.any",
+    (predicate: (fn (element: Any) -> Bool)) -> Bool,
+    const SET_ANY,
+    builtin_set_any
+);
+fn builtin_set_any(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    Ok(Value::Bool(builtin_all_any_impl(
+        eval,
+        call,
+        "Set.any",
+        AllAny::Any,
+        list,
+    )?))
+}
+
 builtin_method!(
     "String.split",
     (separator: String) -> [String],
@@ -997,47 +1137,4 @@ fn builtin_list_enumerate(_eval: &mut Evaluator, call: MethodCall) -> Result<Val
         .map(|(v, i)| (Value::Int(i), v.clone()))
         .collect();
     Ok(Value::Dict(Rc::new(kv)))
-}
-
-/// Shared implementation for `List.all` and `List.any`.
-///
-/// Note, we could have a specialized impl for both, and then short-circuit them,
-/// but I think type safety is more important than performance here, and the list
-/// is materialized anyway, so traversing the entire list is not such a big deal.
-/// For e.g. `[true, false, "bobcat"].any()`, we want to report an error rather
-/// than evaluating to `true`, because this is likely a bug.
-fn builtin_list_all_impl(call: MethodCall, name: &'static str) -> Result<bool> {
-    let list = call.receiver.expect_list();
-    let mut all_true = true;
-    for (i, elem) in list.iter().enumerate() {
-        match elem {
-            Value::Bool(true) => continue,
-            Value::Bool(false) => all_true = false,
-            not_bool => {
-                return call
-                    .receiver_span
-                    .error("Type mismatch.")
-                    .with_path(vec![PathElement::Index(i)])
-                    .with_body(concat! {
-                        "'" Doc::highlight(name) "' takes a list of "
-                        "Bool".format_type()
-                        ", but found "
-                        format_rcl(not_bool).into_owned()
-                        "."
-                    })
-                    .err();
-            }
-        }
-    }
-    Ok(all_true)
-}
-
-builtin_method!("List.all", () -> Bool, const LIST_ALL, builtin_list_all);
-fn builtin_list_all(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
-    Ok(Value::Bool(builtin_list_all_impl(call, "List.all")?))
-}
-
-builtin_method!("List.any", () -> Bool, const LIST_ANY, builtin_list_any);
-fn builtin_list_any(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
-    Ok(Value::Bool(!builtin_list_all_impl(call, "List.any")?))
 }
