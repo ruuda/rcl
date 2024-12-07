@@ -28,6 +28,8 @@ use crate::uber::Mode;
 /// Names of built-in variables and methods.
 const BUILTINS: &[&str] = &[
     // Methods
+    "all",
+    "any",
     "chars",
     "contains",
     "ends_with",

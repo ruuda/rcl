@@ -45,6 +45,8 @@
 "0x7fffffffffffffff"
 
 # Builtin methods.
+"all"
+"any"
 "chars"
 "contains"
 "empty_set"
