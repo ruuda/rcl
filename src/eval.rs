@@ -348,6 +348,8 @@ impl<'a> Evaluator<'a> {
 
             Expr::IntegerLit(i) => Ok(Value::Int(*i)),
 
+            Expr::DecimalLit(d) => Ok(Value::Decimal(*d)),
+
             Expr::StringLit(s) => Ok(Value::String(s.clone())),
 
             Expr::Format(fragments) => self.eval_format(env, fragments),
@@ -815,6 +817,15 @@ impl<'a> Evaluator<'a> {
                 None => {
                     let err = concat! {
                         "Negation of " x.to_string() " would overflow."
+                    };
+                    op_span.error(err).err()
+                }
+            },
+            (UnOp::Neg, Value::Decimal(d)) => match d.checked_neg() {
+                Some(nd) => Ok(Value::Decimal(nd)),
+                None => {
+                    let err = concat! {
+                        "Negation of " d.format() " would overflow."
                     };
                     op_span.error(err).err()
                 }
