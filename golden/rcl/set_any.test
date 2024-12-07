@@ -1,0 +1,11 @@
+{
+  let empty_set: Set[Void] = {};
+  a = empty_set.any(x => x),
+  b = {1, 2, 3}.any(x => x > 2),
+  c = {1, 2, 3}.any(x => x > 10),
+  // The assertion is never hit, we never evaluate the predicate on the third element.
+  d = {1, 2, 3}.any(x => assert x < 3, "'any' short-circuits."; x > 1),
+}
+
+# output:
+{ a = false, b = true, c = false, d = true }

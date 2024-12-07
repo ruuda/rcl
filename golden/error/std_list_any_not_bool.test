@@ -1,0 +1,14 @@
+[1, 2, 3].any(x => x)
+
+# output:
+stdin:1:15
+  ╷
+1 │ [1, 2, 3].any(x => x)
+  ╵               ^~~~~~
+Error: Type mismatch. Expected predicate for 'List.any' to return Bool, but it returned 1.
+
+stdin:1:14
+  ╷
+1 │ [1, 2, 3].any(x => x)
+  ╵              ^
+In call to method 'List.any'.

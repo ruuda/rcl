@@ -756,13 +756,13 @@ builtin_method!(
     builtin_set_all
 );
 fn builtin_set_all(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
-    let list = call.receiver.expect_list();
+    let elems = call.receiver.expect_set();
     Ok(Value::Bool(builtin_all_any_impl(
         eval,
         call,
         "Set.all",
         AllAny::All,
-        list,
+        elems,
     )?))
 }
 
@@ -773,13 +773,13 @@ builtin_method!(
     builtin_set_any
 );
 fn builtin_set_any(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
-    let list = call.receiver.expect_list();
+    let elems = call.receiver.expect_set();
     Ok(Value::Bool(builtin_all_any_impl(
         eval,
         call,
         "Set.any",
         AllAny::Any,
-        list,
+        elems,
     )?))
 }
 
