@@ -1,4 +1,4 @@
-{ for x in []: x }
+std.empty_set
 
 # output:
 std.empty_set

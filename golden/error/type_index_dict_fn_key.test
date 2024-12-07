@@ -13,7 +13,11 @@ Error: Type mismatch. Expected a value that fits this type:
 
 But got this value:
 
-  { range = std.range, read_file_utf8 = std.read_file_utf8 }
+  {
+    empty_set = std.empty_set,
+    range = std.range,
+    read_file_utf8 = std.read_file_utf8,
+  }
 
 stdin:1:9
   ╷

@@ -134,13 +134,8 @@ list contains two identical sets:
 ```
 
 Note, without type annotations, the empty collection `{}` is a dict, not a set.
-To produce an empty set, we can use a set comprehension:
-
-```rcl
-{for x in []: x}
-```
-
-Or we can use a type annotation to force `{}` to be a set:
+To produce an empty set, we can use [`std.empty_set`](stdlib.md#empty_set). A
+type annotation will also force `{}` to be a set:
 
 ```rcl
 let empty_set: Set[Int] = {};

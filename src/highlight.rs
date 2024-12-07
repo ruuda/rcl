@@ -15,6 +15,7 @@ use crate::markup::{Markup, MarkupString};
 const BUILTINS: &[&str] = &[
     "chars",
     "contains",
+    "empty_set",
     "ends_with",
     "enumerate",
     "except",

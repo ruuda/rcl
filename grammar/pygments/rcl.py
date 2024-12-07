@@ -62,6 +62,7 @@ _root_base = [
             (
                 "chars",
                 "contains",
+                "empty_set",
                 "ends_with",
                 "enumerate",
                 "except",

@@ -108,6 +108,7 @@ fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Value>
 pub fn initialize() -> Value {
     let mut builtins: BTreeMap<Value, Value> = BTreeMap::new();
 
+    builtins.insert("empty_set".into(), Value::Set(Rc::new(BTreeSet::new())));
     builtins.insert("range".into(), Value::BuiltinFunction(&STD_RANGE));
     builtins.insert(
         "read_file_utf8".into(),

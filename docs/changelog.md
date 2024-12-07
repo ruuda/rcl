@@ -17,6 +17,7 @@ compatibility impact will be clearly marked as such in the changelog.
 ## Unreleased
 
  * Add [`List.sort`](type_list.md#sort) method.
+ * Add [`std.empty_set`](stdlib.md#empty_set) constant.
 
 ## 0.6.0
 

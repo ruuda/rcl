@@ -3,4 +3,4 @@ let empty: Set[Int] = {};
 empty
 
 # output:
-{}
+std.empty_set

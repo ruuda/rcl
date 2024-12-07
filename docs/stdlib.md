@@ -1,8 +1,18 @@
 # Standard library
 
-The <abbr>RCL</abbr> standard library is a dict of functions that is in scope by
+The <abbr>RCL</abbr> standard library is a dict of values that is in scope by
 default under the name `std`. Most of the built-in functionality is not in this
 `std` dict, but in methods on the builtin types. See the next chapters for those.
+
+## empty_set
+
+```rcl
+std.empty_set: Set[Void]
+```
+
+An empty set. This constant exists, because without type annotations, `{}` is an
+empty dict rather than an empty set. This constant is the standard way to refer
+to an empty set.
 
 ## range
 
