@@ -60,6 +60,8 @@ _root_base = [
     (
         words(
             (
+                "all",
+                "any",
                 "chars",
                 "contains",
                 "empty_set",

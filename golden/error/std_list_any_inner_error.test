@@ -1,0 +1,20 @@
+[1, 2, 3].any(x => assert x != 2, "Inner error!"; false)
+
+# output:
+stdin:1:27
+  ╷
+1 │ [1, 2, 3].any(x => assert x != 2, "Inner error!"; false)
+  ╵                           ^~~~~~
+Error: Assertion failed. Inner error!
+
+stdin:1:15
+  ╷
+1 │ [1, 2, 3].any(x => assert x != 2, "Inner error!"; false)
+  ╵               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In internal call to predicate from 'List.any'.
+
+stdin:1:14
+  ╷
+1 │ [1, 2, 3].any(x => assert x != 2, "Inner error!"; false)
+  ╵              ^
+In call to method 'List.any'.

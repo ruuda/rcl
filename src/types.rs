@@ -725,7 +725,7 @@ pub fn builtin(type_: Type) -> SourcedType {
 /// * `List[T]` is written `[T]`.
 /// * `Set[T]` is written `{T}`.
 /// * `Dict[K, V]` is written `{K: V}`.
-/// * `(P, Q) -> R` is written `(fn (P, Q) -> R)`
+/// * `(p: P, q: Q) -> R` is written `(fn (p: P, q: Q) -> R)`
 macro_rules! make_type {
     (Any) => { builtin(Type::Any) };
     (Int) => { builtin(Type::Int) };

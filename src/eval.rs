@@ -432,6 +432,8 @@ impl<'a> Evaluator<'a> {
                         };
                     }
 
+                    (Value::List(_), "all") => Some(&stdlib::LIST_ALL),
+                    (Value::List(_), "any") => Some(&stdlib::LIST_ANY),
                     (Value::List(_), "contains") => Some(&stdlib::LIST_CONTAINS),
                     (Value::List(_), "enumerate") => Some(&stdlib::LIST_ENUMERATE),
                     (Value::List(_), "filter") => Some(&stdlib::LIST_FILTER),
@@ -446,6 +448,8 @@ impl<'a> Evaluator<'a> {
                     (Value::List(_), "sort") => Some(&stdlib::LIST_SORT),
                     (Value::List(_), "sum") => Some(&stdlib::LIST_SUM),
 
+                    (Value::Set(_), "all") => Some(&stdlib::SET_ALL),
+                    (Value::Set(_), "any") => Some(&stdlib::SET_ANY),
                     (Value::Set(_), "contains") => Some(&stdlib::SET_CONTAINS),
                     (Value::Set(_), "except") => Some(&stdlib::SET_EXCEPT),
                     (Value::Set(_), "filter") => Some(&stdlib::SET_FILTER),

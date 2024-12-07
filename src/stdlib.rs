@@ -643,6 +643,146 @@ fn builtin_set_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     builtin_sum_impl(call, set)
 }
 
+/// Which function to implement in [`builtin_any_all_impl`].
+enum AllAny {
+    All,
+    Any,
+}
+
+/// Shared implementation for `{List,Set}.{any,all}`.
+#[inline(always)]
+fn builtin_all_any_impl<'a>(
+    eval: &'a mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    mode: AllAny,
+    xs: impl IntoIterator<Item = &'a Value>,
+) -> Result<bool> {
+    let predicate = &call.call.args[0].value;
+    let predicate_span = call.call.args[0].span;
+
+    for x in xs {
+        // The call that we construct here is internal, there is no span in the
+        // source code that we could point at. Point at the argument so we still
+        // have something to highlight.
+        let args = [CallArg {
+            span: predicate_span,
+            value: x.clone(),
+        }];
+        let call = FunctionCall {
+            call_open: predicate_span,
+            call_close: predicate_span,
+            args: &args,
+        };
+        let result = eval
+            .eval_call(predicate_span, predicate, call)
+            .map_err(|mut err| {
+                // If the call includes a call frame for this call, then replace
+                // it with a more descriptive message, since the span is a bit
+                // misleading.
+                err.replace_call_frame(
+                    predicate_span,
+                    concat! { "In internal call to predicate from '" Doc::highlight(name) "'." },
+                );
+                err
+            })?;
+        match result {
+            Value::Bool(true) => match mode {
+                AllAny::All => continue,
+                AllAny::Any => return Ok(true),
+            },
+            Value::Bool(false) => match mode {
+                AllAny::All => return Ok(false),
+                AllAny::Any => continue,
+            },
+            not_bool => {
+                return predicate_span
+                    .error("Type mismatch.")
+                    .with_body(concat! {
+                        "Expected predicate for '" Doc::highlight(name) "' to return "
+                        "Bool".format_type()
+                        ", but it returned "
+                        format_rcl(&not_bool).into_owned()
+                        "."
+                    })
+                    .err();
+            }
+        }
+    }
+    match mode {
+        AllAny::All => Ok(true),
+        AllAny::Any => Ok(false),
+    }
+}
+
+builtin_method!(
+    "List.all",
+    (predicate: (fn (element: Any) -> Bool)) -> Bool,
+    const LIST_ALL,
+    builtin_list_all
+);
+fn builtin_list_all(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    Ok(Value::Bool(builtin_all_any_impl(
+        eval,
+        call,
+        "List.all",
+        AllAny::All,
+        list,
+    )?))
+}
+
+builtin_method!(
+    "List.any",
+    (predicate: (fn (element: Any) -> Bool)) -> Bool,
+    const LIST_ANY,
+    builtin_list_any
+);
+fn builtin_list_any(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    Ok(Value::Bool(builtin_all_any_impl(
+        eval,
+        call,
+        "List.any",
+        AllAny::Any,
+        list,
+    )?))
+}
+
+builtin_method!(
+    "Set.all",
+    (predicate: (fn (element: Any) -> Bool)) -> Bool,
+    const SET_ALL,
+    builtin_set_all
+);
+fn builtin_set_all(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let elems = call.receiver.expect_set();
+    Ok(Value::Bool(builtin_all_any_impl(
+        eval,
+        call,
+        "Set.all",
+        AllAny::All,
+        elems,
+    )?))
+}
+
+builtin_method!(
+    "Set.any",
+    (predicate: (fn (element: Any) -> Bool)) -> Bool,
+    const SET_ANY,
+    builtin_set_any
+);
+fn builtin_set_any(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let elems = call.receiver.expect_set();
+    Ok(Value::Bool(builtin_all_any_impl(
+        eval,
+        call,
+        "Set.any",
+        AllAny::Any,
+        elems,
+    )?))
+}
+
 builtin_method!(
     "String.split",
     (separator: String) -> [String],
