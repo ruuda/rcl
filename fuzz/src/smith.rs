@@ -158,7 +158,7 @@ define_ops! {
     0x37 => ExprField,
     /// Combine the top _n/2_ elements into a string or f-string.
     0x38 => ExprFormatString,
-    /// Prepend an unary operator to the element a the top.
+    /// Prepend a unary operator to the element at the top.
     0x39 => ExprUnop,
     /// Combine the top two elements with a binary operator in between.
     0x3a => ExprBinop,
