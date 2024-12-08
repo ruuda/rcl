@@ -22,6 +22,8 @@ compatibility impact will be clearly marked as such in the changelog.
    [`Set.all`](type_set.md#all), and [`Set.any`](type_set.md#any) methods.
  * Comparisons (`<`, `<=`, `>`, `>=`) are now allowed between any two values,
    not just integers. In particular this enables comparing strings.
+ * Add [`--check`](rcl_build.md#-check) mode to `rcl build`, to confirm that
+   generated files are up to date.
 
 ## 0.6.0
 

@@ -85,6 +85,13 @@ This field is optional and defaults to 80.
 
 ## Options
 
+### `--check`
+
+Report whether any files would be created or rewritten. If so, exit with exit
+code 1. When all target files are already up to date, exit with exit code 0.
+This can be used on <abbr>CI</abbr> or in a Git pre-commit hook to ensure that
+generated files which are checked in to a repository are up to date.
+
 ### `--dry-run`
 
 By default, `rcl build` writes the evaluated contents of a build target to the

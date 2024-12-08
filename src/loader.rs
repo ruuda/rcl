@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::{env, path};
@@ -102,7 +102,7 @@ pub trait Filesystem {
     /// This creates intermediate directories if needed, and checks the sandbox
     /// policy at every step along the way. The `from` path is relative to the
     /// working directory, just like with [`resolve`].
-    fn open_build_output(&self, out_path: &str, from: &str) -> Result<fs::File>;
+    fn open_build_output(&self, out_path: &str, from: &str, opts: OpenOptions) -> Result<fs::File>;
 
     /// Return `path`, but relative to the working directory, if possible.
     ///
@@ -134,7 +134,7 @@ impl Filesystem for PanicFilesystem {
     fn load(&self, _: PathLookup) -> Result<Document> {
         panic!("Should have initialized the filesystem to a real one before loading.")
     }
-    fn open_build_output(&self, _: &str, _: &str) -> Result<File> {
+    fn open_build_output(&self, _: &str, _: &str, _: OpenOptions) -> Result<File> {
         panic!("Should have initialized the filesystem to a real one before resolving.")
     }
     fn get_relative_path<'a>(&self, _: &'a Path) -> &'a Path {
@@ -162,7 +162,7 @@ impl Filesystem for VoidFilesystem {
     fn load(&self, _: PathLookup) -> Result<Document> {
         Error::new("Void filesystem does not load files.").err()
     }
-    fn open_build_output(&self, _: &str, _: &str) -> Result<File> {
+    fn open_build_output(&self, _: &str, _: &str, _: OpenOptions) -> Result<File> {
         panic!("Void filesystem does not open files.")
     }
     fn get_relative_path<'a>(&self, _: &'a Path) -> &'a Path {
@@ -340,7 +340,7 @@ impl Filesystem for SandboxFilesystem {
         Ok(doc)
     }
 
-    fn open_build_output(&self, out_path: &str, from: &str) -> Result<File> {
+    fn open_build_output(&self, out_path: &str, from: &str, opts: OpenOptions) -> Result<File> {
         // The initial steps are similar to `resolve`, but we don't need to
         // support workdir-relative paths with `//`.
         let mut path_buf = self.workdir.clone();
@@ -437,9 +437,9 @@ impl Filesystem for SandboxFilesystem {
             }
         }
 
-        match std::fs::File::create(&path_buf) {
+        match opts.open(&path_buf) {
             Err(err) => Error::new(concat! {
-                "Failed to create output file '"
+                "Failed to open output file '"
                 pprint::Doc::path(path_buf)
                 "': "
                 err.to_string()
@@ -503,10 +503,20 @@ impl Loader {
         self.filesystem.resolve_cli_output(path)
     }
 
-    /// Open an output file path specified in a build file.
-    pub fn open_build_output(&self, out_path: &str, from: DocId) -> Result<File> {
+    /// Open an output file path specified in a build file for writing.
+    pub fn open_build_output_rw(&self, out_path: &str, from: DocId) -> Result<File> {
         let from_name = self.get_doc(from).name;
-        self.filesystem.open_build_output(out_path, from_name)
+        let mut opts = OpenOptions::new();
+        opts.write(true).create(true);
+        self.filesystem.open_build_output(out_path, from_name, opts)
+    }
+
+    /// Open an output file path specified in a build file for reading only.
+    pub fn open_build_output_ro(&self, out_path: &str, from: DocId) -> Result<File> {
+        let from_name = self.get_doc(from).name;
+        let mut opts = OpenOptions::new();
+        opts.read(true).create(false);
+        self.filesystem.open_build_output(out_path, from_name, opts)
     }
 
     /// Borrow all documents.

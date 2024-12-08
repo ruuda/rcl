@@ -7,6 +7,7 @@
 
 //! Implementation of the `rcl build` subcommand.
 
+use std::io::Read;
 use std::rc::Rc;
 
 use crate::cli::OutputFormat;
@@ -24,6 +25,8 @@ use crate::types::{Dict, SourcedType, Type};
 pub enum BuildMode {
     /// Print to stdout, do not write to the file system.
     DryRun,
+    /// Confirm that the target file matches the generated contents, do not write.
+    Check,
     /// Write to the target file, overwriting any existing file there.
     WriteFilesystem,
 }
@@ -184,6 +187,8 @@ pub fn execute_build(
         err
     })?;
 
+    let mut n_changed = 0;
+
     for (i, target) in targets.iter().enumerate() {
         println!("[{}/{}] {}", i + 1, targets.len(), target.out_path);
 
@@ -205,7 +210,8 @@ pub fn execute_build(
         match mode {
             BuildMode::WriteFilesystem => {
                 // coverage:off -- We don't test writing to the file system in tests.
-                let mut out_file = loader.open_build_output(target.out_path.as_ref(), buildfile)?;
+                let mut out_file =
+                    loader.open_build_output_rw(target.out_path.as_ref(), buildfile)?;
                 match result.write_bytes_no_markup(&mut out_file) {
                     Ok(()) => continue,
                     Err(err) => {
@@ -218,6 +224,30 @@ pub fn execute_build(
                 }
                 // coverage:on
             }
+            BuildMode::Check => {
+                let mut out_file =
+                    loader.open_build_output_ro(target.out_path.as_ref(), buildfile)?;
+                let mut expected = Vec::new();
+                result
+                    .write_bytes_no_markup(&mut expected)
+                    .expect("Writing in memory does not fail.");
+                let mut actual = Vec::with_capacity(expected.len());
+                match out_file.read_to_end(&mut actual) {
+                    Ok(_) => {
+                        if actual != expected {
+                            println!("Would rewrite {}", target.out_path.as_ref());
+                            n_changed += 1;
+                        }
+                    }
+                    Err(err) => {
+                        return Error::new(concat! {
+                            "Failed to read '" Doc::path(target.out_path.as_ref()) "': "
+                            err.to_string()
+                        })
+                        .err()
+                    }
+                }
+            }
             BuildMode::DryRun => {
                 let mut stdout = std::io::stdout().lock();
                 // Ignore the result here, if we fail to write to stdout,
@@ -227,5 +257,21 @@ pub fn execute_build(
         }
     }
 
-    Ok(())
+    // In check mode, fail if anything would be rewritten.
+    match mode {
+        BuildMode::Check if n_changed > 0 => {
+            let parts = vec![
+                n_changed.to_string().into(),
+                Doc::str(" of "),
+                targets.len().to_string().into(),
+                Doc::str(" files would be rewritten."),
+            ];
+            Error::new(Doc::Concat(parts)).err()
+        }
+        BuildMode::Check => {
+            println!("All {} files are up to date.", targets.len());
+            Ok(())
+        }
+        _ => Ok(()),
+    }
 }

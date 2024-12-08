@@ -335,6 +335,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             }
             Arg::Long("check") => {
                 check = true;
+                build_mode = BuildMode::Check;
             }
             Arg::Long("color") => {
                 global_opts.markup = match_option! {
@@ -888,6 +889,16 @@ mod test {
             *build_mode = BuildMode::DryRun;
         };
         assert_eq!(parse(&["rcl", "build", "--dry-run", "other.rcl"]), expected);
+
+        if let Cmd::Build { build_mode, .. } = &mut expected.1 {
+            *build_mode = BuildMode::Check;
+        };
+        // The later --check takes precedence.
+        assert_eq!(
+            parse(&["rcl", "build", "--dry-run", "--check", "other.rcl"]),
+            expected
+        );
+        assert_eq!(parse(&["rcl", "build", "--check", "other.rcl"]), expected);
     }
 
     #[test]
