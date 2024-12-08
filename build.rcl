@@ -1,0 +1,22 @@
+let banner = "# This file is generated, see build.rcl in the repository root.";
+
+let rust_toolchain = {
+  toolchain = {
+    channel = "1.70.0",
+    components = ["rustfmt", "clippy"],
+    targets = [
+      // Default regular build.
+      "x86_64-unknown-linux-gnu",
+      // For building a static binary.
+      "x86_64-unknown-linux-musl",
+    ],
+  },
+};
+
+let opts_toml = { format = "toml", banner = banner };
+
+{
+  "rust-toolchain.toml": opts_toml | { contents = rust_toolchain },
+  "Cargo.toml": opts_toml | { contents = import "//Cargo.rcl" },
+  "wasm/Cargo.toml": opts_toml | { contents = import "//wasm/Cargo.rcl" },
+}

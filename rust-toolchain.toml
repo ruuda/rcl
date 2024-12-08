@@ -1,9 +1,5 @@
+# This file is generated, see build.rcl in the repository root.
 [toolchain]
 channel = "1.70.0"
 components = ["rustfmt", "clippy"]
-targets = [
-  # Default regular build.
-  "x86_64-unknown-linux-gnu",
-  # For building a static binary.
-  "x86_64-unknown-linux-musl",
-]
+targets = ["x86_64-unknown-linux-gnu", "x86_64-unknown-linux-musl"]
