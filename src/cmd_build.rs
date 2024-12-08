@@ -241,6 +241,7 @@ pub fn execute_build(
                 match out_file.read_to_end(&mut actual) {
                     Ok(_) => {
                         if actual != expected {
+                            // coverage:off -- All files in the repo should exist and be compliant.
                             println!("Would rewrite {}", target.out_path.as_ref());
                             n_changed += 1;
                         }
@@ -253,6 +254,7 @@ pub fn execute_build(
                         .err()
                     }
                 }
+                // coverage:on
             }
             BuildMode::DryRun => {
                 let mut stdout = std::io::stdout().lock();
@@ -266,6 +268,7 @@ pub fn execute_build(
     // In check mode, fail if anything would be rewritten.
     match mode {
         BuildMode::Check if n_changed > 0 => {
+            // coverage:off -- All generated files in the repo should be up to date.
             let parts = vec![
                 n_changed.to_string().into(),
                 Doc::str(" of "),
@@ -273,6 +276,7 @@ pub fn execute_build(
                 Doc::str(" files would be rewritten."),
             ];
             Error::new(Doc::Concat(parts)).err()
+            // coverage:on
         }
         BuildMode::Check => {
             println!("All {} files are up to date.", targets.len());

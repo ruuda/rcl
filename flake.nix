@@ -18,11 +18,13 @@
             (k: builtins.mapAttrs (name: value: { "${k}" = value; }) (f k))
             supportedSystems
           );
+      # The source of truth for the version number is Cargo.rcl.
+      cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+      version = cargoToml.package.version;
     in
       forEachSystem (system:
         let
           name = "rcl";
-          version = "0.6.0";
           overlays = [ rust-overlay.overlays.default ];
           pkgs = import nixpkgs { inherit overlays system; };
 
@@ -98,6 +100,8 @@
           ];
 
           pythonSources = pkgs.lib.sourceFilesBySuffices ./. [ ".py" ".pyi" ];
+
+          rclTomlSources = pkgs.lib.sourceFilesBySuffices ./. [ ".rcl" ".toml" ];
 
           goldenSources = ./golden;
 
@@ -355,7 +359,14 @@
                 "check-fmt-rcl"
                 { buildInputs = [ debugBuild ]; }
                 ''
-                rcl format --check ${./examples}/* | tee $out
+                rcl format --check ${rclTomlSources}/**.rcl | tee $out
+                '';
+
+              buildRcl = pkgs.runCommand
+                "check-rcl-build"
+                { buildInputs = [ debugBuild ]; }
+                ''
+                rcl build --check --directory ${rclTomlSources} | tee $out
                 '';
 
               typecheckPython = pkgs.runCommand
@@ -393,6 +404,9 @@
 
                 # Run the golden tests to generate the .profraw files.
                 RCL_BIN=${coverageBuild}/bin/rcl python3 ${goldenSources}/run.py
+
+                # Also run `rcl build` to make sure we cover that part of the application.
+                ${coverageBuild}/bin/rcl build --check --directory ${rclTomlSources}
 
                 # Copy in the .profraw files from the tests.
                 cp ${coverageBuild}/prof/*.profraw .

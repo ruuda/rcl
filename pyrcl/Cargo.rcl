@@ -1,0 +1,21 @@
+let root = import "//Cargo.rcl";
+
+{
+  package =
+    root.package
+    | {
+      name = "pyrcl",
+      description = "Python bindings to the RCL interpreter.",
+    },
+
+  lib = { crate-type = ["cdylib"] },
+
+  dependencies = {
+    rcl = { path = ".." },
+    pyo3 = {
+      version = "0.20.2",
+      default-features = false,
+      features = ["macros", "extension-module"],
+    },
+  },
+}
