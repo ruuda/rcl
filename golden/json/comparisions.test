@@ -10,6 +10,6 @@
 # output:
 {
   "int": [true, true, false, false],
-  "str": [true, true, false, false],
   "list_int": [true, true, true, false, false],
+  "str": [true, true, false, false]
 }

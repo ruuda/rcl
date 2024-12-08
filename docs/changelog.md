@@ -20,6 +20,8 @@ compatibility impact will be clearly marked as such in the changelog.
  * Add [`List.sort`](type_list.md#sort) method.
  * Add [`List.all`](type_list.md#all), [`List.any`](type_list.md#any),
    [`Set.all`](type_set.md#all), and [`Set.any`](type_set.md#any) methods.
+ * Comparisons (`<`, `<=`, `>`, `>=`) are now allowed between any two values,
+   not just integers. In particular this enables comparing strings.
 
 ## 0.6.0
 
