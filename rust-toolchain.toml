@@ -1,4 +1,5 @@
 # This file is generated, see build.rcl in the repository root.
+
 [toolchain]
 channel = "1.70.0"
 components = ["rustfmt", "clippy"]

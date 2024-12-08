@@ -1,4 +1,5 @@
 # This file is generated, see build.rcl in the repository root.
+
 [dependencies]
 arbitrary = "1.3.0"
 libfuzzer-sys = "0.4.7"

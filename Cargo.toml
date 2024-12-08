@@ -1,4 +1,5 @@
 # This file is generated, see build.rcl in the repository root.
+
 [dependencies]
 unicode-width = "0.1.10"
 

@@ -1,4 +1,5 @@
 # This file is generated, see build.rcl in the repository root.
+
 [dependencies]
 rcl = { path = ".." }
 wasm-bindgen = { default-features = false, features = ["std"], version = "=0.2.84" }
