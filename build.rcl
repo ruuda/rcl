@@ -16,7 +16,8 @@ let rust_toolchain = {
 let opts_toml = { format = "toml", banner = banner };
 
 {
-  "rust-toolchain.toml": opts_toml | { contents = rust_toolchain },
   "Cargo.toml": opts_toml | { contents = import "//Cargo.rcl" },
+  "fuzz/Cargo.toml": opts_toml | { contents = import "//fuzz/Cargo.rcl" },
   "wasm/Cargo.toml": opts_toml | { contents = import "//wasm/Cargo.rcl" },
+  "rust-toolchain.toml": opts_toml | { contents = rust_toolchain },
 }

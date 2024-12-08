@@ -1,0 +1,51 @@
+let root = import "//Cargo.rcl";
+
+{
+  package =
+    root.package
+    | {
+      name = "rcl-fuzz",
+      description = "Fuzz targets and helpers for testing RCL.",
+      publish = false,
+      metadata = { cargo-fuzz = true },
+    },
+
+  dependencies = {
+    arbitrary = "1.3.0",
+    libfuzzer-sys = "0.4.7",
+    rcl = { path = ".." },
+    serde_json = "1.0.114",
+    tree-sitter = "0.20.10",
+    tree-sitter-rcl = { path = "../grammar/tree-sitter-rcl" },
+    toml = {
+      version = "0.8.10",
+      default-features = false,
+      features = ["parse"],
+    },
+  },
+
+  bin = [
+    // Helper binaries.
+    {
+      name = "smithctl",
+      path = "tools/smithctl.rs",
+    },
+    // Fuzz targets.
+    let fuzz_targets = [
+      "fuzz_cli",
+      "fuzz_escapes",
+      "fuzz_is_identifier",
+      "fuzz_smith",
+      "fuzz_source",
+      "fuzz_string_len",
+      "fuzz_tree_sitter",
+    ];
+    for target in fuzz_targets:
+    {
+      name = target,
+      path = f"fuzz_targets/{target}.rs",
+      test = false,
+      doc = false,
+    },
+  ],
+}
