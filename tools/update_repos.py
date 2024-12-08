@@ -51,14 +51,14 @@ from typing import List
 
 def ignores_tree_sitter_rcl(dirname: str, _entries: List[str]) -> List[str]:
     if dirname == "grammar/tree-sitter-rcl":
-        return [".gitignore"]
+        return [".gitignore", "Cargo.rcl"]
     else:
         return []
 
 
 def ignores_zed(dirname: str, _entries: List[str]) -> List[str]:
     if dirname == "grammar/zed":
-        return [".gitignore", "grammars"]
+        return [".gitignore", "extension.rcl", "grammars"]
     else:
         return []
 

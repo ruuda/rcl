@@ -1,0 +1,18 @@
+let root = import "//Cargo.rcl";
+
+{
+  id = "rcl",
+  name = "RCL",
+  description = "Support for the RCL configuration language.",
+  version = root.package.version,
+  schema_version = 1,
+  authors = root.package.authors,
+  repository = "https://github.com/rcl-lang/zed-rcl",
+
+  grammars = {
+    rcl = {
+      repository = "https://github.com/rcl-lang/tree-sitter-rcl",
+      commit = "c7cd31054e54411165acb968091e3e44172cb65c",
+    }
+  }
+}

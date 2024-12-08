@@ -22,6 +22,9 @@ let opts_toml = {
   "grammar/tree-sitter-rcl/Cargo.toml":
     opts_toml
     | { contents = import "//grammar/tree-sitter-rcl/Cargo.rcl" },
+  "grammar/zed/extension.toml":
+    opts_toml
+    | { contents = import "//grammar/zed/extension.rcl" },
   "pyrcl/Cargo.toml": opts_toml | { contents = import "//pyrcl/Cargo.rcl" },
   "wasm/Cargo.toml": opts_toml | { contents = import "//wasm/Cargo.rcl" },
 }
