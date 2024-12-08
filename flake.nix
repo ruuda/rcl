@@ -101,6 +101,8 @@
 
           pythonSources = pkgs.lib.sourceFilesBySuffices ./. [ ".py" ".pyi" ];
 
+          rclTomlSources = pkgs.lib.sourceFilesBySuffices ./. [ ".rcl" ".toml" ];
+
           goldenSources = ./golden;
 
           treeSitterRcl = pkgs.stdenv.mkDerivation {
@@ -357,7 +359,7 @@
                 "check-fmt-rcl"
                 { buildInputs = [ debugBuild ]; }
                 ''
-                rcl format --check ${./examples}/* | tee $out
+                rcl format --check ${rclTomlSources}/**.rcl | tee $out
                 '';
 
               typecheckPython = pkgs.runCommand

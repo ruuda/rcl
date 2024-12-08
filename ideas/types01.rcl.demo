@@ -136,7 +136,7 @@ rachael.full_name()
 type Person = { first_name: String, last_name: String, ... };
 // And then the .full_name would work.
 
-// How does the scoping work? 
+// How does the scoping work?
 // If `let` binds a value to a name, then `impl` might bind the impl'd functions
 // to names, but in a separate namespace, only for method calls.
 // And `type` would do the same but for yet another namespace. Then when a
