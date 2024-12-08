@@ -666,9 +666,13 @@ impl<'a> TypeChecker<'a> {
         let (arg_type, result_type) = match op {
             BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => (Type::Int, Type::Int),
             BinOp::And | BinOp::Or => (Type::Bool, Type::Bool),
-            // For now we allow comparison only on integers. It should probably
-            // be allowed on strings as well.
-            BinOp::Lt | BinOp::LtEq | BinOp::Gt | BinOp::GtEq => (Type::Int, Type::Bool),
+            // Comparison operators make sense on many types (Int, String), even
+            // composite types (e.g. List[Int] would have lexicographic order).
+            // On some types like dict types, it is more questionable whether
+            // that makes sense, but currently we have no good machinery to
+            // define what should and should not be allowed, and all values _do_
+            // have an order, so we allow comparing any value for now.
+            BinOp::Lt | BinOp::LtEq | BinOp::Gt | BinOp::GtEq => (Type::Any, Type::Bool),
             BinOp::Eq | BinOp::Neq => (Type::Any, Type::Bool),
             BinOp::Union => return self.check_binop_union(op_span, lhs_span, rhs_span, lhs, rhs),
         };

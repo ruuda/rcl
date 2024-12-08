@@ -912,15 +912,17 @@ impl<'a> Evaluator<'a> {
                     }
                 }
             }
-            (BinOp::Lt, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x < y)),
-            (BinOp::Gt, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x > y)),
-            (BinOp::LtEq, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x <= y)),
-            (BinOp::GtEq, Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x >= y)),
-            // TODO: Throw a type error when the types are not the same, instead of
-            // enabling comparing values of different types. Or do we want to allow
-            // comparing arbitrary values after all? Hmm ... So far I haven't felt
-            // the need to allow comparing anything but int for inequalities. So
-            // maybe it should be a type error?
+            // We allow comparing any two values, even if they are not of the
+            // same type. I would prefer to make nonsensical comparisons a type
+            // error (e.g. `1 < "2"` should return "Int and String incomparable",
+            // but due to the type lattice, there is no such thing as "same type".
+            // We could enforce that the value discriminant is the same, and then
+            // we can rule out `1 < "2"`, but not `[1] < ["2"]`. So let's just
+            // allow comparing anything then.
+            (BinOp::Lt, x, y) => Ok(Value::Bool(x < y)),
+            (BinOp::Gt, x, y) => Ok(Value::Bool(x > y)),
+            (BinOp::LtEq, x, y) => Ok(Value::Bool(x <= y)),
+            (BinOp::GtEq, x, y) => Ok(Value::Bool(x >= y)),
             (BinOp::Eq, x, y) => Ok(Value::Bool(x == y)),
             (BinOp::Neq, x, y) => Ok(Value::Bool(x != y)),
             _ => unreachable!("Invalid cases are prevented by the typechecker."),
