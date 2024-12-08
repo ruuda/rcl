@@ -362,6 +362,13 @@
                 rcl format --check ${rclTomlSources}/**.rcl | tee $out
                 '';
 
+              buildRcl = pkgs.runCommand
+                "check-rcl-build"
+                { buildInputs = [ debugBuild ]; }
+                ''
+                rcl build --check --directory ${rclTomlSources} | tee $out
+                '';
+
               typecheckPython = pkgs.runCommand
                 "check-typecheck-python"
                 { buildInputs = [ pythonEnv ]; }
@@ -397,6 +404,9 @@
 
                 # Run the golden tests to generate the .profraw files.
                 RCL_BIN=${coverageBuild}/bin/rcl python3 ${goldenSources}/run.py
+
+                # Also run `rcl build` to make sure we cover that part of the application.
+                ${coverageBuild}/bin/rcl build --check --directory ${rclTomlSources}
 
                 # Copy in the .profraw files from the tests.
                 cp ${coverageBuild}/prof/*.profraw .
