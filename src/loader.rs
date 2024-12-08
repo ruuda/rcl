@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::{env, path};
@@ -67,6 +67,13 @@ pub struct PathLookup {
     pub path: PathBuf,
 }
 
+pub enum OpenMode {
+    /// Open for reading, do not create anything that does not already exist.
+    Read,
+    /// Open for writing, creating directories and the file if the path does not exist.
+    Write,
+}
+
 /// A filesystem resolves import paths to file contents.
 ///
 /// Importing is split into two stages: first we resolve a path that is
@@ -102,7 +109,7 @@ pub trait Filesystem {
     /// This creates intermediate directories if needed, and checks the sandbox
     /// policy at every step along the way. The `from` path is relative to the
     /// working directory, just like with [`resolve`].
-    fn open_build_output(&self, out_path: &str, from: &str, opts: OpenOptions) -> Result<fs::File>;
+    fn open_build_output(&self, out_path: &str, from: &str, mode: OpenMode) -> Result<fs::File>;
 
     /// Return `path`, but relative to the working directory, if possible.
     ///
@@ -134,7 +141,7 @@ impl Filesystem for PanicFilesystem {
     fn load(&self, _: PathLookup) -> Result<Document> {
         panic!("Should have initialized the filesystem to a real one before loading.")
     }
-    fn open_build_output(&self, _: &str, _: &str, _: OpenOptions) -> Result<File> {
+    fn open_build_output(&self, _: &str, _: &str, _: OpenMode) -> Result<File> {
         panic!("Should have initialized the filesystem to a real one before resolving.")
     }
     fn get_relative_path<'a>(&self, _: &'a Path) -> &'a Path {
@@ -162,7 +169,7 @@ impl Filesystem for VoidFilesystem {
     fn load(&self, _: PathLookup) -> Result<Document> {
         Error::new("Void filesystem does not load files.").err()
     }
-    fn open_build_output(&self, _: &str, _: &str, _: OpenOptions) -> Result<File> {
+    fn open_build_output(&self, _: &str, _: &str, _: OpenMode) -> Result<File> {
         panic!("Void filesystem does not open files.")
     }
     fn get_relative_path<'a>(&self, _: &'a Path) -> &'a Path {
@@ -340,7 +347,7 @@ impl Filesystem for SandboxFilesystem {
         Ok(doc)
     }
 
-    fn open_build_output(&self, out_path: &str, from: &str, opts: OpenOptions) -> Result<File> {
+    fn open_build_output(&self, out_path: &str, from: &str, mode: OpenMode) -> Result<File> {
         // The initial steps are similar to `resolve`, but we don't need to
         // support workdir-relative paths with `//`.
         let mut path_buf = self.workdir.clone();
@@ -371,17 +378,19 @@ impl Filesystem for SandboxFilesystem {
                 continue;
             }
 
-            match std::fs::create_dir(ancestor) {
-                Ok(()) => {}
-                Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
-                Err(err) => {
-                    return Error::new(concat! {
-                        "Failed to create output directory '"
-                        pprint::Doc::path(ancestor)
-                        "': "
-                        err.to_string()
-                    })
-                    .err();
+            if matches!(mode, OpenMode::Write) {
+                match std::fs::create_dir(ancestor) {
+                    Ok(()) => {}
+                    Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
+                    Err(err) => {
+                        return Error::new(concat! {
+                            "Failed to create output directory '"
+                            pprint::Doc::path(ancestor)
+                            "': "
+                            err.to_string()
+                        })
+                        .err();
+                    }
                 }
             }
 
@@ -437,7 +446,11 @@ impl Filesystem for SandboxFilesystem {
             }
         }
 
-        match opts.open(&path_buf) {
+        let file_result = match mode {
+            OpenMode::Read => File::open(&path_buf),
+            OpenMode::Write => File::create(&path_buf),
+        };
+        match file_result {
             Err(err) => Error::new(concat! {
                 "Failed to open output file '"
                 pprint::Doc::path(path_buf)
@@ -503,20 +516,10 @@ impl Loader {
         self.filesystem.resolve_cli_output(path)
     }
 
-    /// Open an output file path specified in a build file for writing.
-    pub fn open_build_output_rw(&self, out_path: &str, from: DocId) -> Result<File> {
+    /// Open an output file path specified in a build file for reading or writing.
+    pub fn open_build_output(&self, out_path: &str, from: DocId, mode: OpenMode) -> Result<File> {
         let from_name = self.get_doc(from).name;
-        let mut opts = OpenOptions::new();
-        opts.write(true).create(true);
-        self.filesystem.open_build_output(out_path, from_name, opts)
-    }
-
-    /// Open an output file path specified in a build file for reading only.
-    pub fn open_build_output_ro(&self, out_path: &str, from: DocId) -> Result<File> {
-        let from_name = self.get_doc(from).name;
-        let mut opts = OpenOptions::new();
-        opts.read(true).create(false);
-        self.filesystem.open_build_output(out_path, from_name, opts)
+        self.filesystem.open_build_output(out_path, from_name, mode)
     }
 
     /// Borrow all documents.

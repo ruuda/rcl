@@ -13,7 +13,7 @@ use std::rc::Rc;
 use crate::cli::OutputFormat;
 use crate::error::{Error, PathElement, Result};
 use crate::fmt_rcl::format_rcl;
-use crate::loader::Loader;
+use crate::loader::{Loader, OpenMode};
 use crate::pprint::{concat, Config, Doc};
 use crate::runtime::Value;
 use crate::source::{DocId, Span};
@@ -210,8 +210,11 @@ pub fn execute_build(
         match mode {
             BuildMode::WriteFilesystem => {
                 // coverage:off -- We don't test writing to the file system in tests.
-                let mut out_file =
-                    loader.open_build_output_rw(target.out_path.as_ref(), buildfile)?;
+                let mut out_file = loader.open_build_output(
+                    target.out_path.as_ref(),
+                    buildfile,
+                    OpenMode::Write,
+                )?;
                 match result.write_bytes_no_markup(&mut out_file) {
                     Ok(()) => continue,
                     Err(err) => {
@@ -225,8 +228,11 @@ pub fn execute_build(
                 // coverage:on
             }
             BuildMode::Check => {
-                let mut out_file =
-                    loader.open_build_output_ro(target.out_path.as_ref(), buildfile)?;
+                let mut out_file = loader.open_build_output(
+                    target.out_path.as_ref(),
+                    buildfile,
+                    OpenMode::Read,
+                )?;
                 let mut expected = Vec::new();
                 result
                     .write_bytes_no_markup(&mut expected)
