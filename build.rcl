@@ -1,25 +1,27 @@
-let banner = "# This file is generated, see build.rcl in the repository root.\n";
+// RCL -- A reasonable configuration language.
+// Copyright 2024 Ruud van Asseldonk
 
-let rust_toolchain = {
-  toolchain = {
-    channel = "1.70.0",
-    components = ["rustfmt", "clippy"],
-    targets = [
-      // Default regular build.
-      "x86_64-unknown-linux-gnu",
-      // For building a static binary.
-      "x86_64-unknown-linux-musl",
-    ],
-  },
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// A copy of the License has been included in the root of the repository.
+
+// This file is the entry point for all generated files in this repository.
+// The source file is generally named like the generated file, but with .rcl
+// extension. The primary purpose of generating these files is to put the
+// version number in one single place, so it's impossible to forget to bump
+// one of them when making a new release.
+
+let opts_toml = {
+  format = "toml",
+  banner = "# This file is generated, see build.rcl in the repository root.\n",
 };
-
-let opts_toml = { format = "toml", banner = banner };
 
 {
   "Cargo.toml": opts_toml | { contents = import "//Cargo.rcl" },
   "fuzz/Cargo.toml": opts_toml | { contents = import "//fuzz/Cargo.rcl" },
-  "grammar/tree-sitter-rcl/Cargo.toml": opts_toml | { contents = import "//grammar/tree-sitter-rcl/Cargo.rcl" },
+  "grammar/tree-sitter-rcl/Cargo.toml":
+    opts_toml
+    | { contents = import "//grammar/tree-sitter-rcl/Cargo.rcl" },
   "pyrcl/Cargo.toml": opts_toml | { contents = import "//pyrcl/Cargo.rcl" },
   "wasm/Cargo.toml": opts_toml | { contents = import "//wasm/Cargo.rcl" },
-  "rust-toolchain.toml": opts_toml | { contents = rust_toolchain },
 }
