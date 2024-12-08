@@ -18,6 +18,7 @@ let opts_toml = { format = "toml", banner = banner };
 {
   "Cargo.toml": opts_toml | { contents = import "//Cargo.rcl" },
   "fuzz/Cargo.toml": opts_toml | { contents = import "//fuzz/Cargo.rcl" },
+  "grammar/tree-sitter-rcl/Cargo.toml": opts_toml | { contents = import "//grammar/tree-sitter-rcl/Cargo.rcl" },
   "pyrcl/Cargo.toml": opts_toml | { contents = import "//pyrcl/Cargo.rcl" },
   "wasm/Cargo.toml": opts_toml | { contents = import "//wasm/Cargo.rcl" },
   "rust-toolchain.toml": opts_toml | { contents = rust_toolchain },

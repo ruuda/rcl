@@ -1,26 +1,22 @@
-[package]
-name = "tree-sitter-rcl"
-description = "RCL grammar for the tree-sitter parsing library"
-keywords = ["incremental", "parsing", "rcl"]
-categories = ["parsing", "text-editors"]
-version = "0.6.0"
-authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
-edition = "2021"
-license = "Apache-2.0"
+# This file is generated, see build.rcl in the repository root.
 
-build = "bindings/rust/build.rs"
-include = [
-  "bindings/rust/*",
-  "grammar.js",
-  "queries/*",
-  "src/*",
-]
-
-[lib]
-path = "bindings/rust/lib.rs"
+[build-dependencies]
+cc = "1.0"
 
 [dependencies]
 tree-sitter = "0.20.10"
 
-[build-dependencies]
-cc = "1.0"
+[lib]
+path = "bindings/rust/lib.rs"
+
+[package]
+authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
+build = "bindings/rust/build.rs"
+categories = ["parsing", "text-editors"]
+description = "RCL grammar for the tree-sitter parsing library."
+edition = "2021"
+include = ["bindings/rust/*", "grammar.js", "queries/*", "src/*"]
+keywords = ["incremental", "parsing", "rcl"]
+license = "Apache-2.0"
+name = "tree-sitter-rcl"
+version = "0.6.0"
