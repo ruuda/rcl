@@ -1,0 +1,15 @@
+{
+  // Regular integer comparison, as you expect.
+  int = [0 < 1, 0 <= 1, 0 > 1, 0 >= 1],
+  // Asciibetic (memcpm) order.
+  str = ["a" < "b", "a" <= "b", "a" > "b", "a" >= "b"],
+  // Lexicographic order on the elements.
+  list_int = [[0, 1] < [0, 2], [0, 1] < [1, 0], [0, 1] <= [1], [0, 0] > [1, 0], [0] >= [0, 0]],
+}
+
+# output:
+{
+  "int": [true, true, false, false],
+  "str": [true, true, false, false],
+  "list_int": [true, true, true, false, false],
+}
