@@ -18,11 +18,13 @@
             (k: builtins.mapAttrs (name: value: { "${k}" = value; }) (f k))
             supportedSystems
           );
+      # The source of truth for the version number is Cargo.rcl.
+      cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+      version = cargoToml.package.version;
     in
       forEachSystem (system:
         let
           name = "rcl";
-          version = "0.6.0";
           overlays = [ rust-overlay.overlays.default ];
           pkgs = import nixpkgs { inherit overlays system; };
 
