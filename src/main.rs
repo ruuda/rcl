@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
-use std::io::Write;
+use std::io::{Stdout, Write};
 use std::path::Path;
 
 use rcl::cli::{
@@ -67,6 +67,18 @@ impl App {
             })
     }
 
+    fn get_markup_for_target(&self, target: &OutputTarget, stdout: &Stdout) -> MarkupMode {
+        match target {
+            OutputTarget::Stdout => self
+                .opts
+                .markup
+                .unwrap_or_else(|| MarkupMode::default_for_fd(stdout)),
+            // When the output is a file, we don't want to put ANSI escape codes
+            // in the file; --output is unaffected by --color.
+            OutputTarget::File(..) => MarkupMode::None,
+        }
+    }
+
     fn print_doc_target(
         &self,
         output: OutputTarget,
@@ -74,15 +86,7 @@ impl App {
         doc: Doc,
     ) -> Result<()> {
         let stdout = std::io::stdout();
-        let markup = match output {
-            OutputTarget::Stdout => self
-                .opts
-                .markup
-                .unwrap_or_else(|| MarkupMode::default_for_fd(&stdout)),
-            // When the output is a file, we don't want to put ANSI escape codes
-            // in the file; --output is unaffected by --color.
-            OutputTarget::File(..) => MarkupMode::None,
-        };
+        let markup = self.get_markup_for_target(&output, &stdout);
         let cfg = pprint::Config {
             width: style_opts.width,
         };
@@ -360,8 +364,9 @@ impl App {
                 let tokens = self.loader.get_tokens(doc)?;
                 let data = self.loader.get_doc(doc).data;
                 let result = rcl::highlight::highlight(&tokens, data);
-                let mut out = std::io::stdout().lock();
-                self.print_string(MarkupMode::Ansi, result, &mut out);
+                let out = std::io::stdout();
+                let markup = self.get_markup_for_target(&OutputTarget::Stdout, &out);
+                self.print_string(markup, result, &mut out.lock());
                 Ok(())
             }
 

@@ -24,6 +24,7 @@ compatibility impact will be clearly marked as such in the changelog.
    not just integers. In particular this enables comparing strings.
  * Add [`--check`](rcl_build.md#-check) mode to `rcl build`, to confirm that
    generated files are up to date.
+ * Bugfix: `rcl highlight` now respects `--color` again.
 
 ## 0.6.0
 
