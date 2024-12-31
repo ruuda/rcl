@@ -64,6 +64,7 @@ def ignores_zed(dirname: str, _entries: List[str]) -> List[str]:
 
 
 def git_commit(repo_dir: str, message: str) -> None:
+    print(f"Creating commit in {repo_dir} ...")
     git = ["git", "-C", repo_dir]
     check_output([*git, "add", "."])
     out = check_output([*git, "commit", "--message", message.strip()])
