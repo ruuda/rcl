@@ -92,5 +92,8 @@ pub fn highlight<'a>(tokens: &[Lexeme], input: &'a str) -> MarkupString<'a> {
         end = span.end();
     }
 
+    // Add a trailing newline, which is lost during the parsing if there is any.
+    out.push("\n", Markup::None);
+
     out
 }
