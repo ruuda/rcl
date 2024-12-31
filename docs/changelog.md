@@ -14,7 +14,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Unreleased
+## 0.7.0
+
+Released 2024-12-31.
 
  * Add [`std.empty_set`](stdlib.md#empty_set) constant.
  * Add [`List.sort`](type_list.md#sort) method.
@@ -27,6 +29,8 @@ compatibility impact will be clearly marked as such in the changelog.
  * Add [`--check`](rcl_build.md#-check) mode to `rcl build`, to confirm that
    generated files are up to date.
  * Bugfix: `rcl highlight` now respects `--color` again.
+
+Thanks to Sergey Mishin for contributing to this release.
 
 ## 0.6.0
 
