@@ -349,65 +349,6 @@ impl PartialOrd for Decimal {
     }
 }
 
-/* TODO: Restore the Rational type when we need it.
-
-/// A rational number.
-#[derive(Copy, Clone, Debug)]
-struct Rational {
-    /// The numerator.
-    numer: i64,
-    /// The denominator, which should not contain factors of 10.
-    denom: u64,
-}
-
-impl From<i64> for Rational {
-    fn from(x: i64) -> Rational {
-        Rational { numer: x, denom: 1 }
-    }
-}
-
-impl Rational {
-    pub fn add(&self, other: Rational) -> Option<Rational> {
-        let result = if self.denom == other.denom {
-            Rational {
-                numer: self.numer.checked_add(other.numer)?,
-                denom: self.denom,
-            }
-        } else {
-            let denom = self.denom.checked_mul(other.denom)?;
-            let n1 = self.numer.checked_mul(other.denom.try_into().ok()?)?;
-            let n2 = other.numer.checked_mul(self.denom.try_into().ok()?)?;
-            // TODO: Simplify the representation if possible.
-            Rational {
-                numer: n1.checked_add(n2)?,
-                denom,
-            }
-        };
-        Some(result)
-    }
-
-    pub fn sub(&self, other: Rational) -> Option<Rational> {
-        let result = if self.denom == other.denom {
-            Rational {
-                numer: self.numer.checked_sub(other.numer)?,
-                denom: self.denom,
-            }
-        } else {
-            let denom = self.denom.checked_mul(other.denom)?;
-            let n1 = self.numer.checked_mul(other.denom.try_into().ok()?)?;
-            let n2 = other.numer.checked_mul(self.denom.try_into().ok()?)?;
-            // TODO: Simplify the representation if possible.
-            Rational {
-                numer: n1.checked_sub(n2)?,
-                denom,
-            }
-        };
-        Some(result)
-    }
-}
-
-*/
-
 #[cfg(test)]
 mod test {
     use super::{Decimal, ParseResult};
