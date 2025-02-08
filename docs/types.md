@@ -35,7 +35,7 @@ The primitive types are:
  * `Null`, the type of `null`.
  * `String`, the type of strings.
  * `Int`, the signed integer type.
- * Currently there is no type for non-integer numbers. (TODO: Add one.)
+ * `Float`, the type of numbers that have a decimal point.
 
 ## Collection types
 
@@ -158,6 +158,11 @@ let u2: Union[Int, String] = 43;
 let u3: Union[Int, String, List[Int]] = 43;
 let u4: Union[Int, String, List[Int], Bool] = 43;
 ```
+
+## The Number type
+
+`Number` is the supertype of `Int` and `Float`. It is equivalent to
+`Union[Int, Float]`.
 
 ## Type inference
 

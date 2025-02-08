@@ -38,6 +38,24 @@ will sometimes ask you to move comments.
 
 The booleans are written `true` and `false`, null is written `null`.
 
+## Numbers
+
+RCL supports the same number formats as json:
+
+ * Decimal integers, e.g. `42`.
+ * Decimal floats, e.g. `42.0`, optionally with exponent, e.g. `42.0e10`.
+
+Aside from decimal numbers, <abbr>RCL</abbr> supports integers in other bases:
+
+ * Hexadecimal with `0x` prefix, e.g. `0x2a`.
+ * Binary with `0b` prefix, e.g. `0b101010`.
+
+Numbers may contain underscores for readability, e.g. `100_000.000_000`.
+
+Note that integers and floats are different types of values in <abbr>RCL</abbr>,
+and they are never equal. This means that just as `0 != "0"`, `0 != 0.0`. See
+[the chapter on numbers](numbers.md) for the full details.
+
 ## Strings and f-strings
 
 Strings are quoted with `"` and support the same escape sequences as json.
