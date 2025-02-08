@@ -205,7 +205,7 @@ impl Formatter {
             Value::Bool(true) => Doc::from("true").with_markup(Markup::Keyword),
             Value::Bool(false) => Doc::from("false").with_markup(Markup::Keyword),
             Value::Int(i) => Doc::from(i.to_string()).with_markup(Markup::Number),
-            Value::Decimal(d) => Doc::from(d.format()).with_markup(Markup::Number),
+            Value::Float(d) => Doc::from(d.format()).with_markup(Markup::Number),
             Value::String(s) => self.string(s).with_markup(Markup::String),
             Value::List(vs) => self.array(vs.iter())?,
             // TOML has no set type, we format sets as arrays (lists).
