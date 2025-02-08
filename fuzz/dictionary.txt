@@ -87,6 +87,7 @@
 "Int"
 "List"
 "Null"
+"Number"
 "Set"
 "String"
 "Union"

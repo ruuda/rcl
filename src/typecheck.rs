@@ -40,7 +40,7 @@ fn get_primitive_type(name: &str) -> Option<Type> {
         "Bool" => Some(Type::Bool),
         "Int" => Some(Type::Int),
         "Float" => Some(Type::Float),
-        "Num" => Some(Type::Num),
+        "Num" => Some(Type::Number),
         "Null" => Some(Type::Null),
         "String" => Some(Type::String),
         "Void" => Some(Type::Void),
@@ -661,7 +661,7 @@ impl<'a> TypeChecker<'a> {
                 // not report the violated expectation as deep as we could, but
                 // the inferred type will carry a source so we can still highlight
                 // where it came from.
-                let expected = type_operator(op_span, Type::Num);
+                let expected = type_operator(op_span, Type::Number);
                 let inner_type = self.check_expr(&expected, body_span, body)?;
                 Ok(inner_type)
             }

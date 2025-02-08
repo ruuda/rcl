@@ -66,7 +66,7 @@ const BUILTINS: &[&str] = &[
 ];
 
 const BUILTIN_TYPES: &[&str] = &[
-    "Any", "Bool", "Dict", "Int", "List", "Null", "Set", "String", "Union", "Void",
+    "Any", "Bool", "Dict", "Int", "List", "Null", "Number", "Set", "String", "Union", "Void",
 ];
 
 const LITERALS: &[&str] = &["true", "false", "null"];

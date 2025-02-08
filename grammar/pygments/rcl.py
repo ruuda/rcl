@@ -107,6 +107,7 @@ _root_base = [
                 "Int",
                 "List",
                 "Null",
+                "Number",
                 "Set",
                 "String",
                 "Union",

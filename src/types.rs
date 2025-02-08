@@ -47,8 +47,8 @@ pub enum Type {
     /// The primitive type `String`.
     String,
 
-    /// The supertype of all numbers, `Num`.
-    Num,
+    /// The supertype of all numbers, `Number`.
+    Number,
 
     /// A dict with the given key and value types.
     Dict(Rc<Dict>),
@@ -76,7 +76,7 @@ impl Type {
                 | Type::Float
                 | Type::Int
                 | Type::Null
-                | Type::Num
+                | Type::Number
                 | Type::String
                 | Type::Void
         )
@@ -94,7 +94,7 @@ impl Type {
             Type::Bool => "Bool",
             Type::Int => "Int",
             Type::Float => "Float",
-            Type::Num => "Num",
+            Type::Number => "Number",
             Type::String => "String",
             Type::Dict(..) => "Dict",
             Type::List(..) => "List",
@@ -455,12 +455,12 @@ impl SourcedType {
             (Type::Null, Type::Null) => (Type::Null, src_meet),
             (Type::String, Type::String) => (Type::String, src_meet),
 
-            // Number types combine to `Num`. If we had two nums already we can
-            // preserve the source, but if we're combining different types then
-            // unfortunately we lose the source.
-            (Type::Num, Type::Num) => (Type::Num, src_meet),
-            (Type::Int | Type::Float | Type::Num, Type::Int | Type::Float | Type::Num) => {
-                (Type::Num, Source::None)
+            // Number types combine to `Number`. If we had two nums already we
+            // can preserve the source, but if we're combining different types
+            // then unfortunately we lose the source.
+            (Type::Number, Type::Number) => (Type::Number, src_meet),
+            (Type::Int | Type::Float | Type::Number, Type::Int | Type::Float | Type::Number) => {
+                (Type::Number, Source::None)
             }
 
             // For composite types, we meet on their elements.
@@ -543,16 +543,16 @@ impl SourcedType {
             (Type::Bool, Type::Bool) => TypeDiff::Ok(other.clone()),
             (Type::Int, Type::Int) => TypeDiff::Ok(other.clone()),
             (Type::Float, Type::Float) => TypeDiff::Ok(other.clone()),
-            (Type::Num, Type::Num) => TypeDiff::Ok(other.clone()),
+            (Type::Number, Type::Number) => TypeDiff::Ok(other.clone()),
             (Type::Null, Type::Null) => TypeDiff::Ok(other.clone()),
             (Type::String, Type::String) => TypeDiff::Ok(other.clone()),
 
             // All number types are subtypes of Num; Num may be an instance of
             // concrete number types. Note that Int is not a subtype of Float.
-            (Type::Int, Type::Num) => TypeDiff::Ok(self.clone()),
-            (Type::Float, Type::Num) => TypeDiff::Ok(self.clone()),
-            (Type::Num, Type::Int) => TypeDiff::Defer(other.clone()),
-            (Type::Num, Type::Float) => TypeDiff::Defer(other.clone()),
+            (Type::Int, Type::Number) => TypeDiff::Ok(self.clone()),
+            (Type::Float, Type::Number) => TypeDiff::Ok(self.clone()),
+            (Type::Number, Type::Int) => TypeDiff::Defer(other.clone()),
+            (Type::Number, Type::Float) => TypeDiff::Defer(other.clone()),
 
             // The collection types are covariant in their argument.
             // E.g. `List[Int] < List[Any]`.
@@ -763,7 +763,7 @@ macro_rules! make_type {
     (Any) => { builtin(Type::Any) };
     (Int) => { builtin(Type::Int) };
     (Float) => { builtin(Type::Float) };
-    (Num) => { builtin(Type::Num) };
+    (Number) => { builtin(Type::Number) };
     (Bool) => { builtin(Type::Bool) };
     (String) => { builtin(Type::String) };
     ([$elem:tt]) => { builtin(Type::List(Rc::new(make_type!($elem)))) };

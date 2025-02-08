@@ -236,7 +236,7 @@ impl Value {
             (Type::String, Value::String(..)) => return Ok(()),
 
             // Int and Float are numbers.
-            (Type::Num, Value::Int(..) | Value::Float(..)) => return Ok(()),
+            (Type::Number, Value::Int(..) | Value::Float(..)) => return Ok(()),
 
             // For compound types, we descend into them to check.
             (Type::List(elem_type), Value::List(elems)) => {
