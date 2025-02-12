@@ -54,6 +54,9 @@ Color modes:
           variable is not set to a non-empty string. This is the default.
   html    Output HTML tags in the same style as Pandoc.
   none    Do not color output at all.
+
+For more comprehensive documentation about the language itself, see also
+<https://docs.ruuda.nl/rcl/>.
 "#;
 
 const USAGE_BUILD: &str = r##"
