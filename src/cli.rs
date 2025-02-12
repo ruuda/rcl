@@ -16,7 +16,10 @@ use crate::loader::SandboxMode;
 use crate::markup::{Markup, MarkupMode};
 use crate::pprint::{concat, Doc};
 
-const USAGE_MAIN: &str = r#"
+// The help text for the main program is split up into two parts, so we can show
+// a less cluttered version when no help is explicitly requested.
+
+const USAGE_MAIN_INTRO: &str = r#"
 RCL -- A reasonable configuration language.
 
 Usage:
@@ -28,7 +31,9 @@ Commands:
   format       Auto-format an RCL document.
   highlight    Print a document with syntax highlighting.
   query        Evaluate an expression against an input document.
+"#;
 
+const USAGE_MAIN_EXTENDED: &str = r#"
 Command shorthands:
   e, eval      Alias for 'evaluate'.
   f, fmt       Alias for 'format'.
@@ -301,7 +306,7 @@ pub enum Cmd {
         fname: Target,
     },
     Help {
-        usage: &'static str,
+        usage: &'static [&'static str],
     },
     Version,
 }
@@ -462,18 +467,24 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     }
 
     let help_opt = match cmd_help {
-        Some("build") => Some(Cmd::Help { usage: USAGE_BUILD }),
+        Some("build") => Some(Cmd::Help {
+            usage: &[USAGE_BUILD],
+        }),
         Some("evaluate") => Some(Cmd::Help {
-            usage: USAGE_EVAL_QUERY,
+            usage: &[USAGE_EVAL_QUERY],
         }),
         Some("format") => Some(Cmd::Help {
-            usage: USAGE_FORMAT,
+            usage: &[USAGE_FORMAT],
         }),
         // TODO: Add usage for highlight.
-        Some("highlight") => Some(Cmd::Help { usage: USAGE_MAIN }),
-        Some("main") => Some(Cmd::Help { usage: USAGE_MAIN }),
+        Some("highlight") => Some(Cmd::Help {
+            usage: &[USAGE_MAIN_INTRO, USAGE_MAIN_EXTENDED],
+        }),
+        Some("main") => Some(Cmd::Help {
+            usage: &[USAGE_MAIN_INTRO, USAGE_MAIN_EXTENDED],
+        }),
         Some("query") => Some(Cmd::Help {
-            usage: USAGE_EVAL_QUERY,
+            usage: &[USAGE_EVAL_QUERY],
         }),
         _ => None,
     };
@@ -556,7 +567,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
         Some("highlight") => Cmd::Highlight {
             fname: get_unique_target(targets)?,
         },
-        None => Cmd::Help { usage: USAGE_MAIN },
+        None => Cmd::Help {
+            usage: &[USAGE_MAIN_INTRO, "\nSee --help for more info."],
+        },
         _ => panic!("Should have returned an error before getting here."),
     };
     Ok((global_opts, result))

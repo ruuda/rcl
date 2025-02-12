@@ -244,7 +244,7 @@ impl App {
 
         match cmd {
             Cmd::Help { usage } => {
-                println!("{}", usage.trim());
+                println!("{}", usage.concat().trim());
                 std::process::exit(0)
             }
 

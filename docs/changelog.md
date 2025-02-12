@@ -14,6 +14,13 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Next
+
+Unreleased.
+
+ * When running `rcl` without arguments, it now prints only the most important
+   parts of the help text. Use `rcl --help` for the full command reference.
+
 ## 0.7.0
 
 Released 2024-12-31.
