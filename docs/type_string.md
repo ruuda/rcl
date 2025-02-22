@@ -67,7 +67,7 @@ in the right direction.)
 ## len
 
 ```rcl
-String.len: (self: String) -> Int
+String.len: (self: String) -> Number
 ```
 
 Return the number of Unicode code points that make up the string. This can be
@@ -90,7 +90,7 @@ less than the byte length of the <abbr>UTF-8</abbr> encoding of the string.
 ## parse_int
 
 ```rcl
-String.parse_int: (self: String) -> Int
+String.parse_int: (self: String) -> Number
 ```
 
 Parse the string as a signed integer in base 10. If the input is not an integer,

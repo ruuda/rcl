@@ -22,7 +22,7 @@ Type annotations can be applied at [let bindings](syntax.md#let-bindings) by
 adding a colon after the name:
 
 ```rcl
-let x: Int = 42; x
+let x: Number = 42; x
 ```
 
 The names of all types start with a capital letter.
@@ -34,8 +34,7 @@ The primitive types are:
  * `Bool`, the type of `true` and `false`.
  * `Null`, the type of `null`.
  * `String`, the type of strings.
- * `Int`, the signed integer type.
- * `Float`, the type of numbers that have a decimal point.
+ * `Number`, the type of numbers.
 
 ## Collection types
 
@@ -48,7 +47,7 @@ There are three built-in generic collection types:
 For example, we can annotate this dict as follows:
 
 ```rcl
-let port_names: Dict[Int, String] = {
+let port_names: Dict[Number, String] = {
   22: "ssh",
   80: "http",
   443: "https",
@@ -64,7 +63,7 @@ implemented. They would look roughly like this:
 type User = {
   full_name: String,
   email: String,
-  uid: Int,
+  uid: Number,
   groups: Set[String],
 };
 
@@ -90,7 +89,7 @@ Function types are written as an argument list between parentheses, a thin
 arrow, and then the result type:
 
 ```rcl
-let add: (Int, Int) -> Int = (x, y) => x + y;
+let add: (Number, Number) -> Number = (x, y) => x + y;
 ```
 
 The parentheses are mandatory, even for functions that take a single argument.
@@ -103,7 +102,7 @@ type: nothing more specific is known statically. Variables that have type `Any`
 never cause static type errors, but they can still cause runtime type errors.
 
 ```rcl
-let x: Int = 32;
+let x: Number = 32;
 let y: Any = x;
 // Not a static type error: an expression with type Any could evaluate to a
 // string, so assigning it to a variable of type String is allowed. But at
@@ -140,29 +139,24 @@ A union type allows instances of any member of the union. For example:
 
 ```rcl
 // Both of these are okay!
-let x: Union[Int, String] = 0;
-let y: Union[Int, String] = "zero";
+let x: Union[Number, String] = 0;
+let y: Union[Number, String] = "zero";
 
-// But this is a type error: expected Int or String but found Null.
-let z: Union[Int, String] = null;
+// But this is a type error: expected Number or String but found Null.
+let z: Union[Number, String] = null;
 ```
 
 Unions have two or more members:
 
 ```rcl
-// Error, this is equivalent to using Int directly, so the Union is pointless.
-let u1: Union[Int] = 42;
+// Error, this is equivalent to using Number directly, the Union is pointless.
+let u1: Union[Number] = 42;
 
 // But these are all okay.
-let u2: Union[Int, String] = 43;
-let u3: Union[Int, String, List[Int]] = 43;
-let u4: Union[Int, String, List[Int], Bool] = 43;
+let u2: Union[Number, String] = 43;
+let u3: Union[Number, String, List[Number]] = 43;
+let u4: Union[Number, String, List[Number], Bool] = 43;
 ```
-
-## The Number type
-
-`Number` is the supertype of `Int` and `Float`. It is equivalent to
-`Union[Int, Float]`.
 
 ## Type inference
 
@@ -171,13 +165,13 @@ is forward-only[^2] and — with one exception — bottom-up. For example,
 <abbr>RCL</abbr> can infer the following types:
 
 ```rcl
-// Elements are inferred to have type `Int`, `xs` has type `List[Int]`.
+// Elements are inferred to have type `Number`, `xs` has type `List[Number]`.
 let xs = [1, 2, 3];
 
-// Inferred to have type `List[Int]`, because `xs` has that type.
+// Inferred to have type `List[Number]`, because `xs` has that type.
 let ys = xs;
 
-// Type error: operator `or` expects `Bool`, but `ys[0]` has type `Int`.
+// Type error: operator `or` expects `Bool`, but `ys[0]` has type `Number`.
 ys[0] or ys[1]
 ```
 
@@ -205,9 +199,9 @@ propagates type requirements top-down into expressions. For example for list
 elements:
 
 ```rcl
-let xs: List[Int] = [
+let xs: List[Number] = [
   42,
-  // Type error: expected `Int` but found `String`.
+  // Type error: expected `Number` but found `String`.
   "43",
 ];
 ```
@@ -218,11 +212,11 @@ closer to definitions generally results in clearer error messages. Suppose we
 modified the above example as follows:
 
 ```rcl
-// Inferred to have type `List[Any]` because we mix `Int` and `String`.
+// Inferred to have type `List[Any]` because we mix `Number` and `String`.
 let xs = [42, "43"];
 
-// Runtime type error: expected an instance of `Int`, but found string `"43"`.
-let ys: List[Int] = xs;
+// Runtime type error: expected a `Number`, but found string `"43"`.
+let ys: List[Number] = xs;
 ```
 
 In this case <abbr>RCL</abbr> can only report that a value failed a type check,
@@ -245,8 +239,8 @@ every possible document that could be evaluated without the typechecker, is
 well-typed. For example, the following program has a static type error:
 
 ```rcl
-let xs: List[Int] = [];
-// Error: Expected String but found Int.
+let xs: List[Number] = [];
+// Error: Expected String but found Number.
 let ys: List[String] = xs;
 ys
 ```
@@ -258,9 +252,9 @@ Here is another example of a program that has a static type error, despite
 not even having type annotations:
 
 ```rcl
-// This list is empty, but nonetheless inferred to have type `List[Int]`.
+// This list is empty, but nonetheless inferred to have type `List[Number]`.
 let integers = [for i in [1, 2, 3]: if i > 100: i];
-// Type error: Expected Bool as argument to `not`, but found `Int`.
+// Type error: Expected Bool as argument to `not`, but found Number.
 [for i in integers: not i]
 ```
 

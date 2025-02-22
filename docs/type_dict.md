@@ -89,7 +89,7 @@ Return the keys of the dict as a set.
 ## len
 
 ```rcl
-Dict.len: (self: Dict[K, V]) -> Int
+Dict.len: (self: Dict[K, V]) -> Number
 ```
 
 Return the number of keys in the dict. For example:

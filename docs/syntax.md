@@ -148,7 +148,7 @@ To produce an empty set, we can use [`std.empty_set`](stdlib.md#empty_set). A
 type annotation will also force `{}` to be a set:
 
 ```rcl
-let empty_set: Set[Int] = {};
+let empty_set: Set[Number] = {};
 ```
 
 ## Let bindings
@@ -167,7 +167,7 @@ evaluates to the expression after `;`.
 Let bindings can optionally contain [a type annotation](types.md):
 
 ```rcl
-let answer: Int = 42;
+let answer: Number = 42;
 ```
 
 ## List indexing

@@ -63,7 +63,7 @@ Return whether the list contains a given element. For example:
 ## enumerate
 
 ```rcl
-List.enumerate: (self: List[T]) -> Dict[Int, T]
+List.enumerate: (self: List[T]) -> Dict[Number, T]
 ```
 
 Return a mapping from index to list element. The index is zero-based.
@@ -258,7 +258,7 @@ replicants.key_by(r => r.generation)
 ## len
 
 ```rcl
-List.len: (self: List[T]) -> Int
+List.len: (self: List[T]) -> Number
 ```
 
 Return the number of elements in the list. For example:
@@ -349,7 +349,7 @@ characters.sort_by(name => name.len())
 ## sum
 
 ```rcl
-List.sum: (self: List[Int]) -> Int
+List.sum: (self: List[Number]) -> Number
 ```
 
 Return the sum of the elements in the list. For example:

@@ -16,7 +16,7 @@ to an empty set.
 
 ## range
 
-    std.range: (lower: Int, upper: Int) -> List[Int]
+    std.range: (lower: Number, upper: Number) -> List[Number]
 
 Return the range of integers `lower` through `upper`. The lower bound is
 inclusive and the upper bound is exclusive. When the lower bound is greater
