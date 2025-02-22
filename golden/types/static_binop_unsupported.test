@@ -5,10 +5,10 @@ stdin:1:1
   ╷
 1 │ "0" + 1
   ╵ ^~~
-Error: Type mismatch. Expected Int but found String.
+Error: Type mismatch. Expected Number but found String.
 
 stdin:1:5
   ╷
 1 │ "0" + 1
   ╵     ^
-Note: Expected Int because of this operator.
+Note: Expected Number because of this operator.

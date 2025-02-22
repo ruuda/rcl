@@ -678,8 +678,7 @@ impl<'a> TypeChecker<'a> {
         rhs: &mut Expr,
     ) -> Result<SourcedType> {
         let (arg_type, result_type) = match op {
-            // TODO: Extend this with support for float and generic numbers.
-            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => (Type::Int, Type::Int),
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => (Type::Number, Type::Number),
             BinOp::And | BinOp::Or => (Type::Bool, Type::Bool),
             // Comparison operators make sense on many types (Int, String), even
             // composite types (e.g. List[Int] would have lexicographic order).
