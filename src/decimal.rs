@@ -249,6 +249,38 @@ impl Decimal {
         Some(result)
     }
 
+    /// Divide two numbers, but only if `self` is an exact multiple of `other`.
+    pub fn checked_div_exact(&self, other: &Decimal) -> Option<Decimal> {
+        debug_assert_ne!(other.mantissa, 0, "Division by zero is not allowed.");
+
+        // TODO: This could be smarter, now it might overflow in cases where
+        // that is not strictly needed.
+        let y = other.mantissa;
+        let f = 10_i64.checked_pow(other.decimals as u32)?;
+        let mut x = self.mantissa.checked_mul(f)?;
+
+        let mut q = x / y;
+        let mut d = self.decimals;
+
+        // If the division doesn't work, add more decimals and retry. Either we
+        // find a case where it works, or x is missing other factors than 2 or 5
+        // and it will never work, but then we'll hit overflow in at most 19
+        // iterations.
+        while q * y != x {
+            x = x.checked_mul(10)?;
+            d = d.checked_add(1)?;
+            q = x / y;
+        }
+
+        let result = Decimal {
+            mantissa: q,
+            decimals: d,
+            exponent: self.exponent.checked_sub(other.exponent)?,
+        };
+
+        Some(result)
+    }
+
     /// Convert to a float. For many decimals this will be a lossy operation.
     pub fn to_f64_lossy(&self) -> f64 {
         let n = self.mantissa as f64;

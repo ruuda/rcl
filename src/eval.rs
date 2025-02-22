@@ -930,6 +930,23 @@ impl<'a> Evaluator<'a> {
                     op_span.error(err).err()
                 }
             },
+            (BinOp::Div, Value::Number(x), Value::Number(y)) => {
+                if y.mantissa == 0 {
+                    op_span.error("Division by zero.").err()
+                } else {
+                    match x.checked_div_exact(&y) {
+                        Some(z) => Ok(Value::Number(z)),
+                        None => {
+                            let err = concat! {
+                                "Overflow while computing division "
+                                x.format() " / " y.format()
+                                ". Inexact division is not supported at this time."
+                            };
+                            op_span.error(err).err()
+                        }
+                    }
+                }
+            }
             (BinOp::Div, Value::Int(x), Value::Int(y)) => {
                 if y == 0 {
                     op_span.error("Division by zero.").err()
