@@ -45,22 +45,30 @@ impl Decimal {
         let mut n: i64 = 0;
         let mut decimals: u8 = 0;
         let mut exponent: i16 = 0;
+        let mut exponent_offset: i16 = 0;
 
         let mut is_int = true;
         let mut is_exp = false;
-        let mut exp_sign = 1;
         let mut is_precise = true;
+        let mut exp_sign = 1;
 
         for ch in dec.as_bytes() {
             match ch {
                 b'0'..=b'9' if is_exp => {
-                    exponent = exponent.checked_mul(10)?.checked_add((ch - b'0') as i16)?;
+                    // Note, we apply the sign at every step, rather than once
+                    // at the end, otherwise we would be unable to parse i16::MIN,
+                    // whose absolute value is one more than i16::MAX.
+                    exponent = exponent
+                        .checked_mul(10)?
+                        .checked_add((ch - b'0') as i16 * exp_sign)?;
                 }
                 b'0'..=b'9' if !is_precise => {
                     // If the mantissa is already saturated, but we keep getting
                     // more digits, we just drop them, but we do need to adjust
                     // the exponent if we are still parsing an int.
-                    exponent += if is_int { 1 } else { 0 };
+                    // TODO: This can in theory overflow with a 16 kB input
+                    // string.
+                    exponent_offset += if is_int { 1 } else { 0 };
                 }
                 b'0'..=b'9' => {
                     match n
@@ -70,6 +78,8 @@ impl Decimal {
                         // We added one digit to the mantissa and it still fits.
                         Some(m) => {
                             n = m;
+                            // TODO: This can overflow on numbers that start with 0.0000,
+                            // needs to be a checked add.
                             decimals += if is_int { 0 } else { 1 };
                         }
                         // The mantissa is saturated, we switch to dropping
@@ -78,7 +88,7 @@ impl Decimal {
                         None => {
                             let round_up = *ch >= b'5';
                             n = n.saturating_add(if round_up { 1 } else { 0 });
-                            exponent += if is_int { 1 } else { 0 };
+                            exponent_offset += if is_int { 1 } else { 0 };
                             is_precise = false;
                         }
                     }
@@ -98,6 +108,8 @@ impl Decimal {
                 bad_byte => panic!("Invalid input byte for 'parse_str': 0x{bad_byte:x}"),
             }
         }
+
+        exponent = exponent.checked_add(exponent_offset)?;
 
         // If we parsed something that was not an integer, but due to precision
         // limits we ended up having no decimals and exponent, then if we would
@@ -124,9 +136,7 @@ impl Decimal {
             Some(ParseResult::Decimal(Decimal {
                 mantissa: n,
                 decimals,
-                // The multiply does not overflow because the negative range of
-                // a signed int is one larger than the positive range.
-                exponent: exponent * exp_sign,
+                exponent,
             }))
         }
     }

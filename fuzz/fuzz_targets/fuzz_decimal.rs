@@ -32,11 +32,20 @@ impl<'a> Arbitrary<'a> for NormalF64 {
 
 #[derive(Arbitrary, Debug)]
 enum Input {
-    Compare { a: NormalF64, b: NormalF64 },
+    Compare {
+        a: NormalF64,
+        b: NormalF64,
+    },
+    Roundtrip {
+        mantissa: i64,
+        exponent: i16,
+        decimals: u8,
+    },
 }
 
 fuzz_target!(|input: Input| -> Corpus {
     match input {
+        // Check that comparison of decimals is consistent with f64.
         Input::Compare { a, b } => {
             let f64_ord = match a.0.partial_cmp(&b.0) {
                 None => return Corpus::Reject,
@@ -67,6 +76,8 @@ fuzz_target!(|input: Input| -> Corpus {
                 b_dec.mantissa = -b_dec.mantissa;
             }
 
+            // First we test that comparison of the decimals matches the f64
+            // comparsion, both ways around.
             let decimal_ord = a_dec.cmp(&b_dec);
             assert_eq!(
                 decimal_ord, f64_ord,
@@ -80,8 +91,52 @@ fuzz_target!(|input: Input| -> Corpus {
                 "Decimal::cmp should be antisymmetric.",
             );
 
+            // Sanity check, a decimal is equal to itself.
             assert_eq!(a_dec, a_dec, "Decimals should be equal to themselves.");
             assert_eq!(b_dec, b_dec, "Decimals should be equal to themselves.");
+
+            Corpus::Keep
+        }
+
+        // Check that parsing after formatting a decimal is the identity function.
+        Input::Roundtrip {
+            mantissa,
+            exponent,
+            decimals,
+        } => {
+            let a = Decimal {
+                mantissa,
+                exponent,
+                decimals,
+            };
+
+            let a_str = a.format();
+            let mut b = match Decimal::parse_str(a_str.trim_matches('-')) {
+                Some(ParseResult::Decimal(d)) => d,
+                Some(ParseResult::Int(i)) => Decimal::from(i),
+                _ => panic!("Failed to parse output of Decimal::format: {a_str}"),
+            };
+            if a_str.starts_with("-") {
+                b.mantissa = -b.mantissa;
+            }
+
+            assert_eq!(
+                a, b,
+                "Decimal::parse after Decimal::format should be identity modulo equality.",
+            );
+
+            assert_eq!(
+                b.mantissa, b.mantissa,
+                "Decimal::parse after Decimal::format should be identity.",
+            );
+            assert_eq!(
+                a.decimals, b.decimals,
+                "Decimal::parse after Decimal::format should be identity.",
+            );
+            assert_eq!(
+                a.exponent, b.exponent,
+                "Decimal::parse after Decimal::format should be identity.",
+            );
 
             Corpus::Keep
         }
