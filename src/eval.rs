@@ -347,8 +347,6 @@ impl<'a> Evaluator<'a> {
 
             Expr::BoolLit(b) => Ok(Value::Bool(*b)),
 
-            Expr::IntegerLit(i) => Ok(Value::Int(*i)),
-
             Expr::NumberLit(d) => Ok(Value::Number(*d)),
 
             Expr::StringLit(s) => Ok(Value::String(s.clone())),

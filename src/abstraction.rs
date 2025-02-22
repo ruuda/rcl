@@ -17,6 +17,7 @@ use crate::ast::{
     CallArg, Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
 };
 use crate::cst::{Chain, Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart, Type as CType};
+use crate::decimal::{Decimal, ParseResult};
 use crate::error::{IntoError, Result};
 use crate::lexer::QuoteStyle;
 use crate::source::Span;
@@ -203,7 +204,7 @@ impl<'a> Abstractor<'a> {
                 // Cut off the 0x, then parse the rest.
                 let num_str = span.trim_start(2).resolve(self.input).replace('_', "");
                 match i64::from_str_radix(&num_str, 16) {
-                    Ok(i) => AExpr::IntegerLit(i),
+                    Ok(i) => AExpr::NumberLit(Decimal::from(i)),
                     Err(..) => {
                         let err = span.error("Overflow in integer literal.");
                         return Err(err.into());
@@ -215,7 +216,7 @@ impl<'a> Abstractor<'a> {
                 // Cut off the 0b, then parse the rest.
                 let num_str = span.trim_start(2).resolve(self.input).replace('_', "");
                 match i64::from_str_radix(&num_str, 2) {
-                    Ok(i) => AExpr::IntegerLit(i),
+                    Ok(i) => AExpr::NumberLit(Decimal::from(i)),
                     Err(..) => {
                         let err = span.error("Overflow in integer literal.");
                         return Err(err.into());
@@ -224,7 +225,6 @@ impl<'a> Abstractor<'a> {
             }
 
             CExpr::NumDecimal(span) => {
-                use crate::decimal::{Decimal, ParseResult};
                 let num_str = span.resolve(self.input);
                 match Decimal::parse_str(num_str) {
                     Some(ParseResult::Int(n)) => AExpr::NumberLit(Decimal::from(n)),

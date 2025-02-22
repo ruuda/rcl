@@ -136,9 +136,6 @@ pub enum Expr {
     /// A string literal.
     StringLit(Rc<str>),
 
-    /// An integer literal.
-    IntegerLit(i64),
-
     /// A number literal.
     NumberLit(Decimal),
 

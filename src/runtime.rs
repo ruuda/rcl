@@ -231,12 +231,10 @@ impl Value {
             // For the primitive types, we just check for matching values.
             (Type::Null, Value::Null) => return Ok(()),
             (Type::Bool, Value::Bool(..)) => return Ok(()),
-            (Type::Int, Value::Int(..)) => return Ok(()),
-            (Type::Float, Value::Number(..)) => return Ok(()),
+            // TODO: Value::Int should not be used any more.
+            (Type::Number, Value::Int(..)) => return Ok(()),
+            (Type::Number, Value::Number(..)) => return Ok(()),
             (Type::String, Value::String(..)) => return Ok(()),
-
-            // Int and Float are numbers.
-            (Type::Number, Value::Int(..) | Value::Number(..)) => return Ok(()),
 
             // For compound types, we descend into them to check.
             (Type::List(elem_type), Value::List(elems)) => {

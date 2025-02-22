@@ -38,9 +38,9 @@ fn get_primitive_type(name: &str) -> Option<Type> {
     match name {
         "Any" => Some(Type::Any),
         "Bool" => Some(Type::Bool),
-        "Int" => Some(Type::Int),
-        "Float" => Some(Type::Float),
-        "Num" => Some(Type::Number),
+        "Number" => Some(Type::Number),
+        // TODO: This is only kept temporarily to ease updating the golden tests.
+        "Int" => Some(Type::Number),
         "Null" => Some(Type::Null),
         "String" => Some(Type::String),
         "Void" => Some(Type::Void),
@@ -100,6 +100,8 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
                         })
                         .err()
                 }
+                // TODO: Match on `Int`, `Integer`, `Float`, etc. and add a help
+                // message to point to the Number type.
                 _ => span.error("Unknown type.").err(),
             }
         }
@@ -233,10 +235,10 @@ fn type_bool_condition() -> &'static SourcedType {
     }
 }
 
-/// Construct a `SourcedType` for a `Int` for list indexing.
-fn type_int_index() -> &'static SourcedType {
+/// Construct a `SourcedType` for a `Number` for list indexing.
+fn type_number_index() -> &'static SourcedType {
     &SourcedType {
-        type_: Type::Int,
+        type_: Type::Number,
         source: Source::IndexList,
     }
 }
@@ -378,7 +380,6 @@ impl<'a> TypeChecker<'a> {
 
             Expr::NullLit => type_literal(expr_span, Type::Null).is_subtype_of(expected).check(expr_span)?,
             Expr::BoolLit(..) => type_literal(expr_span, Type::Bool).is_subtype_of(expected).check(expr_span)?,
-            Expr::IntegerLit(..) => type_literal(expr_span, Type::Int).is_subtype_of(expected).check(expr_span)?,
             Expr::NumberLit(..) => type_literal(expr_span, Type::Number).is_subtype_of(expected).check(expr_span)?,
             Expr::StringLit(..) => type_literal(expr_span, Type::String).is_subtype_of(expected).check(expr_span)?,
 
@@ -494,7 +495,7 @@ impl<'a> TypeChecker<'a> {
             Expr::Index { open, collection_span, collection, index_span, index, .. } => {
                 let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
                 let (index_type, result_type) = match &collection_type.type_ {
-                    Type::List(t) => (type_int_index(), (**t).clone()),
+                    Type::List(t) => (type_number_index(), (**t).clone()),
                     Type::Dict(kv) => (&kv.key, kv.value.clone()),
                     Type::Any => (type_any(), type_any().clone()),
                     Type::String => {
