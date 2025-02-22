@@ -41,6 +41,10 @@ impl Decimal {
     ///
     /// Assumes the string is already validated (by the lexer), panics on
     /// unknown characters. Returns `None` on overflow.
+    ///
+    /// To aid testability and use in other places than the parser, this
+    /// function can handle inputs that start with a minus sign, even though
+    /// the lexer considers the minus sign a separate token.
     pub fn parse_str(dec: &str) -> Option<ParseResult> {
         let mut n: i64 = 0;
         let mut decimals: u8 = 0;
@@ -50,7 +54,8 @@ impl Decimal {
         let mut is_int = true;
         let mut is_exp = false;
         let mut is_precise = true;
-        let mut exp_sign = 1;
+        let mut exponent_sign: i16 = 1;
+        let mut mantissa_sign: i64 = 1;
 
         for ch in dec.as_bytes() {
             match ch {
@@ -60,7 +65,7 @@ impl Decimal {
                     // whose absolute value is one more than i16::MAX.
                     exponent = exponent
                         .checked_mul(10)?
-                        .checked_add((ch - b'0') as i16 * exp_sign)?;
+                        .checked_add((ch - b'0') as i16 * exponent_sign)?;
                 }
                 b'0'..=b'9' if !is_precise => {
                     // If the mantissa is already saturated, but we keep getting
@@ -73,7 +78,7 @@ impl Decimal {
                 b'0'..=b'9' => {
                     match n
                         .checked_mul(10)
-                        .and_then(|n10| n10.checked_add((ch - b'0') as i64))
+                        .and_then(|n10| n10.checked_add((ch - b'0') as i64 * mantissa_sign))
                     {
                         // We added one digit to the mantissa and it still fits.
                         Some(m) => {
@@ -93,14 +98,10 @@ impl Decimal {
                         }
                     }
                 }
-                b'.' => {
-                    is_int = false;
-                }
+                b'.' => is_int = false,
                 b'+' => {}
-                b'-' => {
-                    debug_assert!(is_exp, "Minus is only valid inside exponent.");
-                    exp_sign = -1;
-                }
+                b'-' if is_exp => exponent_sign = -1,
+                b'-' => mantissa_sign = -1,
                 b'e' | b'E' => {
                     is_int = false;
                     is_exp = true;
@@ -323,23 +324,14 @@ mod test {
         let lhs_str = parts.next().unwrap();
         let cmp_str = parts.next().unwrap();
         let rhs_str = parts.next().unwrap();
-        let mut lhs = match Decimal::parse_str(lhs_str.trim_matches('-')) {
+        let lhs = match Decimal::parse_str(lhs_str) {
             Some(ParseResult::Decimal(d)) => d,
             _ => panic!("Expected a decimal as left-hand side, not '{lhs_str}'."),
         };
-        let mut rhs = match Decimal::parse_str(rhs_str.trim_matches('-')) {
+        let rhs = match Decimal::parse_str(rhs_str) {
             Some(ParseResult::Decimal(d)) => d,
             _ => panic!("Expected a decimal as right-hand side, not '{rhs_str}'."),
         };
-
-        // The minus sign is not built into decimal parsing as it's an operator
-        // in the language, so we handle it as a special case here.
-        if lhs_str.as_bytes()[0] == b'-' {
-            lhs.mantissa = -lhs.mantissa;
-        }
-        if rhs_str.as_bytes()[0] == b'-' {
-            rhs.mantissa = -rhs.mantissa;
-        }
 
         let expected_ord = match cmp_str {
             "<" => Ordering::Less,
@@ -428,6 +420,10 @@ mod test {
         assert_parse_decimal("1.0e-42", 10, 1, -42);
         assert_parse_decimal("0.00500e5", 500, 5, 5);
         assert_parse_decimal("300e-3", 300, 0, -3);
+
+        // We should be able to reach the maximum exponents.
+        assert_parse_decimal("1e32767", 1, 0, i16::MAX);
+        assert_parse_decimal("1e-32768", 1, 0, i16::MIN);
     }
 
     #[test]

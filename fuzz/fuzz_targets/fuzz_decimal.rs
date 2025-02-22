@@ -13,7 +13,6 @@ use std::num::FpCategory;
 
 use arbitrary::{Arbitrary, Unstructured};
 use libfuzzer_sys::{fuzz_target, Corpus};
-
 use rcl::decimal::{Decimal, ParseResult};
 
 #[derive(Debug)]
@@ -56,28 +55,21 @@ fuzz_target!(|input: Input| -> Corpus {
             // the Debug impl does. We need that otherwise we get enormous
             // strings where RCL's parser fails due to overflow.
             let a_str = format!("{:?}", a.0);
-            // TODO: Add support for negative numbers in parse_str, dedup between the test.
-            let mut a_dec = match Decimal::parse_str(a_str.trim_matches('-')) {
+            let a_dec = match Decimal::parse_str(&a_str) {
                 Some(ParseResult::Decimal(d)) => d,
                 Some(ParseResult::Int(i)) => Decimal::from(i),
                 _ => panic!("Failed to parse: {a_str}"),
             };
-            if a_str.starts_with("-") {
-                a_dec.mantissa = -a_dec.mantissa;
-            }
 
             let b_str = format!("{:?}", b.0);
-            let mut b_dec = match Decimal::parse_str(b_str.trim_matches('-')) {
+            let b_dec = match Decimal::parse_str(&b_str) {
                 Some(ParseResult::Decimal(d)) => d,
                 Some(ParseResult::Int(i)) => Decimal::from(i),
                 _ => panic!("Failed to parse: {b_str}"),
             };
-            if b_str.starts_with("-") {
-                b_dec.mantissa = -b_dec.mantissa;
-            }
 
             // First we test that comparison of the decimals matches the f64
-            // comparsion, both ways around.
+            // comparison, both ways around.
             let decimal_ord = a_dec.cmp(&b_dec);
             assert_eq!(
                 decimal_ord, f64_ord,
@@ -111,14 +103,11 @@ fuzz_target!(|input: Input| -> Corpus {
             };
 
             let a_str = a.format();
-            let mut b = match Decimal::parse_str(a_str.trim_matches('-')) {
+            let b = match Decimal::parse_str(&a_str) {
                 Some(ParseResult::Decimal(d)) => d,
                 Some(ParseResult::Int(i)) => Decimal::from(i),
                 _ => panic!("Failed to parse output of Decimal::format: {a_str}"),
             };
-            if a_str.starts_with("-") {
-                b.mantissa = -b.mantissa;
-            }
 
             assert_eq!(
                 a, b,
