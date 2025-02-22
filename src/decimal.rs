@@ -235,6 +235,20 @@ impl Decimal {
         self.checked_add(&other.checked_neg()?)
     }
 
+    pub fn checked_mul(&self, other: &Decimal) -> Option<Decimal> {
+        // TODO: This treatment of the decimals is a bit naive; it uses the
+        // maximum decimals needed, but possibly we can do it in less. E.g. this
+        // turns "1.0 * 1.0" into "1.00", but we could just return "1.0". We
+        // should try to eliminate powers of 10 until the result has as many
+        // decimals as one of the inputs.
+        let result = Decimal {
+            mantissa: self.mantissa.checked_mul(other.mantissa)?,
+            decimals: self.decimals.checked_add(other.decimals)?,
+            exponent: self.exponent.checked_add(other.exponent)?,
+        };
+        Some(result)
+    }
+
     /// Convert to a float. For many decimals this will be a lossy operation.
     pub fn to_f64_lossy(&self) -> f64 {
         let n = self.mantissa as f64;
