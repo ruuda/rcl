@@ -54,7 +54,7 @@ fuzz_target!(|input: Input| -> Corpus {
                 _ => panic!("Failed to parse: {a_str}"),
             };
             if a_str.starts_with("-") {
-                a_dec.numer = -a_dec.numer;
+                a_dec.mantissa = -a_dec.mantissa;
             }
 
             let b_str = format!("{:?}", b.0);
@@ -64,7 +64,7 @@ fuzz_target!(|input: Input| -> Corpus {
                 _ => panic!("Failed to parse: {b_str}"),
             };
             if b_str.starts_with("-") {
-                b_dec.numer = -b_dec.numer;
+                b_dec.mantissa = -b_dec.mantissa;
             }
 
             let decimal_ord = a_dec.cmp(&b_dec);

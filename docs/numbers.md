@@ -7,7 +7,8 @@ with a decimal part.
 
  * Numbers are decimals with a finite range.
  * Numbers track the position of the decimal point. In particular,
-   numbers that end in `.0` preserve the `.0` in the output.
+   <abbr>RCL</abbr> will never turn floats (numbers that have a decimal point
+   and/or exponent) into integers in the output.
  * Arithmetic is exact or fails, but never silently inexact. <!--
    TODO: That's going to be a challenge with division. -->
 
@@ -56,15 +57,26 @@ representable range.
 ## Representation
 
 Numbers in <abbr>RCL</abbr> are rational numbers of the form
-<var>m</var>&nbsp;×&nbsp;10<sup><var>w</var></sup>,
-where <var>m</var> (the mantissa) is a signed 64-bit integer,
-and <var>w</var> (the exponent) is a signed 16-bit integer.
-This means that <abbr>RCL</abbr> can represent all signed 64-bit integers exactly.
-This is also how <abbr>RCL</abbr> tracks the position of the decimal point:
-`1` is represented as 1&thinsp;×&thinsp;10<sup>0</sup>,
-`1.0` is represented as 10&thinsp;×&thinsp;10<sup>-1</sup>,
-`1.00` is represented as 100&thinsp;×&thinsp;10<sup>-2</sup>,
-etc.
+<var>m</var>&nbsp;×&nbsp;10<sup>&thinsp;<var>n</var> – <var>d</var></sup>.
+
+ * **The mantissa**, <var>m</var>, is a signed 64-bit integer.
+ * **The exponent**, <var>n</var>, is a signed 16-bit integer.
+ * **The number of decimals**, <var>d</var>, is an unsigned 8-bit integer.
+
+This representation enables the following:
+
+ * All signed 64-bit integers can be represented exactly.
+ * We can track the position of the decimal point.
+   1 is represented as 1&thinsp;×&thinsp;10<sup>&thinsp;0 – 0</sup>,
+   1.0 is represented as 10&thinsp;×&thinsp;10<sup>&thinsp;0 – 1</sup>,
+   1.00 is represented as 100&thinsp;×&thinsp;10<sup>&thinsp;0 – 2</sup>,
+   etc.
+ * We can distinguish between `1.0` and `10e-1`, even though both have a
+   mantissa of 10.
+ * Together, this means that <abbr>RCL</abbr> can preserve the core formatting
+   of numbers, which ensures that numbers can be losslessly transferred from
+   input to output. In particular, <abbr>RCL</abbr> does not remove the decimal
+   point from numbers that happen to be integral.
 
 Note, numbers are _not_ <abbr>IEEE</abbr> floats. In particular, subtleties
 such as NaN, infinities, and negative zero do not exist in <abbr>RCL</abbr>.
