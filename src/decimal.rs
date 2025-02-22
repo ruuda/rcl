@@ -231,6 +231,10 @@ impl Decimal {
         Some(result)
     }
 
+    pub fn checked_sub(&self, other: &Decimal) -> Option<Decimal> {
+        self.checked_add(&other.checked_neg()?)
+    }
+
     /// Convert to a float. For many decimals this will be a lossy operation.
     pub fn to_f64_lossy(&self) -> f64 {
         let n = self.mantissa as f64;

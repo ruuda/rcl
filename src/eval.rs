@@ -903,6 +903,15 @@ impl<'a> Evaluator<'a> {
                     op_span.error(err).err()
                 }
             },
+            (BinOp::Sub, Value::Number(x), Value::Number(y)) => match x.checked_sub(&y) {
+                Some(z) => Ok(Value::Number(z)),
+                None => {
+                    let err = concat! {
+                        "Subtraction " x.format() " - " y.format() " would overflow."
+                    };
+                    op_span.error(err).err()
+                }
+            },
             (BinOp::Mul, Value::Int(x), Value::Int(y)) => match x.checked_mul(y) {
                 Some(z) => Ok(Value::Int(z)),
                 None => {
