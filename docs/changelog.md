@@ -18,6 +18,16 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased.
 
+**Changes with compatibility impact:**
+
+ * The `Int` type has been removed in favor of the `Number` type. The behavior
+   of integer values remains unchanged, but type annotations need to be updated.
+
+Release highlights:
+
+ * Add support for numbers with a decimal point or exponent. This makes
+   <abbr>RCL</abbr> a proper json superset. See the [_numbers_](numbers.md)
+   chapter in the language reference for more details.
  * When running `rcl` without arguments, it now prints only the most important
    parts of the help text. Use `rcl --help` for the full command reference.
  * Add [`List.sort_by`(type_list.md#sort_by) and
