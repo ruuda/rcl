@@ -349,7 +349,7 @@ impl<'a> Evaluator<'a> {
 
             Expr::IntegerLit(i) => Ok(Value::Int(*i)),
 
-            Expr::DecimalLit(d) => Ok(Value::Float(*d)),
+            Expr::DecimalLit(d) => Ok(Value::Number(*d)),
 
             Expr::StringLit(s) => Ok(Value::String(s.clone())),
 
@@ -829,8 +829,8 @@ impl<'a> Evaluator<'a> {
                     op_span.error(err).err()
                 }
             },
-            (UnOp::Neg, Value::Float(d)) => match d.checked_neg() {
-                Some(nd) => Ok(Value::Float(nd)),
+            (UnOp::Neg, Value::Number(d)) => match d.checked_neg() {
+                Some(nd) => Ok(Value::Number(nd)),
                 None => {
                     let err = concat! {
                         "Negation of " d.format() " would overflow."
@@ -929,8 +929,8 @@ impl<'a> Evaluator<'a> {
             }
             (
                 BinOp::Lt | BinOp::LtEq | BinOp::Gt | BinOp::GtEq,
-                lhs @ Value::Int(..) | lhs @ Value::Float(..),
-                rhs @ Value::Int(..) | rhs @ Value::Float(..),
+                lhs @ Value::Int(..) | lhs @ Value::Number(..),
+                rhs @ Value::Int(..) | rhs @ Value::Number(..),
             ) => Ok(Value::Bool(self.eval_num_cmp(op, &lhs, &rhs))),
             // We allow comparing any two values, even if they are not of the
             // same type. I would prefer to make nonsensical comparisons a type
@@ -953,9 +953,9 @@ impl<'a> Evaluator<'a> {
         // TODO: Could abstract into a `apply_num`, so we can reuse it for Add etc.
         let ord = match (lhs, rhs) {
             (Value::Int(x), Value::Int(y)) => x.cmp(y),
-            (Value::Int(x), Value::Float(y)) => Decimal::from(*x).cmp(y),
-            (Value::Float(x), Value::Int(y)) => x.cmp(&Decimal::from(*y)),
-            (Value::Float(x), Value::Float(y)) => x.cmp(y),
+            (Value::Int(x), Value::Number(y)) => Decimal::from(*x).cmp(y),
+            (Value::Number(x), Value::Int(y)) => x.cmp(&Decimal::from(*y)),
+            (Value::Number(x), Value::Number(y)) => x.cmp(y),
             _ => panic!("Should only call `eval_num_cmp` with num inputs."),
         };
         match op {

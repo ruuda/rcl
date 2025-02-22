@@ -156,7 +156,7 @@ pub enum Value {
 
     Int(i64),
 
-    Float(Decimal),
+    Number(Decimal),
 
     String(Rc<str>),
 
@@ -232,11 +232,11 @@ impl Value {
             (Type::Null, Value::Null) => return Ok(()),
             (Type::Bool, Value::Bool(..)) => return Ok(()),
             (Type::Int, Value::Int(..)) => return Ok(()),
-            (Type::Float, Value::Float(..)) => return Ok(()),
+            (Type::Float, Value::Number(..)) => return Ok(()),
             (Type::String, Value::String(..)) => return Ok(()),
 
             // Int and Float are numbers.
-            (Type::Number, Value::Int(..) | Value::Float(..)) => return Ok(()),
+            (Type::Number, Value::Int(..) | Value::Number(..)) => return Ok(()),
 
             // For compound types, we descend into them to check.
             (Type::List(elem_type), Value::List(elems)) => {
