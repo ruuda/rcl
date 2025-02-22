@@ -2,7 +2,7 @@
 
 `Number` is the type of all numbers in <abbr>RCL</abbr>.
 This page documents the supported methods and operators.
-For an overview of the syntax,
+For an overview of the syntax and representation,
 [see the _numbers_ chapter in the language guide](numbers.md).
 
 ## Addition and subtraction
