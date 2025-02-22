@@ -225,10 +225,10 @@ impl<'a> Abstractor<'a> {
 
             CExpr::NumDecimal(span) => {
                 use crate::decimal::{Decimal, ParseResult};
-                let num_str = span.resolve(self.input).replace('_', "");
-                match Decimal::parse_str(&num_str) {
-                    Some(ParseResult::Int(n)) => AExpr::IntegerLit(n),
-                    Some(ParseResult::Decimal(d)) => AExpr::DecimalLit(d),
+                let num_str = span.resolve(self.input);
+                match Decimal::parse_str(num_str) {
+                    Some(ParseResult::Int(n)) => AExpr::NumberLit(Decimal::from(n)),
+                    Some(ParseResult::Decimal(d)) => AExpr::NumberLit(d),
                     None => {
                         let err = span.error("Overflow in number literal.");
                         return Err(err.into());

@@ -139,8 +139,8 @@ pub enum Expr {
     /// An integer literal.
     IntegerLit(i64),
 
-    /// A decimal literal.
-    DecimalLit(Decimal),
+    /// A number literal.
+    NumberLit(Decimal),
 
     /// A format string, with string literals and hole contents interleaved.
     Format(Vec<FormatFragment>),

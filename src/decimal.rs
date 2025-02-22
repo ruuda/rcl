@@ -106,6 +106,11 @@ impl Decimal {
                     is_int = false;
                     is_exp = true;
                 }
+                b'_' => {
+                    // Numeric underscores are allowed, we just ignore them.
+                    // This way we don't have to allocate a new string to filter
+                    // them out before we parse the number.
+                }
                 bad_byte => panic!("Invalid input byte for 'parse_str': 0x{bad_byte:x}"),
             }
         }

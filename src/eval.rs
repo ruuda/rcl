@@ -349,7 +349,7 @@ impl<'a> Evaluator<'a> {
 
             Expr::IntegerLit(i) => Ok(Value::Int(*i)),
 
-            Expr::DecimalLit(d) => Ok(Value::Number(*d)),
+            Expr::NumberLit(d) => Ok(Value::Number(*d)),
 
             Expr::StringLit(s) => Ok(Value::String(s.clone())),
 

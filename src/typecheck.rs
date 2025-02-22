@@ -379,7 +379,7 @@ impl<'a> TypeChecker<'a> {
             Expr::NullLit => type_literal(expr_span, Type::Null).is_subtype_of(expected).check(expr_span)?,
             Expr::BoolLit(..) => type_literal(expr_span, Type::Bool).is_subtype_of(expected).check(expr_span)?,
             Expr::IntegerLit(..) => type_literal(expr_span, Type::Int).is_subtype_of(expected).check(expr_span)?,
-            Expr::DecimalLit(..) => type_literal(expr_span, Type::Float).is_subtype_of(expected).check(expr_span)?,
+            Expr::NumberLit(..) => type_literal(expr_span, Type::Number).is_subtype_of(expected).check(expr_span)?,
             Expr::StringLit(..) => type_literal(expr_span, Type::String).is_subtype_of(expected).check(expr_span)?,
 
             Expr::Format(fragments) => {
