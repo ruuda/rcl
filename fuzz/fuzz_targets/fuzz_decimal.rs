@@ -9,6 +9,7 @@
 
 #![no_main]
 
+use std::cmp::Ordering;
 use std::num::FpCategory;
 
 use arbitrary::{Arbitrary, Unstructured};
@@ -86,6 +87,26 @@ fuzz_target!(|input: Input| -> Corpus {
             // Sanity check, a decimal is equal to itself.
             assert_eq!(a_dec, a_dec, "Decimals should be equal to themselves.");
             assert_eq!(b_dec, b_dec, "Decimals should be equal to themselves.");
+
+            // We can't easily verify addition against f64, because f64 may lose
+            // precision. But we can say some things about the relationg between
+            // a, b, and a + b.
+            if let Some(sum) = a_dec.checked_add(&b_dec) {
+                if a_dec.mantissa > 0 {
+                    assert_eq!(
+                        sum.cmp(&b_dec),
+                        Ordering::Greater,
+                        "{a_dec:?} > 0 ==> {sum:?} > {b_dec:?}",
+                    );
+                }
+                if b_dec.mantissa > 0 {
+                    assert_eq!(
+                        sum.cmp(&a_dec),
+                        Ordering::Greater,
+                        "{b_dec:?} > 0 ==> {sum:?} > {a_dec:?}",
+                    );
+                }
+            }
 
             Corpus::Keep
         }

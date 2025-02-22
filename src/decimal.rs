@@ -195,6 +195,42 @@ impl Decimal {
         Some(result)
     }
 
+    pub fn checked_add(&self, other: &Decimal) -> Option<Decimal> {
+        let (mut d1, mut d2) = (*self, *other);
+
+        // To add, we first make the number of decimals equal, then we make the
+        // exponents equal, by moving powers of 10 out of decimals/exponent and
+        // into the mantissa. This is a bit naive, there are cases where it
+        // overflows that we could avoid, but it'll do for now.
+
+        // The number of decimals in the result is the larger of the two.
+        if d1.decimals < d2.decimals {
+            std::mem::swap(&mut d1, &mut d2);
+        }
+        if d1.decimals > d2.decimals {
+            let f = 10_i64.checked_pow((d1.decimals - d2.decimals) as u32)?;
+            d2.mantissa = d2.mantissa.checked_mul(f)?;
+            d2.decimals = d1.decimals;
+        }
+
+        // The exponent of the result is the smaller of the two.
+        if d1.exponent > d2.exponent {
+            std::mem::swap(&mut d1, &mut d2);
+        }
+        if d1.exponent < d2.exponent {
+            let f = 10_i64.checked_pow((d2.exponent - d1.exponent) as u32)?;
+            d2.mantissa = d2.mantissa.checked_mul(f)?;
+            d2.exponent = d1.exponent;
+        }
+
+        let result = Decimal {
+            mantissa: d1.mantissa.checked_add(d2.mantissa)?,
+            decimals: d1.decimals,
+            exponent: d1.exponent,
+        };
+        Some(result)
+    }
+
     /// Convert to a float. For many decimals this will be a lossy operation.
     pub fn to_f64_lossy(&self) -> f64 {
         let n = self.mantissa as f64;
