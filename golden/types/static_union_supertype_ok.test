@@ -1,4 +1,4 @@
-let a0: Union[Null, Int] = null;
+let a0: Union[Null, Number] = null;
 let b0: Any = a0;
 b0
 

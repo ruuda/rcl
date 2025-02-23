@@ -1,15 +1,15 @@
-let xs: Set[Int] = { a = 1 };
+let xs: Set[Bool] = { a = 1 };
 xs
 
 # output:
-stdin:1:24
+stdin:1:25
   ╷
-1 │ let xs: Set[Int] = { a = 1 };
-  ╵                        ^
+1 │ let xs: Set[Bool] = { a = 1 };
+  ╵                         ^
 Error: Expected scalar element, not key-value, because the collection is a set.
 
 stdin:1:9
   ╷
-1 │ let xs: Set[Int] = { a = 1 };
-  ╵         ^~~~~~~~
+1 │ let xs: Set[Bool] = { a = 1 };
+  ╵         ^~~~~~~~~
 Note: Expected Set because of this annotation.

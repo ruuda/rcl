@@ -2,7 +2,7 @@
 let f: (Any) -> Number = x => 0;
 let g: Any = f;
 // Now we have to do a runtime check.
-// It fails, because Bool is not a subtype of Int.
+// It fails, because Bool is not a subtype of Number.
 let h: (Any) -> Bool = g;
 null
 

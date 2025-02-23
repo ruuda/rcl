@@ -8,7 +8,7 @@
 //! A checker for static annotations and runtime dynamic types.
 //!
 //! The same value in RCL can be described by multiple types, values do not have
-//! unique types. For example, `[]` is a valid value for the type `List[Int]`
+//! unique types. For example, `[]` is a valid value for the type `List[Number]`
 //! but also for the type `List[String]`. Therefore we check whether a value
 //! _fits_ a particular type, and that same value may fit multiple types.
 
@@ -39,8 +39,6 @@ fn get_primitive_type(name: &str) -> Option<Type> {
         "Any" => Some(Type::Any),
         "Bool" => Some(Type::Bool),
         "Number" => Some(Type::Number),
-        // TODO: This is only kept temporarily to ease updating the golden tests.
-        "Int" => Some(Type::Number),
         "Null" => Some(Type::Null),
         "String" => Some(Type::String),
         "Void" => Some(Type::Void),
@@ -66,7 +64,7 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
                         .with_help(concat! {
                             "'" Doc::highlight("Dict") "' without type parameters cannot be used directly."
                             Doc::SoftBreak
-                            "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Int]") "'."
+                            "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Number]") "'."
                         })
                         .err()
                 },
@@ -96,12 +94,17 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
                         .with_help(concat! {
                             "'" Doc::highlight("Union") "' without type parameters cannot be used directly."
                             Doc::SoftBreak
-                            "Specify types to union, e.g. '" Doc::highlight("Union[Int, Null]") "'."
+                            "Specify types to union, e.g. '" Doc::highlight("Union[Number, Null]") "'."
                         })
                         .err()
                 }
-                // TODO: Match on `Int`, `Integer`, `Float`, etc. and add a help
-                // message to point to the Number type.
+                // Detect a few cases that users may try to use, so we can give
+                // point them in the right direction.
+                "Int" | "Integer" | "Float" | "Num" | "int" | "float" => {
+                    span.error("Unknown type.").with_help(concat!{
+                        "The number type is called '" Doc::highlight("Number") "'."
+                    }).err()
+                }
                 _ => span.error("Unknown type.").err(),
             }
         }
@@ -450,8 +453,8 @@ impl<'a> TypeChecker<'a> {
                 // Take for example: `(x => x + 1)("42")`. We could say, it's a
                 // call with String as first argument, so we push that into the
                 // function body, and there is a type error at the `+` because
-                // we expect a String but `+` creates an Int. But we could also
-                // say, we typecheck the function first, infer `Any -> Int`
+                // we expect a String but `+` creates a Number. But we could also
+                // say, we typecheck the function first, infer `Any - Number`
                 // (with a runtime check inserted at left-hand side of `+`), then
                 // we call that with "42", which passes, but the runtime check
                 // fails. We go with the latter: we assume function definitions
@@ -644,11 +647,11 @@ impl<'a> TypeChecker<'a> {
         // return an error top-down. But as a user, bottom-up is more natural,
         // so we check the body first. For example, in
         //
-        //     let x: Int = not 42;
+        //     let x: Number = not 42;
         //
-        // Already at the `not`, we know the result is Bool but we need Int, so
-        // that's an error. But there's *another* error, which is applying `not`
-        // to an int, and if we report only one type error, that seems like it
+        // Already at the `not`, we know the result is Bool, but we need Number,
+        // so that's an error. But there's *another* error, which is applying `not`
+        // to a Number, and if we report only one type error, that seems like it
         // should come first, as it comes first in the evaluation order too.
         match op {
             UnOp::Not => {
@@ -656,15 +659,8 @@ impl<'a> TypeChecker<'a> {
                 Ok(type_operator(op_span, Type::Bool))
             }
             UnOp::Neg => {
-                // We can negate Int and Float, so we pass in Num as expectation,
-                // even when we might have a top-level expectation that is more
-                // precise (specifically Int or Float). This means that we will
-                // not report the violated expectation as deep as we could, but
-                // the inferred type will carry a source so we can still highlight
-                // where it came from.
-                let expected = type_operator(op_span, Type::Number);
-                let inner_type = self.check_expr(&expected, body_span, body)?;
-                Ok(inner_type)
+                self.check_expr(&type_operator(op_span, Type::Number), body_span, body)?;
+                Ok(type_operator(op_span, Type::Number))
             }
         }
     }
@@ -681,8 +677,8 @@ impl<'a> TypeChecker<'a> {
         let (arg_type, result_type) = match op {
             BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => (Type::Number, Type::Number),
             BinOp::And | BinOp::Or => (Type::Bool, Type::Bool),
-            // Comparison operators make sense on many types (Int, String), even
-            // composite types (e.g. List[Int] would have lexicographic order).
+            // Comparison operators make sense on many types (Number, String), even
+            // composite types (e.g. List[Number] would have lexicographic order).
             // On some types like dict types, it is more questionable whether
             // that makes sense, but currently we have no good machinery to
             // define what should and should not be allowed, and all values _do_

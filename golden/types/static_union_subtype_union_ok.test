@@ -1,5 +1,5 @@
-let a0: Union[Null, Int] = null;
-let a1: Union[Null, Int] = 0;
+let a0: Union[Null, Number] = null;
+let a1: Union[Null, Number] = 0;
 [a0, a1]
 
 # output:

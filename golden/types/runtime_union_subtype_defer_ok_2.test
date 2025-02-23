@@ -2,7 +2,7 @@
 // of a union, but for at least one of the union elements, we need a runtime
 // check.
 let x: List[Any] = [];
-let y: Union[List[Int], List[String]] = x;
+let y: Union[List[Number], List[String]] = x;
 y
 
 # output:

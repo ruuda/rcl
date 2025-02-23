@@ -1,9 +1,9 @@
-let x: Set[Int, Int] = {};
+let x: Set[Bool, Bool] = {};
 x
 
 # output:
 stdin:1:8
   ╷
-1 │ let x: Set[Int, Int] = {};
-  ╵        ^~~~~~~~~~~~~
+1 │ let x: Set[Bool, Bool] = {};
+  ╵        ^~~~~~~~~~~~~~~
 Error: Type 'Set' takes one type parameter (the element type), but got 2.

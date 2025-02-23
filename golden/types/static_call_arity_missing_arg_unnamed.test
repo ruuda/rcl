@@ -3,7 +3,7 @@
 let f: Any = x => x * 2;
 
 // Then here we add the type back. But this time we lost the argument name.
-let g: (Any) -> Int = f;
+let g: (Any) -> Number = f;
 
 // This assertion would crash the program if we ever got to runtime. But the
 // arity error below should be detected at typecheck time already.

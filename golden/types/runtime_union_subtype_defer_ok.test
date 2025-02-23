@@ -1,6 +1,6 @@
-let x: Union[Any, Int] = 0;
-// Causes a runtime check, `Any` may not hold a valid value for `Int`.
-let y: Int = x;
+let x: Union[Any, Number] = 0;
+// Causes a runtime check, `Any` may not hold a valid value for `Number`.
+let y: Number = x;
 y
 
 # output:

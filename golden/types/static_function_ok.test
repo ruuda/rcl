@@ -1,6 +1,6 @@
 // Functions are contravariant in the argument type and covariant in the result.
-let f: (Any) -> Int = x => 0;
-let g: (Int) -> Any = f;
+let f: (Any) -> Number = x => 0;
+let g: (Number) -> Any = f;
 null
 
 # output:
