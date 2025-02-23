@@ -7,7 +7,7 @@ stdin:2:15
   ╷
 2 │ let x: Null = 0;
   ╵               ^
-Error: Type mismatch. Expected Null but found Int.
+Error: Type mismatch. Expected Null but found Number.
 
 stdin:2:8
   ╷

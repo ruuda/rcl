@@ -1,19 +1,19 @@
-let xs: Dict[Int, Int] = null;
+let xs: Dict[Number, Number] = null;
 null
 
 # output:
-stdin:1:26
+stdin:1:32
   ╷
-1 │ let xs: Dict[Int, Int] = null;
-  ╵                          ^~~~
+1 │ let xs: Dict[Number, Number] = null;
+  ╵                                ^~~~
 Error: Type mismatch. Expected this type:
 
-  Dict[Int, Int]
+  Dict[Number, Number]
 
 But found Null.
 
 stdin:1:9
   ╷
-1 │ let xs: Dict[Int, Int] = null;
-  ╵         ^~~~~~~~~~~~~~
+1 │ let xs: Dict[Number, Number] = null;
+  ╵         ^~~~~~~~~~~~~~~~~~~~
 Note: Expected Dict because of this annotation.

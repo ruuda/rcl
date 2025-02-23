@@ -2,25 +2,25 @@
 // (vs. the expected type).
 let source = true or false;
 let f = () => source;
-let g: () -> Int = f;
+let g: () -> Number = f;
 null
 
 # output:
-stdin:5:20
+stdin:5:23
   ╷
-5 │ let g: () -> Int = f;
-  ╵                    ^
+5 │ let g: () -> Number = f;
+  ╵                       ^
 Error: Type mismatch inside this type:
 
   () -> <E1>
 
-At E1: Expected Int but found Bool.
+At E1: Expected Number but found Bool.
 
 stdin:5:14
   ╷
-5 │ let g: () -> Int = f;
-  ╵              ^~~
-Note: Expected Int because of this annotation.
+5 │ let g: () -> Number = f;
+  ╵              ^~~~~~
+Note: Expected Number because of this annotation.
 
 stdin:3:19
   ╷

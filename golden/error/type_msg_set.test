@@ -1,15 +1,15 @@
 // This test formatting of the Set type in the error message.
-let x: Set[Int] = [];
+let x: Set[Number] = [];
 null
 
 # output:
-stdin:2:19
+stdin:2:22
   ╷
-2 │ let x: Set[Int] = [];
-  ╵                   ^~
+2 │ let x: Set[Number] = [];
+  ╵                      ^~
 Error: Type mismatch. Expected this type:
 
-  Set[Int]
+  Set[Number]
 
 But found this type:
 
@@ -17,6 +17,6 @@ But found this type:
 
 stdin:2:8
   ╷
-2 │ let x: Set[Int] = [];
-  ╵        ^~~~~~~~
+2 │ let x: Set[Number] = [];
+  ╵        ^~~~~~~~~~~
 Note: Expected Set because of this annotation.

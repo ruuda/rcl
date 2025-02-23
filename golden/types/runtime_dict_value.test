@@ -1,19 +1,19 @@
 let xs = { answer = "42" };
 let ys: Dict[String, Any] = xs;
-// Runtime type error: string "42" is does not the type Int.
-let zs: Dict[String, Int] = ys;
+// Runtime type error: string "42" is not of type Number.
+let zs: Dict[String, Number] = ys;
 null
 
 # output:
-stdin:4:29
+stdin:4:32
   ╷
-4 │ let zs: Dict[String, Int] = ys;
-  ╵                             ^~
+4 │ let zs: Dict[String, Number] = ys;
+  ╵                                ^~
 in value
 at key "answer"
 Error: Type mismatch. Expected a value that fits this type:
 
-  Int
+  Number
 
 But got this value:
 
@@ -21,6 +21,6 @@ But got this value:
 
 stdin:4:22
   ╷
-4 │ let zs: Dict[String, Int] = ys;
-  ╵                      ^~~
-Note: Expected Int because of this annotation.
+4 │ let zs: Dict[String, Number] = ys;
+  ╵                      ^~~~~~
+Note: Expected Number because of this annotation.

@@ -1,19 +1,19 @@
 // This tests the pretty-printer of type errors for the case where the expected
 // type can be printed in short form, but the actual type is long.
-let x: Int = [{[0]}];
+let x: Number = [{[0]}];
 x
 
 # output:
-stdin:3:14
+stdin:3:17
   ╷
-3 │ let x: Int = [{[0]}];
-  ╵              ^~~~~~~
-Error: Type mismatch. Expected Int but found this type:
+3 │ let x: Number = [{[0]}];
+  ╵                 ^~~~~~~
+Error: Type mismatch. Expected Number but found this type:
 
-  List[Set[List[Int]]]
+  List[Set[List[Number]]]
 
 stdin:3:8
   ╷
-3 │ let x: Int = [{[0]}];
-  ╵        ^~~
-Note: Expected Int because of this annotation.
+3 │ let x: Number = [{[0]}];
+  ╵        ^~~~~~
+Note: Expected Number because of this annotation.

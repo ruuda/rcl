@@ -1,7 +1,7 @@
 // This test tests pretty-printing of types.
 let x: Dict[
   String,
-  Dict[String, Dict[String, Dict[String, List[List[List[Dict[Int, String]]]]]]],
+  Dict[String, Dict[String, Dict[String, List[List[List[Dict[Number, String]]]]]]],
 ] = null;
 x
 
@@ -16,7 +16,7 @@ Error: Type mismatch. Expected this type:
     String,
     Dict[
       String,
-      Dict[String, Dict[String, List[List[List[Dict[Int, String]]]]]],
+      Dict[String, Dict[String, List[List[List[Dict[Number, String]]]]]],
     ],
   ]
 

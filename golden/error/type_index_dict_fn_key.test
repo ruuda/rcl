@@ -9,7 +9,7 @@ stdin:3:4
   ╵    ^~~~~~~~
 Error: Type mismatch. Expected a value that fits this type:
 
-  (x: Any) -> Int
+  (x: Any) -> Number
 
 But got this value:
 

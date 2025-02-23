@@ -6,6 +6,6 @@ stdin:1:8
   ╷
 1 │ assert 0, "The condition should be a boolean.";
   ╵        ^
-Error: Type mismatch. Expected Bool but found Int.
+Error: Type mismatch. Expected Bool but found Number.
 
 Help: There is no implicit conversion, conditions must be boolean.

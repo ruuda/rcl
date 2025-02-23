@@ -1,7 +1,7 @@
 // This tests the `FunctionArg::is_subtype_of` check for the case where the
 // inner args return `Defer`. This happens when we check if `Any` is a subtype
-// of `Int` for example.
-let f: (Int) -> Bool = x => true;
+// of `Number` for example.
+let f: (Number) -> Bool = x => true;
 let g: Any = f;
 let h: (Any) -> Bool = g;
 null
@@ -17,4 +17,4 @@ Error: Type mismatch. Expected this type:
 
 But found this type:
 
-  (x: Int) -> Bool
+  (x: Number) -> Bool

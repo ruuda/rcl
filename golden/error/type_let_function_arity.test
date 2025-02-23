@@ -1,14 +1,14 @@
-let f: (Int, String) -> Bool = (x, y, z) => false;
+let f: (Number, String) -> Bool = (x, y, z) => false;
 null
 
 # output:
-stdin:1:32
+stdin:1:35
   ╷
-1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
-  ╵                                ^~~~~~~~~~~~~~~~~~
+1 │ let f: (Number, String) -> Bool = (x, y, z) => false;
+  ╵                                   ^~~~~~~~~~~~~~~~~~
 Error: Type mismatch. Expected this type:
 
-  (Int, String) -> Bool
+  (Number, String) -> Bool
 
 But found this type:
 
@@ -16,6 +16,6 @@ But found this type:
 
 stdin:1:8
   ╷
-1 │ let f: (Int, String) -> Bool = (x, y, z) => false;
-  ╵        ^~~~~~~~~~~~~~~~~~~~~
+1 │ let f: (Number, String) -> Bool = (x, y, z) => false;
+  ╵        ^~~~~~~~~~~~~~~~~~~~~~~~
 Note: Expected Function because of this annotation.

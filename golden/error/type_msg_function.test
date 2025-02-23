@@ -1,20 +1,20 @@
 // This test formatting of a function type in the error message.
-let f: (Int, String) -> Bool = "not a function";
+let f: (Number, String) -> Bool = "not a function";
 null
 
 # output:
-stdin:2:32
+stdin:2:35
   ╷
-2 │ let f: (Int, String) -> Bool = "not a function";
-  ╵                                ^~~~~~~~~~~~~~~~
+2 │ let f: (Number, String) -> Bool = "not a function";
+  ╵                                   ^~~~~~~~~~~~~~~~
 Error: Type mismatch. Expected this type:
 
-  (Int, String) -> Bool
+  (Number, String) -> Bool
 
 But found String.
 
 stdin:2:8
   ╷
-2 │ let f: (Int, String) -> Bool = "not a function";
-  ╵        ^~~~~~~~~~~~~~~~~~~~~
+2 │ let f: (Number, String) -> Bool = "not a function";
+  ╵        ^~~~~~~~~~~~~~~~~~~~~~~~
 Note: Expected Function because of this annotation.

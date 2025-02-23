@@ -1,15 +1,15 @@
-let x: Int = "not an int";
+let x: Number = "not a number";
 x
 
 # output:
-stdin:1:14
+stdin:1:17
   ╷
-1 │ let x: Int = "not an int";
-  ╵              ^~~~~~~~~~~~
-Error: Type mismatch. Expected Int but found String.
+1 │ let x: Number = "not a number";
+  ╵                 ^~~~~~~~~~~~~~
+Error: Type mismatch. Expected Number but found String.
 
 stdin:1:8
   ╷
-1 │ let x: Int = "not an int";
-  ╵        ^~~
-Note: Expected Int because of this annotation.
+1 │ let x: Number = "not a number";
+  ╵        ^~~~~~
+Note: Expected Number because of this annotation.

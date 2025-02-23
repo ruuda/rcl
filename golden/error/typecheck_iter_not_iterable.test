@@ -7,4 +7,4 @@ stdin:1:11
   ╵           ^~
 Error: This is not iterable. Expected a collection, but got:
 
-  Int
+  Number
