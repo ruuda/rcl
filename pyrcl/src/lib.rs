@@ -33,8 +33,15 @@ fn build_python_value(py: Python, v: &Value) -> PyResult<PyObject> {
     let result = match v {
         Value::Null => PyNone::get(py).into(),
         Value::Bool(b) => b.to_object(py),
-        Value::Int(i) => i.to_object(py),
-        Value::Number(d) => d.to_f64_lossy().to_object(py),
+        Value::Number(d) => {
+            // Like Python's json module, try to preserve integers as an int
+            // object.
+            if d.decimals == 0 && d.exponent == 0 {
+                d.mantissa.to_object(py)
+            } else {
+                d.to_f64_lossy().to_object(py)
+            }
+        }
         Value::String(s) => s.to_object(py),
         Value::List(xs) => {
             let values = xs

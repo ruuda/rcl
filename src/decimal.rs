@@ -293,6 +293,22 @@ impl Decimal {
         n * exp
     }
 
+    /// Extract an integer, if the number is an integer.
+    ///
+    /// This cares only about numeric integers, not about formatting. For
+    /// example, both `1` and `1.0` would return `Some(1)`.
+    pub fn to_i64(&self) -> Option<i64> {
+        let exp = self.exponent as i32 - self.decimals as i32;
+        if exp < 0 {
+            return None;
+        }
+        if exp > 0 {
+            let f = 10_i64.checked_pow(exp as u32)?;
+            return Some(self.mantissa.checked_mul(f)?);
+        }
+        Some(self.mantissa)
+    }
+
     /// Compare two decimals.
     ///
     /// This is used for equality testing as well as implementing the comparison

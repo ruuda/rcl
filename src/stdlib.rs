@@ -11,6 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::CallArg;
+use crate::decimal::Decimal;
 use crate::error::{IntoError, Result};
 use crate::eval::Evaluator;
 use crate::fmt_rcl::format_rcl;
@@ -51,24 +52,32 @@ builtin_function!(
     builtin_std_range
 );
 fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Value> {
-    let lower: i64 = match &call.args[0].value {
-        Value::Int(i) => *i,
-        _not_string => {
-            // TODO: Add proper typechecking and a proper type error.
-            return call.args[0]
+    let arg_lower = &call.args[0];
+    let lower: i64 = match arg_lower.value.to_i64() {
+        Some(n) => n,
+        None => {
+            return arg_lower
                 .span
-                .error("Expected an Int here, but got a different type.")
-                .err();
+                .error(concat! {
+                    "Expected an integer, but got "
+                    format_rcl(&arg_lower.value).into_owned()
+                    "."
+                })
+                .err()
         }
     };
-    let upper: i64 = match &call.args[1].value {
-        Value::Int(i) => *i,
-        _not_string => {
-            // TODO: Add proper typechecking and a proper type error.
-            return call.args[1]
+    let arg_upper = &call.args[1];
+    let upper: i64 = match arg_upper.value.to_i64() {
+        Some(n) => n,
+        None => {
+            return arg_upper
                 .span
-                .error("Expected an Int here, but got a different type.")
-                .err();
+                .error(concat! {
+                    "Expected an integer, but got "
+                    format_rcl(&arg_upper.value).into_owned()
+                    "."
+                })
+                .err()
         }
     };
 
@@ -100,7 +109,7 @@ fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Value>
             .err();
     }
 
-    let values: Vec<_> = range.map(Value::Int).collect();
+    let values: Vec<_> = range.map(Value::int).collect();
     Ok(Value::List(Rc::new(values)))
 }
 
@@ -121,25 +130,25 @@ pub fn initialize() -> Value {
 builtin_method!("Dict.len", () -> Int, const DICT_LEN, builtin_dict_len);
 fn builtin_dict_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let dict = call.receiver.expect_dict();
-    Ok(Value::Int(dict.len() as _))
+    Ok(Value::int(dict.len() as _))
 }
 
 builtin_method!("List.len", () -> Int, const LIST_LEN, builtin_list_len);
 fn builtin_list_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let list = call.receiver.expect_list();
-    Ok(Value::Int(list.len() as _))
+    Ok(Value::int(list.len() as _))
 }
 
 builtin_method!("Set.len", () -> Int, const SET_LEN, builtin_set_len);
 fn builtin_set_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
-    Ok(Value::Int(set.len() as _))
+    Ok(Value::int(set.len() as _))
 }
 
 builtin_method!("String.len", () -> Int, const STRING_LEN, builtin_string_len);
 fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let string = call.receiver.expect_string();
-    Ok(Value::Int(string.chars().count() as _))
+    Ok(Value::int(string.chars().count() as _))
 }
 
 builtin_method!(
@@ -701,14 +710,14 @@ fn builtin_sum_impl<'a>(
     call: MethodCall,
     xs: impl IntoIterator<Item = &'a Value>,
 ) -> Result<Value> {
-    let mut acc: i64 = 0;
+    let mut acc = Decimal::from(0);
     for x in xs {
         match x {
-            Value::Int(n) => match acc.checked_add(*n) {
+            Value::Number(n) => match acc.checked_add(n) {
                 Some(m) => acc = m,
                 None => {
                     let err = concat! {
-                        "Addition " acc.to_string() " + " n.to_string() " would overflow."
+                        "Addition " acc.format() " + " n.format() " would overflow."
                     };
                     return call.method_span.error(err).err();
                 }
@@ -722,7 +731,7 @@ fn builtin_sum_impl<'a>(
         }
     }
 
-    Ok(Value::Int(acc))
+    Ok(Value::Number(acc))
 }
 
 builtin_method!("List.sum", () -> Int, const LIST_SUM, builtin_list_sum);
@@ -926,8 +935,10 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<V
 
     let string = call.receiver.expect_string();
 
+    // TODO: This should use Decimal::parse_str and then try to convert to integer.
+    // Or not ... Hmm ...
     match i64::from_str(string) {
-        Ok(i) => Ok(Value::Int(i)),
+        Ok(i) => Ok(Value::int(i)),
         Err(..) => call
             .receiver_span
             .error("Failed to parse as integer:")
@@ -1215,7 +1226,7 @@ fn builtin_list_enumerate(_eval: &mut Evaluator, call: MethodCall) -> Result<Val
     let kv: BTreeMap<_, _> = list
         .iter()
         .zip(0..)
-        .map(|(v, i)| (Value::Int(i), v.clone()))
+        .map(|(v, i)| (Value::int(i), v.clone()))
         .collect();
     Ok(Value::Dict(Rc::new(kv)))
 }

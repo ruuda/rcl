@@ -12,7 +12,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{BinOp, CallArg, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
-use crate::decimal::Decimal;
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
@@ -693,7 +692,7 @@ impl<'a> Evaluator<'a> {
     pub fn push_format_fragment(out: &mut Vec<Rc<str>>, span: Span, value: &Value) -> Result<()> {
         match value {
             Value::Bool(b) => out.push((if *b { "true" } else { "false" }).into()),
-            Value::Int(i) => out.push(i.to_string().into()),
+            Value::Number(d) => out.push(d.format().into()),
             Value::Null => out.push("null".into()),
             Value::String(s) => out.push(s.clone()),
             not_formattable => {
@@ -764,8 +763,8 @@ impl<'a> Evaluator<'a> {
     }
 
     fn eval_index_list(&mut self, list: &[Value], index: Value, index_span: Span) -> Result<Value> {
-        let i_signed = match index {
-            Value::Int(i) => i,
+        let i_signed = match index.to_i64() {
+            Some(i) => i,
             _ => return index_span.error("List index must be an integer.").err(),
         };
 
@@ -818,15 +817,6 @@ impl<'a> Evaluator<'a> {
     fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Value) -> Result<Value> {
         match (op, v) {
             (UnOp::Not, Value::Bool(x)) => Ok(Value::Bool(!x)),
-            (UnOp::Neg, Value::Int(x)) => match x.checked_neg() {
-                Some(nx) => Ok(Value::Int(nx)),
-                None => {
-                    let err = concat! {
-                        "Negation of " x.to_string() " would overflow."
-                    };
-                    op_span.error(err).err()
-                }
-            },
             (UnOp::Neg, Value::Number(d)) => match d.checked_neg() {
                 Some(nd) => Ok(Value::Number(nd)),
                 None => {
@@ -874,15 +864,6 @@ impl<'a> Evaluator<'a> {
             // running a program to read its input, that would be questionable to do.
             (BinOp::And, Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x && y)),
             (BinOp::Or, Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x || y)),
-            (BinOp::Add, Value::Int(x), Value::Int(y)) => match x.checked_add(y) {
-                Some(z) => Ok(Value::Int(z)),
-                None => {
-                    let err = concat! {
-                        "Addition " x.to_string() " + " y.to_string() " would overflow."
-                    };
-                    op_span.error(err).err()
-                }
-            },
             (BinOp::Add, Value::Number(x), Value::Number(y)) => match x.checked_add(&y) {
                 Some(z) => Ok(Value::Number(z)),
                 None => {
@@ -892,29 +873,11 @@ impl<'a> Evaluator<'a> {
                     op_span.error(err).err()
                 }
             },
-            (BinOp::Sub, Value::Int(x), Value::Int(y)) => match x.checked_sub(y) {
-                Some(z) => Ok(Value::Int(z)),
-                None => {
-                    let err = concat! {
-                        "Subtraction " x.to_string() " - " y.to_string() " would overflow."
-                    };
-                    op_span.error(err).err()
-                }
-            },
             (BinOp::Sub, Value::Number(x), Value::Number(y)) => match x.checked_sub(&y) {
                 Some(z) => Ok(Value::Number(z)),
                 None => {
                     let err = concat! {
                         "Subtraction " x.format() " - " y.format() " would overflow."
-                    };
-                    op_span.error(err).err()
-                }
-            },
-            (BinOp::Mul, Value::Int(x), Value::Int(y)) => match x.checked_mul(y) {
-                Some(z) => Ok(Value::Int(z)),
-                None => {
-                    let err = concat! {
-                        "Multiplication " x.to_string() " * " y.to_string() " would overflow."
                     };
                     op_span.error(err).err()
                 }
@@ -945,35 +908,6 @@ impl<'a> Evaluator<'a> {
                     }
                 }
             }
-            (BinOp::Div, Value::Int(x), Value::Int(y)) => {
-                if y == 0 {
-                    op_span.error("Division by zero.").err()
-                } else {
-                    // For division, the result may not be an integer. In that case,
-                    // probably the right thing to do is to add rational numbers as
-                    // values and make the result a rational. However, I don't want
-                    // to implement all of that right now, so the conservative thing
-                    // to do is to only allow division when it results in an integer.
-                    // If we'd choose integer division now, it would be a subtle
-                    // change of behavior later.
-                    let q = x / y;
-                    if q * y == x {
-                        Ok(Value::Int(q))
-                    } else {
-                        let err = concat! {
-                            "Non-integer division: "
-                            x.to_string() " is not a multiple of " y.to_string()
-                            ". Non-integer division is not supported at this time."
-                        };
-                        op_span.error(err).err()
-                    }
-                }
-            }
-            (
-                BinOp::Lt | BinOp::LtEq | BinOp::Gt | BinOp::GtEq,
-                lhs @ Value::Int(..) | lhs @ Value::Number(..),
-                rhs @ Value::Int(..) | rhs @ Value::Number(..),
-            ) => Ok(Value::Bool(self.eval_num_cmp(op, &lhs, &rhs))),
             // We allow comparing any two values, even if they are not of the
             // same type. I would prefer to make nonsensical comparisons a type
             // error (e.g. `1 < "2"` should return "Int and String incomparable",
@@ -988,24 +922,6 @@ impl<'a> Evaluator<'a> {
             (BinOp::Eq, x, y) => Ok(Value::Bool(x == y)),
             (BinOp::Neq, x, y) => Ok(Value::Bool(x != y)),
             _ => unreachable!("Invalid cases are prevented by the typechecker."),
-        }
-    }
-
-    fn eval_num_cmp(&self, op: BinOp, lhs: &Value, rhs: &Value) -> bool {
-        // TODO: Could abstract into a `apply_num`, so we can reuse it for Add etc.
-        let ord = match (lhs, rhs) {
-            (Value::Int(x), Value::Int(y)) => x.cmp(y),
-            (Value::Int(x), Value::Number(y)) => Decimal::from(*x).cmp(y),
-            (Value::Number(x), Value::Int(y)) => x.cmp(&Decimal::from(*y)),
-            (Value::Number(x), Value::Number(y)) => x.cmp(y),
-            _ => panic!("Should only call `eval_num_cmp` with num inputs."),
-        };
-        match op {
-            BinOp::Lt => ord.is_lt(),
-            BinOp::LtEq => ord.is_le(),
-            BinOp::Gt => ord.is_gt(),
-            BinOp::GtEq => ord.is_ge(),
-            _ => panic!("Should only call `eval_num_cmp` with inequality binop."),
         }
     }
 
