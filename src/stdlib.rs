@@ -52,35 +52,20 @@ builtin_function!(
     builtin_std_range
 );
 fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Value> {
-    let arg_lower = &call.args[0];
-    let lower: i64 = match arg_lower.value.to_i64() {
-        Some(n) => n,
-        None => {
-            return arg_lower
-                .span
-                .error(concat! {
-                    "Expected an integer, but got "
-                    format_rcl(&arg_lower.value).into_owned()
-                    "."
-                })
-                .err()
-        }
-    };
-    let arg_upper = &call.args[1];
-    let upper: i64 = match arg_upper.value.to_i64() {
-        Some(n) => n,
-        None => {
-            return arg_upper
-                .span
-                .error(concat! {
-                    "Expected an integer, but got "
-                    format_rcl(&arg_upper.value).into_owned()
-                    "."
-                })
-                .err()
-        }
+    let expect_i64 = |arg: &CallArg<Value>| match arg.value.to_i64() {
+        Some(n) => Ok(n),
+        None => arg
+            .span
+            .error(concat! {
+                "Expected an integer, but got "
+                format_rcl(&arg.value).into_owned()
+                "."
+            })
+            .err(),
     };
 
+    let lower: i64 = expect_i64(&call.args[0])?;
+    let upper: i64 = expect_i64(&call.args[1])?;
     let range = lower..upper;
 
     // Because we materialize the entire list, it's easy to cause out of memory

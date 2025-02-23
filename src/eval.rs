@@ -765,7 +765,15 @@ impl<'a> Evaluator<'a> {
     fn eval_index_list(&mut self, list: &[Value], index: Value, index_span: Span) -> Result<Value> {
         let i_signed = match index.to_i64() {
             Some(i) => i,
-            _ => return index_span.error("List index must be an integer.").err(),
+            _ => {
+                return index_span
+                    .error(concat! {
+                        "Expected list index to be an integer, but got "
+                        format_rcl(&index).into_owned()
+                        "."
+                    })
+                    .err()
+            }
         };
 
         let i = match i_signed {

@@ -296,17 +296,26 @@ impl Decimal {
     /// Extract an integer, if the number is an integer.
     ///
     /// This cares only about numeric integers, not about formatting. For
-    /// example, both `1` and `1.0` would return `Some(1)`.
+    /// example, all of `1`, `0.1e1`, and `1.00` would return `Some(1)`.
     pub fn to_i64(&self) -> Option<i64> {
-        let exp = self.exponent as i32 - self.decimals as i32;
-        if exp < 0 {
-            return None;
+        match self.exponent as i32 - self.decimals as i32 {
+            0 => Some(self.mantissa),
+            exp if exp > 0 => {
+                let f = 10_i64.checked_pow(exp as u32)?;
+                self.mantissa.checked_mul(f)
+            }
+            exp => {
+                // If we get to this branch, `exp < 0`, it's a case of e.g.
+                // 1.00 == 100e-2, which is numerically an integer.
+                let f = 10_i64.checked_pow((-exp) as u32)?;
+                let n = self.mantissa / f;
+                if n * f == self.mantissa {
+                    Some(n)
+                } else {
+                    None
+                }
+            }
         }
-        if exp > 0 {
-            let f = 10_i64.checked_pow(exp as u32)?;
-            return Some(self.mantissa.checked_mul(f)?);
-        }
-        Some(self.mantissa)
     }
 
     /// Compare two decimals.
@@ -635,5 +644,15 @@ mod test {
         // This is a regression test for a bug found by the fuzz_decimal fuzzer.
         assert_cmp("-0.1 < 0e0");
         assert_cmp("0.1 > 0e0");
+    }
+
+    #[test]
+    fn decimal_to_i64_works_for_floats() {
+        assert_eq!(decimal(100, 2, 0).to_i64(), Some(1), "1.00 == 1");
+        assert_eq!(decimal(10, 1, 0).to_i64(), Some(1), "1.0 == 1");
+        assert_eq!(decimal(1, 0, 0).to_i64(), Some(1), "1 == 1");
+        assert_eq!(decimal(10, 0, -1).to_i64(), Some(1), "10e-1 == 1");
+        assert_eq!(decimal(100, 0, -1).to_i64(), Some(10), "100e-1 == 10");
+        assert_eq!(decimal(1, 1, 0).to_i64(), None, "0.1 is not an int");
     }
 }
