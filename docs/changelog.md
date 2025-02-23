@@ -14,7 +14,7 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Next
+## 0.8.0
 
 Unreleased.
 
@@ -25,9 +25,12 @@ Unreleased.
 
 Release highlights:
 
- * Add support for numbers with a decimal point or exponent. This makes
+ * Add support for numbers with a decimal point or exponent. This finally makes
    <abbr>RCL</abbr> a proper json superset. See the [_numbers_](numbers.md)
-   chapter in the language reference for more details.
+   chapter in the language reference for more details. Arithmetic on integers
+   remains unchanged. Arithmetic on numbers with a decimal point is now possible
+   as well, but the formatting of the result is still fairly naive. This will
+   likely change in a future version.
  * When running `rcl` without arguments, it now prints only the most important
    parts of the help text. Use `rcl --help` for the full command reference.
  * Add [`List.sort_by`(type_list.md#sort_by) and
