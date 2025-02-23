@@ -918,7 +918,7 @@ impl<'a> Evaluator<'a> {
             }
             // We allow comparing any two values, even if they are not of the
             // same type. I would prefer to make nonsensical comparisons a type
-            // error (e.g. `1 < "2"` should return "Int and String incomparable",
+            // error (e.g. `1 < "2"` should return "Number and String incomparable",
             // but due to the type lattice, there is no such thing as "same type".
             // We could enforce that the value discriminant is the same, and then
             // we can rule out `1 < "2"`, but not `[1] < ["2"]`. So let's just

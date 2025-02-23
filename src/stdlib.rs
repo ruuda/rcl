@@ -47,7 +47,7 @@ fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Resul
 
 builtin_function!(
     "std.range",
-    (lower: Int, upper: Int) -> [Int],
+    (lower: Number, upper: Number) -> [Number],
     const STD_RANGE,
     builtin_std_range
 );
@@ -112,25 +112,25 @@ pub fn initialize() -> Value {
     Value::Dict(Rc::new(builtins))
 }
 
-builtin_method!("Dict.len", () -> Int, const DICT_LEN, builtin_dict_len);
+builtin_method!("Dict.len", () -> Number, const DICT_LEN, builtin_dict_len);
 fn builtin_dict_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let dict = call.receiver.expect_dict();
     Ok(Value::int(dict.len() as _))
 }
 
-builtin_method!("List.len", () -> Int, const LIST_LEN, builtin_list_len);
+builtin_method!("List.len", () -> Number, const LIST_LEN, builtin_list_len);
 fn builtin_list_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let list = call.receiver.expect_list();
     Ok(Value::int(list.len() as _))
 }
 
-builtin_method!("Set.len", () -> Int, const SET_LEN, builtin_set_len);
+builtin_method!("Set.len", () -> Number, const SET_LEN, builtin_set_len);
 fn builtin_set_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     Ok(Value::int(set.len() as _))
 }
 
-builtin_method!("String.len", () -> Int, const STRING_LEN, builtin_string_len);
+builtin_method!("String.len", () -> Number, const STRING_LEN, builtin_string_len);
 fn builtin_string_len(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let string = call.receiver.expect_string();
     Ok(Value::int(string.chars().count() as _))
@@ -719,13 +719,13 @@ fn builtin_sum_impl<'a>(
     Ok(Value::Number(acc))
 }
 
-builtin_method!("List.sum", () -> Int, const LIST_SUM, builtin_list_sum);
+builtin_method!("List.sum", () -> Number, const LIST_SUM, builtin_list_sum);
 fn builtin_list_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let list = call.receiver.expect_list();
     builtin_sum_impl(call, list)
 }
 
-builtin_method!("Set.sum", () -> Int, const SET_SUM, builtin_set_sum);
+builtin_method!("Set.sum", () -> Number, const SET_SUM, builtin_set_sum);
 fn builtin_set_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     builtin_sum_impl(call, set)
@@ -911,7 +911,7 @@ fn builtin_string_split_lines(_eval: &mut Evaluator, call: MethodCall) -> Result
 
 builtin_method!(
     "String.parse_int",
-    () -> Int,
+    () -> Number,
     const STRING_PARSE_INT,
     builtin_string_parse_int
 );
@@ -1202,7 +1202,7 @@ fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
 
 builtin_method!(
     "List.enumerate",
-    () -> {Int: Any},
+    () -> {Number: Any},
     const LIST_ENUMERATE,
     builtin_list_enumerate
 );

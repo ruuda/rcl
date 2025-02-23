@@ -728,8 +728,6 @@ pub fn builtin(type_: Type) -> SourcedType {
 /// * `(p: P, q: Q) -> R` is written `(fn (p: P, q: Q) -> R)`
 macro_rules! make_type {
     (Any) => { builtin(Type::Any) };
-    // TODO: Delete this, replace with Number; we only keep this to ease the change.
-    (Int) => { builtin(Type::Number) };
     (Number) => { builtin(Type::Number) };
     (Bool) => { builtin(Type::Bool) };
     (String) => { builtin(Type::String) };
