@@ -1,15 +1,15 @@
-let xs: List[Int + String] = [];
+let xs: List[Number + String] = [];
 xs
 
 # output:
-stdin:1:18
+stdin:1:21
   ╷
-1 │ let xs: List[Int + String] = [];
-  ╵                  ^
+1 │ let xs: List[Number + String] = [];
+  ╵                     ^
 Error: Expected ']'.
 
 stdin:1:13
   ╷
-1 │ let xs: List[Int + String] = [];
+1 │ let xs: List[Number + String] = [];
   ╵             ^
 Note: Unmatched '[' opened here.

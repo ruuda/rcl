@@ -1,9 +1,9 @@
-let number: Int;
+let number: Number;
 number
 
 # output:
-stdin:1:16
+stdin:1:19
   ╷
-1 │ let number: Int;
-  ╵                ^
+1 │ let number: Number;
+  ╵                   ^
 Error: Expected '=' after type annotation.

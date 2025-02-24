@@ -1,11 +1,11 @@
-let double: Int => Int = x => x * 2;
+let double: Number => Number = x => x * 2;
 double
 
 # output:
-stdin:1:17
+stdin:1:20
   ╷
-1 │ let double: Int => Int = x => x * 2;
-  ╵                 ^~
+1 │ let double: Number => Number = x => x * 2;
+  ╵                    ^~
 Error: Expected '=' after type annotation.
 
 Help: Function types require parentheses and use '->' instead of '=>', e.g. '(Int) -> Bool'.
