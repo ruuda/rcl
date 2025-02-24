@@ -459,7 +459,7 @@ impl<'a> Evaluator<'a> {
                     (Value::Set(_), "key_by") => Some(&stdlib::SET_KEY_BY),
                     (Value::Set(_), "len") => Some(&stdlib::SET_LEN),
                     (Value::Set(_), "map") => Some(&stdlib::SET_MAP),
-                    // TODO: We don't have Set.sort? Add it.
+                    (Value::Set(_), "sort") => Some(&stdlib::SET_SORT),
                     (Value::Set(_), "sort_by") => Some(&stdlib::SET_SORT_BY),
                     (Value::Set(_), "sum") => Some(&stdlib::SET_SUM),
 

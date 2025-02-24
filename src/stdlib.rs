@@ -454,6 +454,20 @@ fn builtin_list_sort(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     Ok(Value::List(Rc::new(sorted)))
 }
 
+builtin_method!(
+    "Set.sort",
+    () -> [Any],
+    const SET_SORT,
+    builtin_set_sort
+);
+fn builtin_set_sort(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    // Note, sets are currently implemented as sorted sets, so there is
+    // no additional sorting to be done here, just collecting in a vec.
+    let sorted: Vec<_> = set.iter().cloned().collect();
+    Ok(Value::List(Rc::new(sorted)))
+}
+
 /// A generic building block to help implement map, filter, and flatmap.
 ///
 /// The acceptor function receives the original value, and the mapped value.

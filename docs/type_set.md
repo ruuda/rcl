@@ -215,7 +215,19 @@ Return the number of elements in the set. For example:
 
 ## sort
 
-TODO: Add `Set.sort`.
+```rcl
+Set.sort: (self: Set[T]) -> List[T]
+```
+
+Return a sorted version of the set. Elements of the same type will be sorted
+with respect to each other. The relative order of elements of different types
+is an implementation detail that may change between versions.
+
+```rcl
+{11, 5, 7}.sort()
+// Evaluates to:
+[5, 7, 11]
+```
 
 ## sort_by
 
