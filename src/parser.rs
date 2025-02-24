@@ -519,14 +519,16 @@ impl<'a> Parser<'a> {
                             .error("Expected '=' after type annotation.")
                             .with_help(
                                 "Function types require parentheses \
-                                and use '->' instead of '=>', e.g. '(Int) -> Bool'.",
+                                and use '->' instead of '=>', e.g. '(String) -> Bool'.",
                             )
                             .err();
                     }
                     Token::ThinArrow => {
                         return self
                             .error("Expected '=' after type annotation.")
-                            .with_help("Function types require parentheses, e.g. '(Int) -> Bool'.")
+                            .with_help(
+                                "Function types require parentheses, e.g. '(String) -> Bool'.",
+                            )
                             .err();
                     }
                     _ => return self.error("Expected '=' after type annotation.").err(),

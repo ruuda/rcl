@@ -8,4 +8,4 @@ stdin:1:20
   ╵                    ^~
 Error: Expected '=' after type annotation.
 
-Help: Function types require parentheses and use '->' instead of '=>', e.g. '(Int) -> Bool'.
+Help: Function types require parentheses and use '->' instead of '=>', e.g. '(String) -> Bool'.
