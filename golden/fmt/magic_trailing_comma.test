@@ -66,24 +66,24 @@ let d = (
 ) => 1;
 
 // Generic types.
-let a: List[Int, Int] = [];
+let a: List[Number, Number] = [];
 let b: List[
-  Int, Int
+  Number, Number
 ] = [];
-let c: List[Int, Int,] = [];
+let c: List[Number, Number,] = [];
 let d: List[
-  Int, Int,
+  Number, Number,
 ] = [];
 
 // Function types.
-let a: (Int, Int) -> Int = null;
+let a: (Number, Number) -> Number = null;
 let b: (
-  Int, Int
-) -> Int = null;
-let c: (Int, Int,) -> Int = null;
+  Number, Number
+) -> Number = null;
+let c: (Number, Number,) -> Number = null;
 let d: (
-  Int, Int,
-) -> Int = null;
+  Number, Number,
+) -> Number = null;
 
 // This is a regression test for a non-idempotency.
 // In sequences with a single comprehension,
@@ -180,28 +180,28 @@ let d = (
 ) => 1;
 
 // Generic types.
-let a: List[Int, Int] = [];
-let b: List[Int, Int] = [];
+let a: List[Number, Number] = [];
+let b: List[Number, Number] = [];
 let c: List[
-  Int,
-  Int,
+  Number,
+  Number,
 ] = [];
 let d: List[
-  Int,
-  Int,
+  Number,
+  Number,
 ] = [];
 
 // Function types.
-let a: (Int, Int) -> Int = null;
-let b: (Int, Int) -> Int = null;
+let a: (Number, Number) -> Number = null;
+let b: (Number, Number) -> Number = null;
 let c: (
-  Int,
-  Int,
-) -> Int = null;
+  Number,
+  Number,
+) -> Number = null;
 let d: (
-  Int,
-  Int,
-) -> Int = null;
+  Number,
+  Number,
+) -> Number = null;
 
 // This is a regression test for a non-idempotency.
 // In sequences with a single comprehension,

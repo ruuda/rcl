@@ -2,7 +2,7 @@
 let
 x
 :
-Int
+Number
 =
 42;
 
@@ -15,12 +15,12 @@ str, Any
 // When needed, generic instantiations format tall.
 let comment_in_type_arg : List[
   // There is a comment here.
-  Int] = [];
+  Number] = [];
 
 // Function types format on one line if possible.
 let frobnicate
-: ( Int , Int, Int, (Int) ->Bool )-> Bool =
-(x, y, z, f) => f(x + y + z);
+: ( Bool , Bool, Bool, (Bool) ->String )-> String =
+(x, y, z, f) => f(x and y and z);
 
 // Exceeding the width forces tall mode.
 let frobnicate
@@ -31,15 +31,15 @@ let frobnicate
 let double:
 (
   // The arg.
-  Int,
+  Number,
 )
--> Int = x => x * 2;
+-> Number = x => x * 2;
 
 null
 
 # output:
 // A simple type annotation formats on one line.
-let x: Int = 42;
+let x: Number = 42;
 
 // Generic instantiations also format on one line if possible.
 let the_bane_of_typing_json_in_python: Dict[str, Any] = {};
@@ -47,12 +47,12 @@ let the_bane_of_typing_json_in_python: Dict[str, Any] = {};
 // When needed, generic instantiations format tall.
 let comment_in_type_arg: List[
   // There is a comment here.
-  Int,
+  Number,
 ] = [];
 
 // Function types format on one line if possible.
-let frobnicate: (Int, Int, Int, (Int) -> Bool) -> Bool = (x, y, z, f) => f(
-  x + y + z,
+let frobnicate: (Bool, Bool, Bool, (Bool) -> String) -> String = (x, y, z, f) => f(
+  x and y and z,
 );
 
 // Exceeding the width forces tall mode.
@@ -68,7 +68,7 @@ let frobnicate: (
 // A comment does as well.
 let double: (
   // The arg.
-  Int,
-) -> Int = x => x * 2;
+  Number,
+) -> Number = x => x * 2;
 
 null
