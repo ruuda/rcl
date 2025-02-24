@@ -36,6 +36,15 @@ pub enum ParseResult {
     Decimal(Decimal),
 }
 
+impl From<ParseResult> for Decimal {
+    fn from(r: ParseResult) -> Decimal {
+        match r {
+            ParseResult::Int(i) => Decimal::from(i),
+            ParseResult::Decimal(d) => d,
+        }
+    }
+}
+
 impl Decimal {
     /// Parse a json number into either a decimal or an integer.
     ///
@@ -174,21 +183,6 @@ impl Decimal {
         }
 
         result
-    }
-
-    /// Move all powers of 10 from the mantissa into the exponent.
-    ///
-    /// TODO: Update this to pick a reasonable formatting based on the number
-    /// range.
-    ///
-    /// This might fail when the new exponent does not fit in 16 bits.
-    pub fn normalize(&self) -> Option<Decimal> {
-        let mut normed = *self;
-        while normed.mantissa % 10 == 0 {
-            normed.mantissa /= 10;
-            normed.exponent = normed.exponent.checked_add(1)?;
-        }
-        Some(normed)
     }
 
     pub fn checked_neg(&self) -> Option<Decimal> {
@@ -424,14 +418,18 @@ mod test {
                     && d.decimals == expected_decimals
                     && d.exponent == expected_exponent
             }
+            // coverage:off -- This branch shouldn't be hit when the assertion is not.
             _ => false,
+            // coverage:on
         };
 
         assert!(
             is_ok,
+            // coverage:off
             "Expected '{num}' to parse as {expected_mantissa}e\
             ({expected_exponent}-{expected_decimals}), \
-            but got {result:#?}"
+            but got {result:#?}",
+            // coverage:on
         );
     }
 
@@ -458,7 +456,46 @@ mod test {
         assert_eq!(
             lhs.cmp(&rhs),
             expected_ord,
+            // coverage:off
             "Unexpected comparison result for {lhs_str} ({lhs:?}) vs. {rhs_str} ({rhs:?}).",
+            // coverage:on
+        );
+    }
+
+    fn assert_binop(expr: &str) {
+        let mut parts = expr.split(' ');
+        let lhs_str = parts.next().unwrap();
+        let op_str = parts.next().unwrap();
+        let rhs_str = parts.next().unwrap();
+        let eq_str = parts.next().unwrap();
+        let res_str = parts.next().unwrap();
+        let lhs: Decimal = match Decimal::parse_str(lhs_str) {
+            Some(r) => r.into(),
+            _ => panic!("Expected a decimal as left-hand side, not '{lhs_str}'."),
+        };
+        let rhs: Decimal = match Decimal::parse_str(rhs_str) {
+            Some(r) => r.into(),
+            _ => panic!("Expected a decimal as right-hand side, not '{rhs_str}'."),
+        };
+        assert_eq!(eq_str, "==");
+
+        let actual = match op_str {
+            "+" => lhs.checked_add(&rhs),
+            "-" => lhs.checked_sub(&rhs),
+            "*" => lhs.checked_mul(&rhs),
+            "/" => lhs.checked_div_exact(&rhs),
+            _ => panic!("Unexpected operator '{op_str}'."),
+        };
+
+        // Note, we compare the formatted value, not the parsed result, because
+        // we want the formatting to match, we don't want just a numeric match!
+        assert_eq!(
+            actual.map(|x| x.format()),
+            Some(res_str.to_string()),
+            // coverage:off
+            "Unexpected result for {lhs_str} ({lhs:?}) {op_str} {rhs_str} ({rhs:?}):\
+            got {actual:?}",
+            // coverage:on
         );
     }
 
@@ -635,6 +672,8 @@ mod test {
         assert_cmp("-1e100 < 1e100");
         assert_cmp("-1e100 < 1e1");
         assert_cmp("-1e100 < -1e0");
+        assert_cmp("-1e100 > -1e110");
+        assert_cmp("-8577.55471122393 > -2.775282690723978e36");
 
         // This one is a regression test, the fuzz_smith fuzzer found an
         // overflow when subtracting the exponents.
@@ -654,5 +693,68 @@ mod test {
         assert_eq!(decimal(10, 0, -1).to_i64(), Some(1), "10e-1 == 1");
         assert_eq!(decimal(100, 0, -1).to_i64(), Some(10), "100e-1 == 10");
         assert_eq!(decimal(1, 1, 0).to_i64(), None, "0.1 is not an int");
+    }
+
+    #[test]
+    fn decimal_checked_add() {
+        // Decimals is the most of the two inputs.
+        assert_binop("1.0 + 1 == 2.0");
+        assert_binop("1 + 1.0 == 2.0");
+        assert_binop("1.000 + 0.01 == 1.010");
+        assert_binop("-1.00 + 1.00 == 0.00");
+
+        // Same for subtraction
+        assert_binop("1.0 - 2 == -1.0");
+        assert_binop("1 - 3.0 == -2.0");
+        assert_binop("1.000 - 0.01 == 0.990");
+        assert_binop("-1.00 - -1.00 == 0.00");
+
+        // The exponent is the smaller of the two.
+        assert_binop("1e2 + 0 == 100");
+        assert_binop("1e2 + 0.1e5 == 101.0e2");
+
+        // The number of decimals is the sum of the two.
+        assert_binop("1.0 * 1.0 == 1.00");
+        assert_binop("0.5 * 0.5 == 0.25");
+        assert_binop("2 * 21 == 42");
+
+        // The exponent is the sum of the exponents.
+        assert_binop("1e1 * 1e20 == 1e21");
+        assert_binop("1e100 * 1e-100 == 1");
+
+        // Division preserves the number of decimals in the numerator if
+        // possible, and extends it when needed.
+        assert_binop("10 / 5 == 2");
+        assert_binop("1 / 5 == 0.2");
+        assert_binop("0.1 / 5 == 0.02");
+        assert_binop("1.000 / 2 == 0.500");
+        assert_binop("1.000 / 20 == 0.050");
+    }
+
+    #[test]
+    fn decimal_to_i64() {
+        assert_eq!(decimal(1, 0, 0).to_i64(), Some(1));
+        assert_eq!(decimal(10, 0, 0).to_i64(), Some(10));
+        assert_eq!(decimal(1, 0, 1).to_i64(), Some(10));
+        assert_eq!(decimal(10, 1, 0).to_i64(), Some(1));
+        assert_eq!(decimal(1, 1, 1).to_i64(), Some(1));
+        assert_eq!(decimal(1, 1, 0).to_i64(), None);
+        assert_eq!(decimal(1, 0, 20).to_i64(), None);
+    }
+
+    #[test]
+    fn decimal_to_f64_lossy() {
+        assert_eq!(decimal(1, 0, 0).to_f64_lossy(), 1.0);
+        assert_eq!(decimal(10, 0, 0).to_f64_lossy(), 10.0);
+        assert_eq!(decimal(1, 0, 1).to_f64_lossy(), 10.0);
+        assert_eq!(decimal(1, 1, 1).to_f64_lossy(), 1.0);
+        assert_eq!(decimal(1, 1, 0).to_f64_lossy(), 0.1);
+        assert_eq!(decimal(1, 0, 20).to_f64_lossy(), 1e20);
+        assert_eq!(decimal(-1, 5, 20).to_f64_lossy(), -0.00001e20);
+
+        // This one is a neat example of where the loss occurs, if we parsed as
+        // 1.2 directly then there is a float that is closer, but due to our
+        // stepwise arithmetic involving powers of 10, some loss occurs.
+        assert_eq!(decimal(12, 1, 0).to_f64_lossy(), 1.2000000000000002);
     }
 }
