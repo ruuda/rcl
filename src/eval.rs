@@ -446,6 +446,7 @@ impl<'a> Evaluator<'a> {
                     (Value::List(_), "map") => Some(&stdlib::LIST_MAP),
                     (Value::List(_), "reverse") => Some(&stdlib::LIST_REVERSE),
                     (Value::List(_), "sort") => Some(&stdlib::LIST_SORT),
+                    (Value::List(_), "sort_by") => Some(&stdlib::LIST_SORT_BY),
                     (Value::List(_), "sum") => Some(&stdlib::LIST_SUM),
 
                     (Value::Set(_), "all") => Some(&stdlib::SET_ALL),
@@ -458,6 +459,8 @@ impl<'a> Evaluator<'a> {
                     (Value::Set(_), "key_by") => Some(&stdlib::SET_KEY_BY),
                     (Value::Set(_), "len") => Some(&stdlib::SET_LEN),
                     (Value::Set(_), "map") => Some(&stdlib::SET_MAP),
+                    (Value::Set(_), "sort") => Some(&stdlib::SET_SORT),
+                    (Value::Set(_), "sort_by") => Some(&stdlib::SET_SORT_BY),
                     (Value::Set(_), "sum") => Some(&stdlib::SET_SUM),
 
                     _other => None,

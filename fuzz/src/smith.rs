@@ -51,6 +51,7 @@ const BUILTINS: &[&str] = &[
     "replace",
     "reverse",
     "sort",
+    "sort_by",
     "split",
     "split_lines",
     "starts_with",

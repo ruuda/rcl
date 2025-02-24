@@ -242,16 +242,16 @@ fn builtin_set_except(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> 
     Ok(Value::Set(Rc::new(result)))
 }
 
-fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
+/// Shared implementation for applying a `get_key` function to each element of a collection.
+fn builtin_loop_get_key_impl<'a, I: Iterator<Item = &'a Value>, F: FnMut(Value, &Value)>(
     eval: &mut Evaluator,
     call: MethodCall,
     name: &'static str,
     elements: I,
-) -> Result<BTreeMap<Value, Vec<Value>>> {
+    mut handle_key_value: F,
+) -> Result<()> {
     let get_key = &call.call.args[0].value;
     let get_key_span = call.call.args[0].span;
-
-    let mut groups: BTreeMap<Value, Vec<Value>> = BTreeMap::new();
 
     for x in elements {
         // The call that we construct here is internal, there is no span in the
@@ -278,8 +278,24 @@ fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
                 );
                 err
             })?;
-        groups.entry(key).or_default().push(x.clone());
+
+        handle_key_value(key, x);
     }
+
+    Ok(())
+}
+
+fn builtin_group_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+) -> Result<BTreeMap<Value, Vec<Value>>> {
+    let mut groups: BTreeMap<Value, Vec<Value>> = BTreeMap::new();
+
+    builtin_loop_get_key_impl(eval, call, name, elements.into_iter(), |key, value| {
+        groups.entry(key).or_default().push(value.clone());
+    })?;
 
     Ok(groups)
 }
@@ -372,6 +388,84 @@ builtin_method!(
 fn builtin_set_key_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     builtin_key_by_impl(eval, call, "Set.key_by", set)
+}
+
+fn builtin_sort_by_impl<'a, I: IntoIterator<Item = &'a Value>>(
+    eval: &mut Evaluator,
+    call: MethodCall,
+    name: &'static str,
+    elements: I,
+) -> Result<Value> {
+    let elements = elements.into_iter();
+    let n = elements.size_hint().0;
+    let mut i = 0;
+    let mut tuples: Vec<(Value, usize, Value)> = Vec::with_capacity(n);
+
+    builtin_loop_get_key_impl(eval, call, name, elements, |key, value| {
+        tuples.push((key, i, value.clone()));
+        i += 1;
+    })?;
+
+    // We include the index in the tuples, but then we do an unstable sort. This
+    // ensures that the sort is stable with respect to the input list, and also
+    // that we never compare the values themselves, only the keys, and if those
+    // are equal, the indices which are unique. Comparing the values may be
+    // expensive when they are e.g. large dicts.
+    tuples.sort_unstable();
+    let result: Vec<_> = tuples.into_iter().map(|(_key, _i, value)| value).collect();
+
+    Ok(Value::List(Rc::new(result)))
+}
+
+builtin_method!(
+    "List.sort_by",
+    // TODO: Add type variables so we can describe this more accurately.
+    (get_key: (fn (element: Any) -> Any)) -> [Any],
+    const LIST_SORT_BY,
+    builtin_list_sort_by
+);
+fn builtin_list_sort_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    builtin_sort_by_impl(eval, call, "List.sort_by", list)
+}
+
+builtin_method!(
+    "Set.sort_by",
+    // TODO: Add type variables so we can describe this more accurately.
+    (get_key: (fn (element: Any) -> Any)) -> [Any],
+    const SET_SORT_BY,
+    builtin_set_sort_by
+);
+fn builtin_set_sort_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    builtin_sort_by_impl(eval, call, "Set.sort_by", set)
+}
+
+builtin_method!(
+    "List.sort",
+    () -> [Any],
+    const LIST_SORT,
+    builtin_list_sort
+);
+fn builtin_list_sort(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    let mut sorted: Vec<_> = list.to_vec();
+    sorted.sort();
+    Ok(Value::List(Rc::new(sorted)))
+}
+
+builtin_method!(
+    "Set.sort",
+    () -> [Any],
+    const SET_SORT,
+    builtin_set_sort
+);
+fn builtin_set_sort(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    // Note, sets are currently implemented as sorted sets, so there is
+    // no additional sorting to be done here, just collecting in a vec.
+    let sorted: Vec<_> = set.iter().cloned().collect();
+    Ok(Value::List(Rc::new(sorted)))
 }
 
 /// A generic building block to help implement map, filter, and flatmap.
@@ -1108,19 +1202,6 @@ fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
     let list = call.receiver.expect_list();
     let reversed = list.iter().rev().cloned().collect();
     Ok(Value::List(Rc::new(reversed)))
-}
-
-builtin_method!(
-    "List.sort",
-    () -> [Any],
-    const LIST_SORT,
-    builtin_list_sort
-);
-fn builtin_list_sort(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
-    let list = call.receiver.expect_list();
-    let mut sorted: Vec<_> = list.to_vec();
-    sorted.sort();
-    Ok(Value::List(Rc::new(sorted)))
 }
 
 builtin_method!(

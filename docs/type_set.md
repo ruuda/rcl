@@ -213,6 +213,48 @@ Return the number of elements in the set. For example:
 {1, 1, 2, 2, 3, 3}.len()
 ```
 
+## sort
+
+```rcl
+Set.sort: (self: Set[T]) -> List[T]
+```
+
+Return a sorted version of the set. Elements of the same type will be sorted
+with respect to each other. The relative order of elements of different types
+is an implementation detail that may change between versions.
+
+```rcl
+{11, 5, 7}.sort()
+// Evaluates to:
+[5, 7, 11]
+```
+
+## sort_by
+
+```rcl
+Set.sort_by: (self: Set[T], get_key: T -> U) -> List[T]
+```
+
+Return a copy of the set, sorted on a key selected by the function `get_key`.
+Keys are compared in the same way as for [`sort`](#sort). The relative order
+is unspecified when keys compare equal, and may change in future versions.
+<!-- TODO: When we have sets with stable order, this should be a stable sort,
+just like List.sort. -->
+
+```rcl
+let characters = {
+  "Rachael",
+  "Rick Deckard",
+  "Gaff",
+  "Pris",
+  "Eldon Tyrell",
+};
+characters.sort_by(name => name.len())
+
+// Evaluates to:
+["Gaff", "Pris", "Rachael", "Eldon Tyrell", "Rick Deckard"]
+```
+
 ## sum
 
 ```rcl

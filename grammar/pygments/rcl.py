@@ -84,6 +84,7 @@ _root_base = [
                 "replace",
                 "reverse",
                 "sort",
+                "sort_by",
                 "split",
                 "split_lines",
                 "starts_with",
