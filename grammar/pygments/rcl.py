@@ -104,7 +104,6 @@ _root_base = [
                 "Any",
                 "Bool",
                 "Dict",
-                "Int",
                 "List",
                 "Null",
                 "Number",

@@ -2,7 +2,7 @@
 Term
 ====
 
-let i: Int = q; i
+let i: Number = q; i
 
 ---
 
@@ -18,7 +18,7 @@ let i: Int = q; i
 Apply 1 arg
 ===========
 
-let i: List[Int] = q; i
+let i: List[Number] = q; i
 
 ---
 
@@ -37,7 +37,7 @@ let i: List[Int] = q; i
 Apply 2 args
 ============
 
-let i: Dict[Int, Null] = q; i
+let i: Dict[Number, Null] = q; i
 
 ---
 
@@ -74,7 +74,7 @@ let i: Void[] = q; i
 Function 0 args
 ===============
 
-let i: () -> Int = q; i
+let i: () -> Number = q; i
 
 ---
 
@@ -92,7 +92,7 @@ let i: () -> Int = q; i
 Function 1 arg
 ==============
 
-let i: (Bool) -> Int = q; i
+let i: (Bool) -> Number = q; i
 
 ---
 
@@ -111,7 +111,7 @@ let i: (Bool) -> Int = q; i
 Function 2 args
 ===============
 
-let i: (Bool, Int) -> Int = q; i
+let i: (Bool, Number) -> Number = q; i
 
 ---
 

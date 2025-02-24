@@ -110,7 +110,7 @@ Build target fields:
   format: String    The output format, must be one of the formats supported by
                     'rcl evaluate --format', see 'rcl evaluate --help'.
 
-  width: Int        Target width for formatting, as for 'rcl evaluate --width'.
+  width: Number     Target width for formatting, as for 'rcl evaluate --width'.
                     Optional, defaults to 80.
 "##;
 

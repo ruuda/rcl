@@ -47,7 +47,7 @@ syn region  rclFormatTriple  start='f"""' end='"""' skip='\\"\|\\{' contains=rcl
 " needs to end in `[]`.
 syn keyword rclBuiltin all any chars contains[] empty_set ends_with except filter flat_map fold get group_by join key_by keys len map parse_int remove_prefix remove_suffix replace reverse sort sort_by split split_lines starts_with std sum to_lowercase to_uppercase values
 
-syn match   rclType '\<\(Any\|Bool\|Dict\|Int\|List\|Null\|Number\|Set\|String\|Union\|Void\)\>'
+syn match   rclType '\<\(Any\|Bool\|Dict\|List\|Null\|Number\|Set\|String\|Union\|Void\)\>'
 
 syn cluster rclString contains=rclStringDouble,rclStringTriple,rclFormatDouble,rclFormatTriple
 highlight link rclStringDouble rclString

@@ -294,7 +294,7 @@ pub enum Seq {
 pub enum Type {
     /// A term is a named type, not necessarily primitive.
     ///
-    /// For example, `Int` (primitive), or `Widget` (user-defined).
+    /// For example, `Bool` (primitive), or `Widget` (user-defined).
     Term { span: Span, name: Ident },
 
     /// Instantiate a generic type; apply a type constructor.

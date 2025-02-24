@@ -418,7 +418,7 @@ pub enum Chain {
 pub enum Type {
     /// A term is a named type, not necessarily primitive.
     ///
-    /// For example, `Int` (primitive), or `Widget` (user-defined).
+    /// For example, `Bool` (primitive), or `Widget` (user-defined).
     Term(Span),
 
     /// Instantiate a generic type; apply a type constructor.

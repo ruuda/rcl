@@ -66,8 +66,7 @@ const BUILTINS: &[&str] = &[
 ];
 
 const BUILTIN_TYPES: &[&str] = &[
-    // TODO: Delete `Int` from the list, even if we special-case it for error messages.
-    "Any", "Bool", "Dict", "Int", "List", "Null", "Number", "Set", "String", "Union", "Void",
+    "Any", "Bool", "Dict", "List", "Null", "Number", "Set", "String", "Union", "Void",
 ];
 
 const LITERALS: &[&str] = &["true", "false", "null"];

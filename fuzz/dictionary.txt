@@ -84,7 +84,6 @@
 "Any"
 "Bool"
 "Dict"
-"Int"
 "List"
 "Null"
 "Number"
