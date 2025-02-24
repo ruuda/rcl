@@ -441,6 +441,19 @@ fn builtin_set_sort_by(eval: &mut Evaluator, call: MethodCall) -> Result<Value> 
     builtin_sort_by_impl(eval, call, "Set.sort_by", set)
 }
 
+builtin_method!(
+    "List.sort",
+    () -> [Any],
+    const LIST_SORT,
+    builtin_list_sort
+);
+fn builtin_list_sort(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    let mut sorted: Vec<_> = list.to_vec();
+    sorted.sort();
+    Ok(Value::List(Rc::new(sorted)))
+}
+
 /// A generic building block to help implement map, filter, and flatmap.
 ///
 /// The acceptor function receives the original value, and the mapped value.
@@ -1175,19 +1188,6 @@ fn builtin_list_reverse(_eval: &mut Evaluator, call: MethodCall) -> Result<Value
     let list = call.receiver.expect_list();
     let reversed = list.iter().rev().cloned().collect();
     Ok(Value::List(Rc::new(reversed)))
-}
-
-builtin_method!(
-    "List.sort",
-    () -> [Any],
-    const LIST_SORT,
-    builtin_list_sort
-);
-fn builtin_list_sort(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
-    let list = call.receiver.expect_list();
-    let mut sorted: Vec<_> = list.to_vec();
-    sorted.sort();
-    Ok(Value::List(Rc::new(sorted)))
 }
 
 builtin_method!(
