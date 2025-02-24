@@ -321,6 +321,31 @@ is an implementation detail that may change between versions.
 [5, 7, 11]
 ```
 
+## sort_by
+
+```rcl
+List.sort_by: (self: List[T], get_key: T -> U) -> List[T]
+```
+
+Return a copy of the list, sorted on a key selected by the function `get_key`.
+Keys are compared in the same way as for [`sort`](#sort). The sort is stable:
+when keys compare equal, the relative order of the elements is the same as in
+the input.
+
+```rcl
+let characters = [
+  "Eldon Tyrell",
+  "Rachael",
+  "Pris",
+  "Rick Deckard",
+  "Gaff",
+];
+characters.sort_by(name => name.len())
+
+// Evaluates to:
+["Pris", "Gaff", "Rachael", "Eldon Tyrell", "Rick Deckard"]
+```
+
 ## sum
 
 ```rcl

@@ -1,0 +1,11 @@
+let characters = {
+  "Rachael",
+  "Rick Deckard",
+  "Gaff",
+  "Pris",
+  "Eldon Tyrell",
+};
+characters.sort_by(name => name.len())
+
+# output:
+["Gaff", "Pris", "Rachael", "Eldon Tyrell", "Rick Deckard"]

@@ -20,6 +20,8 @@ Unreleased.
 
  * When running `rcl` without arguments, it now prints only the most important
    parts of the help text. Use `rcl --help` for the full command reference.
+ * Add [`List.sort_by`(type_list.md#sort_by) and
+   [`Set.sort_by`](type_set.md#sort_by) methods.
 
 ## 0.7.0
 
