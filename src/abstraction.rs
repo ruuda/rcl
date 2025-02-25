@@ -17,7 +17,7 @@ use crate::ast::{
     CallArg, Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
 };
 use crate::cst::{Chain, Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart, Type as CType};
-use crate::decimal::{Decimal, ParseResult};
+use crate::decimal::Decimal;
 use crate::error::{IntoError, Result};
 use crate::lexer::QuoteStyle;
 use crate::source::Span;
@@ -227,8 +227,7 @@ impl<'a> Abstractor<'a> {
             CExpr::NumDecimal(span) => {
                 let num_str = span.resolve(self.input);
                 match Decimal::parse_str(num_str) {
-                    Some(ParseResult::Int(n)) => AExpr::NumberLit(Decimal::from(n)),
-                    Some(ParseResult::Decimal(d)) => AExpr::NumberLit(d),
+                    Some(r) => AExpr::NumberLit(r.into()),
                     None => {
                         let err = span.error("Overflow in number literal.");
                         return Err(err.into());
