@@ -920,8 +920,6 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<V
 
     let string = call.receiver.expect_string();
 
-    // TODO: This should use Decimal::parse_str and then try to convert to integer.
-    // Or not ... Hmm ...
     match i64::from_str(string) {
         Ok(i) => Ok(Value::int(i)),
         Err(..) => call
