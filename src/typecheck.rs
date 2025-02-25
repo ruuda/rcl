@@ -98,8 +98,8 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
                         })
                         .err()
                 }
-                // Detect a few cases that users may try to use, so we can give
-                // point them in the right direction.
+                // Detect a few cases that users may try to use, so we can point
+                // them in the right direction.
                 "Int" | "Integer" | "Float" | "Num" | "int" | "float" => {
                     span.error("Unknown type.").with_help(concat!{
                         "The number type is called '" Doc::highlight("Number") "'."
@@ -454,7 +454,7 @@ impl<'a> TypeChecker<'a> {
                 // call with String as first argument, so we push that into the
                 // function body, and there is a type error at the `+` because
                 // we expect a String but `+` creates a Number. But we could also
-                // say, we typecheck the function first, infer `Any - Number`
+                // say, we typecheck the function first, infer `Any -> Number`
                 // (with a runtime check inserted at left-hand side of `+`), then
                 // we call that with "42", which passes, but the runtime check
                 // fails. We go with the latter: we assume function definitions
