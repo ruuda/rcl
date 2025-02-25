@@ -53,7 +53,9 @@ impl Decimal {
     ///
     /// To aid testability and use in other places than the parser, this
     /// function can handle inputs that start with a minus sign, even though
-    /// the lexer considers the minus sign a separate token.
+    /// the lexer considers the minus sign a separate token. In fact, the minus
+    /// can appear anywhere, which is not valid syntax, but we don't care about
+    /// that here!
     pub fn parse_str(dec: &str) -> Option<ParseResult> {
         // When we count the number of decimals, and the exponent, we may
         // increment those counts for every digit we parse, so after 255
