@@ -14,8 +14,9 @@ use std::num::FpCategory;
 
 use arbitrary::{Arbitrary, Unstructured};
 use libfuzzer_sys::{fuzz_target, Corpus};
-use rcl::decimal::{Decimal, ParseResult};
+use rcl::decimal::Decimal;
 
+// A float, but really just a number, not any of the special footgun values.
 #[derive(Debug)]
 struct NormalF64(f64);
 
@@ -32,10 +33,9 @@ impl<'a> Arbitrary<'a> for NormalF64 {
 
 #[derive(Arbitrary, Debug)]
 enum Input {
-    Compare {
-        a: NormalF64,
-        b: NormalF64,
-    },
+    /// Check that comparison of decimals is consistent with f64.
+    Compare { a: NormalF64, b: NormalF64 },
+    /// Check that parsing after formatting a decimal is the identity function.
     Roundtrip {
         mantissa: i64,
         exponent: i16,
@@ -45,10 +45,9 @@ enum Input {
 
 fuzz_target!(|input: Input| -> Corpus {
     match input {
-        // Check that comparison of decimals is consistent with f64.
         Input::Compare { a, b } => {
             let f64_ord = match a.0.partial_cmp(&b.0) {
-                None => return Corpus::Reject,
+                None => unreachable!("All normal f64s are comparable."),
                 Some(c) => c,
             };
 
@@ -57,15 +56,13 @@ fuzz_target!(|input: Input| -> Corpus {
             // strings where RCL's parser fails due to overflow.
             let a_str = format!("{:?}", a.0);
             let a_dec = match Decimal::parse_str(&a_str) {
-                Some(ParseResult::Decimal(d)) => d,
-                Some(ParseResult::Int(i)) => Decimal::from(i),
+                Some(r) => Decimal::from(r),
                 _ => panic!("Failed to parse: {a_str}"),
             };
 
             let b_str = format!("{:?}", b.0);
             let b_dec = match Decimal::parse_str(&b_str) {
-                Some(ParseResult::Decimal(d)) => d,
-                Some(ParseResult::Int(i)) => Decimal::from(i),
+                Some(r) => Decimal::from(r),
                 _ => panic!("Failed to parse: {b_str}"),
             };
 
@@ -89,7 +86,7 @@ fuzz_target!(|input: Input| -> Corpus {
             assert_eq!(b_dec, b_dec, "Decimals should be equal to themselves.");
 
             // We can't easily verify addition against f64, because f64 may lose
-            // precision. But we can say some things about the relationg between
+            // precision. But we can say some things about the relation between
             // a, b, and a + b.
             if let Some(sum) = a_dec.checked_add(&b_dec) {
                 if a_dec.mantissa > 0 {
@@ -111,7 +108,6 @@ fuzz_target!(|input: Input| -> Corpus {
             Corpus::Keep
         }
 
-        // Check that parsing after formatting a decimal is the identity function.
         Input::Roundtrip {
             mantissa,
             exponent,
@@ -125,16 +121,15 @@ fuzz_target!(|input: Input| -> Corpus {
 
             let a_str = a.format();
             let b = match Decimal::parse_str(&a_str) {
-                Some(ParseResult::Decimal(d)) => d,
-                Some(ParseResult::Int(i)) => Decimal::from(i),
+                Some(r) => Decimal::from(r),
                 _ => panic!("Failed to parse output of Decimal::format: {a_str}"),
             };
 
+            // We want numeric equality, but that's not enough, we also want the
             assert_eq!(
                 a, b,
                 "Decimal::parse after Decimal::format should be identity modulo equality.",
             );
-
             assert_eq!(
                 b.mantissa, b.mantissa,
                 "Decimal::parse after Decimal::format should be identity.",
