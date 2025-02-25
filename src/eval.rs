@@ -907,9 +907,9 @@ impl<'a> Evaluator<'a> {
                         Some(z) => Ok(Value::Number(z)),
                         None => {
                             let err = concat! {
-                                "Overflow while computing division "
                                 x.format() " / " y.format()
-                                ". Inexact division is not supported at this time."
+                                " cannot be represented exactly. "
+                                "Lossy arithmetic is not supported at this time."
                             };
                             op_span.error(err).err()
                         }

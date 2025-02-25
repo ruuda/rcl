@@ -5,4 +5,4 @@ stdin:1:3
   ╷
 1 │ 2 / 3
   ╵   ^
-Error: Overflow while computing division 2 / 3. Inexact division is not supported at this time.
+Error: 2 / 3 cannot be represented exactly. Lossy arithmetic is not supported at this time.
