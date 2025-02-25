@@ -653,16 +653,12 @@ impl<'a> TypeChecker<'a> {
         // so that's an error. But there's *another* error, which is applying `not`
         // to a Number, and if we report only one type error, that seems like it
         // should come first, as it comes first in the evaluation order too.
-        match op {
-            UnOp::Not => {
-                self.check_expr(&type_operator(op_span, Type::Bool), body_span, body)?;
-                Ok(type_operator(op_span, Type::Bool))
-            }
-            UnOp::Neg => {
-                self.check_expr(&type_operator(op_span, Type::Number), body_span, body)?;
-                Ok(type_operator(op_span, Type::Number))
-            }
-        }
+        let (body_type, result_type) = match op {
+            UnOp::Neg => (Type::Number, Type::Number),
+            UnOp::Not => (Type::Bool, Type::Bool),
+        };
+        self.check_expr(&type_operator(op_span, body_type), body_span, body)?;
+        Ok(type_operator(op_span, result_type))
     }
 
     fn check_binop(
