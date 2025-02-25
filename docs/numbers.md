@@ -3,8 +3,6 @@
 RCL features a single number type that can represent both integers, and numbers
 with a decimal part.
 
-<!-- TODO: Link to blog post. -->
-
  * Numbers are decimals with a finite range.
  * Numbers track the position of the decimal point. In particular,
    <abbr>RCL</abbr> will never turn floats (numbers that have a decimal point
@@ -14,16 +12,18 @@ with a decimal part.
 
 For reference documentation of the supported methods, see [the `Number`
 type](type_number.md) in the language reference. For background about why
-numbers work the way they do in <abbr>RCL</abbr>, see the blog post _A float
-walks into a gradual type system_.
-<!-- TODO: Add link -->
+numbers work the way they do in <abbr>RCL</abbr>, see the blog post [_A float
+walks into a gradual type system_][blog-float].
+
+[blog-float]: https://ruudvanasseldonk.com/2025/a-float-walks-into-a-gradual-type-system
 
 ## Syntax
 
 RCL supports the same number formats as json:
 
  * Decimal integers, e.g. `42`.
- * Decimal floats, e.g. `42.0`, optionally with exponent, e.g. `0.42e2`.
+ * Numbers with decimal point e.g. `42.0`,
+   optionally with exponent, e.g. `0.42e2`.
 
 Aside from decimal numbers, <abbr>RCL</abbr> supports integers in other bases:
 

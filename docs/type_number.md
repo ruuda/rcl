@@ -7,7 +7,7 @@ For an overview of the syntax and representation,
 
 ## Addition and subtraction
 
-The `+` and `-` operator add and subtract numbers.
+The `+` and `-` operators add and subtract numbers.
 
 ```rcl
 // Evaluates to 42.
@@ -45,14 +45,16 @@ The `/` operator divides two numbers.
 84 / 2
 ```
 
-Currently, division is supported only between integers that are multiples of one
-another. This limitation should be lifted in a future version.
+Currently, division is supported only when the result can be represented exactly.
+This limitation should be lifted in a future version.
 
 ## round
 
 ```rcl
 Number.round: (self: Number, n_decimals: Number) -> Number
 ```
+
+TODO: This function does not actually exist yet.
 
 Round the number to `n_decimals` decimal places. When `n_decimals` is 0, the
 result is an integer. When `n_decimals` is negative, this rounds to powers of 10.
@@ -64,6 +66,6 @@ result is an integer. When `n_decimals` is negative, this rounds to powers of 10
 // Evaluates to 42.
 (41.5).round(0)
 
-// Evaluates to 40.
+// Evaluates to 4e1.
 (42).round(-1)
 ```
