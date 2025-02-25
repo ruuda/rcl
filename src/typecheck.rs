@@ -46,6 +46,31 @@ fn get_primitive_type(name: &str) -> Option<Type> {
     }
 }
 
+/// Report an error for an unknown type, with a hint if the name looks familiar.
+fn report_unknown_type<T>(span: Span, name: &str, error_msg: &'static str) -> Result<T> {
+    match name {
+        // Detect a few cases that users may try to use, so we can point
+        // them in the right direction.
+        "Int" | "Integer" | "Float" | "Num" | "int" | "float" | "number" => span
+            .error(error_msg)
+            .with_help(concat! { "The number type is called '" Doc::highlight("Number") "'." })
+            .err(),
+        "Dictionary" | "Map" | "Object" | "dict" => span
+            .error(error_msg)
+            .with_help(concat! { "The dictionary type is called '" Doc::highlight("Dict") "'." })
+            .err(),
+        "Array" | "array" | "list" => span
+            .error(error_msg)
+            .with_help(concat! { "The list type is called '" Doc::highlight("List") "'." })
+            .err(),
+        "Boolean" | "boolean" | "bool" => span
+            .error(error_msg)
+            .with_help(concat! { "The boolean type is called '" Doc::highlight("Bool") "'." })
+            .err(),
+        _ => span.error(error_msg).err(),
+    }
+}
+
 /// Parse a type expression.
 fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
     match expr {
@@ -98,14 +123,7 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
                         })
                         .err()
                 }
-                // Detect a few cases that users may try to use, so we can point
-                // them in the right direction.
-                "Int" | "Integer" | "Float" | "Num" | "int" | "float" => {
-                    span.error("Unknown type.").with_help(concat!{
-                        "The number type is called '" Doc::highlight("Number") "'."
-                    }).err()
-                }
-                _ => span.error("Unknown type.").err(),
+                unknown => report_unknown_type(*span, unknown, "Unknown type.")?,
             }
         }
         AType::Function { span, args, result } => {
@@ -209,8 +227,7 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<
             let union = Union { members };
             Ok(Type::Union(Rc::new(union)))
         }
-
-        _ => name_span.error("Unknown generic type.").err(),
+        unknown => report_unknown_type(name_span, unknown, "Unknown generic type.")?,
     }
 }
 

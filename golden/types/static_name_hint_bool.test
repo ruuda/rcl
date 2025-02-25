@@ -1,0 +1,11 @@
+let b: boolean = false;
+x
+
+# output:
+stdin:1:8
+  ╷
+1 │ let b: boolean = false;
+  ╵        ^~~~~~~
+Error: Unknown type.
+
+Help: The boolean type is called 'Bool'.
