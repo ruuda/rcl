@@ -55,6 +55,16 @@ impl Decimal {
     /// function can handle inputs that start with a minus sign, even though
     /// the lexer considers the minus sign a separate token.
     pub fn parse_str(dec: &str) -> Option<ParseResult> {
+        // When we count the number of decimals, and the exponent, we may
+        // increment those counts for every digit we parse, so after 255
+        // decimals we may overflow the `decimals` counter, and after 16 KiB of
+        // zeros we may overflow the `exponent_offset` counter. We could do a
+        // checked add for that, but if you have a 256-byte number literal, then
+        // what are you even doing? We just disallow that.
+        if dec.len() > 255 {
+            return None;
+        }
+
         let mut n: i64 = 0;
         let mut decimals: u8 = 0;
         let mut exponent: i16 = 0;
@@ -79,8 +89,8 @@ impl Decimal {
                 b'0'..=b'9' if !is_precise => {
                     // If the mantissa is already saturated, but we keep getting
                     // more digits, we just drop them, but we do need to adjust
-                    // the exponent if we are still parsing an int.
-                    // TODO: This can in theory overflow with a 16 kB input
+                    // the exponent if we are still parsing an int. This does
+                    // not overflow because we validated the length of the input
                     // string.
                     exponent_offset += if is_int { 1 } else { 0 };
                 }
@@ -92,8 +102,8 @@ impl Decimal {
                         // We added one digit to the mantissa and it still fits.
                         Some(m) => {
                             n = m;
-                            // TODO: This can overflow on numbers that start with 0.0000,
-                            // needs to be a checked add.
+                            // This add does not overflow because the input is
+                            // at most 255 bytes long.
                             decimals += if is_int { 0 } else { 1 };
                         }
                         // The mantissa is saturated, we switch to dropping
