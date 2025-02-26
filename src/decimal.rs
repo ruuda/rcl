@@ -363,10 +363,9 @@ impl Decimal {
             {
                 Some(m1_scaled) => m1_scaled.cmp(&m2),
                 // We know m1 and m2 have the same sign, so in this case they
-                // are both nonnegative. If m1 scaled to the same range as m2
+                // are both non-negative. If m1 scaled to the same range as m2
                 // overflows, then it's greater than m2, so the difference is
-                // positive. TODO: There is an off by one, because the negative
-                // range is 1 more than the positive range.
+                // positive.
                 None if m1 >= 0 => Ordering::Greater,
                 // If m1 and m2 are both negative, the same logic applies, but
                 // the sign of the comparison flips.
