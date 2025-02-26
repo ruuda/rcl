@@ -8,7 +8,7 @@
 //!        │ String.len              │ List.len
 //!        │                         │
 //!        ▼                         ▼
-//!       Int ────────────────────► Int
+//!     Number ──────────────────► Number
 //!                   id
 //!
 //! In other words, it tests that

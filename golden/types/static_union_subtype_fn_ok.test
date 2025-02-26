@@ -1,4 +1,4 @@
-let f: Union[() -> Int, () -> Bool] = () => 0;
+let f: Union[() -> Number, () -> Bool] = () => 0;
 
 // Statically ok, both union variants are a subtype.
 let g: () -> Any = f;

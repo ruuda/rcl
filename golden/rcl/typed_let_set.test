@@ -1,4 +1,4 @@
-let s: Set[Int] = {0}; s
+let s: Set[Number] = {0}; s
 
 # output:
 {0}

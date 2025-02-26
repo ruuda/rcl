@@ -1,0 +1,11 @@
+// This is a regression test for cases discovered by the fuzz_decimal fuzzer.
+[
+  // The exponent here does not fit in i16 as positive number, but it does fit
+  // as negative number because that range is one wider.
+  0.1e-32768,
+
+  // TODO: Add a case for where we overflow the decimals:u8.
+]
+
+# output:
+[0.1e-32768]

@@ -6,6 +6,6 @@ stdin:2:4
   ╷
 2 │ xs["invalid"]
   ╵    ^~~~~~~~~
-Error: Type mismatch. Expected Int but found String.
+Error: Type mismatch. Expected Number but found String.
 
 Help: List indices must be integers.

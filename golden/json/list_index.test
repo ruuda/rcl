@@ -5,7 +5,11 @@ let xs = ["a", "b", "c", "x", "y", "z"];
   xs[-6],
   xs[-2],
   xs[-1],
+  // Indices can be numbers with decimal point, as long as they are integral.
+  xs[0.0],
+  xs[0.1e1],
+  xs[20e-1],
 ]
 
 # output:
-["a", "b", "a", "y", "z"]
+["a", "b", "a", "y", "z", "a", "b", "c"]

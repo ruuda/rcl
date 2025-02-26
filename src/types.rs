@@ -38,8 +38,8 @@ pub enum Type {
     /// The primitive type `Bool`.
     Bool,
 
-    /// The primitive type `Int`.
-    Int,
+    /// The primitive type `Number`.
+    Number,
 
     /// The primitive type `String`.
     String,
@@ -65,7 +65,7 @@ impl Type {
     pub fn is_atom(&self) -> bool {
         matches!(
             self,
-            Type::Bool | Type::Int | Type::Null | Type::String | Type::Void | Type::Any,
+            Type::Any | Type::Bool | Type::Null | Type::Number | Type::String | Type::Void
         )
     }
 
@@ -79,7 +79,7 @@ impl Type {
             Type::Void => "Void",
             Type::Null => "Null",
             Type::Bool => "Bool",
-            Type::Int => "Int",
+            Type::Number => "Number",
             Type::String => "String",
             Type::Dict(..) => "Dict",
             Type::List(..) => "List",
@@ -137,10 +137,10 @@ impl FunctionArg {
     /// Check whether a function argument is a subtype.
     ///
     /// Function arguments are contravariant: the subtype relationship
-    /// goes the other way. For example, `(Any) -> Int` is a subtype of
-    /// `(Int) -> Int`: in every case where we need to call the latter,
-    /// we can call the former. So although `Int ≤ Any`, as function args
-    /// we have the opposite: `Arg(Any) ≤ Arg(Int)`.
+    /// goes the other way. For example, `(Any) -> Number` is a subtype of
+    /// `(Number) -> Number`: in every case where we need to call the latter,
+    /// we can call the former. So although `Number ≤ Any`, as function args
+    /// we have the opposite: `Arg(Any) ≤ Arg(Number)`.
     pub fn is_subtype_of(&self, other: &FunctionArg) -> TypeDiff<FunctionArg> {
         match other.type_.is_subtype_of(&self.type_) {
             TypeDiff::Ok(t) => TypeDiff::Ok(FunctionArg {
@@ -435,7 +435,7 @@ impl SourcedType {
 
             // If we have matching primitive types, they are preserved.
             (Type::Bool, Type::Bool) => (Type::Bool, src_meet),
-            (Type::Int, Type::Int) => (Type::Int, src_meet),
+            (Type::Number, Type::Number) => (Type::Number, src_meet),
             (Type::Null, Type::Null) => (Type::Null, src_meet),
             (Type::String, Type::String) => (Type::String, src_meet),
 
@@ -487,9 +487,9 @@ impl SourcedType {
     ///
     /// Also, we do make some exceptions to this, because it's more helpful to
     /// catch type errors than to be able to type any possible expression that
-    /// can be evaluated. For example, `not (Int ≤ String)` is definitely true.
+    /// can be evaluated. For example, `not (Number ≤ String)` is definitely true.
     /// We would like `List` to be covariant in its argument, so we could say
-    /// `List[T] ≤ List[U] <=> T ≤ U`. We would get `not (List[Int] ≤ List[String])`.
+    /// `List[T] ≤ List[U] <=> T ≤ U`. We would get `not (List[Number] ≤ List[String])`.
     /// But that violates the above definition, because `[]` is an instance of
     /// both! But in this case, reporting an error if the element types mismatch
     /// is helpful, so we won't make `[]` an exception that causes a runtime
@@ -517,12 +517,12 @@ impl SourcedType {
             // source (it has a requirement). TODO: Do I need to meet the sources,
             // or will it work fine like this?
             (Type::Bool, Type::Bool) => TypeDiff::Ok(other.clone()),
-            (Type::Int, Type::Int) => TypeDiff::Ok(other.clone()),
+            (Type::Number, Type::Number) => TypeDiff::Ok(other.clone()),
             (Type::Null, Type::Null) => TypeDiff::Ok(other.clone()),
             (Type::String, Type::String) => TypeDiff::Ok(other.clone()),
 
             // The collection types are covariant in their argument.
-            // E.g. `List[Int] < List[Any]`.
+            // E.g. `List[Number] < List[Any]`.
             (Type::List(l1), Type::List(l2)) => match l1.is_subtype_of(l2) {
                 TypeDiff::Ok(..) => TypeDiff::Ok(self.clone()),
                 TypeDiff::Defer(..) => TypeDiff::Defer(other.clone()),
@@ -728,7 +728,7 @@ pub fn builtin(type_: Type) -> SourcedType {
 /// * `(p: P, q: Q) -> R` is written `(fn (p: P, q: Q) -> R)`
 macro_rules! make_type {
     (Any) => { builtin(Type::Any) };
-    (Int) => { builtin(Type::Int) };
+    (Number) => { builtin(Type::Number) };
     (Bool) => { builtin(Type::Bool) };
     (String) => { builtin(Type::String) };
     ([$elem:tt]) => { builtin(Type::List(Rc::new(make_type!($elem)))) };
@@ -788,7 +788,7 @@ mod test {
                 FunctionArg {
                     name: Some("a".into()),
                     span: None,
-                    type_: mk_type(Type::Int),
+                    type_: mk_type(Type::Number),
                 },
                 FunctionArg {
                     name: Some("b".into()),
@@ -814,13 +814,13 @@ mod test {
         f1.result = mk_type(Type::Void);
         assert!(f1 < f2);
 
-        // Void orders before Int.
+        // Void orders before Number.
         f1.result = mk_type(Type::String);
         f1.args[0].type_ = mk_type(Type::Void);
         assert!(f1 < f2);
 
         // Void orders before Bool.
-        f1.args[0].type_ = mk_type(Type::Int);
+        f1.args[0].type_ = mk_type(Type::Number);
         f1.args[1].type_ = mk_type(Type::Void);
         assert!(f1 < f2);
         // Also trigger the `cmp` method, because `<` doesn't.

@@ -12,6 +12,7 @@ use std::rc::Rc;
 
 pub use crate::cst::{BinOp, UnOp};
 
+use crate::decimal::Decimal;
 use crate::source::Span;
 use crate::types::{self, SourcedType};
 
@@ -135,9 +136,8 @@ pub enum Expr {
     /// A string literal.
     StringLit(Rc<str>),
 
-    /// An integer literal.
-    /// TODO: This should be a bigint.
-    IntegerLit(i64),
+    /// A number literal.
+    NumberLit(Decimal),
 
     /// A format string, with string literals and hole contents interleaved.
     Format(Vec<FormatFragment>),
@@ -294,7 +294,7 @@ pub enum Seq {
 pub enum Type {
     /// A term is a named type, not necessarily primitive.
     ///
-    /// For example, `Int` (primitive), or `Widget` (user-defined).
+    /// For example, `Bool` (primitive), or `Widget` (user-defined).
     Term { span: Span, name: Ident },
 
     /// Instantiate a generic type; apply a type constructor.

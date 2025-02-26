@@ -1,0 +1,5 @@
+// This is a regression test for an overflow discovered by the fuzzer.
+{ 5e-6504, 5e26505 }
+
+# output:
+{5e-6504, 5e26505}

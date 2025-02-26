@@ -1,9 +1,9 @@
 // All of the following values fit the annotated primitive types.
 let f0: Bool = false;
 let f1: Bool = not false;
-let i0: Int = 0;
-let i1: Int = 21 + 21;
-let i3: Int = [1, 2, 3].len();
+let i0: Number = 0;
+let i1: Number = 21 + 21;
+let i3: Number = [1, 2, 3].len();
 let n: Null = null;
 let s0: String = "Hello, world.";
 null

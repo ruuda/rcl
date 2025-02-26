@@ -1,5 +1,5 @@
 // Without type annotation, this would be a dict.
-let empty: Set[Int] = {};
+let empty: Set[Bool] = {};
 empty
 
 # output:

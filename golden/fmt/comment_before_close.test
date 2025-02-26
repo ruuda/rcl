@@ -25,7 +25,7 @@ let u0: Union[
   // Also in types.
 ] = null;
 let u1: Union[
-  Int,
+  Number,
   // Whether or not there is an element before it.
 ] = null;
 
@@ -59,7 +59,7 @@ let u0: Union[,
   // Also in types.
 ] = null;
 let u1: Union[
-  Int,
+  Number,
   // Whether or not there is an element before it.
 ] = null;
 

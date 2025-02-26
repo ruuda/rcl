@@ -1,9 +1,9 @@
-let x: List[Int, Int] = [];
+let x: List[Bool, Bool] = [];
 x
 
 # output:
 stdin:1:8
   ╷
-1 │ let x: List[Int, Int] = [];
-  ╵        ^~~~~~~~~~~~~~
+1 │ let x: List[Bool, Bool] = [];
+  ╵        ^~~~~~~~~~~~~~~~
 Error: Type 'List' takes one type parameter (the element type), but got 2.

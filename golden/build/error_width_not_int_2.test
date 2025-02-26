@@ -1,0 +1,16 @@
+{
+  "out.txt": {
+    contents = "",
+    width = 33.33,
+  },
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "out.txt"
+at key "width"
+Error: Width must be a positive integer below 16,000.

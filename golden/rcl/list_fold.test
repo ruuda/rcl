@@ -10,7 +10,7 @@ stdin:3:52
   ╵                                                    ^~~
 Error: Type mismatch. Expected a value that fits this type:
 
-  Int
+  Number
 
 But got this value:
 
@@ -20,7 +20,7 @@ stdin:3:56
   ╷
 3 │   str = ["foo", "bar", "baz"].fold("", (acc, s) => acc + s),
   ╵                                                        ^
-Note: Expected Int because of this operator.
+Note: Expected Number because of this operator.
 
 stdin:3:40
   ╷

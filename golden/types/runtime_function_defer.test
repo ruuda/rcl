@@ -1,23 +1,23 @@
 // Define a function with a static type, then forget the type.
-let f: (Int) -> Any = x => let result: Any = 0; result;
+let f: (Number) -> Any = x => let result: Any = 0; result;
 let g: Any = f;
 // Now we have to do a runtime check. In a static typecheck, we might defer the
-// check to runtime, because an instance of `Int -> Any` *might* be an instance
-// that happens to be `Int -> Bool`. But at runtime, if all we know is that the
+// check to runtime, because an instance of `Number -> Any` *might* be an instance
+// that happens to be `Number -> Bool`. But at runtime, if all we know is that the
 // function returns `Any`, then we cannot guarantee that the value satisfies the
 // annotated type, so it's an error.
-let h: (Int) -> Bool = g;
+let h: (Number) -> Bool = g;
 null
 
 # output:
-stdin:9:24
+stdin:9:27
   ╷
-9 │ let h: (Int) -> Bool = g;
-  ╵                        ^
+9 │ let h: (Number) -> Bool = g;
+  ╵                           ^
 Error: Type mismatch. Expected this type:
 
-  (Int) -> Bool
+  (Number) -> Bool
 
 But found this type:
 
-  (x: Int) -> Any
+  (x: Number) -> Any

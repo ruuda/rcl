@@ -9,7 +9,7 @@ stdin:5:2
   ╷
 5 │ -x
   ╵  ^
-Error: Type mismatch. Expected Int but found this type:
+Error: Type mismatch. Expected Number but found this type:
 
   (
     long_arg_a: Any,
@@ -23,7 +23,7 @@ stdin:5:1
   ╷
 5 │ -x
   ╵ ^
-Note: Expected Int because of this operator.
+Note: Expected Number because of this operator.
 
 stdin:1:9
   ╷

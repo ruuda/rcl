@@ -203,7 +203,7 @@ for iteratively refining a query in an [`rcl query`][query] command.
 ## len
 
 ```rcl
-Set.len: (self: Set[T]) -> Int
+Set.len: (self: Set[T]) -> Number
 ```
 
 Return the number of elements in the set. For example:
@@ -258,7 +258,7 @@ characters.sort_by(name => name.len())
 ## sum
 
 ```rcl
-Set.sum: (self: Set[Int]) -> Int
+Set.sum: (self: Set[Number]) -> Number
 ```
 
 Return the sum of the elements in the set. For example:

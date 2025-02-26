@@ -130,10 +130,14 @@ fn parse_targets(doc_span: Span, targets_value: Value) -> Result<Vec<Target>> {
                         .with_help("See 'rcl evaluate --help' for supported output formats.")
                         .err();
                 }
-                "width" => match v {
-                    Value::Int(w) if *w > 0 && *w <= u32::MAX as i64 => target.width = *w as u32,
-                    _not_int => {
-                        return make_error("Width must be a positive integer.".into()).err()
+                "width" => match v.to_i64() {
+                    // Technically the upper limit is u32::MAX, but if we have
+                    // to be technically correct in the error message, then let's
+                    // put a prettier number there.
+                    Some(w) if w > 0 && w < 16_000 => target.width = w as u32,
+                    _ => {
+                        return make_error("Width must be a positive integer below 16,000.".into())
+                            .err()
                     }
                 },
                 unknown => {

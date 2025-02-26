@@ -1,5 +1,5 @@
-let x: Union[Int, String] = 0;
-let y: Union[Bool, Int] = x;
+let x: Union[Number, String] = 0;
+let y: Union[Bool, Number] = x;
 y
 
 # output:

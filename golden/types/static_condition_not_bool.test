@@ -5,6 +5,6 @@ stdin:1:4
   ╷
 1 │ if 0: "false" else "true"
   ╵    ^
-Error: Type mismatch. Expected Bool but found Int.
+Error: Type mismatch. Expected Bool but found Number.
 
 Help: There is no implicit conversion, conditions must be boolean.

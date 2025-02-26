@@ -4,7 +4,7 @@ let f = x => x == 42;
 let g: Any = f;
 // Now we have to check at runtime that the value of `g` satisfies the type,
 // and it does.
-let h: (Int) -> Bool = g;
+let h: (Number) -> Bool = g;
 h(21)
 
 # output:

@@ -9,4 +9,4 @@ stdin:5:4
   ╷
 5 │ xs["not int"]
   ╵    ^~~~~~~~~
-Error: List index must be an integer.
+Error: Expected list index to be an integer, but got "not int".

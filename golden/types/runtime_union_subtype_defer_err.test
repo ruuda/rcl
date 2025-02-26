@@ -1,22 +1,22 @@
-let x: Union[Any, Int] = "not int";
-let y: Int = x;
+let x: Union[Any, Number] = "not number";
+let y: Number = x;
 y
 
 # output:
-stdin:2:14
+stdin:2:17
   ╷
-2 │ let y: Int = x;
-  ╵              ^
+2 │ let y: Number = x;
+  ╵                 ^
 Error: Type mismatch. Expected a value that fits this type:
 
-  Int
+  Number
 
 But got this value:
 
-  "not int"
+  "not number"
 
 stdin:2:8
   ╷
-2 │ let y: Int = x;
-  ╵        ^~~
-Note: Expected Int because of this annotation.
+2 │ let y: Number = x;
+  ╵        ^~~~~~
+Note: Expected Number because of this annotation.

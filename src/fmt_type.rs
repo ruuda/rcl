@@ -20,7 +20,7 @@ use crate::types::{FunctionArg, Side, SourcedType, Type};
 pub fn format_type(type_: &Type) -> Doc {
     match type_ {
         // For primitive types the short name is the full name.
-        Type::Any | Type::Void | Type::Bool | Type::Int | Type::Null | Type::String => {
+        Type::Any | Type::Bool | Type::Null | Type::Number | Type::String | Type::Void => {
             Doc::from(type_.short_name()).with_markup(Markup::Type)
         }
 

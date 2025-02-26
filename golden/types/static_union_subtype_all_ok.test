@@ -1,6 +1,0 @@
-let a0: Union[Null, Int] = null;
-let a1: Union[Null, Int] = 0;
-[a0, a1]
-
-# output:
-[null, 0]

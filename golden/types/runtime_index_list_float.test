@@ -1,0 +1,9 @@
+let xs = [0, 1, 2];
+xs[1.5]
+
+# output:
+stdin:2:4
+  ╷
+2 │ xs[1.5]
+  ╵    ^~~
+Error: Expected list index to be an integer, but got 1.5.

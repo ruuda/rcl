@@ -54,7 +54,7 @@ type Target = {
   banner: Union[String, Null],
   contents: Any,
   format: String,
-  width: Int,
+  width: Number,
 }
 ```
 

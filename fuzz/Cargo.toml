@@ -1,9 +1,10 @@
 # This file is generated, see build.rcl in the repository root.
 
 [dependencies]
-arbitrary = "1.3.0"
+arbitrary = { features = ["derive"], version = "1.3.0" }
 libfuzzer-sys = "0.4.7"
 rcl = { path = ".." }
+serde = "1.0.114"
 serde_json = "1.0.114"
 toml = { default-features = false, features = ["parse"], version = "0.8.10" }
 tree-sitter = "0.20.10"
@@ -27,6 +28,12 @@ path = "tools/smithctl.rs"
 doc = false
 name = "fuzz_cli"
 path = "fuzz_targets/fuzz_cli.rs"
+test = false
+
+[[bin]]
+doc = false
+name = "fuzz_decimal"
+path = "fuzz_targets/fuzz_decimal.rs"
 test = false
 
 [[bin]]

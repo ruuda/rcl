@@ -1,15 +1,15 @@
-let xs: List[Int] = ["not an int"];
+let xs: List[Number] = ["not a number"];
 xs
 
 # output:
-stdin:1:22
+stdin:1:25
   ╷
-1 │ let xs: List[Int] = ["not an int"];
-  ╵                      ^~~~~~~~~~~~
-Error: Type mismatch. Expected Int but found String.
+1 │ let xs: List[Number] = ["not a number"];
+  ╵                         ^~~~~~~~~~~~~~
+Error: Type mismatch. Expected Number but found String.
 
 stdin:1:14
   ╷
-1 │ let xs: List[Int] = ["not an int"];
-  ╵              ^~~
-Note: Expected Int because of this annotation.
+1 │ let xs: List[Number] = ["not a number"];
+  ╵              ^~~~~~
+Note: Expected Number because of this annotation.

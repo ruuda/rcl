@@ -1,19 +1,19 @@
 // See also the other variants of this test. In this case the args have an error
 // and then there's also an error in the result type.
 let f: (String) -> Bool = x => true;
-let g: (Int) -> String = f;
+let g: (Number) -> String = f;
 null
 
 # output:
-stdin:4:26
+stdin:4:29
   ╷
-4 │ let g: (Int) -> String = f;
-  ╵                          ^
+4 │ let g: (Number) -> String = f;
+  ╵                             ^
 Error: Type mismatch inside this type:
 
   (<E1>) -> <E2>
 
-At E1: Expected String but found Int.
+At E1: Expected String but found Number.
 
 At E2: Expected String but found Bool.
 
@@ -25,14 +25,14 @@ Note: Expected String because of this annotation.
 
 stdin:4:9
   ╷
-4 │ let g: (Int) -> String = f;
-  ╵         ^~~
-Note: Found Int because of this annotation.
+4 │ let g: (Number) -> String = f;
+  ╵         ^~~~~~
+Note: Found Number because of this annotation.
 
-stdin:4:17
+stdin:4:20
   ╷
-4 │ let g: (Int) -> String = f;
-  ╵                 ^~~~~~
+4 │ let g: (Number) -> String = f;
+  ╵                    ^~~~~~
 Note: Expected String because of this annotation.
 
 stdin:3:20

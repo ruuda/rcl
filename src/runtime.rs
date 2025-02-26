@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{CallArg, Expr};
+use crate::decimal::Decimal;
 use crate::error::{IntoError, PathElement, Result};
 use crate::eval::Evaluator;
 use crate::fmt_rcl::format_rcl;
@@ -153,8 +154,7 @@ pub enum Value {
 
     Bool(bool),
 
-    // TODO: Should be a bigint.
-    Int(i64),
+    Number(Decimal),
 
     String(Rc<str>),
 
@@ -174,6 +174,19 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn int(i: i64) -> Value {
+        Value::Number(Decimal::from(i))
+    }
+
+    /// Extract an integer if the value is a number that is integral.
+    #[inline]
+    pub fn to_i64(&self) -> Option<i64> {
+        match self {
+            Value::Number(d) => d.to_i64(),
+            _ => None,
+        }
+    }
+
     /// Extract the dict if it is one, panic otherwise.
     #[inline]
     pub fn expect_dict(&self) -> &BTreeMap<Value, Value> {
@@ -229,7 +242,7 @@ impl Value {
             // For the primitive types, we just check for matching values.
             (Type::Null, Value::Null) => return Ok(()),
             (Type::Bool, Value::Bool(..)) => return Ok(()),
-            (Type::Int, Value::Int(..)) => return Ok(()),
+            (Type::Number, Value::Number(..)) => return Ok(()),
             (Type::String, Value::String(..)) => return Ok(()),
 
             // For compound types, we descend into them to check.

@@ -66,7 +66,7 @@ const BUILTINS: &[&str] = &[
 ];
 
 const BUILTIN_TYPES: &[&str] = &[
-    "Any", "Bool", "Dict", "Int", "List", "Null", "Set", "String", "Union", "Void",
+    "Any", "Bool", "Dict", "List", "Null", "Number", "Set", "String", "Union", "Void",
 ];
 
 const LITERALS: &[&str] = &["true", "false", "null"];
@@ -195,6 +195,8 @@ define_ops! {
     0xe4 => ModeTomlCheck,
     /// Set the check mode to `EvalFormat`.
     0xe5 => ModeEvalFormat,
+    /// Set the check mode to `JsonSuperset`.
+    0xe6 => ModeJsonSuperset,
 }
 
 /// A helper for visualizing program execution for debug purposes.
@@ -545,6 +547,9 @@ impl<'a> ProgramBuilder<'a> {
             }
             Op::ModeEvalFormat => {
                 self.mode = Mode::EvalFormat { width: n as u32 };
+            }
+            Op::ModeJsonSuperset => {
+                self.mode = Mode::EvalJsonSuperset;
             }
         }
 

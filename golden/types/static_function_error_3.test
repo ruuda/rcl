@@ -1,42 +1,42 @@
 // See also the other variants of this test. In this case we have multiple error
 // arguments.
-let f: (String, Int) -> Bool = (x, y) => true;
-let g: (Int, String) -> Bool = f;
+let f: (String, Number) -> Bool = (x, y) => true;
+let g: (Number, String) -> Bool = f;
 null
 
 # output:
-stdin:4:32
+stdin:4:35
   ╷
-4 │ let g: (Int, String) -> Bool = f;
-  ╵                                ^
+4 │ let g: (Number, String) -> Bool = f;
+  ╵                                   ^
 Error: Type mismatch inside this type:
 
   (<E1>, <E2>) -> Bool
 
-At E1: Expected String but found Int.
+At E1: Expected String but found Number.
 
-At E2: Expected Int but found String.
+At E2: Expected Number but found String.
 
 stdin:3:9
   ╷
-3 │ let f: (String, Int) -> Bool = (x, y) => true;
+3 │ let f: (String, Number) -> Bool = (x, y) => true;
   ╵         ^~~~~~
 Note: Expected String because of this annotation.
 
 stdin:4:9
   ╷
-4 │ let g: (Int, String) -> Bool = f;
-  ╵         ^~~
-Note: Found Int because of this annotation.
+4 │ let g: (Number, String) -> Bool = f;
+  ╵         ^~~~~~
+Note: Found Number because of this annotation.
 
 stdin:3:17
   ╷
-3 │ let f: (String, Int) -> Bool = (x, y) => true;
-  ╵                 ^~~
-Note: Expected Int because of this annotation.
+3 │ let f: (String, Number) -> Bool = (x, y) => true;
+  ╵                 ^~~~~~
+Note: Expected Number because of this annotation.
 
-stdin:4:14
+stdin:4:17
   ╷
-4 │ let g: (Int, String) -> Bool = f;
-  ╵              ^~~~~~
+4 │ let g: (Number, String) -> Bool = f;
+  ╵                 ^~~~~~
 Note: Found String because of this annotation.

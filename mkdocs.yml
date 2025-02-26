@@ -30,11 +30,13 @@ nav:
       - "Imports": "imports.md"
       - "Functions": "functions.md"
       - "Types": "types.md"
+      - "Numbers": "numbers.md"
       - "Glossary": "glossary.md"
   - "Language reference":
       - "Standard library": "stdlib.md"
       - "Dict": "type_dict.md"
       - "List": "type_list.md"
+      - "Number": "type_number.md"
       - "Set": "type_set.md"
       - "String": "type_string.md"
       - "Python bindings": "python_bindings.md"

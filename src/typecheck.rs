@@ -8,7 +8,7 @@
 //! A checker for static annotations and runtime dynamic types.
 //!
 //! The same value in RCL can be described by multiple types, values do not have
-//! unique types. For example, `[]` is a valid value for the type `List[Int]`
+//! unique types. For example, `[]` is a valid value for the type `List[Number]`
 //! but also for the type `List[String]`. Therefore we check whether a value
 //! _fits_ a particular type, and that same value may fit multiple types.
 
@@ -38,11 +38,36 @@ fn get_primitive_type(name: &str) -> Option<Type> {
     match name {
         "Any" => Some(Type::Any),
         "Bool" => Some(Type::Bool),
-        "Int" => Some(Type::Int),
+        "Number" => Some(Type::Number),
         "Null" => Some(Type::Null),
         "String" => Some(Type::String),
         "Void" => Some(Type::Void),
         _ => None,
+    }
+}
+
+/// Report an error for an unknown type, with a hint if the name looks familiar.
+fn report_unknown_type<T>(span: Span, name: &str, error_msg: &'static str) -> Result<T> {
+    match name {
+        // Detect a few cases that users may try to use, so we can point
+        // them in the right direction.
+        "Int" | "Integer" | "Float" | "Num" | "int" | "float" | "number" => span
+            .error(error_msg)
+            .with_help(concat! { "The number type is called '" Doc::highlight("Number") "'." })
+            .err(),
+        "Dictionary" | "Map" | "Object" | "dict" => span
+            .error(error_msg)
+            .with_help(concat! { "The dictionary type is called '" Doc::highlight("Dict") "'." })
+            .err(),
+        "Array" | "array" | "list" => span
+            .error(error_msg)
+            .with_help(concat! { "The list type is called '" Doc::highlight("List") "'." })
+            .err(),
+        "Boolean" | "boolean" | "bool" => span
+            .error(error_msg)
+            .with_help(concat! { "The boolean type is called '" Doc::highlight("Bool") "'." })
+            .err(),
+        _ => span.error(error_msg).err(),
     }
 }
 
@@ -64,7 +89,7 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
                         .with_help(concat! {
                             "'" Doc::highlight("Dict") "' without type parameters cannot be used directly."
                             Doc::SoftBreak
-                            "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Int]") "'."
+                            "Specify a key and value type, e.g. '" Doc::highlight("Dict[String, Number]") "'."
                         })
                         .err()
                 },
@@ -94,11 +119,11 @@ fn eval_type_expr(expr: &AType) -> Result<SourcedType> {
                         .with_help(concat! {
                             "'" Doc::highlight("Union") "' without type parameters cannot be used directly."
                             Doc::SoftBreak
-                            "Specify types to union, e.g. '" Doc::highlight("Union[Int, Null]") "'."
+                            "Specify types to union, e.g. '" Doc::highlight("Union[Number, Null]") "'."
                         })
                         .err()
                 }
-                _ => span.error("Unknown type.").err(),
+                unknown => report_unknown_type(*span, unknown, "Unknown type.")?,
             }
         }
         AType::Function { span, args, result } => {
@@ -202,8 +227,7 @@ fn eval_type_apply(name_span: Span, name: &str, args: &[SourcedType]) -> Result<
             let union = Union { members };
             Ok(Type::Union(Rc::new(union)))
         }
-
-        _ => name_span.error("Unknown generic type.").err(),
+        unknown => report_unknown_type(name_span, unknown, "Unknown generic type.")?,
     }
 }
 
@@ -231,10 +255,10 @@ fn type_bool_condition() -> &'static SourcedType {
     }
 }
 
-/// Construct a `SourcedType` for a `Int` for list indexing.
-fn type_int_index() -> &'static SourcedType {
+/// Construct a `SourcedType` for a `Number` for list indexing.
+fn type_number_index() -> &'static SourcedType {
     &SourcedType {
-        type_: Type::Int,
+        type_: Type::Number,
         source: Source::IndexList,
     }
 }
@@ -376,7 +400,7 @@ impl<'a> TypeChecker<'a> {
 
             Expr::NullLit => type_literal(expr_span, Type::Null).is_subtype_of(expected).check(expr_span)?,
             Expr::BoolLit(..) => type_literal(expr_span, Type::Bool).is_subtype_of(expected).check(expr_span)?,
-            Expr::IntegerLit(..) => type_literal(expr_span, Type::Int).is_subtype_of(expected).check(expr_span)?,
+            Expr::NumberLit(..) => type_literal(expr_span, Type::Number).is_subtype_of(expected).check(expr_span)?,
             Expr::StringLit(..) => type_literal(expr_span, Type::String).is_subtype_of(expected).check(expr_span)?,
 
             Expr::Format(fragments) => {
@@ -446,8 +470,8 @@ impl<'a> TypeChecker<'a> {
                 // Take for example: `(x => x + 1)("42")`. We could say, it's a
                 // call with String as first argument, so we push that into the
                 // function body, and there is a type error at the `+` because
-                // we expect a String but `+` creates an Int. But we could also
-                // say, we typecheck the function first, infer `Any -> Int`
+                // we expect a String but `+` creates a Number. But we could also
+                // say, we typecheck the function first, infer `Any -> Number`
                 // (with a runtime check inserted at left-hand side of `+`), then
                 // we call that with "42", which passes, but the runtime check
                 // fails. We go with the latter: we assume function definitions
@@ -491,7 +515,7 @@ impl<'a> TypeChecker<'a> {
             Expr::Index { open, collection_span, collection, index_span, index, .. } => {
                 let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
                 let (index_type, result_type) = match &collection_type.type_ {
-                    Type::List(t) => (type_int_index(), (**t).clone()),
+                    Type::List(t) => (type_number_index(), (**t).clone()),
                     Type::Dict(kv) => (&kv.key, kv.value.clone()),
                     Type::Any => (type_any(), type_any().clone()),
                     Type::String => {
@@ -640,14 +664,14 @@ impl<'a> TypeChecker<'a> {
         // return an error top-down. But as a user, bottom-up is more natural,
         // so we check the body first. For example, in
         //
-        //     let x: Int = not 42;
+        //     let x: Number = not 42;
         //
-        // Already at the `not`, we know the result is Bool but we need Int, so
-        // that's an error. But there's *another* error, which is applying `not`
-        // to an int, and if we report only one type error, that seems like it
+        // Already at the `not`, we know the result is Bool, but we need Number,
+        // so that's an error. But there's *another* error, which is applying `not`
+        // to a Number, and if we report only one type error, that seems like it
         // should come first, as it comes first in the evaluation order too.
         let (body_type, result_type) = match op {
-            UnOp::Neg => (Type::Int, Type::Int),
+            UnOp::Neg => (Type::Number, Type::Number),
             UnOp::Not => (Type::Bool, Type::Bool),
         };
         self.check_expr(&type_operator(op_span, body_type), body_span, body)?;
@@ -664,10 +688,10 @@ impl<'a> TypeChecker<'a> {
         rhs: &mut Expr,
     ) -> Result<SourcedType> {
         let (arg_type, result_type) = match op {
-            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => (Type::Int, Type::Int),
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => (Type::Number, Type::Number),
             BinOp::And | BinOp::Or => (Type::Bool, Type::Bool),
-            // Comparison operators make sense on many types (Int, String), even
-            // composite types (e.g. List[Int] would have lexicographic order).
+            // Comparison operators make sense on many types (Number, String), even
+            // composite types (e.g. List[Number] would have lexicographic order).
             // On some types like dict types, it is more questionable whether
             // that makes sense, but currently we have no good machinery to
             // define what should and should not be allowed, and all values _do_

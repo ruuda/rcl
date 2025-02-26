@@ -53,7 +53,7 @@ pub enum TypeDiff<T> {
     ///
     /// Or, in some cases this is not strictly true, but we want to rule out
     /// that case because it makes more sense. For example, we say that
-    /// `List[Int]` and `List[String]` are incompatible, even though `[]`
+    /// `List[Number]` and `List[String]` are incompatible, even though `[]`
     /// inhabits both.
     Error(Mismatch),
 }

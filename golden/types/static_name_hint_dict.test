@@ -1,0 +1,11 @@
+let x: Map[String, String] = {};
+x
+
+# output:
+stdin:1:8
+  ╷
+1 │ let x: Map[String, String] = {};
+  ╵        ^~~~~~~~~~~~~~~~~~~
+Error: Unknown generic type.
+
+Help: The dictionary type is called 'Dict'.

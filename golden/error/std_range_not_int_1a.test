@@ -1,0 +1,16 @@
+// 0.0 is fine, even though it has a decimal point, it's integral.
+// 1.5 is not fine, it's not integral.
+std.range(0.0, 1.5)
+
+# output:
+stdin:3:16
+  ╷
+3 │ std.range(0.0, 1.5)
+  ╵                ^~~
+Error: Expected an integer, but got 1.5.
+
+stdin:3:10
+  ╷
+3 │ std.range(0.0, 1.5)
+  ╵          ^
+In call to function 'std.range'.

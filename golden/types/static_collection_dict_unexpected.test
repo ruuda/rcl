@@ -8,7 +8,7 @@ stdin:1:16
   ╵                ^~~~~~~~~
 Error: Type mismatch. Expected Null but found this type:
 
-  Dict[String, Int]
+  Dict[String, Number]
 
 stdin:1:9
   ╷

@@ -1,8 +1,8 @@
 // In this case, the assignment to `g`, ultimately it passes at a runtime check,
 // but statically, first it causes a Defer because values of `Any` *might* fit
-// the type `Int`.
+// the type `Number`.
 let f: (Any) -> Any = x => 0;
-let g: (Int) -> Int = f;
+let g: (Number) -> Number = f;
 null
 
 # output:

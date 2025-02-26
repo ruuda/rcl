@@ -1,29 +1,29 @@
 // This example is not minimal, the error would also trigger without the second
-// argument of type `Int`, but we add it to cover the more tricky error
+// argument of type `Number`, but we add it to cover the more tricky error
 // reporting case of having an error and a non-error in the argument list.
-let f: (Int, Int) -> Bool = (x, y) => true;
-let g: (String, Int) -> Bool = f;
+let f: (Number, Number) -> Bool = (x, y) => true;
+let g: (String, Number) -> Bool = f;
 null
 
 # output:
-stdin:5:32
+stdin:5:35
   ╷
-5 │ let g: (String, Int) -> Bool = f;
-  ╵                                ^
+5 │ let g: (String, Number) -> Bool = f;
+  ╵                                   ^
 Error: Type mismatch inside this type:
 
-  (<E1>, Int) -> Bool
+  (<E1>, Number) -> Bool
 
-At E1: Expected Int but found String.
+At E1: Expected Number but found String.
 
 stdin:4:9
   ╷
-4 │ let f: (Int, Int) -> Bool = (x, y) => true;
-  ╵         ^~~
-Note: Expected Int because of this annotation.
+4 │ let f: (Number, Number) -> Bool = (x, y) => true;
+  ╵         ^~~~~~
+Note: Expected Number because of this annotation.
 
 stdin:5:9
   ╷
-5 │ let g: (String, Int) -> Bool = f;
+5 │ let g: (String, Number) -> Bool = f;
   ╵         ^~~~~~
 Note: Found String because of this annotation.

@@ -346,7 +346,7 @@ impl<'a> Evaluator<'a> {
 
             Expr::BoolLit(b) => Ok(Value::Bool(*b)),
 
-            Expr::IntegerLit(i) => Ok(Value::Int(*i)),
+            Expr::NumberLit(d) => Ok(Value::Number(*d)),
 
             Expr::StringLit(s) => Ok(Value::String(s.clone())),
 
@@ -692,7 +692,7 @@ impl<'a> Evaluator<'a> {
     pub fn push_format_fragment(out: &mut Vec<Rc<str>>, span: Span, value: &Value) -> Result<()> {
         match value {
             Value::Bool(b) => out.push((if *b { "true" } else { "false" }).into()),
-            Value::Int(i) => out.push(i.to_string().into()),
+            Value::Number(d) => out.push(d.format().into()),
             Value::Null => out.push("null".into()),
             Value::String(s) => out.push(s.clone()),
             not_formattable => {
@@ -763,9 +763,17 @@ impl<'a> Evaluator<'a> {
     }
 
     fn eval_index_list(&mut self, list: &[Value], index: Value, index_span: Span) -> Result<Value> {
-        let i_signed = match index {
-            Value::Int(i) => i,
-            _ => return index_span.error("List index must be an integer.").err(),
+        let i_signed = match index.to_i64() {
+            Some(i) => i,
+            _ => {
+                return index_span
+                    .error(concat! {
+                        "Expected list index to be an integer, but got "
+                        format_rcl(&index).into_owned()
+                        "."
+                    })
+                    .err()
+            }
         };
 
         let i = match i_signed {
@@ -817,11 +825,11 @@ impl<'a> Evaluator<'a> {
     fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Value) -> Result<Value> {
         match (op, v) {
             (UnOp::Not, Value::Bool(x)) => Ok(Value::Bool(!x)),
-            (UnOp::Neg, Value::Int(x)) => match x.checked_neg() {
-                Some(nx) => Ok(Value::Int(nx)),
+            (UnOp::Neg, Value::Number(d)) => match d.checked_neg() {
+                Some(nd) => Ok(Value::Number(nd)),
                 None => {
                     let err = concat! {
-                        "Negation of " x.to_string() " would overflow."
+                        "Negation of " d.format() " would overflow."
                     };
                     op_span.error(err).err()
                 }
@@ -864,60 +872,53 @@ impl<'a> Evaluator<'a> {
             // running a program to read its input, that would be questionable to do.
             (BinOp::And, Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x && y)),
             (BinOp::Or, Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x || y)),
-            (BinOp::Add, Value::Int(x), Value::Int(y)) => match x.checked_add(y) {
-                Some(z) => Ok(Value::Int(z)),
+            (BinOp::Add, Value::Number(x), Value::Number(y)) => match x.checked_add(&y) {
+                Some(z) => Ok(Value::Number(z)),
                 None => {
                     let err = concat! {
-                        "Addition " x.to_string() " + " y.to_string() " would overflow."
+                        "Addition " x.format() " + " y.format() " would overflow."
                     };
                     op_span.error(err).err()
                 }
             },
-            (BinOp::Sub, Value::Int(x), Value::Int(y)) => match x.checked_sub(y) {
-                Some(z) => Ok(Value::Int(z)),
+            (BinOp::Sub, Value::Number(x), Value::Number(y)) => match x.checked_sub(&y) {
+                Some(z) => Ok(Value::Number(z)),
                 None => {
                     let err = concat! {
-                        "Subtraction " x.to_string() " - " y.to_string() " would overflow."
+                        "Subtraction " x.format() " - " y.format() " would overflow."
                     };
                     op_span.error(err).err()
                 }
             },
-            (BinOp::Mul, Value::Int(x), Value::Int(y)) => match x.checked_mul(y) {
-                Some(z) => Ok(Value::Int(z)),
+            (BinOp::Mul, Value::Number(x), Value::Number(y)) => match x.checked_mul(&y) {
+                Some(z) => Ok(Value::Number(z)),
                 None => {
                     let err = concat! {
-                        "Multiplication " x.to_string() " * " y.to_string() " would overflow."
+                        "Multiplication " x.format() " * " y.format() " would overflow."
                     };
                     op_span.error(err).err()
                 }
             },
-            (BinOp::Div, Value::Int(x), Value::Int(y)) => {
-                if y == 0 {
+            (BinOp::Div, Value::Number(x), Value::Number(y)) => {
+                if y.mantissa == 0 {
                     op_span.error("Division by zero.").err()
                 } else {
-                    // For division, the result may not be an integer. In that case,
-                    // probably the right thing to do is to add rational numbers as
-                    // values and make the result a rational. However, I don't want
-                    // to implement all of that right now, so the conservative thing
-                    // to do is to only allow division when it results in an integer.
-                    // If we'd choose integer division now, it would be a subtle
-                    // change of behavior later.
-                    let q = x / y;
-                    if q * y == x {
-                        Ok(Value::Int(q))
-                    } else {
-                        let err = concat! {
-                            "Non-integer division: "
-                            x.to_string() " is not a multiple of " y.to_string()
-                            ". Non-integer division is not supported at this time."
-                        };
-                        op_span.error(err).err()
+                    match x.checked_div_exact(&y) {
+                        Some(z) => Ok(Value::Number(z)),
+                        None => {
+                            let err = concat! {
+                                x.format() " / " y.format()
+                                " cannot be represented exactly. "
+                                "Lossy arithmetic is not supported at this time."
+                            };
+                            op_span.error(err).err()
+                        }
                     }
                 }
             }
             // We allow comparing any two values, even if they are not of the
             // same type. I would prefer to make nonsensical comparisons a type
-            // error (e.g. `1 < "2"` should return "Int and String incomparable",
+            // error (e.g. `1 < "2"` should return "Number and String incomparable",
             // but due to the type lattice, there is no such thing as "same type".
             // We could enforce that the value discriminant is the same, and then
             // we can rule out `1 < "2"`, but not `[1] < ["2"]`. So let's just

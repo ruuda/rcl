@@ -9,4 +9,4 @@ stdin:1:8
 Error: Expected a concrete type, but found uninstantiated union type.
 
 Help: 'Union' without type parameters cannot be used directly.
-Specify types to union, e.g. 'Union[Int, Null]'.
+Specify types to union, e.g. 'Union[Number, Null]'.

@@ -18,6 +18,11 @@ assert rcl.loads("true") == True
 assert rcl.loads('["foobar"]') == ["foobar"]
 assert rcl.loads("{1, 2, 3}") == {1, 2, 3}
 assert rcl.loads('{1: "one", "two": 2}') == {1: "one", "two": 2}
+assert rcl.loads("1") == 1
+assert rcl.loads("1.0") == 1.0
+assert rcl.loads("0.25e-10") == 0.25e-10
+assert isinstance(rcl.loads("1"), int)
+assert isinstance(rcl.loads("1.0"), float)
 
 # Test that loading files works. This needs to be executed from this directory.
 assert rcl.load_file("test.rcl") == {

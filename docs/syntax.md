@@ -38,6 +38,16 @@ will sometimes ask you to move comments.
 
 The booleans are written `true` and `false`, null is written `null`.
 
+## Numbers
+
+RCL supports the same number formats as json, and adds hexadecimal integers
+prefixed by `0x`, binary integers prefixed by `0b`, and support for numeric
+underscores. See [the chapter on numbers](numbers.md) for more details.
+
+```rcl
+let numbers = [42, 4.2e1, 0x2a, 0b10_1010, 42_000, 0.000_420];
+```
+
 ## Strings and f-strings
 
 Strings are quoted with `"` and support the same escape sequences as json.
@@ -138,7 +148,7 @@ To produce an empty set, we can use [`std.empty_set`](stdlib.md#empty_set). A
 type annotation will also force `{}` to be a set:
 
 ```rcl
-let empty_set: Set[Int] = {};
+let empty_set: Set[Number] = {};
 ```
 
 ## Let bindings
@@ -157,7 +167,7 @@ evaluates to the expression after `;`.
 Let bindings can optionally contain [a type annotation](types.md):
 
 ```rcl
-let answer: Int = 42;
+let answer: Number = 42;
 ```
 
 ## List indexing

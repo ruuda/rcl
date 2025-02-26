@@ -1,4 +1,4 @@
-let a0: Union[Null, Int] = null;
+let a0: Union[Null, Number] = null;
 let b0: String = a0;
 b0
 
@@ -9,7 +9,7 @@ stdin:2:18
   ╵                  ^~
 Error: Type mismatch. Expected String but found this type:
 
-  Union[Null, Int]
+  Union[Null, Number]
 
 stdin:2:9
   ╷
@@ -19,6 +19,6 @@ Note: Expected String because of this annotation.
 
 stdin:1:9
   ╷
-1 │ let a0: Union[Null, Int] = null;
-  ╵         ^~~~~~~~~~~~~~~~
+1 │ let a0: Union[Null, Number] = null;
+  ╵         ^~~~~~~~~~~~~~~~~~~
 Note: Found Union because of this annotation.
