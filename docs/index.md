@@ -9,29 +9,23 @@ language that resembles [Python][python] and [Nix][nix]. Use cases include:
    familiar language.
  * Generating repetitive configuration files, such as GitHub Actions workflows
    or Terraform configuration.
- * Enabling large repositories to split configuration into small reusable pieces
-   that can be referenced from a single consistent entry point, in the same way
-   that Nix enables this for [Nixpkgs][nixpkgs].
  * Sharing configuration between tools that do not natively share data. For
    example, import the same user account definitions into Terraform, Tailscale,
    Kubernetes, and Ansible.
 
 RCL can be used through [the `rcl` command-line tool][rcl] that can export
-documents to <abbr>JSON</abbr> and [other formats][output]. It can also be used
-through [a native Python module][pythonm], with an interface similar to the
-`json` module.
+documents to <abbr>JSON</abbr>, <abbr>YAML</abbr>, <abbr>TOML</abbr>, and [other
+formats][output]. It can also be used through [a native Python module][pythonm],
+with an interface similar to the `json` module.
+
+RCL is a hobby project without stability promise.
 
 [jq]:      https://jqlang.github.io/jq/manual/
 [nix]:     https://nixos.org/manual/nix/stable/language/
-[nixpkgs]: https://github.com/nixos/nixpkgs
 [output]:  rcl_evaluate.md#-f-format-format
 [python]:  https://www.python.org/
 [pythonm]: python_bindings.md
 [rcl]:     rcl.md
-
-_**Warning:** While RCL is usable, it is still in an early exploratory stage
-with frequent breaking changes. This is a hobby project without stability
-promise._
 
 ## Demo
 

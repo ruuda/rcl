@@ -8,25 +8,19 @@ resembles [Python][python] and [Nix][nix]. Use cases include:
  * Querying json documents, like [`jq`][jq], but with a more familiar language.
  * Generating repetitive configuration files, such as GitHub Actions workflows
    or Terraform configuration.
- * Enabling large repositories to split configuration into small reusable pieces
-   that can be referenced from a single consistent entry point, in the same way
-   that Nix enables this for [Nixpkgs][nixpkgs].
  * Sharing configuration between tools that do not natively share data. For
    example, import the same user account definitions into Terraform, Tailscale,
    Kubernetes, and Ansible.
 
 RCL can be used through the `rcl` command-line tool that can export documents
-to json and [other formats][output]. It can also be used through a native Python
-module, with an interface similar to the `json` module.
+to json, yaml, toml, [and more][output]. It can also be used through a native
+Python module, with an interface similar to the `json` module.
 
-> [!WARNING]
-> While RCL is usable, it is still in an early exploratory stage with frequent
-> breaking changes. This is a hobby project without stability promise.
+RCL is a hobby project without stability promise.
 
 [python]:  https://www.python.org/
 [nix]:     https://nixos.org/manual/nix/stable/language/
 [jq]:      https://jqlang.github.io/jq/manual/
-[nixpkgs]: https://github.com/nixos/nixpkgs
 [output]:  https://docs.ruuda.nl/rcl/rcl_evaluate/#-o-output-format
 
 ## Getting started
@@ -78,8 +72,9 @@ Why another config language?
  * **Gradually typed:** Optional type annotations can be used to prevent bugs
    and to make code more self-documenting. All type annotations are enforced.
 
- * **Json superset:** Vaporware, this is not fully implemented; floats are
-   not yet supported.
+ * **Json superset:** The RCL syntax is a superset of json. This means RCL can
+   natively load json documents, you can use RCL to query json documents, and
+   you can incrementally upgrade json documents to RCL.
 
 ## Usage
 
