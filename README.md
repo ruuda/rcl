@@ -1,107 +1,143 @@
-# The RCL Configuration Language
+<h1 align="center">The RCL Configuration Language</h1>
+<p align="center">
+<a href="#getting-started">Getting Started</a> ·
+<a href="https://docs.ruuda.nl/rcl/">Documentation</a> ·
+<a href="./docs/changelog.md">Changelog</a> ·
+<a href="https://rcl-lang.org/#try-it-yourself">Online Playground</a>
+</p>
 
-RCL is a domain-specific language optimized for specifying human-written data
-with just enough abstraction features to avoid repetition. It is a superset
-of json that extends it into a simple functional programming language that
-resembles [Python][python] and [Nix][nix]. Use cases include:
+RCL is a domain-specific language for generating configuration files and
+querying json documents. It is a superset of json that extends it into a simple,
+gradually typed, functional programming language that resembles Python and Nix.
 
- * Querying json documents, like [`jq`][jq], but with a more familiar language.
- * Generating repetitive configuration files, such as GitHub Actions workflows
-   or Terraform configuration.
- * Sharing configuration between tools that do not natively share data. For
-   example, import the same user account definitions into Terraform, Tailscale,
-   Kubernetes, and Ansible.
+RCL can be used through the [`rcl`][cmd] command-line tool that can export
+documents to json, yaml, toml, [and more][output]. It can also be used through
+a native Python module, with an interface similar to the `json` module.
 
-RCL can be used through the `rcl` command-line tool that can export documents
-to json, yaml, toml, [and more][output]. It can also be used through a native
-Python module, with an interface similar to the `json` module.
+## About
 
-RCL is a hobby project without stability promise.
+RCL solves the following problems:
 
-[python]:  https://www.python.org/
-[nix]:     https://nixos.org/manual/nix/stable/language/
-[jq]:      https://jqlang.github.io/jq/manual/
-[output]:  https://docs.ruuda.nl/rcl/rcl_evaluate/#-o-output-format
+ * Copy-pasted yaml blocks that differ by a single value.
+ * Broken configs due to whitespace and escaping issues in templating engines.
+ * Drift between tools due to lack of a single source of truth.
+ * Struggling to remember `jq` syntax.
+
+It does that as follows:
+
+ * **A real language.**
+   Use variables, loops, imports, and functions to eliminate duplication.
+ * **Generate rather than template.**
+   Manipulate data structures, not strings.
+   Generate correct json, yaml, and toml.
+ * **Built to integrate.**
+   Generate configs for tools that do not natively talk to each other, all
+   from a single source of truth. Integrate with your existing build tools,
+   use the Python module, or the built-in [`rcl build`][cmd-build] to update
+   generated files.
+ * **Familiar syntax.**
+   Have you used Python, TypeScript, or Rust before? Then you will find RCL
+   obvious to read and natural to write.
+ * **Gradual types.**
+   Add type annotations where they help to eliminate bugs and make code
+   self-documenting, omit them in straightforward code.
+ * **Built-in json queries.**
+   A language for manipulating structured data makes a pretty good query tool.
+   Run map and filter pipelines straight from your command-line.
+
+[cmd]:       https://docs.ruuda.nl/rcl/rcl/
+[cmd-build]: https://docs.ruuda.nl/rcl/rcl_build/#
+[output]:    https://docs.ruuda.nl/rcl/rcl_evaluate/#-o-output-format
+
+## Example
+
+Given this input:
+
+```rcl
+{
+  backup_buckets = [
+    let retention_days = { hourly = 4, daily = 30, monthly = 365 };
+    for database in ["alpha", "bravo"]:
+    for period, days in retention_days:
+    {
+      name = f"{database}-{period}",
+      region = "eu-west",
+      lifecycle_policy = { delete_after_seconds = days * 24 * 3600 },
+    }
+  ],
+}
+```
+
+RCL generates:
+
+```jsonc
+{
+   "backup_buckets": [
+      {
+         "name": "alpha-hourly",
+         "region": "eu-west",
+         "lifecycle_policy": { "delete_after_seconds": 345600 }
+      },
+      {
+         "name": "alpha-daily",
+         "region": "eu-west",
+         "lifecycle_policy": { "delete_after_seconds": 2592000 }
+      },
+      // And 4 similar entries, omitted here for brevity.
+   ]
+}
+```
+
+For an interactive demo in your browser, see <https://rcl-lang.org>.
 
 ## Getting started
 
-There are examples and a browser-based interactive demo at
-[rcl-lang.org](https://rcl-lang.org). For more detailed information,
-[the manual](https://docs.ruuda.nl/rcl/) is the best resource.
-The most useful chapters to get started:
+After the interactive examples [on the website](https://rcl-lang.org/),
+[the manual](https://docs.ruuda.nl/rcl/) is the best resource for further
+information. The most useful chapters to get started:
 
  * [Installation](https://docs.ruuda.nl/rcl/installation/)
  * [Tutorial](https://docs.ruuda.nl/rcl/tutorial/)
  * [Syntax guide](https://docs.ruuda.nl/rcl/syntax/)
 
 You may also find the examples in the `examples` directory instructive.
+Some helpful commands after a clone:
+```bash
+# Build
+cargo build --release
 
-## Rationale
+# Print usage
+target/release/rcl
+target/release/rcl eval --help
 
-Why another config language?
+# Evaluate an RCL expression to json
+target/release/rcl eval --format=json examples/tags.rcl
 
- * HCL is too ad-hoc to be suitable for any serious abstraction (`setunion` is
-   variadic so it only works with a statically known number of sets; `flatten`
-   recursively flattens so it can’t be typed properly and breaks generic code,
-   for comprehensions can’t do nested loops, `for_each` syntax is bolted on,
-   etc.)
+# Query an RCL or json document
+target/release/rcl query examples/tags.rcl input.tags.ams01
 
- * Nix-the-language is great but forces the entire Nix store on you when all I
-   want is to evaluate expressions.
+# Autoformat and highlight an RCL expression (non-destructive, prints to stdout)
+target/release/rcl fmt examples/tags.rcl
+```
 
- * Python is great but requires some boilerplate for doing the IO if you want
-   to use it as a configuration language. Also the syntactic order of list
-   comprehensions prevents autocomplete in editors.
+## Status
 
- * Dhall has the right ideas but the syntax and heavy use of Unicode symbols
-   make it look ugly.
+RCL is a hobby project without stability promise. It is usable and useful,
+well-tested, and well-documented, but also still experimental, and it may have
+breaking changes. Syntax highlighting is available for major editors like Vim,
+Emacs, Helix, and Zed.
 
- * CUE and Nickel were not invented here.
+## Support RCL
 
- * For more background, see the blog post:
-   [_A reasonable configuration language_][blog].
+One thing that holds RCL back from being useful to more people is the lack of
+widespread support for syntax highlighting on platforms such as GitHub. If RCL
+is useful to you, you can help by using RCL publicly in a GitHub repository
+[to demonstrate traction][linguist]. Use it seriously of course, please don’t
+game the metric. Other things you can help with are getting RCL packaged for
+your favorite package manager, and developing syntax highlighting for your
+favorite editor if it is not yet supported.
 
-[blog]: https://ruudvanasseldonk.com/2024/a-reasonable-configuration-language
-
-## Classification
-
- * **Purely functional:** RCL documents are expressions that evaluate to values,
-   rather than sequences of statements that have side effects. Values are
-   immutable, there are no mutable objects. Functions are values.
-
- * **Gradually typed:** Optional type annotations can be used to prevent bugs
-   and to make code more self-documenting. All type annotations are enforced.
-
- * **Json superset:** The RCL syntax is a superset of json. This means RCL can
-   natively load json documents, you can use RCL to query json documents, and
-   you can incrementally upgrade json documents to RCL.
-
-## Usage
-
-Build:
-
-    cargo build --release
-
-Print usage:
-
-    target/release/rcl
-    target/release/rcl eval --help
-
-Evaluate an RCL expression to json:
-
-    target/release/rcl eval --format=json examples/tags.rcl
-
-Query an RCL or json document:
-
-    target/release/rcl query examples/tags.rcl input.tags.ams01
-
-Autoformat an RCL expression (non-destructive, prints to stdout):
-
-    target/release/rcl fmt examples/tags.rcl
-
-Highlight an RCL expression in your terminal:
-
-    target/release/rcl highlight examples/tags.rcl
+[linguist]: https://github.com/github-linguist/linguist/blob/4ac734c15a96f9e16fd12330d0cb8de82274f700/CONTRIBUTING.md#adding-a-language
 
 ## Development
 

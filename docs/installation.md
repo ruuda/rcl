@@ -1,7 +1,8 @@
 # Installation
 
-RCL is written in Rust and builds with [Cargo][cargo]. RCL is easy to build from
-source, but you can also use one of the options below that automate the process.
+RCL is written in Rust and builds with [Cargo][cargo]. RCL has few dependencies,
+so it’s quick and easy to build from source, but you can also use one of the
+options below that automate the process.
 
 [cargo]: https://doc.rust-lang.org/cargo/guide/
 
