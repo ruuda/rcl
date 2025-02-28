@@ -19,7 +19,7 @@ a native Python module, with an interface similar to the `json` module.
 RCL solves the following problems:
 
  * Copy-pasted yaml blocks that differ by a single value.
- * Broken configs due to whitespace and escaping issues in templating engines.
+ * Broken configs due to whitespace and escaping footguns in templating engines.
  * Drift between tools due to lack of a single source of truth.
  * Struggling to remember `jq` syntax.
 
@@ -27,6 +27,9 @@ It does that as follows:
 
  * **A real language.**
    Use variables, loops, imports, and functions to eliminate duplication.
+ * **Familiar syntax.**
+   Have you used Python, TypeScript, or Rust before? Then you will find RCL
+   obvious to read and natural to write.
  * **Generate rather than template.**
    Manipulate data structures, not strings.
    Generate correct json, yaml, and toml.
@@ -35,9 +38,6 @@ It does that as follows:
    from a single source of truth. Integrate with your existing build tools,
    use the Python module, or the built-in [`rcl build`][cmd-build] to update
    generated files.
- * **Familiar syntax.**
-   Have you used Python, TypeScript, or Rust before? Then you will find RCL
-   obvious to read and natural to write.
  * **Gradual types.**
    Add type annotations where they help to eliminate bugs and make code
    self-documenting, omit them in straightforward code.
