@@ -60,6 +60,8 @@
 
   .span-full, .span-l2, .span-r2 { grid-column: content }
 
+  .wide { display: none; }
+
   @media (min-width: 500px) {
     .xnarrow {
       display: none;
@@ -76,6 +78,9 @@
     .narrow, .wxnarrow {
       display: none;
     }
+    .wide {
+      display: inline;
+    }
   }
 
   @media (min-width: 710px) {
@@ -90,7 +95,7 @@
       --hsep: 0px;
       --vsep: 1px;
     }
-    .xnarrow, .narrow {
+    .xnarrow {
       display: inline;
     }
     .grid {
@@ -117,9 +122,6 @@
   }
 
   @media (min-width: 1000px) {
-    .narrow {
-      display: none;
-    }
     .grid {
       grid-template-columns: auto 12rem 12rem 12rem 12rem auto;
     }
@@ -345,10 +347,11 @@
   <header class="grid">
     <nav class="span-full">
       <a href="/"><h1>RCL</h1></a>
-      <a href="#try-it-yourself">Playground</a>
+      <a href="#try-it-yourself" class="narrow">Play</a>
+      <a href="#try-it-yourself" class="wide">Playground</a>
       <a href="https://docs.ruuda.nl/rcl">Docs</a>
       <a href="https://github.com/ruuda/rcl">GitHub</a>
-      <a href="https://codeberg.org/ruuda/rcl">Codeberg</a>
+      <a href="https://codeberg.org/ruuda/rcl" class="wide">Codeberg</a>
     </nav>
   </header>
   <section class="grid">
