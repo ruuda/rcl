@@ -7,7 +7,7 @@ stdin:3:16
   ╷
 3 │ std.range(0.0, 1.5)
   ╵                ^~~
-Error: Expected an integer, but got 1.5.
+Error: Expected upper bound to be integer, but got 1.5.
 
 stdin:3:10
   ╷

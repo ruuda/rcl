@@ -295,6 +295,50 @@ impl Decimal {
         Some(result)
     }
 
+    /// Round the number to the nearest multiple of 10^{-n_decimals}.
+    ///
+    /// This moves the exponent into the mantissa, so the result always has the
+    /// exponent set to 0. This means that round is not that useful beyond the
+    /// range of an i64, but that's fine for now. Rounds away from 0.
+    ///
+    /// Returns `None` on overflow.
+    pub fn round(&self, n_decimals: u8) -> Option<Decimal> {
+        match n_decimals as i32 - self.decimals as i32 + self.exponent as i32 {
+            // The number already has exactly the requested number of decimals.
+            0 => Some(*self),
+
+            // We have to add additional decimals. The maximum power of 2 we can
+            // represent is 2^18, beyond that we will certainly get overflow.
+            d if d > 0 && d <= 18 => {
+                let f = 10_i64.pow(d as u32);
+                let result = Decimal {
+                    mantissa: self.mantissa.checked_mul(f)?,
+                    exponent: 0,
+                    decimals: n_decimals,
+                };
+                Some(result)
+            }
+
+            // d is negative, we have to remove decimals.
+            d if d < 0 && d >= -18 => {
+                let f = 10_i64.pow((-d) as u32);
+                // We want `round`, not `floor`, so add half the range.
+                // Negate if the mantissa is negative so we round away from 0.
+                let b = if self.mantissa > 0 { f / 2 } else { -f / 2 };
+                let result = Decimal {
+                    mantissa: self.mantissa.saturating_add(b) / f,
+                    exponent: 0,
+                    decimals: n_decimals,
+                };
+                Some(result)
+            }
+
+            // Overflow in either direction. The result wouldn't fit the i64
+            // range of the mantissa.
+            _ => None,
+        }
+    }
+
     /// Convert to a float. For many decimals this will be a lossy operation.
     pub fn to_f64_lossy(&self) -> f64 {
         let n = self.mantissa as f64;

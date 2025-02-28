@@ -1,0 +1,14 @@
+[1.0.round(0), 1.0.round(-1)]
+
+# output:
+stdin:1:26
+  ╷
+1 │ [1.0.round(0), 1.0.round(-1)]
+  ╵                          ^~
+Error: Cannot round to negative decimals, decimals must be at least 0.
+
+stdin:1:25
+  ╷
+1 │ [1.0.round(0), 1.0.round(-1)]
+  ╵                         ^
+In call to method 'Number.round'.

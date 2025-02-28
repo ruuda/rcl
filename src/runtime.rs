@@ -187,6 +187,15 @@ impl Value {
         }
     }
 
+    /// Extract a number if the value is a number, panic otherwise.
+    #[inline]
+    pub fn expect_number(&self) -> &Decimal {
+        match self {
+            Value::Number(d) => d,
+            other => panic!("Expected Number but got {other:?}."),
+        }
+    }
+
     /// Extract the dict if it is one, panic otherwise.
     #[inline]
     pub fn expect_dict(&self) -> &BTreeMap<Value, Value> {

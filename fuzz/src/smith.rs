@@ -50,6 +50,7 @@ const BUILTINS: &[&str] = &[
     "remove_suffix",
     "replace",
     "reverse",
+    "round",
     "sort",
     "sort_by",
     "split",
