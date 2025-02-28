@@ -405,6 +405,8 @@ impl<'a> Evaluator<'a> {
                     (Value::String(_), "to_lowercase") => Some(&stdlib::STRING_TO_LOWERCASE),
                     (Value::String(_), "to_uppercase") => Some(&stdlib::STRING_TO_UPPERCASE),
 
+                    (Value::Number(_), "round") => Some(&stdlib::NUMBER_ROUND),
+
                     (Value::Dict(_), "contains") => Some(&stdlib::DICT_CONTAINS),
                     (Value::Dict(_), "except") => Some(&stdlib::DICT_EXCEPT),
                     (Value::Dict(_), "get") => Some(&stdlib::DICT_GET),

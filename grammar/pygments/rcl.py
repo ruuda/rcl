@@ -83,6 +83,7 @@ _root_base = [
                 "remove_suffix",
                 "replace",
                 "reverse",
+                "round",
                 "sort",
                 "sort_by",
                 "split",

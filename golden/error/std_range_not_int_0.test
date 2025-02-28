@@ -5,7 +5,7 @@ stdin:1:11
   ╷
 1 │ std.range("not int", 10)
   ╵           ^~~~~~~~~
-Error: Expected an integer, but got "not int".
+Error: Expected lower bound to be integer, but got "not int".
 
 stdin:1:10
   ╷

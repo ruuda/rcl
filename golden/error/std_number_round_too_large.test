@@ -1,0 +1,15 @@
+// 100 decimals is the most we support.
+[1e-90.round(100), 1e-90.round(101)]
+
+# output:
+stdin:2:32
+  ╷
+2 │ [1e-90.round(100), 1e-90.round(101)]
+  ╵                                ^~~
+Error: Number of decimals can be at most 100.
+
+stdin:2:31
+  ╷
+2 │ [1e-90.round(100), 1e-90.round(101)]
+  ╵                               ^
+In call to method 'Number.round'.

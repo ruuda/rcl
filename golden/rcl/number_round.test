@@ -1,0 +1,51 @@
+[
+  // Cases where we have to add decimals.
+  (0).round(3),
+  1.1.round(3),
+
+  // We fold the exponent into the result.
+  1e2.round(3),
+  1.1e1.round(3),
+
+  // Cases where we have to remove decimals.
+  1.000.round(0),
+  1.000.round(1),
+  1.499.round(1),
+  1.501.round(1),
+  (-1.499).round(1),
+  (-1.501).round(1),
+
+  // We round 0.5 away from zero.
+  1.499.round(0),
+  1.500.round(0),
+  1.501.round(0),
+  (-1.499).round(0),
+  (-1.500).round(0),
+  (-1.501).round(0),
+
+  // The i64 mantissa does not have more than 18 (or for a limited range, 19)
+  // decimal digits of precision, but we can still round to more than 18
+  // decimals, as long as there are fewer than 19 significant digits.
+  42e-20.round(22)
+]
+
+# output:
+[
+  0.000,
+  1.100,
+  100.000,
+  11.000,
+  1,
+  1.0,
+  1.5,
+  1.5,
+  -1.5,
+  -1.5,
+  1,
+  2,
+  2,
+  -1,
+  -2,
+  -2,
+  0.0000000000000000004200,
+]

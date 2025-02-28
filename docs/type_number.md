@@ -54,18 +54,17 @@ This limitation should be lifted in a future version.
 Number.round: (self: Number, n_decimals: Number) -> Number
 ```
 
-TODO: This function does not actually exist yet.
-
-Round the number to `n_decimals` decimal places. When `n_decimals` is 0, the
-result is an integer. When `n_decimals` is negative, this rounds to powers of 10.
+Round the number to `n_decimals` decimal places. The result is not in scientific
+notation (it has no exponent), even when the input is. When `n_decimals` is 0,
+this means that the result is an integer. This rounds away from 0.
 
 ```rcl
 // Evaluates to 0.4.
 (0.42).round(1)
 
-// Evaluates to 42.
-(41.5).round(0)
+// Evaluates to [42, -42].
+[(41.5).round(0), (-41.5).round(0)]
 
-// Evaluates to 4e1.
-(42).round(-1)
+// Evaluates to 4200.
+(42e2).round(0)
 ```
