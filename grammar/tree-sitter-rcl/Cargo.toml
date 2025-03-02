@@ -19,4 +19,4 @@ include = ["bindings/rust/*", "grammar.js", "queries/*", "src/*"]
 keywords = ["incremental", "parsing", "rcl"]
 license = "Apache-2.0"
 name = "tree-sitter-rcl"
-version = "0.7.0"
+version = "0.8.0"
