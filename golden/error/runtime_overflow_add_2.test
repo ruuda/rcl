@@ -1,0 +1,11 @@
+// This is a regression test for a crash caught by the fuzzer.
+// It used to overflow a subtraction in decimal.rs, where it subtracts
+// the exponents.
+77E-19263+7E19238
+
+# output:
+stdin:4:10
+  ╷
+4 │ 77E-19263+7E19238
+  ╵          ^
+Error: Addition 77e-19263 + 7e19238 would overflow.

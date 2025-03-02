@@ -229,7 +229,10 @@ impl Decimal {
             std::mem::swap(&mut d1, &mut d2);
         }
         if d1.exponent < d2.exponent {
-            let f = 10_i64.checked_pow((d2.exponent - d1.exponent) as u32)?;
+            // We know d2 > d1, so d2 - d1 is positive, but the difference may
+            // not fit in an i16 when d2 is close to i16::MAX and d1 is close to
+            // i16::MIN, so widen to i32 before subtracting.
+            let f = 10_i64.checked_pow((d2.exponent as i32 - d1.exponent as i32) as u32)?;
             d2.mantissa = d2.mantissa.checked_mul(f)?;
             d2.exponent = d1.exponent;
         }
