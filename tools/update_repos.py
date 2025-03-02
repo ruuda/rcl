@@ -39,7 +39,6 @@ repositories as a Git submodule here?
     an external repository, we can have both.
 """
 
-import os
 import shutil
 import sys
 import textwrap
