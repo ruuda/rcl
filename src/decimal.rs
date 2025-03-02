@@ -340,9 +340,25 @@ impl Decimal {
                 Some(result)
             }
 
-            // Overflow in either direction. The result wouldn't fit the i64
-            // range of the mantissa.
-            _ => None,
+            // We have to remove so many decimals that none remain. In other
+            // words, this factor f that we compute in the branch above, it
+            // doesn't fit in an i64, which means that if we divide the mantissa
+            // by it, we get zero.
+            d if d < -18 => {
+                let result = Decimal {
+                    mantissa: 0,
+                    exponent: 0,
+                    decimals: n_decimals,
+                };
+                Some(result)
+            }
+
+            d => {
+                // The factor f = 10^d does not fit in an i64, so we would
+                // overflow the mantissa.
+                debug_assert!(d > 18, "All other branches are covered.");
+                None
+            }
         }
     }
 

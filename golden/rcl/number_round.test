@@ -31,7 +31,11 @@
   // The i64 mantissa does not have more than 18 (or for a limited range, 19)
   // decimal digits of precision, but we can still round to more than 18
   // decimals, as long as there are fewer than 19 significant digits.
-  42e-20.round(22)
+  42e-20.round(22),
+
+  // This number is so small that we don't even try to compute its mantissa,
+  // just from the exponent we can tell it rounds to zero.
+  1e-20.round(0),
 ]
 
 # output:
@@ -56,4 +60,5 @@
   -2,
   -2,
   0.0000000000000000004200,
+  0,
 ]
