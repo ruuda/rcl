@@ -28,8 +28,8 @@ def seed_one(fname: str) -> int:
     length of the input in bytes.
     """
     # Prepend a comment line that is required for the fuzzer to decide how
-    # it will treat this input, see also `fuzz_targets/main.rs`. `a` means
-    # "evaluate", and `Z` is '\n' + 80, for a format width of 80 columns.
+    # it will treat this input, see also `fuzz_targets/fuzz_source.rs`. `a`
+    # means "evaluate", and `Z` is '\n' + 80, for a format width of 80 columns.
     input_lines: List[str] = ["//aZ\n"]
 
     with open(fname, "r", encoding="utf-8") as f:
@@ -44,7 +44,7 @@ def seed_one(fname: str) -> int:
     # Libfuzzer by default names the fuzz inputs after their sha1sum, so we do
     # that as well.
     shasum = sha1(input_bytes).hexdigest()
-    with open(f"fuzz/corpus/main/{shasum}", "wb") as f:
+    with open(f"fuzz/corpus/fuzz_source/{shasum}", "wb") as f:
         f.write(input_bytes)
         print(f"{shasum} {len(input_bytes):4} {fname}")
 
@@ -52,7 +52,7 @@ def seed_one(fname: str) -> int:
 
 
 def main() -> None:
-    corpus_dir = "fuzz/corpus/main"
+    corpus_dir = "fuzz/corpus/fuzz_source"
 
     lens: List[int] = []
     for root, _dirs, files in os.walk("golden"):
