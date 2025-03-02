@@ -16,7 +16,7 @@ compatibility impact will be clearly marked as such in the changelog.
 
 ## 0.8.0
 
-Unreleased.
+Released 2025-03-02.
 
 **Changes with compatibility impact:**
 
@@ -29,14 +29,14 @@ Release highlights:
    <abbr>RCL</abbr> a proper json superset. See the [_numbers_](numbers.md)
    chapter in the language reference for more details. Arithmetic on integers
    remains unchanged. Arithmetic on numbers with a decimal point is now possible
-   as well, but the formatting of the result is still fairly naive. This will
-   likely change in a future version.
- * When running `rcl` without arguments, it now prints only the most important
-   parts of the help text. Use `rcl --help` for the full command reference.
+   as well, but for multiplication, formatting of the result is still fairly
+   naive. This will likely change in a future version.
  * Add [`Number.round`](type_number.md#round) method.
  * Add [`List.sort_by`](type_list.md#sort_by) and
    [`Set.sort_by`](type_set.md#sort_by) methods.
  * Add [`Set.sort`](type_set.md#sort) method for symmetry with `List`.
+ * When running `rcl` without arguments, it now prints only the most important
+   parts of the help text. Use `rcl --help` for the full command reference.
 
 ## 0.7.0
 
