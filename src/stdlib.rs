@@ -45,6 +45,23 @@ fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Resul
     Ok(eval.loader.get_doc(doc).data.into())
 }
 
+/// Extract an i64 from a call argument, or return an error if it's not an integer.
+fn expect_arg_i64(arg: &CallArg<Value>, arg_name: &'static str) -> Result<i64> {
+    match arg.value.to_i64() {
+        Some(n) => Ok(n),
+        None => arg
+            .span
+            .error(concat! {
+                "Expected "
+                arg_name
+                " to be integer, but got "
+                format_rcl(&arg.value).into_owned()
+                "."
+            })
+            .err(),
+    }
+}
+
 builtin_function!(
     "std.range",
     (lower: Number, upper: Number) -> [Number],
@@ -52,20 +69,8 @@ builtin_function!(
     builtin_std_range
 );
 fn builtin_std_range(_eval: &mut Evaluator, call: FunctionCall) -> Result<Value> {
-    let expect_i64 = |arg: &CallArg<Value>| match arg.value.to_i64() {
-        Some(n) => Ok(n),
-        None => arg
-            .span
-            .error(concat! {
-                "Expected an integer, but got "
-                format_rcl(&arg.value).into_owned()
-                "."
-            })
-            .err(),
-    };
-
-    let lower: i64 = expect_i64(&call.args[0])?;
-    let upper: i64 = expect_i64(&call.args[1])?;
+    let lower: i64 = expect_arg_i64(&call.args[0], "lower bound")?;
+    let upper: i64 = expect_arg_i64(&call.args[1], "upper bound")?;
     let range = lower..upper;
 
     // Because we materialize the entire list, it's easy to cause out of memory
@@ -729,6 +734,45 @@ builtin_method!("Set.sum", () -> Number, const SET_SUM, builtin_set_sum);
 fn builtin_set_sum(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     builtin_sum_impl(call, set)
+}
+
+builtin_method!(
+    "Number.round",
+    (n_decimals: Number) -> Number,
+    const NUMBER_ROUND,
+    builtin_number_round
+);
+fn builtin_number_round(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let arg = &call.call.args[0];
+    let n_decimals = expect_arg_i64(arg, "number of decimals")?;
+
+    if n_decimals < 0 {
+        return arg
+            .span
+            .error("Cannot round to negative decimals, decimals must be at least 0.")
+            .err();
+    }
+    if n_decimals > 100 {
+        // The representation allows up to 255 decimals, but we also have this
+        // property that RCL should be able to read its own output, and we have
+        // a limit on the length of number literals. If we allow 255 decimals,
+        // the formatted number can exceed that limit. Given that we have an
+        // arbitrary limit anyway, and that even 50 decimals would be silly, I
+        // think a limit of 100 decimals should be fine. RCL is not an arbitrary
+        // precision calculator, use a different language if you need that many
+        // decimals.
+        return arg
+            .span
+            .error("Number of decimals can be at most 100.")
+            .err();
+    }
+    match call.receiver.expect_number().round(n_decimals as u8) {
+        Some(d) => Ok(Value::Number(d)),
+        None => call
+            .method_span
+            .error("Overflow while rounding number.")
+            .err(),
+    }
 }
 
 /// Which function to implement in [`builtin_any_all_impl`].

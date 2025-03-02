@@ -1,0 +1,19 @@
+// We can have 18 or 19 significant digits. For x, the mantissa is
+// i64::MAX / 10, so that one can be extended to 19 digits. But for
+// y, there it no longer fits.
+let x = 0.922337203685477580;
+let y = 0.922337203685477581;
+[x.round(18), x.round(19), y.round(18), y.round(19)]
+
+# output:
+stdin:6:43
+  ╷
+6 │ [x.round(18), x.round(19), y.round(18), y.round(19)]
+  ╵                                           ^~~~~
+Error: Overflow while rounding number.
+
+stdin:6:48
+  ╷
+6 │ [x.round(18), x.round(19), y.round(18), y.round(19)]
+  ╵                                                ^
+In call to method 'Number.round'.

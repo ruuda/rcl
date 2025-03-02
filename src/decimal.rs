@@ -295,6 +295,73 @@ impl Decimal {
         Some(result)
     }
 
+    /// Round the number to the nearest multiple of 10^{-n_decimals}.
+    ///
+    /// This moves the exponent into the mantissa, so the result always has the
+    /// exponent set to 0. This means that round is not that useful beyond the
+    /// range of an i64, but that's fine for now. Rounds away from 0.
+    ///
+    /// Returns `None` on overflow.
+    pub fn round(&self, n_decimals: u8) -> Option<Decimal> {
+        match n_decimals as i32 - self.decimals as i32 + self.exponent as i32 {
+            // The mantissa is already correct for the requested number of decimals.
+            0 => {
+                let result = Decimal {
+                    mantissa: self.mantissa,
+                    exponent: 0,
+                    decimals: n_decimals,
+                };
+                Some(result)
+            }
+
+            // We have to add additional decimals. The maximum power of 2 we can
+            // represent is 2^18, beyond that we will certainly get overflow.
+            d if d > 0 && d <= 18 => {
+                let f = 10_i64.pow(d as u32);
+                let result = Decimal {
+                    mantissa: self.mantissa.checked_mul(f)?,
+                    exponent: 0,
+                    decimals: n_decimals,
+                };
+                Some(result)
+            }
+
+            // d is negative, we have to remove decimals.
+            d if d < 0 && d >= -18 => {
+                let f = 10_i64.pow((-d) as u32);
+                // We want `round`, not `floor`, so add half the range.
+                // Negate if the mantissa is negative so we round away from 0.
+                let b = if self.mantissa > 0 { f / 2 } else { -f / 2 };
+                let result = Decimal {
+                    mantissa: self.mantissa.saturating_add(b) / f,
+                    exponent: 0,
+                    decimals: n_decimals,
+                };
+                Some(result)
+            }
+
+            // We have to remove so many decimals that none remain. In other
+            // words, this factor f that we compute in the branch above, it
+            // doesn't fit in an i64, which means that if we divide the mantissa
+            // by it, we get zero.
+            d if d < -18 => {
+                let result = Decimal {
+                    mantissa: 0,
+                    exponent: 0,
+                    decimals: n_decimals,
+                };
+                Some(result)
+            }
+
+            d => {
+                // The factor f = 10^d does not fit in an i64, so we would
+                // overflow the mantissa.
+                debug_assert!(d > 18, "All other branches are covered.");
+                None
+            }
+        }
+    }
+
     /// Convert to a float. For many decimals this will be a lossy operation.
     pub fn to_f64_lossy(&self) -> f64 {
         let n = self.mantissa as f64;

@@ -1,0 +1,16 @@
+// Scaling the mantissa to 19 significant digits would overflow,
+// 10^19 does not fit in an i64.
+[(1).round(18), (1).round(19)]
+
+# output:
+stdin:3:21
+  ╷
+3 │ [(1).round(18), (1).round(19)]
+  ╵                     ^~~~~
+Error: Overflow while rounding number.
+
+stdin:3:26
+  ╷
+3 │ [(1).round(18), (1).round(19)]
+  ╵                          ^
+In call to method 'Number.round'.
