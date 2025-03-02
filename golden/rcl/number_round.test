@@ -1,4 +1,9 @@
 [
+  // The mantissa is left unadjusted, though the exponent may change.
+  (42).round(0),
+  0.42e2.round(0),
+  4.2.round(1),
+
   // Cases where we have to add decimals.
   (0).round(3),
   1.1.round(3),
@@ -31,6 +36,9 @@
 
 # output:
 [
+  42,
+  42,
+  4.2,
   0.000,
   1.100,
   100.000,

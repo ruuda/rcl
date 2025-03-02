@@ -304,8 +304,15 @@ impl Decimal {
     /// Returns `None` on overflow.
     pub fn round(&self, n_decimals: u8) -> Option<Decimal> {
         match n_decimals as i32 - self.decimals as i32 + self.exponent as i32 {
-            // The number already has exactly the requested number of decimals.
-            0 => Some(*self),
+            // The mantissa is already correct for the requested number of decimals.
+            0 => {
+                let result = Decimal {
+                    mantissa: self.mantissa,
+                    exponent: 0,
+                    decimals: n_decimals,
+                };
+                Some(result)
+            }
 
             // We have to add additional decimals. The maximum power of 2 we can
             // represent is 2^18, beyond that we will certainly get overflow.
