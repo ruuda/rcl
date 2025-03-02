@@ -12,7 +12,7 @@ let root = import "//Cargo.rcl";
   grammars = {
     rcl = {
       repository = "https://github.com/rcl-lang/tree-sitter-rcl",
-      commit = "c7cd31054e54411165acb968091e3e44172cb65c",
+      commit = "e371920de7d1921a4ac9c6d78bd74ea3e94dfade",
     }
   }
 }
