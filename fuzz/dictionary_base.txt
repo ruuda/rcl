@@ -1,0 +1,30 @@
+# Operators
+"*"
+"+"
+"-"
+"/"
+"=>"
+"=="
+">="
+"<="
+">"
+"<"
+
+# Collection literals.
+"[]"
+"{}"
+
+# String literals and escape sequences.
+"\"\"\""
+"\\\""
+"\\\\"
+"\\u{1f574}"
+"f\""
+"f\"\"\""
+
+# Some examples of numbers.
+"0x1"
+"0b1"
+"0.1e1"
+# The maximum value of an i64, to make the fuzzer more likely to hit overflows.
+"0x7fffffffffffffff"
