@@ -10,43 +10,6 @@
 use crate::lexer::{Lexeme, Token};
 use crate::markup::{Markup, MarkupString};
 
-// TODO: These are now unused. Bring back highlighting of builtins.
-#[allow(dead_code)]
-const BUILTINS: &[&str] = &[
-    "all",
-    "any",
-    "chars",
-    "contains",
-    "empty_set",
-    "ends_with",
-    "enumerate",
-    "except",
-    "filter",
-    "flat_map",
-    "fold",
-    "get",
-    "group_by",
-    "join",
-    "key_by",
-    "keys",
-    "len",
-    "map",
-    "parse_int",
-    "remove_prefix",
-    "remove_suffix",
-    "replace",
-    "reverse",
-    "sort",
-    "split",
-    "split_lines",
-    "starts_with",
-    "std",
-    "sum",
-    "to_lowercase",
-    "to_uppercase",
-    "values",
-];
-
 fn get_markup(token: &Token) -> Markup {
     match token {
         Token::LineComment => Markup::Comment,

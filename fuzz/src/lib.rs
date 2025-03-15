@@ -5,6 +5,7 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+pub mod builtins;
 pub mod random;
 pub mod smith;
 pub mod uber;
