@@ -22,53 +22,8 @@ use std::fmt::Formatter;
 
 use arbitrary::{Arbitrary, Unstructured};
 
+use crate::builtins::{BUILTINS, BUILTIN_TYPES};
 use crate::uber::Mode;
-
-// TODO: Deduplicate these between various sources ...
-/// Names of built-in variables and methods.
-const BUILTINS: &[&str] = &[
-    // Methods
-    "all",
-    "any",
-    "chars",
-    "contains",
-    "ends_with",
-    "enumerate",
-    "except",
-    "filter",
-    "flat_map",
-    "fold",
-    "get",
-    "group_by",
-    "join",
-    "key_by",
-    "keys",
-    "len",
-    "map",
-    "parse_int",
-    "remove_prefix",
-    "remove_suffix",
-    "replace",
-    "reverse",
-    "round",
-    "sort",
-    "sort_by",
-    "split",
-    "split_lines",
-    "starts_with",
-    "sum",
-    "to_lowercase",
-    "to_uppercase",
-    "values",
-    // Stdlib and its functions
-    "range",
-    "read_file_utf8",
-    "std",
-];
-
-const BUILTIN_TYPES: &[&str] = &[
-    "Any", "Bool", "Dict", "List", "Null", "Number", "Set", "String", "Union", "Void",
-];
 
 const LITERALS: &[&str] = &["true", "false", "null"];
 
@@ -322,7 +277,7 @@ impl<'a> ProgramBuilder<'a> {
                 self.type_stack.push(arg);
             }
             Op::TypePushBuiltin => {
-                self.type_stack.push(nth(BUILTIN_TYPES, n).unwrap());
+                self.type_stack.push(BUILTIN_TYPES[n as usize].to_string());
             }
             Op::TypeApply => {
                 let constructor = self.type_stack.pop()?;
@@ -371,7 +326,7 @@ impl<'a> ProgramBuilder<'a> {
                 self.expr_stack.push(nth(LITERALS, n).unwrap());
             }
             Op::ExprPushBuiltin => {
-                self.expr_stack.push(nth(BUILTINS, n).unwrap());
+                self.expr_stack.push(BUILTINS[n as usize].to_string());
             }
             Op::ExprPushInput => {
                 // If we allow arbitrary input, including punctuation, up to any
