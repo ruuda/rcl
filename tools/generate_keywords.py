@@ -12,6 +12,9 @@ This scripts generates files that contain references to the keywords and builtin
 so that there is a single source of truth. We take the Pygments lexer in
 //grammar/pygments as that source of truth, as it's a Python script that is easily
 importable here.
+
+TODO: Add a check mode that verifies that the generated files are up to date,
+and run it from a check in the Nix flake, so that CI will fail if we get it wrong.
 """
 
 import hashlib
