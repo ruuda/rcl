@@ -68,7 +68,6 @@ BUILTINS = (
     "to_lowercase",
     "to_uppercase",
     "values",
-
     # std and its members
     "empty_set",
     "range",
