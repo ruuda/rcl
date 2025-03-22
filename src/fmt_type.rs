@@ -25,6 +25,10 @@ pub fn format_type(type_: &Type) -> Doc {
         }
 
         // Collection types.
+        Type::Collection(element_type) => concat! {
+            Doc::from("Collection").with_markup(Markup::Type)
+            format_types("[", [(None, &element_type.type_)], "]")
+        },
         Type::Dict(kv) => concat! {
             Doc::from("Dict").with_markup(Markup::Type)
             format_types("[", [(None, &kv.key.type_), (None, &kv.value.type_)], "]")
@@ -37,6 +41,7 @@ pub fn format_type(type_: &Type) -> Doc {
             Doc::from("Set").with_markup(Markup::Type)
             format_types("[", [(None, &element_type.type_)], "]")
         },
+
         Type::Union(union) => concat! {
             Doc::from("Union").with_markup(Markup::Type)
             format_types("[", union.members.iter().map(|st| (None, &st.type_)), "]")
@@ -164,6 +169,10 @@ impl<'a> DiffFormatter<'a> {
             },
             Mismatch::Set(element) => concat! {
                 Doc::from("Set").with_markup(Markup::Type)
+                Self::format_types("[", [element.as_ref()], "]", |t| self.format_type_diff(t))
+            },
+            Mismatch::Collection(element) => concat! {
+                Doc::from("Collection").with_markup(Markup::Type)
                 Self::format_types("[", [element.as_ref()], "]", |t| self.format_type_diff(t))
             },
             Mismatch::Dict(key, value) => concat! {

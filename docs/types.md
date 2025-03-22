@@ -38,7 +38,7 @@ The primitive types are:
 
 ## Collection types
 
-There are three built-in generic collection types:
+There are three generic collection types:
 
  * `Dict[K, V]`, a dictionary with keys of type `K` and values of type `V`.
  * `List[T]`, a list with elements of type `T`.
@@ -53,6 +53,9 @@ let port_names: Dict[Number, String] = {
   443: "https",
 };
 ```
+
+In addition to the fundamental collection types, `Collection[T]` is the
+supertype of `List[T]` and `Set[T]`.
 
 ## Record types
 
