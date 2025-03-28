@@ -78,6 +78,7 @@ BUILTINS = (
 TYPES = (
     "Any",
     "Bool",
+    "Collection",
     "Dict",
     "List",
     "Null",
