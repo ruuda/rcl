@@ -7,6 +7,7 @@ requests, please consider:
    Put unrelated changes in separate commits.
  * Basic checks (formatting, `rustfmt` and `black`, and typechecks,
    `cargo check` and `mypy --strict`) should pass at every commit.
+ * Contributions must be authored by a human, LLM-generated code is not allowed.
  * You agree to license your contribution under the Apache 2.0 license.
 
 # Code of conduct
