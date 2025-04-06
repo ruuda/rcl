@@ -77,5 +77,5 @@ let ys = [
 ```
 
 [^1]: This was inspired by how the Black Python formatter
-      [treats trailing trailing commas][magic-comma].
+      [treats trailing commas][magic-comma].
 [magic-comma]: https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#the-magic-trailing-comma
