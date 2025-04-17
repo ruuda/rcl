@@ -34,6 +34,7 @@ nav:
       - "Glossary": "glossary.md"
   - "Language reference":
       - "Standard library": "stdlib.md"
+      - "Collection": "type_collection.md"
       - "Dict": "type_dict.md"
       - "List": "type_list.md"
       - "Number": "type_number.md"
