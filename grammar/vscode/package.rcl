@@ -1,0 +1,36 @@
+let root = import "//Cargo.rcl";
+
+{
+  name = "rcl",
+  displayName = "RCL",
+  description = "Support for the RCL configuration language.",
+  version = root.package.version,
+  license = root.package.license,
+  author = { name = "Ruud van Asseldonk" },
+  publisher = "TODO",
+
+  engines = { vscode = "^1.100.0" },
+  categories = ["Programming Languages"],
+
+  repository = { type = "git", url = "https://github.com/ruuda/rcl.git" },
+  homepage = "https://rcl-lang.org",
+
+  contributes = {
+    languages = [
+      {
+        id = "rcl",
+        aliases = ["RCL"],
+        extensions = [".rcl"],
+        // TODO: Is a language-configuration.json mandatory?
+        // We can add one later, let's focus on the grammar first.
+      },
+    ],
+    grammars = [
+      {
+        language = "rcl",
+        scopeName = "text.rcl",
+        path = "./rcl.tmLanguage.json",
+      },
+    ],
+  },
+}

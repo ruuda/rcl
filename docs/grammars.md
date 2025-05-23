@@ -42,6 +42,11 @@ to use for highlighting, similar to scopes for Tree Sitter.
 
 [vim-groups]: https://vimhelp.org/syntax.txt.html#group-name
 
+## Visual Studio Code
+
+The `vscode` directory contains the Visual Studio Code plugin including TextMate
+grammar.
+
 ## Zed
 
 The `zed` directory contains the Zed plugin. This directory is the source of
