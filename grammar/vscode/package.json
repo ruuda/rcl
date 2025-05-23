@@ -1,0 +1,23 @@
+{
+  "author": {"name": "Ruud van Asseldonk"},
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "grammars": [
+      {
+        "language": "rcl",
+        "path": "./rcl.tmLanguage.json",
+        "scopeName": "text.rcl"
+      }
+    ],
+    "languages": [{"aliases": ["RCL"], "extensions": [".rcl"], "id": "rcl"}]
+  },
+  "description": "Support for the RCL configuration language.",
+  "displayName": "RCL",
+  "engines": {"vscode": "^1.100.0"},
+  "homepage": "https://rcl-lang.org",
+  "license": "Apache-2.0",
+  "name": "rcl",
+  "publisher": "TODO",
+  "repository": {"type": "git", "url": "https://github.com/ruuda/rcl.git"},
+  "version": "0.8.0"
+}

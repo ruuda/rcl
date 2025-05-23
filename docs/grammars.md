@@ -33,6 +33,7 @@ basis of various editor integrations. It has [its own chapter][ts].
 The following directories contain editor-specific extensions:
 
  * `rcl.vim`
+ * `vscode`
  * `zed`
 
 See the [syntax highlighting chapter][sh] for how to use them.
