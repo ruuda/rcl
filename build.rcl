@@ -30,6 +30,10 @@ let opts_toml = {
     format = "json",
     contents = import "//grammar/vscode/package.rcl",
   },
+  "grammar/vscode/rcl.tmLanguage.json": {
+    format = "json",
+    contents = import "//grammar/vscode/rcl.tmLanguage.rcl",
+  },
   "grammar/zed/extension.toml":
     opts_toml
     | { contents = import "//grammar/zed/extension.rcl" },
