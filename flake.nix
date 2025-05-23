@@ -158,7 +158,7 @@
 
           pythonSources = pkgs.lib.sourceFilesBySuffices ./. [ ".py" ".pyi" ];
 
-          rclTomlSources = pkgs.lib.sourceFilesBySuffices ./. [ ".rcl" ".toml" ];
+          rclGeneratedSources = pkgs.lib.sourceFilesBySuffices ./. [ ".rcl" ".toml" ".json" ];
 
           goldenSources = ./golden;
 
@@ -503,14 +503,14 @@
                 "check-fmt-rcl"
                 { buildInputs = [ debugBuild ]; }
                 ''
-                rcl format --check ${rclTomlSources}/**.rcl | tee $out
+                rcl format --check ${rclGeneratedSources}/**.rcl | tee $out
                 '';
 
               buildRcl = pkgs.runCommand
                 "check-rcl-build"
                 { buildInputs = [ debugBuild ]; }
                 ''
-                rcl build --check --directory ${rclTomlSources} | tee $out
+                rcl build --check --directory ${rclGeneratedSources} | tee $out
                 '';
 
               # Build documentation with warnings denied, so the check fails if
@@ -561,7 +561,7 @@
                 RCL_BIN=${coverageBuild}/bin/rcl python3 ${goldenSources}/run.py
 
                 # Also run `rcl build` to make sure we cover that part of the application.
-                ${coverageBuild}/bin/rcl build --check --directory ${rclTomlSources}
+                ${coverageBuild}/bin/rcl build --check --directory ${rclGeneratedSources}
 
                 # Copy in the .profraw files from the tests.
                 cp ${coverageBuild}/prof/*.profraw .
