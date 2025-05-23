@@ -1,0 +1,39 @@
+// RCL -- A reasonable configuration language.
+// Copyright 2025 Ruud van Asseldonk
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// A copy of the License has been included in the root of the repository.
+
+{
+  scopeName = "source.rcl",
+  patterns = [{ include = "#expression" }],
+
+  repository = {
+    array = {
+      begin = "\\[",
+      beginCaptures = {
+        "0": { name = "punctuation.definition.array.begin.rcl" },
+      },
+      end = "\\]",
+      endCaptures = { "0": { name = "punctuation.definition.array.end.rcl" } },
+      name = "meta.structure.array.json",
+      patterns = [
+        { include = "#value" },
+        { match = ",", name = "punctuation.separator.array.rcl" },
+      ],
+    },
+
+    constant = {
+      match = "\\b(?:true|false|null)\\b",
+      name = "constant.language.rcl",
+    },
+
+    value = {
+      patterns = [
+        { include = "#array" },
+        { include = "#constant" },
+      ],
+    },
+  },
+}

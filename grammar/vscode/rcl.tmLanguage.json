@@ -1,0 +1,22 @@
+{
+  "patterns": [{"include": "#expression"}],
+  "repository": {
+    "array": {
+      "begin": "\\[",
+      "beginCaptures": {"0": {"name": "punctuation.definition.array.begin.rcl"}},
+      "end": "\\]",
+      "endCaptures": {"0": {"name": "punctuation.definition.array.end.rcl"}},
+      "name": "meta.structure.array.json",
+      "patterns": [
+        {"include": "#value"},
+        {"match": ",", "name": "punctuation.separator.array.rcl"}
+      ]
+    },
+    "constant": {
+      "match": "\\b(?:true|false|null)\\b",
+      "name": "constant.language.rcl"
+    },
+    "value": {"patterns": [{"include": "#array"}, {"include": "#constant"}]}
+  },
+  "scopeName": "source.rcl"
+}
