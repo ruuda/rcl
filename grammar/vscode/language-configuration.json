@@ -1,0 +1,12 @@
+{
+  "autoCloseBefore": ":.,",
+  "autoClosingPairs": [
+    {"close": "}", "open": "{"},
+    {"close": "]", "open": "["},
+    {"close": ")", "open": "("},
+    {"close": "\"", "notIn": ["string"], "open": "\""}
+  ],
+  "brackets": [["{", "}"], ["[", "]"], ["(", ")"]],
+  "comments": {"lineComment": "//"},
+  "surroundingPairs": [["\"", "\""], ["(", ")"], ["[", "]"], ["{", "}"]]
+}

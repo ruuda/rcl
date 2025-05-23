@@ -21,8 +21,7 @@ let root = import "//Cargo.rcl";
         id = "rcl",
         aliases = ["RCL"],
         extensions = [".rcl"],
-        // TODO: Is a language-configuration.json mandatory?
-        // We can add one later, let's focus on the grammar first.
+        configuration = "./language-configuration.json",
       },
     ],
     grammars = [

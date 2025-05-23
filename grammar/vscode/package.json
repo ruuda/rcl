@@ -9,7 +9,14 @@
         "scopeName": "text.rcl"
       }
     ],
-    "languages": [{"aliases": ["RCL"], "extensions": [".rcl"], "id": "rcl"}]
+    "languages": [
+      {
+        "aliases": ["RCL"],
+        "configuration": "./language-configuration.json",
+        "extensions": [".rcl"],
+        "id": "rcl"
+      }
+    ]
   },
   "description": "Support for the RCL configuration language.",
   "displayName": "RCL",
