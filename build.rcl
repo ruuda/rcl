@@ -28,8 +28,11 @@ let target_json = contents => {
   "grammar/tree-sitter-rcl/Cargo.toml": target_toml(
     import "//grammar/tree-sitter-rcl/Cargo.rcl",
   ),
+  "grammar/vscode/language-configuration.json": target_json(
+    import "//grammar/vscode/language-configuration.rcl"
+  ),
   "grammar/vscode/package.json": target_json(
-    import "//grammar/vscode/package.rcl",
+    import "//grammar/vscode/package.rcl"
   ),
   "grammar/zed/extension.toml": target_toml(
     import "//grammar/zed/extension.rcl",
