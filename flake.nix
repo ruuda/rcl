@@ -268,6 +268,29 @@
             RUSTFLAGS = "-C instrument-coverage -C link-dead-code -C debug-assertions";
           });
 
+          vscode-extension = pkgs.stdenv.mkDerivation {
+            pname = "rcl-vscode";
+            inherit version;
+            src = ./grammar/vscode;
+            nativeBuildInputs = [ pkgs.vsce ];
+            doCheck = false;
+            buildPhase =
+              ''
+              # We want only the json files, not the RCL sources. Also, the
+              # `vsce` tool complains if there is no LICENSE file, so copy it
+              # in.
+              rm *.rcl
+              cp ${./LICENSE} LICENSE
+
+              # TODO: The VSIX file is just a zip file of the directory, with
+              # two additional XML files in it. One of them may be kind of a
+              # pain to generate, but on the other hand, we could skip nodejs
+              # if we build the zip file ourselves.
+              mkdir -p $out
+              vsce package --no-dependencies --out $out/rcl-${version}.vsix
+              '';
+          };
+
         in
           rec {
             devShells.default = pkgs.mkShell {
@@ -391,7 +414,7 @@
             };
 
             packages = {
-              inherit fuzzers-coverage rcl pyrcl treeSitterRcl website;
+              inherit fuzzers-coverage rcl pyrcl treeSitterRcl vscode-extension website;
 
               default = rcl;
               wasm = rcl-wasm;
