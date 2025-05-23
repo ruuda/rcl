@@ -31,6 +31,8 @@ let target_json = contents => {
   "grammar/vscode/language-configuration.json": target_json(
     import "//grammar/vscode/language-configuration.rcl",
   ),
+  // TODO: Maybe instead of checking these generated json files
+  // in to the repository, we can just generate them at package build time.
   "grammar/vscode/package.json": target_json(
     import "//grammar/vscode/package.rcl",
   ),
