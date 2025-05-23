@@ -27,7 +27,7 @@ let root = import "//Cargo.rcl";
     grammars = [
       {
         language = "rcl",
-        scopeName = "text.rcl",
+        scopeName = "source.rcl",
         path = "./rcl.tmLanguage.json",
       },
     ],

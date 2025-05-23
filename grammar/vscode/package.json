@@ -6,7 +6,7 @@
       {
         "language": "rcl",
         "path": "./rcl.tmLanguage.json",
-        "scopeName": "text.rcl"
+        "scopeName": "source.rcl"
       }
     ],
     "languages": [
