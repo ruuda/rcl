@@ -1,22 +1,60 @@
 {
   "patterns": [{"include": "#expression"}],
   "repository": {
-    "array": {
-      "begin": "\\[",
-      "beginCaptures": {"0": {"name": "punctuation.definition.array.begin.rcl"}},
-      "end": "\\]",
-      "endCaptures": {"0": {"name": "punctuation.definition.array.end.rcl"}},
-      "name": "meta.structure.array.json",
-      "patterns": [
-        {"include": "#value"},
-        {"match": ",", "name": "punctuation.separator.array.rcl"}
-      ]
-    },
     "constant": {
       "match": "\\b(?:true|false|null)\\b",
       "name": "constant.language.rcl"
     },
-    "value": {"patterns": [{"include": "#array"}, {"include": "#constant"}]}
+    "expression": {
+      "patterns": [
+        {"include": "#term_bracket"},
+        {"include": "#term_brace"},
+        {"include": "#term_parens"},
+        {"include": "#constant"}
+      ]
+    },
+    "term_brace": {
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": {"name": "punctuation.definition.term_brace.begin.rcl"}
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {"name": "punctuation.definition.term_brace.end.rcl"}
+      },
+      "name": "meta.structure.term_brace.rcl",
+      "patterns": [
+        {"include": "#expression"},
+        {"match": ",", "name": "punctuation.separator.term_brace.rcl"}
+      ]
+    },
+    "term_bracket": {
+      "begin": "\\[",
+      "beginCaptures": {
+        "0": {"name": "punctuation.definition.term_bracket.begin.rcl"}
+      },
+      "end": "\\]",
+      "endCaptures": {
+        "0": {"name": "punctuation.definition.term_bracket.end.rcl"}
+      },
+      "name": "meta.structure.term_bracket.rcl",
+      "patterns": [
+        {"include": "#expression"},
+        {"match": ",", "name": "punctuation.separator.term_bracket.rcl"}
+      ]
+    },
+    "term_parens": {
+      "begin": "\\(",
+      "beginCaptures": {
+        "0": {"name": "punctuation.definition.term_parens.begin.rcl"}
+      },
+      "end": "\\)",
+      "endCaptures": {
+        "0": {"name": "punctuation.definition.term_parens.end.rcl"}
+      },
+      "name": "meta.structure.term_parens.rcl",
+      "patterns": [{"include": "#expression"}]
+    }
   },
   "scopeName": "source.rcl"
 }
