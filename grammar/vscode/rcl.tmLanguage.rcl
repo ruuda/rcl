@@ -9,29 +9,43 @@
   scopeName = "source.rcl",
   patterns = [{ include = "#expression" }],
 
-  repository = {
-    array = {
-      begin = "\\[",
-      beginCaptures = {
-        "0": { name = "punctuation.definition.array.begin.rcl" },
-      },
-      end = "\\]",
-      endCaptures = { "0": { name = "punctuation.definition.array.end.rcl" } },
-      name = "meta.structure.array.json",
-      patterns = [
-        { include = "#value" },
-        { match = ",", name = "punctuation.separator.array.rcl" },
-      ],
+  // First we define some helpers, because all collections are very similar,
+  // and it's quite verbose to define in TextMate grammar.
+  let patterns_sep_comma = name => [
+    { include = "#expression" },
+    { match = ",", name = f"punctuation.separator.{name}.rcl" },
+  ];
+  let delimited = (name, begin, end, patterns) => {
+    begin = begin,
+    beginCaptures = {
+      "0": { name = f"punctuation.definition.{name}.begin.rcl" },
     },
+    end = end,
+    endCaptures = { "0": { name = f"punctuation.definition.{name}.end.rcl" } },
+    name = f"meta.structure.{name}.rcl",
+    patterns = patterns(name),
+  };
+
+  repository = {
+    term_bracket = delimited("term_bracket", "\\[", "\\]", patterns_sep_comma),
+    term_brace = delimited("term_brace", "\\{", "\\}", patterns_sep_comma),
+    term_parens = delimited(
+      "term_parens",
+      "\\(",
+      "\\)",
+      _name => [{ include = "#expression" }],
+    ),
 
     constant = {
       match = "\\b(?:true|false|null)\\b",
       name = "constant.language.rcl",
     },
 
-    value = {
+    expression = {
       patterns = [
-        { include = "#array" },
+        { include = "#term_bracket" },
+        { include = "#term_brace" },
+        { include = "#term_parens" },
         { include = "#constant" },
       ],
     },
