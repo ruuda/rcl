@@ -15,6 +15,7 @@ But got this value:
 
   {
     empty_set = std.empty_set,
+    format_json = std.format_json,
     range = std.range,
     read_file_utf8 = std.read_file_utf8,
   }

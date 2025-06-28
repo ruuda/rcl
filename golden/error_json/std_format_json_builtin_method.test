@@ -1,0 +1,19 @@
+// Similar to builtin_method.test, except here the error is generated inside
+// the call to format_json. We nest the invalid value in a list to also stress
+// the location reporting.
+std.format_json(["test".len])
+
+# output:
+stdin:4:17
+  ╷
+4 │ std.format_json(["test".len])
+  ╵                 ^~~~~~~~~~~~
+in value
+at index 0
+Error: Methods cannot be exported as json.
+
+stdin:4:16
+  ╷
+4 │ std.format_json(["test".len])
+  ╵                ^
+In call to function 'std.format_json'.
