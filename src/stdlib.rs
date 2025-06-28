@@ -45,6 +45,19 @@ fn builtin_std_read_file_utf8(eval: &mut Evaluator, call: FunctionCall) -> Resul
     Ok(eval.loader.get_doc(doc).data.into())
 }
 
+builtin_function!(
+    "std.format_json",
+    (value: Any) -> String,
+    const STD_FORMAT_JSON,
+    builtin_std_format_json
+);
+fn builtin_std_format_json(_eval: &mut Evaluator, call: FunctionCall) -> Result<Value> {
+    let arg = &call.args[0];
+    let doc = crate::fmt_json::format_json(arg.span, &arg.value)?;
+    let result = doc.print_wide().to_string_no_markup();
+    Ok(Value::String(result.into()))
+}
+
 /// Extract an i64 from a call argument, or return an error if it's not an integer.
 fn expect_arg_i64(arg: &CallArg<Value>, arg_name: &'static str) -> Result<i64> {
     match arg.value.to_i64() {
@@ -108,6 +121,10 @@ pub fn initialize() -> Value {
     let mut builtins: BTreeMap<Value, Value> = BTreeMap::new();
 
     builtins.insert("empty_set".into(), Value::Set(Rc::new(BTreeSet::new())));
+    builtins.insert(
+        "format_json".into(),
+        Value::BuiltinFunction(&STD_FORMAT_JSON),
+    );
     builtins.insert("range".into(), Value::BuiltinFunction(&STD_RANGE));
     builtins.insert(
         "read_file_utf8".into(),

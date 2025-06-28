@@ -394,6 +394,14 @@ impl<'a> Doc<'a> {
         printer.flush_newline();
         printer.into_inner()
     }
+
+    /// Print in wide mode, without trailing newline.
+    pub fn print_wide(&self) -> MarkupString {
+        let config = Config { width: None };
+        let mut printer: Printer = Printer::new(&config);
+        self.print_to(&mut printer, Mode::Wide);
+        printer.into_inner()
+    }
 }
 
 impl<'a> From<&'a str> for Doc<'a> {
@@ -544,7 +552,7 @@ mod printer {
 
     impl<'a> Printer<'a> {
         /// Create a new printer with the given line width target.
-        pub fn new(config: &Config) -> Printer {
+        pub fn new<'c>(config: &'c Config) -> Printer<'a> {
             Printer {
                 out: MarkupString::new(),
                 width: config.width,
