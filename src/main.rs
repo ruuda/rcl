@@ -88,7 +88,7 @@ impl App {
         let stdout = std::io::stdout();
         let markup = self.get_markup_for_target(&output, &stdout);
         let cfg = pprint::Config {
-            width: style_opts.width,
+            width: Some(style_opts.width),
         };
         let result = doc.println(&cfg);
         match output {
@@ -109,7 +109,7 @@ impl App {
             .opts
             .markup
             .unwrap_or_else(|| MarkupMode::default_for_fd(&stderr));
-        let cfg = pprint::Config { width: 80 };
+        let cfg = pprint::Config { width: Some(80) };
         let result = doc.println(&cfg);
         let mut out = stderr.lock();
         self.print_string(markup, result, &mut out);
@@ -154,7 +154,7 @@ impl App {
         targets: FormatTarget,
     ) -> Result<()> {
         let cfg = pprint::Config {
-            width: style_opts.width,
+            width: Some(style_opts.width),
         };
         let (is_write_in_place, fnames) = match targets {
             FormatTarget::Stdout { fname } => {

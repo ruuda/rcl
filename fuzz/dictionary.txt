@@ -81,6 +81,7 @@
 "to_uppercase"
 "values"
 "empty_set"
+"format_json"
 "range"
 "read_file_utf8"
 "std"

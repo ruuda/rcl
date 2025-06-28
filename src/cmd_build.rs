@@ -207,7 +207,7 @@ pub fn execute_build(
         }
 
         let print_cfg = Config {
-            width: target.width,
+            width: Some(target.width),
         };
         let result = doc.println(&print_cfg);
 

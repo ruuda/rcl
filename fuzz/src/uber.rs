@@ -65,36 +65,36 @@ pub fn fuzz_main(mode: Mode, input: &str) {
     if let Err(err) = result {
         let inputs = loader.as_inputs();
         let err_doc = err.report(&inputs);
-        let cfg = pprint::Config { width: 80 };
+        let cfg = pprint::Config { width: Some(80) };
         let _ = err_doc.println(&cfg);
     }
 }
 
 fn fuzz_main_impl(loader: &mut Loader, mode: Mode, input: &str) -> Result<()> {
-    let mut cfg = pprint::Config { width: 80 };
+    let mut cfg = pprint::Config { width: Some(80) };
 
     match mode {
         Mode::Eval => {
             let _ = eval(loader, input);
         }
         Mode::FormatIdempotent { width } => {
-            cfg.width = width;
+            cfg.width = Some(width);
             let _ = fuzz_fmt(loader, input, cfg);
         }
         Mode::EvalJsonIdempotent { width } => {
-            cfg.width = width;
+            cfg.width = Some(width);
             let _ = fuzz_eval_json_idempotent(loader, input, cfg);
         }
         Mode::EvalJsonCheck { width } => {
-            cfg.width = width;
+            cfg.width = Some(width);
             let _ = fuzz_eval_json_check(loader, input, cfg);
         }
         Mode::EvalTomlCheck { width } => {
-            cfg.width = width;
+            cfg.width = Some(width);
             let _ = fuzz_eval_toml_check(loader, input, cfg);
         }
         Mode::EvalFormat { width } => {
-            cfg.width = width;
+            cfg.width = Some(width);
             let _ = fuzz_eval_format(loader, input, cfg);
         }
         Mode::EvalJsonSuperset => {

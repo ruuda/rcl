@@ -70,6 +70,7 @@ BUILTINS = (
     "values",
     # std and its members
     "empty_set",
+    "format_json",
     "range",
     "read_file_utf8",
     "std",
