@@ -72,6 +72,7 @@ fn parse_format(format: &str) -> Option<OutputFormat> {
     // Note, this is duplicated between the CLI parser.
     let f = match format {
         "json" => OutputFormat::Json,
+        "json-lines" => OutputFormat::JsonLines,
         "raw" => OutputFormat::Raw,
         "rcl" => OutputFormat::Rcl,
         "toml" => OutputFormat::Toml,

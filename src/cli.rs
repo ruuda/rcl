@@ -146,6 +146,9 @@ Options:
 
 Output format:
   json          Output pretty-printed JSON.
+  json-lines    If the document is a list, output every element as a JSON value
+                on its own line. Top-level values other than lists are not valid
+                for this format.
   raw           If the document is a string, output the string itself. If the
                 document is a list or set of strings, output each string on its
                 own line.
@@ -205,6 +208,7 @@ pub struct GlobalOptions {
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum OutputFormat {
     Json,
+    JsonLines,
     Raw,
     #[default]
     Rcl,
@@ -367,6 +371,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                 eval_opts.format = match_option! {
                     args: arg,
                     "json" => OutputFormat::Json,
+                    "json-lines" => OutputFormat::JsonLines,
                     "raw" => OutputFormat::Raw,
                     "rcl" => OutputFormat::Rcl,
                     "toml" => OutputFormat::Toml,
@@ -755,7 +760,7 @@ mod test {
         );
         assert_eq!(
             fail_parse(&["rcl", "eval", "infile", "--format=yamr"]),
-            "Error: Expected --format to be followed by one of json, raw, rcl, toml, yaml-stream. See --help for usage.\n"
+            "Error: Expected --format to be followed by one of json, json-lines, raw, rcl, toml, yaml-stream. See --help for usage.\n"
         );
         assert_eq!(
             fail_parse(&["rcl", "frobnicate", "infile"]),

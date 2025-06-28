@@ -31,6 +31,12 @@ Output in the given format. The following formats are supported:
   <dt>json</dt>
   <dd>Output pretty-printed <abbr>JSON</abbr>.</dd>
 
+  <dt>json-lines</dt>
+  <dd>If the document is a list, output every element as a <abbr>JSON</abbr>
+  value on its own line, consistent with the
+  <a href="https://jsonlines.org/"><abbr>JSON</abbr> lines</a> format.
+  Top-level values other than lists are not valid for this format.</dd>
+
   <dt>raw</dt>
   <dd>If the document is a string, output the string itself. If the document is
   a list or set of strings, output each string on its own line.</dd>
