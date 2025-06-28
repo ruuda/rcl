@@ -84,7 +84,9 @@ fn print_markup(max_len: u32, markup_string: &MarkupString, out_node: &Node) {
 
 /// Pretty-print a document, append it as DOM nodes.
 fn pprint_doc(cfg: &PrintConfig, doc: Doc, out_node: &Node) {
-    let pprint_cfg = pprint::Config { width: cfg.width };
+    let pprint_cfg = pprint::Config {
+        width: Some(cfg.width),
+    };
     let markup_string = doc.println(&pprint_cfg);
     print_markup(cfg.max_len, &markup_string, out_node);
 }

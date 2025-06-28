@@ -30,7 +30,7 @@ enum Mode {
 pub struct Config {
     /// The pretty printer will try to avoid creating lines longer than `width`
     /// columns, but this is not always possible.
-    pub width: u32,
+    pub width: Option<u32>,
 }
 
 /// A document tree that can be pretty-printed.
@@ -527,7 +527,7 @@ mod printer {
         out: MarkupString<'a>,
 
         /// Target width that we should try to not exceed.
-        width: u32,
+        width: Option<u32>,
 
         /// The width so far of the line that we are currently writing.
         line_width: u32,
@@ -620,10 +620,9 @@ mod printer {
 
         /// Report whether the current content still fits.
         fn fits(&self) -> PrintResult {
-            if self.line_width > self.width {
-                PrintResult::Overflow
-            } else {
-                PrintResult::Fits
+            match self.width {
+                Some(w) if self.line_width > w => PrintResult::Overflow,
+                _ => PrintResult::Fits,
             }
         }
 
@@ -696,7 +695,7 @@ mod test {
     use super::{Config, Doc};
 
     fn print_width(doc: &Doc, width: u32) -> String {
-        let config = Config { width };
+        let config = Config { width: Some(width) };
         doc.println(&config).to_string_no_markup()
     }
 

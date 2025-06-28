@@ -601,7 +601,7 @@ mod test {
     fn fail_parse(args: &[&'static str]) -> String {
         let args_vec: Vec<_> = args.iter().map(|a| a.to_string()).collect();
         let err = super::parse(args_vec).err().unwrap();
-        let cfg = Config { width: 80 };
+        let cfg = Config { width: Some(80) };
         err.report(&[]).println(&cfg).to_string_no_markup()
     }
 

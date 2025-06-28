@@ -39,7 +39,7 @@ impl StderrTracer {
     pub fn new(markup: Option<MarkupMode>) -> StderrTracer {
         let stderr = std::io::stderr();
         StderrTracer {
-            config: pprint::Config { width: 80 },
+            config: pprint::Config { width: Some(80) },
             markup: markup.unwrap_or_else(|| MarkupMode::default_for_fd(&stderr)),
         }
     }
