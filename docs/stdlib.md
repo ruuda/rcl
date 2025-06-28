@@ -14,6 +14,19 @@ An empty set. This constant exists, because without type annotations, `{}` is an
 empty dict rather than an empty set. This constant is the standard way to refer
 to an empty set.
 
+## format_json
+
+    std.format_json: (value: Any) -> String
+
+Format the value as json, in the same way that [`rcl evaluate --format=json`](rcl_evaluate.md)
+would, except without a maximum width, so the result contains no newlines.
+
+```rcl
+std.format_json({a = 1})
+// Evaluates to:
+"{\"a\": 1}"
+```
+
 ## range
 
     std.range: (lower: Number, upper: Number) -> List[Number]

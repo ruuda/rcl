@@ -14,6 +14,10 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Unreleased
+
+ * Add [`std.format_json`](stdlib.md#format_json) function.
+
 ## 0.8.0
 
 Released 2025-03-02.
