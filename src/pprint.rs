@@ -436,6 +436,17 @@ where
     }
 }
 
+impl<'a> From<MarkupString<'a>> for Doc<'a> {
+    /// Convert a `MarkupString` back into a `Doc`, preserving markup.
+    fn from(s: MarkupString<'a>) -> Doc<'a> {
+        let mut out = Vec::with_capacity(s.fragments.len());
+        for (fragment, markup) in &s.fragments {
+            out.push(Doc::Markup(*markup, Box::new(Doc::from(*fragment))));
+        }
+        Doc::Concat(out)
+    }
+}
+
 impl<'a> std::ops::Add<Doc<'a>> for Doc<'a> {
     type Output = Doc<'a>;
 
