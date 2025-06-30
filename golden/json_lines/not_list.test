@@ -1,0 +1,11 @@
+{
+  name = "Not allowed",
+  description = "The top level value must be a list for json-lines.",
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+Error: To format as JSON Lines, the top-level value must be a list.
