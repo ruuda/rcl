@@ -29,13 +29,11 @@ pub fn format_yaml_stream(caller: Span, v: &Value) -> Result<Doc> {
     let mut parts = Vec::new();
 
     for (i, element) in elements.iter().enumerate() {
-        if !parts.is_empty() {
-            parts.push(Doc::HardBreak)
-        }
+        formatter.path.push(PathElement::Index(i));
         parts.push(Doc::str("---").with_markup(Markup::Comment));
         parts.push(Doc::HardBreak);
-        formatter.path.push(PathElement::Index(i));
         parts.push(formatter.value(element)?);
+        parts.push(Doc::HardBreak);
         formatter.path.pop();
     }
 
