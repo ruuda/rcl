@@ -254,7 +254,7 @@ impl<'a> MarkupString<'a> {
         writeln!(out, "</code></pre>")
     }
 
-    /// Write the string to a write with the given markup mode.
+    /// Write the string to a `Write` with the given markup mode.
     pub fn write_bytes(&self, mode: MarkupMode, out: &mut dyn Write) -> std::io::Result<()> {
         match mode {
             MarkupMode::None => self.write_bytes_no_markup(out),

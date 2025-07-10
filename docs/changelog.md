@@ -17,6 +17,7 @@ compatibility impact will be clearly marked as such in the changelog.
 ## Unreleased
 
  * Add [`std.format_json`](stdlib.md#format_json) function.
+ * Add support for the [json-lines output format](rcl_evaluate.md#-f-format-format).
 
 ## 0.8.0
 

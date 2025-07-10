@@ -50,6 +50,7 @@ pub enum Mode {
     EvalTomlCheck { width: u32 },
     EvalFormat { width: u32 },
     EvalJsonSuperset,
+    EvalJsonLines,
 }
 
 pub fn fuzz_main(mode: Mode, input: &str) {
@@ -99,6 +100,9 @@ fn fuzz_main_impl(loader: &mut Loader, mode: Mode, input: &str) -> Result<()> {
         }
         Mode::EvalJsonSuperset => {
             fuzz_eval_json_superset(loader, input);
+        }
+        Mode::EvalJsonLines => {
+            let _ = fuzz_eval_json_lines(loader, input);
         }
     };
 
@@ -257,4 +261,20 @@ fn fuzz_eval_json_superset(loader: &mut Loader, input: &str) {
             }
         }
     }
+}
+
+/// Evaluate the input expression into json-lines.
+///
+/// Then check that the result contains exactly as many newline characters as
+/// elements in the array, i.e. the json-lines output does not emit newlines in
+/// the middle of values.
+fn fuzz_eval_json_lines(loader: &mut Loader, input: &str) -> Result<()> {
+    let cfg = pprint::Config { width: None };
+    let (full_span, value) = eval(loader, input)?;
+    let jsonl_doc = rcl::fmt_json_lines::format_json_lines(full_span, &value)?;
+    let jsonl_str = jsonl_doc.println(&cfg).to_string_no_markup();
+    let newlines_observed = jsonl_str.as_bytes().iter().filter(|b| **b == 0x0a).count();
+    let newlines_expected = value.expect_list().len();
+    assert_eq!(newlines_observed, newlines_expected);
+    Ok(())
 }

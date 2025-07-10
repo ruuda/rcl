@@ -1,0 +1,16 @@
+[
+  // A list that would normally be formatted tall, but now wide.
+  std.range(0, 35),
+  { a = 1, b = true, c = std.range(0, 15) },
+  null,
+  """
+  This multi-line string
+  goes on a single line in the result.
+  """,
+]
+
+# output:
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
+{"a": 1, "b": true, "c": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]}
+null
+"This multi-line string\ngoes on a single line in the result.\n"

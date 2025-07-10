@@ -398,7 +398,7 @@ impl<'a> Doc<'a> {
     /// Print in wide mode, without trailing newline.
     pub fn print_wide(&self) -> MarkupString {
         let config = Config { width: None };
-        let mut printer: Printer = Printer::new(&config);
+        let mut printer = Printer::new(&config);
         self.print_to(&mut printer, Mode::Wide);
         printer.into_inner()
     }
@@ -433,6 +433,26 @@ where
             None => Doc::Empty,
             Some(x) => Doc::from(x),
         }
+    }
+}
+
+impl<'a> From<MarkupString<'a>> for Doc<'static> {
+    /// Convert a `MarkupString` back into a `Doc`, preserving markup.
+    fn from(s: MarkupString<'a>) -> Doc<'static> {
+        let mut out = Vec::with_capacity(s.fragments.len());
+        for (fragment, markup) in &s.fragments {
+            // Note, we could opt to omit the `.to_string()`, and return `Doc<'a>`,
+            // but in the one call site we have (`fmt_json_lines`), we need
+            // convert to an owned string anyway, so let's avoid walking the
+            // document twice and just do it here. If we wanted to skip these
+            // copies, we may need to change the `MarkupString` representation
+            // to support both owned and borrowed fragments.
+            out.push(Doc::Markup(
+                *markup,
+                Box::new(Doc::from(fragment.to_string())),
+            ));
+        }
+        Doc::Concat(out)
     }
 }
 

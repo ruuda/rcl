@@ -16,6 +16,7 @@ use crate::source::Span;
 pub fn format_value(format: OutputFormat, value_span: Span, value: &Value) -> Result<Doc> {
     let result = match format {
         OutputFormat::Json => crate::fmt_json::format_json(value_span, value)?,
+        OutputFormat::JsonLines => crate::fmt_json_lines::format_json_lines(value_span, value)?,
         OutputFormat::Raw => crate::fmt_raw::format_raw(value_span, value)?,
         OutputFormat::Rcl => crate::fmt_rcl::format_rcl(value),
         OutputFormat::Toml => crate::fmt_toml::format_toml(value_span, value)?,

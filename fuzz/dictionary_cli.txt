@@ -30,6 +30,7 @@
 "auto"
 "html"
 "json"
+"json-lines"
 "none"
 "rcl"
 "toml"

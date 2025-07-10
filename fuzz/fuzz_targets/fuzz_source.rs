@@ -61,6 +61,7 @@ impl<'a> Arbitrary<'a> for Input<'a> {
             b"t" => Mode::EvalTomlCheck { width },
             b"f" => Mode::EvalFormat { width },
             b"s" => Mode::EvalJsonSuperset,
+            b"l" => Mode::EvalJsonLines,
             _ => return Err(Error::IncorrectFormat),
         };
 

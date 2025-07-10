@@ -153,6 +153,8 @@ define_ops! {
     0xe5 => ModeEvalFormat,
     /// Set the check mode to `JsonSuperset`.
     0xe6 => ModeJsonSuperset,
+    /// Set the check mode to `JsonLines`.
+    0xe7 => ModeJsonLines,
 }
 
 /// A helper for visualizing program execution for debug purposes.
@@ -506,6 +508,9 @@ impl<'a> ProgramBuilder<'a> {
             }
             Op::ModeJsonSuperset => {
                 self.mode = Mode::EvalJsonSuperset;
+            }
+            Op::ModeJsonLines => {
+                self.mode = Mode::EvalJsonLines;
             }
         }
 
