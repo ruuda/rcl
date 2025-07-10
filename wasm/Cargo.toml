@@ -13,7 +13,7 @@ description = "WASM entry points for RCL functionality."
 edition = "2021"
 license = "Apache-2.0"
 name = "rcl-wasm"
-version = "0.8.0"
+version = "0.9.0"
 
 [target]
 "cfg(wasm)" = { dev-dependencies = { allocator-api2 = "0.2.16", compiler_builtins = "0.1.108", dlmalloc = "0.2.6", fortanix-sgx-abi = "0.5.0", getopts = "=0.2.21", hermit-abi = "0.3.9", r-efi = "4.3.0", r-efi-alloc = "1.0.0", rustc-demangle = "0.1.23", unwinding = "0.2.1", wasi = "=0.11.0" } }

@@ -14,7 +14,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Unreleased
+## 0.9.0
+
+Released 2025-07-10.
 
  * Add [`std.format_json`](stdlib.md#format_json) function.
  * Add support for the [json-lines output format](rcl_evaluate.md#-f-format-format).
