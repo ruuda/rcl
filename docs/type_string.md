@@ -94,11 +94,31 @@ String.parse_int: (self: String) -> Number
 ```
 
 Parse the string as a signed integer in base 10. If the input is not an integer,
-evaluation aborts with an error.
+evaluation aborts with an error. Only digits and `-` are allowed, numeric
+underscores are not.
 
 ```rcl
 // Evaluates to -42.
 "-42".parse_int()
+```
+
+## parse_number
+
+```rcl
+String.parse_number: (self: String) -> Number
+```
+
+Parse the string as a decimal number, using the same format that is allowed in
+number literals. This supports an optional decimal point, optional exponent, and
+numeric underscores. If the input is not a valid number, evaluation aborts with
+an error.
+
+<!-- TODO: It would be better if it just accepted all RCL numbers, including
+     with 0x and 0b prefixes. -->
+
+```rcl
+// Evaluates to -4.2e1.
+"-4.2e1".parse_int()
 ```
 
 ## remove_prefix

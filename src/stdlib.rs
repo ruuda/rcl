@@ -992,6 +992,47 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<V
 }
 
 builtin_method!(
+    "String.parse_number",
+    () -> Number,
+    const STRING_PARSE_NUMBER,
+    builtin_string_parse_number
+);
+fn builtin_string_parse_number(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    use crate::lexer::{lex_decimal, LexDecimalResult};
+
+    let string = call.receiver.expect_string();
+
+    let is_lexically_ok = match lex_decimal(string.as_bytes()) {
+        // Ok, the entire string is a number.
+        LexDecimalResult::Ok { len } if len == string.len() => true,
+        // Error, there are trailing characters after the number.
+        LexDecimalResult::Ok { .. } => false,
+        // Error, the string doesn't follow the allowed number structure.
+        // The error contains the details, but since we don't have a great
+        // way to format that error in a nested way, here we treat all
+        // failures the same.
+        LexDecimalResult::Err { .. } => false,
+    };
+
+    if !is_lexically_ok {
+        return call
+            .receiver_span
+            .error("Failed to parse as number:")
+            .with_body(format_rcl(call.receiver).into_owned())
+            .err();
+    }
+
+    match Decimal::parse_str(string) {
+        Some(num) => Ok(Value::Number(num.into())),
+        None => call
+            .receiver_span
+            .error("Overflow while parsing number:")
+            .with_body(format_rcl(call.receiver).into_owned())
+            .err(),
+    }
+}
+
+builtin_method!(
     "String.starts_with",
     (prefix: String) -> Bool,
     const STRING_STARTS_WITH,

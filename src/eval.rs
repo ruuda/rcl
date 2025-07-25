@@ -396,6 +396,7 @@ impl<'a> Evaluator<'a> {
                     (Value::String(_), "ends_with") => Some(&stdlib::STRING_ENDS_WITH),
                     (Value::String(_), "len") => Some(&stdlib::STRING_LEN),
                     (Value::String(_), "parse_int") => Some(&stdlib::STRING_PARSE_INT),
+                    (Value::String(_), "parse_number") => Some(&stdlib::STRING_PARSE_NUMBER),
                     (Value::String(_), "remove_prefix") => Some(&stdlib::STRING_REMOVE_PREFIX),
                     (Value::String(_), "remove_suffix") => Some(&stdlib::STRING_REMOVE_SUFFIX),
                     (Value::String(_), "replace") => Some(&stdlib::STRING_REPLACE),
