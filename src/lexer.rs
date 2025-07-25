@@ -537,8 +537,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_in_number(&mut self) -> Result<Lexeme> {
-        let mut input = &self.input.as_bytes()[self.start..];
-        let mut n = 0;
+        let input = &self.input.as_bytes()[self.start..];
 
         if input.starts_with(b"0b") {
             let span = self.skip_take_while(2, |ch| matches!(ch, b'_' | b'0' | b'1'));
@@ -553,74 +552,18 @@ impl<'a> Lexer<'a> {
             return Ok((Token::NumHexadecimal, span));
         }
 
-        // Allow a leading minus sign.
-        if let Some(b'-') = input.first() {
-            input = &input[1..];
-            n += 1;
+        // If it doesn't have a base prefix, then it's a regular decimal literal.
+        match lex_decimal(input) {
+            LexDecimalResult::Ok { len } => Ok((Token::NumDecimal, self.span(len))),
+            LexDecimalResult::Err {
+                offset,
+                len,
+                message,
+            } => {
+                self.start += offset;
+                self.span(len).error(message).err()
+            }
         }
-
-        // Then we can have a 0, or a non-zero followed by more digits. We also
-        // allow for numeric underscores.
-        match input.first() {
-            Some(b'0') => {
-                input = &input[1..];
-                n += 1;
-            }
-            Some(b'1'..=b'9') => {
-                let m = input
-                    .iter()
-                    .take_while(|ch| ch.is_ascii_digit() || **ch == b'_')
-                    .count();
-                input = &input[m..];
-                n += m;
-            }
-            _ => unreachable!("Should not have begun parsing number."),
-        }
-
-        // Then optionally a dot followed by one or more digits ("fraction" in
-        // the json spec). We additionally allow for numeric underscores.
-        if let Some(b'.') = input.first() {
-            if input[1..].first().map(|ch| ch.is_ascii_digit()) != Some(true) {
-                self.start += n;
-                return self
-                    .span(1)
-                    .error("Expected a digit to follow the decimal point in this number.")
-                    .err();
-            }
-
-            let m = input[1..]
-                .iter()
-                .take_while(|ch| ch.is_ascii_digit() || **ch == b'_')
-                .count();
-            input = &input[1 + m..];
-            n += m + 1;
-        }
-
-        // Then again optionally, an exponent.
-        if let Some(b'e' | b'E') = input.first() {
-            if let Some(b'+' | b'-') = input[1..].first() {
-                input = &input[2..];
-                n += 2;
-            } else {
-                input = &input[1..];
-                n += 1;
-            }
-
-            if input.first().map(|ch| ch.is_ascii_digit()) != Some(true) {
-                self.start += n;
-                return self
-                    .span(0)
-                    .error("Expected a digit of the number's exponent here.")
-                    .err();
-            }
-
-            n += input
-                .iter()
-                .take_while(|ch| ch.is_ascii_digit() || **ch == b'_')
-                .count();
-        }
-
-        Ok((Token::NumDecimal, self.span(n)))
     }
 
     /// Lex a token that starts with ascii punctuation.
@@ -869,4 +812,98 @@ impl<'a> Lexer<'a> {
         };
         err.err()
     }
+}
+
+/// The outcome of lexing a decimal number literal.
+///
+/// We have a special representation for this, rather than `Result<usize>`, in
+/// order to reuse this lexer to validate numbers in the runtime, in particular
+/// before calling `Decimal::from_str` from `String.parse_number`.
+pub enum LexDecimalResult {
+    Ok {
+        len: usize,
+    },
+    Err {
+        offset: usize,
+        len: usize,
+        message: &'static str,
+    },
+}
+
+/// Lex a decimal (base 10) literal, with optional decimal point and exponent.
+///
+/// This is split out from [`Lexer::lex_in_number`] so it can be reused for
+/// runtime number parsing by `String.parse_number`.
+#[inline]
+pub fn lex_decimal(mut input: &[u8]) -> LexDecimalResult {
+    let mut n = 0;
+
+    // Allow a leading minus sign.
+    if let Some(b'-') = input.first() {
+        input = &input[1..];
+        n += 1;
+    }
+
+    // Then we can have a 0, or a non-zero followed by more digits. We also
+    // allow for numeric underscores.
+    match input.first() {
+        Some(b'0') => {
+            input = &input[1..];
+            n += 1;
+        }
+        Some(b'1'..=b'9') => {
+            let m = input
+                .iter()
+                .take_while(|ch| ch.is_ascii_digit() || **ch == b'_')
+                .count();
+            input = &input[m..];
+            n += m;
+        }
+        _ => unreachable!("Should not have begun parsing number."),
+    }
+
+    // Then optionally a dot followed by one or more digits ("fraction" in
+    // the json spec). We additionally allow for numeric underscores.
+    if let Some(b'.') = input.first() {
+        if input[1..].first().map(|ch| ch.is_ascii_digit()) != Some(true) {
+            return LexDecimalResult::Err {
+                offset: n,
+                len: 1,
+                message: "Expected a digit to follow the decimal point in this number.",
+            };
+        }
+
+        let m = input[1..]
+            .iter()
+            .take_while(|ch| ch.is_ascii_digit() || **ch == b'_')
+            .count();
+        input = &input[1 + m..];
+        n += m + 1;
+    }
+
+    // Then again optionally, an exponent.
+    if let Some(b'e' | b'E') = input.first() {
+        if let Some(b'+' | b'-') = input[1..].first() {
+            input = &input[2..];
+            n += 2;
+        } else {
+            input = &input[1..];
+            n += 1;
+        }
+
+        if input.first().map(|ch| ch.is_ascii_digit()) != Some(true) {
+            return LexDecimalResult::Err {
+                offset: n,
+                len: 1,
+                message: "Expected a digit to follow the decimal point in this number.",
+            };
+        }
+
+        n += input
+            .iter()
+            .take_while(|ch| ch.is_ascii_digit() || **ch == b'_')
+            .count();
+    }
+
+    LexDecimalResult::Ok { len: n }
 }
