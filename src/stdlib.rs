@@ -1028,8 +1028,21 @@ fn builtin_string_parse_number(_eval: &mut Evaluator, call: MethodCall) -> Resul
 
     let string = call.receiver.expect_string();
     let error = match builtin_string_parse_number_lex(string) {
-        Some(Token::NumBinary) => unimplemented!(),
-        Some(Token::NumHexadecimal) => unimplemented!(),
+        Some(Token::NumBinary) => {
+            // Remove the "0b" prefix, strip numeric underscores.
+            let num_str = string[2..].replace('_', "");
+            match i64::from_str_radix(&num_str, 2) {
+                Ok(n) => return Ok(Value::Number(n.into())),
+                Err(..) => "Failed to parse binary number: ",
+            }
+        }
+        Some(Token::NumHexadecimal) => {
+            let num_str = string[2..].replace('_', "");
+            match i64::from_str_radix(&num_str, 16) {
+                Ok(n) => return Ok(Value::Number(n.into())),
+                Err(..) => "Failed to parse hexadecimal number: ",
+            }
+        }
         Some(Token::NumDecimal) => match Decimal::parse_str(string) {
             Some(num) => return Ok(Value::Number(num.into())),
             None => "Overflow while parsing number:",
