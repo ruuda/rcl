@@ -108,13 +108,11 @@ underscores are not.
 String.parse_number: (self: String) -> Number
 ```
 
-Parse the string as a decimal number, using the same format that is allowed in
-number literals. This supports an optional decimal point, optional exponent, and
-numeric underscores. If the input is not a valid number, evaluation aborts with
+Parse the string as a decimal number, using the same format that is allowed
+in number literals, see also [the numbers chapter](numbers.md). In particular,
+this method handles decimal points and exponents, numeric underscores, and `0b`
+and `0x` prefixes. If the input is not a valid number, evaluation aborts with
 an error.
-
-<!-- TODO: It would be better if it just accepted all RCL numbers, including
-     with 0x and 0b prefixes. -->
 
 ```rcl
 // Evaluates to -4.2e1.

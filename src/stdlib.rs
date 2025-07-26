@@ -1006,6 +1006,7 @@ fn builtin_string_parse_number_lex(string: &str) -> Option<crate::lexer::Token> 
     // We need an exact match, so there can only be a single token,
     // and it needs to span the entire input.
     let (token, span) = match lexemes.len() {
+        // TODO: We should also support the case of Minus followed by NumDecimal.
         1 => lexemes[0],
         _ => return None,
     };
