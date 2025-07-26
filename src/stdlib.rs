@@ -991,6 +991,32 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<V
     }
 }
 
+/// Run the regular lexer on the input string, and return the matching token.
+///
+/// To be able to share the number parsing implementation between the language
+/// itself, and `String.parse_number`, we run the full lexer. We need to lex,
+/// because `Decimal::parse_str` on its own is too lenient. For example, it
+/// accepts `-` anywhere in the string to flip the sign. We expect the lexer to
+/// produce a single token that matches the entire input. Running the full lexer
+/// is a bit inefficient, but it's okay for now.
+fn builtin_string_parse_number_lex(string: &str) -> Option<crate::lexer::Token> {
+    let dummy_doc_id = crate::source::DocId(0);
+    let lexemes = crate::lexer::lex(dummy_doc_id, string).ok()?;
+
+    // We need an exact match, so there can only be a single token,
+    // and it needs to span the entire input.
+    let (token, span) = match lexemes.len() {
+        1 => lexemes[0],
+        _ => return None,
+    };
+
+    if span.start() != 0 || span.len() != string.len() {
+        return None;
+    }
+
+    Some(token)
+}
+
 builtin_method!(
     "String.parse_number",
     () -> Number,
@@ -998,38 +1024,23 @@ builtin_method!(
     builtin_string_parse_number
 );
 fn builtin_string_parse_number(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
-    use crate::lexer::{lex_decimal, LexDecimalResult};
+    use crate::lexer::Token;
 
     let string = call.receiver.expect_string();
-
-    let is_lexically_ok = match lex_decimal(string.as_bytes()) {
-        // Ok, the entire string is a number.
-        LexDecimalResult::Ok { len } if len == string.len() => true,
-        // Error, there are trailing characters after the number.
-        LexDecimalResult::Ok { .. } => false,
-        // Error, the string doesn't follow the allowed number structure.
-        // The error contains the details, but since we don't have a great
-        // way to format that error in a nested way, here we treat all
-        // failures the same.
-        LexDecimalResult::Err { .. } => false,
+    let error = match builtin_string_parse_number_lex(string) {
+        Some(Token::NumBinary) => unimplemented!(),
+        Some(Token::NumHexadecimal) => unimplemented!(),
+        Some(Token::NumDecimal) => match Decimal::parse_str(string) {
+            Some(num) => return Ok(Value::Number(num.into())),
+            None => "Overflow while parsing number:",
+        },
+        _ => "Failed to parse as number:",
     };
 
-    if !is_lexically_ok {
-        return call
-            .receiver_span
-            .error("Failed to parse as number:")
-            .with_body(format_rcl(call.receiver).into_owned())
-            .err();
-    }
-
-    match Decimal::parse_str(string) {
-        Some(num) => Ok(Value::Number(num.into())),
-        None => call
-            .receiver_span
-            .error("Overflow while parsing number:")
-            .with_body(format_rcl(call.receiver).into_owned())
-            .err(),
-    }
+    call.receiver_span
+        .error(error)
+        .with_body(format_rcl(call.receiver).into_owned())
+        .err()
 }
 
 builtin_method!(
