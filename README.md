@@ -55,6 +55,7 @@ Given this input:
 
 ```rcl
 {
+  // Generate backup buckets for each database and retention period.
   backup_buckets = [
     let retention_days = { hourly = 4, daily = 30, monthly = 365 };
     for database in ["alpha", "bravo"]:
