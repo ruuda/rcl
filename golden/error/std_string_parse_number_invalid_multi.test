@@ -1,0 +1,14 @@
+"multiple tokens".parse_number()
+
+# output:
+stdin:1:1
+  ╷
+1 │ "multiple tokens".parse_number()
+  ╵ ^~~~~~~~~~~~~~~~~
+Error: Failed to parse as number: "multiple tokens"
+
+stdin:1:31
+  ╷
+1 │ "multiple tokens".parse_number()
+  ╵                               ^
+In call to method 'String.parse_number'.

@@ -1,0 +1,18 @@
+let xs = [
+  // Same as for `parse_int`, those should still work.
+  "42",
+  "-42",
+
+  // Binary prefix should work, with minus, and underscores.
+  "0b101010",
+  "-0b10_10_10",
+
+  // Same for hexadecimal.
+  "0x2a",
+  "-0x_2_a_",
+];
+
+xs.map(x => x.parse_number())
+
+# output:
+[42, -42, 42, -42, 42, -42]

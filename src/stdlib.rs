@@ -991,6 +991,90 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<V
     }
 }
 
+/// Run the regular lexer on the input string, and return the matching token.
+///
+/// To be able to share the number parsing implementation between the language
+/// itself, and `String.parse_number`, we run the full lexer. We need to lex,
+/// because `Decimal::parse_str` on its own is too lenient. For example, it
+/// accepts `-` anywhere in the string to flip the sign. We expect the lexer to
+/// produce a single token that matches the entire input. Running the full lexer
+/// is a bit inefficient, but it's okay for now.
+fn builtin_string_parse_number_lex(string: &str) -> Option<crate::lexer::Token> {
+    let dummy_doc_id = crate::source::DocId(0);
+    let lexemes = crate::lexer::lex(dummy_doc_id, string).ok()?;
+
+    // We need an exact match, so there can only be a single token,
+    // and it needs to span the entire input.
+    let (token, span) = match lexemes.len() {
+        1 => lexemes[0],
+        _ => return None,
+    };
+
+    if span.start() != 0 || span.len() != string.len() {
+        return None;
+    }
+
+    Some(token)
+}
+
+builtin_method!(
+    "String.parse_number",
+    () -> Number,
+    const STRING_PARSE_NUMBER,
+    builtin_string_parse_number
+);
+fn builtin_string_parse_number(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    use crate::lexer::Token;
+
+    let string = call.receiver.expect_string();
+
+    // We abuse the `loop` construct to emulate "goto error".
+    let error = loop {
+        // If there is a leading minus sign, cut it off here, because if we feed
+        // it to the lexer below, it would parse it as a separate token instead.
+        let (sign, str) = match string.as_bytes().first() {
+            // Empty string is not a valid number.
+            None => break "Failed to parse as number:",
+            Some(b'-') => (-1, &string[1..]),
+            _ => (1, string),
+        };
+
+        let opt_result: Option<Decimal> = match builtin_string_parse_number_lex(str) {
+            Some(Token::NumBinary) => {
+                // Remove the "0b" prefix, strip numeric underscores.
+                let num_str = str[2..].replace('_', "");
+                i64::from_str_radix(&num_str, 2).ok().map(Decimal::from)
+            }
+            Some(Token::NumHexadecimal) => {
+                let num_str = str[2..].replace('_', "");
+                i64::from_str_radix(&num_str, 16).ok().map(Decimal::from)
+            }
+            Some(Token::NumDecimal) => Decimal::parse_str(str).map(Decimal::from),
+            _ => break "Failed to parse as number:",
+        };
+
+        // If any of the above three cases failed, that means it was an
+        // overflow, because the lexer already validated that the input
+        // follows the right format, so it can't fail due to wrong format.
+        let mut result = match opt_result {
+            Some(num) => num,
+            None => break "Overflow while parsing number:",
+        };
+
+        // If there was a leading `-`, flip the sign. This does not overflow,
+        // because abs(i64::MIN) > abs(i64::MAX). It does mean that we can't
+        // parse i64::MIN itself, but I think that's acceptable for now.
+        result.mantissa *= sign;
+
+        return Ok(Value::Number(result));
+    };
+
+    call.receiver_span
+        .error(error)
+        .with_body(format_rcl(call.receiver).into_owned())
+        .err()
+}
+
 builtin_method!(
     "String.starts_with",
     (prefix: String) -> Bool,

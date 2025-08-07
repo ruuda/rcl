@@ -1,0 +1,14 @@
+"".parse_number()
+
+# output:
+stdin:1:1
+  ╷
+1 │ "".parse_number()
+  ╵ ^~
+Error: Failed to parse as number: ""
+
+stdin:1:16
+  ╷
+1 │ "".parse_number()
+  ╵                ^
+In call to method 'String.parse_number'.

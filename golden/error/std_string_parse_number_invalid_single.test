@@ -1,0 +1,14 @@
+"NaN".parse_number()
+
+# output:
+stdin:1:1
+  ╷
+1 │ "NaN".parse_number()
+  ╵ ^~~~~
+Error: Failed to parse as number: "NaN"
+
+stdin:1:19
+  ╷
+1 │ "NaN".parse_number()
+  ╵                   ^
+In call to method 'String.parse_number'.
