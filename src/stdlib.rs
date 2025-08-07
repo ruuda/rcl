@@ -1006,7 +1006,6 @@ fn builtin_string_parse_number_lex(string: &str) -> Option<crate::lexer::Token> 
     // We need an exact match, so there can only be a single token,
     // and it needs to span the entire input.
     let (token, span) = match lexemes.len() {
-        // TODO: We should also support the case of Minus followed by NumDecimal.
         1 => lexemes[0],
         _ => return None,
     };
@@ -1028,27 +1027,46 @@ fn builtin_string_parse_number(_eval: &mut Evaluator, call: MethodCall) -> Resul
     use crate::lexer::Token;
 
     let string = call.receiver.expect_string();
-    let error = match builtin_string_parse_number_lex(string) {
-        Some(Token::NumBinary) => {
-            // Remove the "0b" prefix, strip numeric underscores.
-            let num_str = string[2..].replace('_', "");
-            match i64::from_str_radix(&num_str, 2) {
-                Ok(n) => return Ok(Value::Number(n.into())),
-                Err(..) => "Failed to parse binary number: ",
+
+    // We abuse the `loop` construct to emulate "goto error".
+    let error = loop {
+        // If there is a leading minus sign, cut it off here, because if we feed
+        // it to the lexer below, it would parse it as a separate token instead.
+        let (sign, str) = match string.as_bytes().first() {
+            // Empty string is not a valid number.
+            None => break "Failed to parse as number:",
+            Some(b'-') => (-1, &string[1..]),
+            _ => (1, string),
+        };
+
+        let mut result: Decimal = match builtin_string_parse_number_lex(str) {
+            Some(Token::NumBinary) => {
+                // Remove the "0b" prefix, strip numeric underscores.
+                let num_str = str[2..].replace('_', "");
+                match i64::from_str_radix(&num_str, 2) {
+                    Ok(n) => n.into(),
+                    Err(..) => break "Failed to parse binary number:",
+                }
             }
-        }
-        Some(Token::NumHexadecimal) => {
-            let num_str = string[2..].replace('_', "");
-            match i64::from_str_radix(&num_str, 16) {
-                Ok(n) => return Ok(Value::Number(n.into())),
-                Err(..) => "Failed to parse hexadecimal number: ",
+            Some(Token::NumHexadecimal) => {
+                let num_str = str[2..].replace('_', "");
+                match i64::from_str_radix(&num_str, 16) {
+                    Ok(n) => n.into(),
+                    Err(..) => break "Failed to parse hexadecimal number:",
+                }
             }
-        }
-        Some(Token::NumDecimal) => match Decimal::parse_str(string) {
-            Some(num) => return Ok(Value::Number(num.into())),
-            None => "Overflow while parsing number:",
-        },
-        _ => "Failed to parse as number:",
+            Some(Token::NumDecimal) => match Decimal::parse_str(str) {
+                Some(num) => num.into(),
+                None => break "Overflow while parsing number:",
+            },
+            _ => break "Failed to parse as number:",
+        };
+
+        // If there was a leading `-`, flip the sign. This does not overflow,
+        // because abs(i64::MIN) > abs(i64::MAX).
+        result.mantissa *= sign;
+
+        return Ok(Value::Number(result));
     };
 
     call.receiver_span
