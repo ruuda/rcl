@@ -14,6 +14,12 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Next
+
+Unreleased.
+
+ * Add [`String.parse_number`](type_string.md#parse_number) method.
+
 ## 0.9.0
 
 Released 2025-07-10.
