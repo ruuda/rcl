@@ -1062,7 +1062,8 @@ fn builtin_string_parse_number(_eval: &mut Evaluator, call: MethodCall) -> Resul
         };
 
         // If there was a leading `-`, flip the sign. This does not overflow,
-        // because abs(i64::MIN) > abs(i64::MAX).
+        // because abs(i64::MIN) > abs(i64::MAX). It does mean that we can't
+        // parse i64::MIN itself, but I think that's acceptable for now.
         result.mantissa *= sign;
 
         return Ok(Value::Number(result));
