@@ -816,12 +816,16 @@ impl<'a> Lexer<'a> {
             }
         }
         if input[0] == b'\\' {
+            // Due to the way the golden tests work, we can't make an input that
+            // has an EOF right after the \, there will always be a newline.
+            // coverage:off
             if input.len() == 1 {
                 return self
                     .span(1)
                     .error("Unexpected end of input in escape sequence.")
                     .err();
             }
+            // coverage:on
 
             // Special-case newlines for two reasons:
             // 1. So we can report a special message that \ does not escape the
