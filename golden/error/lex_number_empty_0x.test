@@ -1,0 +1,8 @@
+0x
+
+# output:
+stdin:1:1
+  ╷
+1 │ 0x
+  ╵ ^~
+Error: Expected a hexadecimal digit after 0x in this number.

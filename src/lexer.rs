@@ -541,15 +541,39 @@ impl<'a> Lexer<'a> {
         let mut n = 0;
 
         if input.starts_with(b"0b") {
-            let span = self.skip_take_while(2, |ch| matches!(ch, b'_' | b'0' | b'1'));
+            let mut has_digit = false;
+            let span = self.skip_take_while(2, |ch| match ch {
+                b'_' => true,
+                b'0' | b'1' => {
+                    has_digit = true;
+                    true
+                }
+                _ => false,
+            });
+            if !has_digit {
+                // We need at least one digit after the prefix.
+                return span
+                    .error("Expected a binary digit after 0b in this number.")
+                    .err();
+            }
             return Ok((Token::NumBinary, span));
         }
 
         if input.starts_with(b"0x") {
-            let span = self.skip_take_while(
-                2,
-                |ch| matches!(ch, b'_' | b'0'..=b'9' | b'a'..=b'f' | b'A'..=b'F'),
-            );
+            let mut has_digit = false;
+            let span = self.skip_take_while(2, |ch| match ch {
+                b'_' => true,
+                b'0'..=b'9' | b'a'..=b'f' | b'A'..=b'F' => {
+                    has_digit = true;
+                    true
+                }
+                _ => false,
+            });
+            if !has_digit {
+                return span
+                    .error("Expected a hexadecimal digit after 0x in this number.")
+                    .err();
+            }
             return Ok((Token::NumHexadecimal, span));
         }
 

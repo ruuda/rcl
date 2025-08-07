@@ -1,0 +1,8 @@
+0b
+
+# output:
+stdin:1:1
+  ╷
+1 │ 0b
+  ╵ ^~
+Error: Expected a binary digit after 0b in this number.
