@@ -1,0 +1,15 @@
+// This is one more than i64::MAX, which we can't represent.
+"9223372036854775808".parse_number()
+
+# output:
+stdin:2:1
+  ╷
+2 │ "9223372036854775808".parse_number()
+  ╵ ^~~~~~~~~~~~~~~~~~~~~
+Error: Overflow while parsing number: "9223372036854775808"
+
+stdin:2:35
+  ╷
+2 │ "9223372036854775808".parse_number()
+  ╵                                   ^
+In call to method 'String.parse_number'.

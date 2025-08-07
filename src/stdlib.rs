@@ -1039,27 +1039,26 @@ fn builtin_string_parse_number(_eval: &mut Evaluator, call: MethodCall) -> Resul
             _ => (1, string),
         };
 
-        let mut result: Decimal = match builtin_string_parse_number_lex(str) {
+        let opt_result: Option<Decimal> = match builtin_string_parse_number_lex(str) {
             Some(Token::NumBinary) => {
                 // Remove the "0b" prefix, strip numeric underscores.
                 let num_str = str[2..].replace('_', "");
-                match i64::from_str_radix(&num_str, 2) {
-                    Ok(n) => n.into(),
-                    Err(..) => break "Failed to parse binary number:",
-                }
+                i64::from_str_radix(&num_str, 2).ok().map(Decimal::from)
             }
             Some(Token::NumHexadecimal) => {
                 let num_str = str[2..].replace('_', "");
-                match i64::from_str_radix(&num_str, 16) {
-                    Ok(n) => n.into(),
-                    Err(..) => break "Failed to parse hexadecimal number:",
-                }
+                i64::from_str_radix(&num_str, 16).ok().map(Decimal::from)
             }
-            Some(Token::NumDecimal) => match Decimal::parse_str(str) {
-                Some(num) => num.into(),
-                None => break "Overflow while parsing number:",
-            },
+            Some(Token::NumDecimal) => Decimal::parse_str(str).map(Decimal::from),
             _ => break "Failed to parse as number:",
+        };
+
+        // If any of the above three cases failed, that means it was an
+        // overflow, because the lexer already validated that the input
+        // follows the right format, so it can't fail due to wrong format.
+        let mut result = match opt_result {
+            Some(num) => num,
+            None => break "Overflow while parsing number:",
         };
 
         // If there was a leading `-`, flip the sign. This does not overflow,
