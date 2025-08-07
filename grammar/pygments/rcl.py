@@ -54,6 +54,7 @@ BUILTINS = (
     "len",
     "map",
     "parse_int",
+    "parse_number",
     "remove_prefix",
     "remove_suffix",
     "replace",
