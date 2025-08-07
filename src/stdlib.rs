@@ -1029,6 +1029,7 @@ fn builtin_string_parse_number(_eval: &mut Evaluator, call: MethodCall) -> Resul
     let string = call.receiver.expect_string();
 
     // We abuse the `loop` construct to emulate "goto error".
+    #[allow(clippy::never_loop)]
     let error = loop {
         // If there is a leading minus sign, cut it off here, because if we feed
         // it to the lexer below, it would parse it as a separate token instead.
