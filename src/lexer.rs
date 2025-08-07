@@ -577,11 +577,9 @@ impl<'a> Lexer<'a> {
             return Ok((Token::NumHexadecimal, span));
         }
 
-        // Allow a leading minus sign.
-        if let Some(b'-') = input.first() {
-            input = &input[1..];
-            n += 1;
-        }
+        // The json spec allows a leading minus sign in numbers. We allow that
+        // too, but it's parsed as a separate `Token::Minus`, so we don't need
+        // to consider it here.
 
         // Then we can have a 0, or a non-zero followed by more digits. We also
         // allow for numeric underscores.
