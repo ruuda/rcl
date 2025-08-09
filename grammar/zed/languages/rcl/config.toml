@@ -2,6 +2,7 @@ name = "RCL"
 grammar = "rcl"
 path_suffixes = ["rcl"]
 line_comments = ["// "]
+tab_size = 2
 autoclose_before = ":=.,}])` \n\t\""
 brackets = [
     { start = "{", end = "}", close = true, newline = false },

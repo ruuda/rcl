@@ -1,0 +1,7 @@
+("[" @open "]" @close)
+("{" @open "}" @close)
+(["\"" "f\""] @open "\"" @close)
+(string_double "\"" @open "\"" @close)
+(string_triple "\"\"\"" @open "\"\"\"" @close)
+(fstring_double "f\"" @open "\"" @close)
+(fstring_triple "f\"\"\"" @open "\"\"\"" @close)

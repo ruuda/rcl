@@ -20,6 +20,8 @@ Unreleased.
 
  * Add [`String.parse_number`](type_string.md#parse_number) method.
  * Syntax highlighters and editor plugins now highlight the `#!`-line.
+ * Update the Zed plugin to leverage Tree-sitter-based bracket matching and
+   indentation.
 
 ## 0.9.0
 
