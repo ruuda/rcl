@@ -30,6 +30,7 @@ Commands:
   evaluate     Evaluate a document to an output format.
   format       Auto-format an RCL document.
   highlight    Print a document with syntax highlighting.
+  patch        Replace a value inside an RCL document.
   query        Evaluate an expression against an input document.
 "#;
 
@@ -196,6 +197,47 @@ Options:
 See also --help for global options.
 "#;
 
+const USAGE_PATCH: &str = r#"
+RCL -- A reasonable configuration language.
+
+Usage:
+  rcl [<options>] patch [<options>] <file> <path> <replacement>
+
+The 'patch' command edits an RCL document, to replace the expression identified
+by <path> with the given <replacement>. This can be used to make automation
+update a configuration that is otherwise written by hand. This command formats
+the new document in standard style.
+
+As an example, consider the file 'example.rcl':
+
+  let widget = { name = "foo", id = 32 };
+  widget
+
+The command 'rcl patch --in-place example.rcl widget.id 42' would rewrite it to:
+
+  let widget = { name = "foo", id = 42 };
+  widget
+
+Arguments:
+  <file>         The input file to process, or '-' for stdin. Defaults to stdin
+                 when no file is specified.
+  <path>         The path inside the document that identifies the syntax node to
+                 replace. The path consists of identifiers separated by dots,
+                 where each identifier matches either a let-binding, or a key in
+                 a dict. Keys only match in record notation.
+  <replacement>  The expression to replace the previous value with.
+
+Options:
+  -i --in-place          Rewrite file in-place instead of writing to stdout.
+                         By default the formatted result is written to stdout.
+  -o --output <outfile>  Write to the given file instead of stdout. This is
+                         incompatible with --in-place.
+  -w --width <width>     Target width in number of columns, must be an integer.
+                         Defaults to 80.
+
+See also --help for global options.
+"#;
+
 /// Options that apply to all subcommands.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct GlobalOptions {
@@ -314,6 +356,13 @@ pub enum Cmd {
         style_opts: StyleOptions,
         target: FormatTarget,
         output: OutputTarget,
+    },
+    Patch {
+        style_opts: StyleOptions,
+        target: Target,
+        output: OutputTarget,
+        path: String,
+        replacement: String,
     },
     Highlight {
         fname: Target,
@@ -448,6 +497,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             Arg::Plain("format") | Arg::Plain("fmt") | Arg::Plain("f") if cmd.is_none() => {
                 cmd = Some("format");
             }
+            Arg::Plain("patch") if cmd.is_none() => {
+                cmd = Some("patch");
+            }
             Arg::Plain("highlight") | Arg::Plain("h") if cmd.is_none() => {
                 cmd = Some("highlight");
             }
@@ -496,6 +548,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
         }),
         Some("main") => Some(Cmd::Help {
             usage: &[USAGE_MAIN_INTRO, USAGE_MAIN_EXTENDED],
+        }),
+        Some("patch") => Some(Cmd::Help {
+            usage: &[USAGE_PATCH],
         }),
         Some("query") => Some(Cmd::Help {
             usage: &[USAGE_EVAL_QUERY],
@@ -578,6 +633,25 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             },
             output,
         },
+        Some("patch") => {
+            let mut pop_arg = || match targets.pop() {
+                Some(Target::File(expr)) => Ok(expr),
+                Some(Target::Stdin) => Ok("-".to_string()),
+                Some(Target::StdinDefault) => unreachable!("Produced only through absence of arg."),
+                None => Error::new("Expected a path and replacement. See --help for usage.").err(),
+            };
+            let replacement = pop_arg()?;
+            let path = pop_arg()?;
+            Cmd::Patch {
+                style_opts,
+                // TODO: We should support the same as `format`, if only so that
+                // we can reuse the target parsing logic.
+                target: get_unique_target(targets)?,
+                path,
+                replacement,
+                output,
+            }
+        }
         Some("highlight") => Cmd::Highlight {
             fname: get_unique_target(targets)?,
         },

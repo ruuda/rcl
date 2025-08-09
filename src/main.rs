@@ -355,6 +355,8 @@ impl App {
                 self.main_fmt(output, &style_opts, target)
             }
 
+            Cmd::Patch { .. } => unimplemented!("TODO: Implement 'rcl patch'."),
+
             Cmd::Highlight { fname } => {
                 self.loader.initialize_filesystem(
                     SandboxMode::Unrestricted,
