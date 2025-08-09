@@ -22,6 +22,8 @@ Unreleased.
  * Syntax highlighters and editor plugins now highlight the `#!`-line.
  * Update the Zed plugin to leverage Tree-sitter-based bracket matching and
    indentation.
+ * Document the `--check` option in the help output of `rcl build` and
+   `rcl format`. Previously they were only documented in the manual.
 
 ## 0.9.0
 

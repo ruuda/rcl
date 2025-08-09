@@ -76,6 +76,9 @@ Arguments:
                     Defaults to 'build.rcl' when no file is specified.
 
 Options:
+  --check           Report whether files would be created or rewritten. If so,
+                    exit with exit code 1. When all target files are already up
+                    to date, exit with exit code 0.
   --dry-run         Print what files we would write to stdout, instead of
                     writing to the file system, which would overwrite existing
                     files.
@@ -176,10 +179,13 @@ The 'format' command formats one or more input documents in standard style.
 
 Arguments:
   <file>...        The input files to process, or '-' for stdin. When --in-place
-                   is used, there can be multiple input files. Defaults to stdin
-                   when no file is specified.
+                   or --check are used, there can be multiple input files.
+                   Defaults to stdin when no file is specified.
 
 Options:
+  --check                Report whether files would be reformatted. If so, exit
+                         with exit code 1. When all files are already formatted
+                         correctly, exit with exit code 0.
   -i --in-place          Rewrite files in-place instead of writing to stdout.
                          By default the formatted result is written to stdout.
   -o --output <outfile>  Write to the given file instead of stdout. This is
