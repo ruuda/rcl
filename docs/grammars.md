@@ -28,11 +28,23 @@ basis of various editor integrations. It has [its own chapter][ts].
 
 [ts]: tree_sitter.md
 
-## Editor integrations
+## Vim
 
-The following directories contain editor-specific extensions:
+The directory `rcl.vim` contains the Vim plugin. The final `rcl.vim` is
+generated from a template by `tools/generate_keywords.py`, so the source of
+truth for builtins to highlight can be kept in a single place.
 
- * `rcl.vim`
- * `zed`
+The Vim documentation contains [a section with standard group names][vim-groups]
+to use for highlighting, similar to scopes for Tree Sitter.
 
-See the [syntax highlighting chapter][sh] for how to use them.
+[vim-groups]: https://vimhelp.org/syntax.txt.html#group-name
+
+## Zed
+
+The `zed` directory contains the Zed plugin. This directory is the source of
+truth for the plugin. We subsequently export the directory, including generated
+Tree-sitter files, into [an external repository][zed-rcl]. The script
+`tools/update_repos.py` syncs changes from this repository into an external
+checkout.
+
+[zed-rcl]: https://github.com/rcl-lang/zed-rcl

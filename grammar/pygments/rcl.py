@@ -92,7 +92,7 @@ TYPES = (
 
 # Due to the handling of string interpolation, we have a few states that are
 # almost identical to the root state, but differ in the handling of `}`.
-# Therefore we extract the common tokens here.
+# Therefore, we extract the common tokens here.
 _root_base = [
     (r"#!.*?$", token.Comment.Hashbang),
     (r"//.*?$", token.Comment),

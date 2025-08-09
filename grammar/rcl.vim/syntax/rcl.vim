@@ -30,6 +30,7 @@ syn match rclOperator '/'
 
 syn keyword rclTodo FIXME NOTE TODO HACK contained
 syn match   rclComment '//.*' contains=rclTodo,@Spell
+syn match   rclShebang '#!.*'
 
 " TODO: Something in the float is not yet working right.
 syn match   rclFloat       '\<[0-9_]\+\.[0-9_]\+\([eE][+-]\?[0-9_]\+\)\?\>'
@@ -66,6 +67,7 @@ highlight link rclNull        Keyword
 highlight link rclKeyword     Keyword
 highlight link rclException   Keyword
 highlight link rclComment     Comment
+highlight link rclShebang     PreProc
 highlight link rclTodo        Todo
 highlight link rclBuiltin     Function
 highlight link rclType        Type

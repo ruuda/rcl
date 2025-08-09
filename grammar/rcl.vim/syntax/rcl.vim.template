@@ -64,6 +64,7 @@ highlight link rclNull        Keyword
 highlight link rclKeyword     Keyword
 highlight link rclException   Keyword
 highlight link rclComment     Comment
+highlight link rclShebang     PreProc
 highlight link rclTodo        Todo
 highlight link rclBuiltin     Function
 highlight link rclType        Type

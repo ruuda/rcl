@@ -19,6 +19,7 @@ compatibility impact will be clearly marked as such in the changelog.
 Unreleased.
 
  * Add [`String.parse_number`](type_string.md#parse_number) method.
+ * Syntax highlighters and editor plugins now highlight the `#!`-line.
 
 ## 0.9.0
 

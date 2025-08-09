@@ -7,6 +7,7 @@
 (binop_keyword) @keyword
 
 (comment) @comment
+(shebang) @keyword
 (number) @number
 (bool) @constant
 (null) @constant

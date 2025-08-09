@@ -7,6 +7,7 @@
 (binop_keyword) @keyword.operator
 
 (comment) @comment
+(shebang) @keyword.directive
 (number) @number
 (bool) @boolean
 (null) @constant.builtin

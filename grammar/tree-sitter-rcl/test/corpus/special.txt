@@ -1,0 +1,14 @@
+=======
+#!-line
+=======
+
+#!/usr/bin/env -S rcl evaluate
+// And this is a comment.
+null
+
+---
+
+(source_file
+  (shebang)
+  (comment)
+  (null))
