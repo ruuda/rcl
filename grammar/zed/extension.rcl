@@ -12,6 +12,10 @@ let root = import "//Cargo.rcl";
   grammars = {
     rcl = {
       repository = "https://github.com/rcl-lang/tree-sitter-rcl",
+      // TODO: We should load this from a file, so that `update_repos.py` can
+      // write the new commit after it exports the new Tree-sitter grammar.
+      // But even nicer would be if we had an `rcl patch` command that could
+      // update the value in this file in-place.
       commit = "e371920de7d1921a4ac9c6d78bd74ea3e94dfade",
     }
   }
