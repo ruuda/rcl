@@ -5,11 +5,19 @@ line_comments = ["// "]
 tab_size = 2
 autoclose_before = ":=.,}])` \n\t\""
 brackets = [
-    { start = "{", end = "}", close = true, newline = false },
-    { start = "[", end = "]", close = true, newline = false },
-    { start = "(", end = ")", close = true, newline = false },
+    # Setting newline=true ensures that on newline, we enter an indented blank
+    # line in between, rather than before the closing bracket, and it does not
+    # interfere if we stay on a single line.
+    { start = "{", end = "}", close = true, newline = true },
+    { start = "[", end = "]", close = true, newline = true },
+    { start = "(", end = ")", close = true, newline = true },
     { start = "\"", end = "\"", close = true, newline = false, not_in = ["comment", "string"] },
     { start = "f\"", end = "\"", close = true, newline = false, not_in = ["comment", "string"] },
     { start = "\"\"\"", end = "\"\"\"", close = true, newline = false, not_in = ["comment", "string"] },
     { start = "f\"\"\"", end = "\"\"\"", close = true, newline = false, not_in = ["comment", "string"] },
+]
+
+increase_indent_pattern = "(if\\s.+|else):\\s*$"
+decrease_indent_patterns = [
+    { pattern = "else:\\s*$", valid_after = ["if"] },
 ]
