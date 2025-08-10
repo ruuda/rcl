@@ -8,7 +8,7 @@
 //! The implementation of `rcl patch`.
 
 use crate::cst::{Expr, Stmt, Yield};
-use crate::error::{Error, IntoError, Result};
+use crate::error::{IntoError, Result};
 use crate::pprint::{concat, Doc};
 use crate::source::{self, Span};
 use crate::string::is_identifier;
@@ -19,7 +19,7 @@ use crate::string::is_identifier;
 ///
 /// We take a `Doc`, rather than just a string, so we can highlight errors in
 /// the exact span where there was a problem, in case the path is not valid.
-pub fn parse_path_expr<'a>(path: &source::Doc<'a>) -> Result<Vec<&'a str>> {
+pub fn parse_path_expr(path: &source::Doc) -> Result<Vec<String>> {
     let mut result = Vec::new();
     let mut start = 0;
     loop {
@@ -30,7 +30,7 @@ pub fn parse_path_expr<'a>(path: &source::Doc<'a>) -> Result<Vec<&'a str>> {
         let ident = &path.data[start..end];
 
         if is_identifier(ident) {
-            result.push(ident);
+            result.push(ident.to_string());
             start = end + 1;
         } else {
             let err_span = Span::new(path.span.doc(), start, end);
@@ -44,25 +44,6 @@ pub fn parse_path_expr<'a>(path: &source::Doc<'a>) -> Result<Vec<&'a str>> {
         }
         if !has_more {
             return Ok(result);
-        }
-    }
-}
-
-/// The result of attempting to patch the CST.
-///
-/// This is like `Result`, except there is an additional `NotFound` case,
-/// because failing to match is not immediately fatal.
-pub enum PatchResult {
-    Ok,
-    NotFound,
-    Err(Box<Error>),
-}
-
-impl From<Result<()>> for PatchResult {
-    fn from(result: Result<()>) -> PatchResult {
-        match result {
-            Ok(()) => PatchResult::Ok,
-            Err(e) => PatchResult::Err(e),
         }
     }
 }
@@ -93,19 +74,21 @@ pub fn patch_expr(
     source: &mut Expr,
     source_span: Span,
     replacement: &mut Expr,
-) -> PatchResult {
+) -> Result<()> {
     let (target, suffix) = match path.split_first() {
         Some(tf) => tf,
         None => {
             // If the path is empty, then we have arrived at the final target,
             // and we need to replace the source node itself.
             std::mem::swap(source, replacement);
-            return PatchResult::Ok;
+            return Ok(());
         }
     };
 
-    // We construct the error lazily, in the happy case we don't need it.
-    let fatal_not_found = || {
+    // Construct the error lazily: there are multiple cases below where we want
+    // to report *this* error, with the entire source span as the search space,
+    // but we don't want to allocate the `Error` in the success case.
+    let make_err = || {
         source_span
             .error(concat! {
                 "Could not find '"
@@ -113,7 +96,6 @@ pub fn patch_expr(
                 "' in this expression."
             })
             .err()
-            .into()
     };
 
     match source {
@@ -126,11 +108,12 @@ pub fn patch_expr(
                         value_span,
                         ..
                     } if field.resolve(input) == *target => {
-                        match patch_expr(input, suffix, value, *value_span, replacement) {
-                            PatchResult::Ok => return PatchResult::Ok,
-                            PatchResult::NotFound => continue,
-                            PatchResult::Err(err) => return PatchResult::Err(err),
-                        }
+                        // We matched one segment of the path, now it's up to
+                        // the inner expression to match. If that fails and
+                        // returns Err, we do *not* continue the search to see
+                        // if anything else might match, we greedily follow the
+                        // path by first matches.
+                        return patch_expr(input, suffix, value, *value_span, replacement);
                     }
                     // TODO: Handle nested Stmt, probably by extracting a
                     // function that traverses Seq. Maybe I need to refactor the
@@ -140,7 +123,7 @@ pub fn patch_expr(
                     _ => continue,
                 }
             }
-            fatal_not_found()
+            make_err()
         }
         Expr::Statements {
             stmts,
@@ -151,30 +134,38 @@ pub fn patch_expr(
             // against the target.
             for (_span, stmt) in stmts.iter_mut() {
                 match patch_stmt(input, path, &mut stmt.inner, replacement) {
-                    PatchResult::Ok => return PatchResult::Ok,
-                    PatchResult::NotFound => continue,
-                    PatchResult::Err(err) => return PatchResult::Err(err),
+                    Some(result) => return result,
+                    None => continue,
                 }
             }
             // If that did not match, then we descend further into the body, and
-            // try to match there.
+            // try to match there. We have a choice for error reporting here: if
+            // we fail to match, we could blame it on the entire `Statements`
+            // expression, or only on the body. The correct thing to do would
+            // be to map the error here and blame it on the entire expression.
+            // However, because we cite only the first line of the error span,
+            // that will highlight the first statement, which may not even be
+            // a let-binding. I expect that keeping the blame on the body is
+            // slightly clearer.
             patch_expr(input, path, &mut body.inner, *body_span, replacement)
         }
-        _ => fatal_not_found(),
+        _ => make_err(),
     }
 }
 
 /// Splice in the replacement into the source CST at the given path.
 ///
-/// Returns the replaced node. The path must not be empty, because statements
-/// themselves cannot be the target of a replacement, only the right-hand side
-/// of let bindings can.
+/// If the path matches this statement, either the substitution succeeds, and
+/// we return `Some(Ok)`, or it fails somewhere inside, and we return `Some(Err)`.
+/// If the path does not match this statement, we return `None`. The path must
+/// not be empty, because statements themselves cannot be the target of a
+/// replacement, only the right-hand side of let bindings can.
 pub fn patch_stmt(
     input: &str,
     path: &[&str],
     source: &mut Stmt,
     replacement: &mut Expr,
-) -> PatchResult {
+) -> Option<Result<()>> {
     let (target, suffix) = path
         .split_first()
         .expect("Should not call `patch_stmt` with empty path.");
@@ -185,9 +176,13 @@ pub fn patch_stmt(
             value,
             value_span,
             ..
-        } if ident.resolve(input) == *target => {
-            patch_expr(input, suffix, &mut *value, *value_span, replacement)
-        }
-        _ => PatchResult::NotFound,
+        } if ident.resolve(input) == *target => Some(patch_expr(
+            input,
+            suffix,
+            &mut *value,
+            *value_span,
+            replacement,
+        )),
+        _ => None,
     }
 }

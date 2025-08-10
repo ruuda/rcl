@@ -355,7 +355,47 @@ impl App {
                 self.main_fmt(output, &style_opts, target)
             }
 
-            Cmd::Patch { .. } => unimplemented!("TODO: Implement 'rcl patch'."),
+            Cmd::Patch {
+                style_opts,
+                target,
+                output,
+                path,
+                replacement,
+            } => {
+                self.loader.initialize_filesystem(
+                    SandboxMode::Unrestricted,
+                    self.opts.workdir.as_deref(),
+                )?;
+
+                let input = self.loader.load_cli_target(&target)?;
+                let path_id = self.loader.load_string("path", path);
+                let replacement = self.loader.load_string("replacement", replacement);
+
+                // TODO: This Doc dance is creating more trouble than it solves,
+                // we can pass in the doc id instead.
+                let path_owned = rcl::patch::parse_path_expr(&self.loader.get_doc(path_id))?;
+                let path_refs: Vec<_> = path_owned.iter().map(|s| s.as_ref()).collect();
+
+                let mut input_cst = self.loader.get_cst(input)?;
+                let mut replacement_cst = self.loader.get_cst(replacement)?;
+
+                let input_doc = self.loader.get_doc(input);
+                let input_str = input_doc.data;
+
+                rcl::patch::patch_expr(
+                    input_str,
+                    &path_refs,
+                    &mut input_cst,
+                    input_doc.span,
+                    &mut replacement_cst,
+                )?;
+
+                // TODO: This will now merge spans from multiple documents,
+                // which will go horribly wrong. Add a way for the formatter to
+                // reference spans from multiple documents.
+                let res = rcl::fmt_cst::format_expr(input_doc.data, &input_cst);
+                self.print_doc_target(output, &style_opts, res)
+            }
 
             Cmd::Highlight { fname } => {
                 self.loader.initialize_filesystem(
