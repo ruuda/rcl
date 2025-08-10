@@ -85,7 +85,7 @@ fn load_file(py: Python, path: String) -> PyResult<PyObject> {
 /// Evaluate an RCL expression.
 #[pyfunction]
 fn loads(py: Python, src: String) -> PyResult<PyObject> {
-    match evaluate(|loader| Ok(loader.load_string(src))) {
+    match evaluate(|loader| Ok(loader.load_string("input", src))) {
         Ok(v) => build_python_value(py, &v),
         Err(..) => Err(runtime_error("Evaluation failed.")),
     }

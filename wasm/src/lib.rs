@@ -98,7 +98,7 @@ fn rcl_evaluate_json_impl<'a>(
     out_node: &Node,
 ) -> Result<()> {
     loader.set_filesystem(Box::new(VoidFilesystem));
-    let id = loader.load_string(input.to_string());
+    let id = loader.load_string("input", input.to_string());
     let mut tracer = VoidTracer;
     let mut evaluator = Evaluator::new(loader, &mut tracer);
     let mut type_env = rcl::typecheck::prelude();
@@ -128,7 +128,7 @@ pub fn rcl_evaluate_json(input: &str, out_node: &Node, out_width: u32, max_len: 
 fn rcl_evaluate_value_impl(input: &str) -> Result<Value> {
     let mut loader = Loader::new();
     loader.set_filesystem(Box::new(VoidFilesystem));
-    let id = loader.load_string(input.to_string());
+    let id = loader.load_string("input", input.to_string());
     let mut tracer = VoidTracer;
     let mut evaluator = Evaluator::new(&mut loader, &mut tracer);
     let mut type_env = rcl::typecheck::prelude();
@@ -153,7 +153,7 @@ fn rcl_evaluate_query_impl<'a>(
     out_node: &Node,
 ) -> Result<()> {
     loader.set_filesystem(Box::new(VoidFilesystem));
-    let id = loader.load_string(query.to_string());
+    let id = loader.load_string("query", query.to_string());
     let mut tracer = VoidTracer;
     let mut evaluator = Evaluator::new(loader, &mut tracer);
     let mut type_env = rcl::typecheck::prelude();
@@ -300,14 +300,14 @@ pub fn rcl_highlight(input: &str, good_input: &str, out_node: &Node) -> bool {
     let mut loader = Loader::new();
     loader.set_filesystem(Box::new(VoidFilesystem));
 
-    let id = loader.load_string(input.to_string());
+    let id = loader.load_string("input", input.to_string());
     let mut is_good = true;
 
     let tokens = match loader.get_tokens(id) {
         Ok(ts) => ts,
         Err(..) => {
             is_good = false;
-            let id_good = loader.load_string(good_input.to_string());
+            let id_good = loader.load_string("input", good_input.to_string());
             let mut tokens = loader.get_tokens(id_good).expect("Good input is lexable.");
 
             let edit = get_edit(good_input, input);

@@ -19,7 +19,7 @@ fuzz_target!(|input: &str| {
     // We don't use the prelude here, the expression doesn't use it.
     let mut type_env = rcl::env::Env::new();
     let mut value_env = rcl::env::Env::new();
-    let doc = loader.load_string(escaped);
+    let doc = loader.load_string("input_escaped", escaped);
     let result = loader
         .evaluate(&mut type_env, &mut value_env, doc, &mut tracer)
         .expect("Escaped string should be valid RCL.");

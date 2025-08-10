@@ -656,9 +656,9 @@ impl Loader {
     }
 
     /// Load a string into a new document.
-    pub fn load_string(&mut self, data: String) -> DocId {
+    pub fn load_string<S: ToString>(&mut self, name: S, data: String) -> DocId {
         let doc = Document {
-            name: "input".to_string(),
+            name: name.to_string(),
             data,
             // This span is a placeholder that is overwritten by `push`.
             span: Span::new(DocId(0), 0, 0),

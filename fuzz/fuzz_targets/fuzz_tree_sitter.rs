@@ -36,7 +36,7 @@ fuzz_target!(|input: &str| {
 
     // Step 2: Parse with RCL.
     let mut loader = Loader::new();
-    let id = loader.load_string(input.to_string());
+    let id = loader.load_string("input", input.to_string());
     let rcl_tree = loader.get_cst(id);
 
     // Step 3: Compare. If RCL accepts, then Tree-sitter also has to accept.

@@ -112,7 +112,7 @@ fn fuzz_main_impl(loader: &mut Loader, mode: Mode, input: &str) -> Result<()> {
 /// Evaluate the input expression, then ignore the result.
 #[inline(never)]
 fn eval(loader: &mut Loader, input: &str) -> Result<(Span, Value)> {
-    let id = loader.load_string(input.to_string());
+    let id = loader.load_string("input", input.to_string());
     let mut tracer = VoidTracer;
     let mut evaluator = Evaluator::new(loader, &mut tracer);
     let mut type_env = rcl::typecheck::prelude();
@@ -124,7 +124,7 @@ fn eval(loader: &mut Loader, input: &str) -> Result<(Span, Value)> {
 
 /// Run the formatter once.
 fn run_fmt(loader: &mut Loader, input: &str, cfg: &pprint::Config) -> Result<String> {
-    let id = loader.load_string(input.to_string());
+    let id = loader.load_string("input", input.to_string());
     let cst = loader.get_cst(id)?;
     let doc = rcl::fmt_cst::format_expr(input, &cst);
     Ok(doc.println(cfg).to_string_no_markup())
@@ -150,14 +150,14 @@ fn fuzz_eval_json_idempotent(loader: &mut Loader, input: &str, cfg: pprint::Conf
     let mut tracer = VoidTracer;
     let mut type_env = rcl::typecheck::prelude();
     let mut value_env = rcl::runtime::prelude();
-    let doc_1 = loader.load_string(input.to_string());
+    let doc_1 = loader.load_string("input", input.to_string());
     let val_1 = loader.evaluate(&mut type_env, &mut value_env, doc_1, &mut tracer)?;
 
     let body_span = loader.get_span(doc_1);
     let json = rcl::fmt_json::format_json(body_span, &val_1)?;
 
     let out_1 = json.println(&cfg).to_string_no_markup();
-    let doc_2 = loader.load_string(out_1);
+    let doc_2 = loader.load_string("out_1", out_1);
     let val_2 = loader.evaluate(&mut type_env, &mut value_env, doc_2, &mut tracer)?;
 
     let body_span = loader.get_span(doc_2);

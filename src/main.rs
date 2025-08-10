@@ -316,7 +316,7 @@ impl App {
                     .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
 
                 let input = self.loader.load_cli_target(&fname)?;
-                let query = self.loader.load_string(expr);
+                let query = self.loader.load_string("query", expr);
 
                 // First we evaluate the input document.
                 let mut tracer = self.get_tracer();

@@ -30,7 +30,7 @@ fuzz_target!(|input: &str| {
 
     let mut tracer = VoidTracer;
     let mut loader = Loader::new();
-    let id = loader.load_string(expr_str);
+    let id = loader.load_string("expr_str", expr_str);
     let mut evaluator = Evaluator::new(&mut loader, &mut tracer);
     // We don't use the prelude here, the expression doesn't use it.
     let mut type_env = rcl::env::Env::new();
