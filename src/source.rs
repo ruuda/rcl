@@ -21,9 +21,6 @@ pub struct Doc<'a> {
     pub span: Span,
 }
 
-/// A list of input documents.
-pub type Inputs<'a> = [Doc<'a>];
-
 /// The index of a document in the list of input files.
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct DocId(pub u32);
@@ -35,6 +32,16 @@ impl fmt::Debug for DocId {
     }
 }
 // coverage:on
+
+/// A list of input documents.
+pub type Inputs<'a> = [Doc<'a>];
+
+impl<'a> std::ops::Index<DocId> for Inputs<'a> {
+    type Output = Doc<'a>;
+    fn index(&self, id: DocId) -> &Doc<'a> {
+        &self[id.0 as usize]
+    }
+}
 
 /// Marks a location in a source file by byte offset.
 ///
@@ -166,6 +173,12 @@ pub trait Source<'a> {
 impl<'a> Source<'a> for &'a str {
     fn resolve(self, span: Span) -> &'a str {
         &self[span.start()..span.end()]
+    }
+}
+
+impl<'a> Source<'a> for &'a Inputs<'a> {
+    fn resolve(self, span: Span) -> &'a str {
+        &self[span.doc().0 as usize].data[span.start()..span.end()]
     }
 }
 

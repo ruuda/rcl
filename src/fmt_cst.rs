@@ -17,34 +17,34 @@ use crate::cst::{
 use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::markup::Markup;
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
-use crate::source::Span;
+use crate::source::{Inputs, Span};
 use crate::string;
 
 /// Format a document.
-pub fn format_expr<'a>(input: &'a str, expr: &'a Expr) -> Doc<'a> {
-    Formatter::new(input).expr(expr)
+pub fn format_expr<'a>(inputs: &'a Inputs<'a>, expr: &'a Expr) -> Doc<'a> {
+    Formatter::new(inputs).expr(expr)
 }
 
 /// Helper so we can use methods for resolving spans against the input.
 struct Formatter<'a> {
     // TODO: This could all be more efficient if we resolved on bytestrings, so
     // the code point slicing check can be omitted.
-    input: &'a str,
+    inputs: &'a Inputs<'a>,
 }
 
 impl<'a> Formatter<'a> {
-    pub fn new(input: &'a str) -> Self {
-        Self { input }
+    pub fn new(inputs: &'a Inputs<'a>) -> Self {
+        Self { inputs }
     }
 
     /// Format the span as-is. It should not contain newlines.
     pub fn span(&self, span: Span) -> Doc<'a> {
-        span.resolve(self.input).into()
+        span.resolve(self.inputs).into()
     }
 
     /// Format a span that may contain newlines using raw line breaks.
     pub fn raw_span(&self, span: Span) -> Doc<'a> {
-        let mut inner = span.resolve(self.input);
+        let mut inner = span.resolve(self.inputs);
         if !inner.contains('\n') {
             return inner.into();
         }
@@ -198,19 +198,31 @@ impl<'a> Formatter<'a> {
 
     /// Format a `"""` or `f"""` quoted string or format string.
     fn string_triple(&self, open: &'static str, parts: &[StringPart]) -> Doc<'a> {
-        let n_strip = string::count_common_leading_spaces(self.input, parts);
         let mut result = vec![Doc::str(open).with_markup(Markup::String)];
+
+        // We assume that all parts are spans from the same document, and we
+        // resolve it once at the start. Due to the `crate::patch` feature, we
+        // can get CSTs that mix documents, but within syntax nodes (like a
+        // string), there should not be any mixing.
+        let (input, n_strip) = match parts.first() {
+            Some(StringPart::String(p) | StringPart::Escape(p, ..) | StringPart::Hole(p, ..)) => {
+                let input = self.inputs[p.doc()].data;
+                let n_strip = string::count_common_leading_spaces(input, parts);
+                (input, n_strip)
+            }
+            None => ("", 0),
+        };
 
         for (i, part) in parts.iter().enumerate() {
             match part {
                 StringPart::String(span) => {
-                    let mut line = span.resolve(self.input);
+                    let mut line = span.resolve(input);
 
                     // If we are at the start of a new line, strip the leading
                     // whitespace and emit the line break to the document.
                     if line.starts_with('\n') {
                         result.push(Doc::HardBreak);
-                        line = span.trim_start(1 + n_strip).resolve(self.input);
+                        line = span.trim_start(1 + n_strip).resolve(input);
                     }
 
                     // If we are at the end of a line, and there is a next line,
@@ -400,7 +412,7 @@ impl<'a> Formatter<'a> {
 
             Expr::NumHexadecimal(span) => {
                 // Normalize A-F to a-f.
-                Doc::string(span.resolve(self.input).to_ascii_lowercase())
+                Doc::string(span.resolve(self.inputs).to_ascii_lowercase())
                     .with_markup(Markup::Number)
             }
 
@@ -408,7 +420,7 @@ impl<'a> Formatter<'a> {
 
             Expr::NumDecimal(span) => {
                 // Normalize exponent E to e.
-                Doc::string(span.resolve(self.input).to_ascii_lowercase())
+                Doc::string(span.resolve(self.inputs).to_ascii_lowercase())
                     .with_markup(Markup::Number)
             }
 

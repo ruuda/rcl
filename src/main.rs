@@ -160,8 +160,8 @@ impl App {
             FormatTarget::Stdout { fname } => {
                 let doc = self.loader.load_cli_target(&fname)?;
                 let cst = self.loader.get_cst(doc)?;
-                let data = self.loader.get_doc(doc).data;
-                let res = rcl::fmt_cst::format_expr(data, &cst);
+                let inputs = self.loader.as_inputs();
+                let res = rcl::fmt_cst::format_expr(&inputs, &cst);
                 return self.print_doc_target(output, style_opts, res);
             }
             FormatTarget::InPlace { fnames } => (true, fnames),
@@ -182,11 +182,11 @@ impl App {
             n_loaded += 1;
             let doc = self.loader.load_cli_target(&target)?;
             let cst = self.loader.get_cst(doc)?;
-            let data = self.loader.get_doc(doc).data;
-            let fmt_doc = rcl::fmt_cst::format_expr(data, &cst);
+            let inputs = self.loader.as_inputs();
+            let fmt_doc = rcl::fmt_cst::format_expr(&inputs, &cst);
             let res = fmt_doc.println(&cfg);
             let formatted = res.to_string_no_markup();
-            let did_change = data != &formatted[..];
+            let did_change = self.loader.get_doc(doc).data != &formatted[..];
 
             if is_write_in_place {
                 let fname = match target {
@@ -387,10 +387,8 @@ impl App {
                     &mut replacement_cst,
                 )?;
 
-                // TODO: This will now merge spans from multiple documents,
-                // which will go horribly wrong. Add a way for the formatter to
-                // reference spans from multiple documents.
-                let res = rcl::fmt_cst::format_expr(input_doc.data, &input_cst);
+                let inputs = self.loader.as_inputs();
+                let res = rcl::fmt_cst::format_expr(&inputs, &input_cst);
                 self.print_doc_target(output, &style_opts, res)
             }
 

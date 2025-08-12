@@ -126,7 +126,8 @@ fn eval(loader: &mut Loader, input: &str) -> Result<(Span, Value)> {
 fn run_fmt(loader: &mut Loader, input: &str, cfg: &pprint::Config) -> Result<String> {
     let id = loader.load_string("input", input.to_string());
     let cst = loader.get_cst(id)?;
-    let doc = rcl::fmt_cst::format_expr(input, &cst);
+    let inputs = loader.as_inputs();
+    let doc = rcl::fmt_cst::format_expr(&inputs, &cst);
     Ok(doc.println(cfg).to_string_no_markup())
 }
 
