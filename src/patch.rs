@@ -10,30 +10,30 @@
 use crate::cst::{Expr, Stmt, Yield};
 use crate::error::{IntoError, Result};
 use crate::pprint::{concat, Doc};
-use crate::source::{self, Span};
+use crate::source::{DocId, Span};
 use crate::string::is_identifier;
 
 /// Parse a document path expression.
 ///
 /// A path is a sequence of identifiers separated by dots, e.g. `foo.bar.baz`.
 ///
-/// We take a `Doc`, rather than just a string, so we can highlight errors in
-/// the exact span where there was a problem, in case the path is not valid.
-pub fn parse_path_expr(path: &source::Doc) -> Result<Vec<String>> {
+/// We take a `DocId`, to be able to report a span on error, so we can highlight
+/// the exact span of the problem.
+pub fn parse_path_expr(path: &str, doc_id: DocId) -> Result<Vec<&str>> {
     let mut result = Vec::new();
     let mut start = 0;
     loop {
-        let (has_more, end) = match path.data.bytes().skip(start).position(|b| b == b'.') {
+        let (has_more, end) = match path.bytes().skip(start).position(|b| b == b'.') {
             Some(i) => (true, start + i),
-            None => (false, path.data.len()),
+            None => (false, path.len()),
         };
-        let ident = &path.data[start..end];
+        let ident = &path[start..end];
 
         if is_identifier(ident) {
-            result.push(ident.to_string());
+            result.push(ident);
             start = end + 1;
         } else {
-            let err_span = Span::new(path.span.doc(), start, end);
+            let err_span = Span::new(doc_id, start, end);
             return err_span
                 .error("This path segment is not a valid identifier.")
                 .with_help(

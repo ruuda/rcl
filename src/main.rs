@@ -368,23 +368,20 @@ impl App {
                 )?;
 
                 let input = self.loader.load_cli_target(&target)?;
-                let path_id = self.loader.load_string("path", path);
-                let replacement = self.loader.load_string("replacement", replacement);
+                let path_id = self.loader.load_string("path", path.clone());
+                let replacement_id = self.loader.load_string("replacement", replacement);
 
-                // TODO: This Doc dance is creating more trouble than it solves,
-                // we can pass in the doc id instead.
-                let path_owned = rcl::patch::parse_path_expr(&self.loader.get_doc(path_id))?;
-                let path_refs: Vec<_> = path_owned.iter().map(|s| s.as_ref()).collect();
+                let path_segments = rcl::patch::parse_path_expr(&path, path_id)?;
 
                 let mut input_cst = self.loader.get_cst(input)?;
-                let mut replacement_cst = self.loader.get_cst(replacement)?;
+                let mut replacement_cst = self.loader.get_cst(replacement_id)?;
 
                 let input_doc = self.loader.get_doc(input);
                 let input_str = input_doc.data;
 
                 rcl::patch::patch_expr(
                     input_str,
-                    &path_refs,
+                    &path_segments,
                     &mut input_cst,
                     input_doc.span,
                     &mut replacement_cst,
