@@ -16,7 +16,7 @@ use rcl::loader::{Loader, SandboxMode};
 use rcl::markup::{MarkupMode, MarkupString};
 use rcl::pprint::{self, Doc};
 use rcl::runtime::{self, Value};
-use rcl::source::Span;
+use rcl::source::{DocId, Inputs, Span};
 use rcl::tracer::StderrTracer;
 use rcl::typecheck;
 
@@ -152,22 +152,26 @@ impl App {
         StderrTracer::new(self.opts.markup)
     }
 
-    fn main_fmt(
+    fn handle_format_targets<F>(
         &mut self,
         output: OutputTarget,
-        style_opts: &StyleOptions,
+        style_opts: StyleOptions,
         targets: FormatTarget,
-    ) -> Result<()> {
+        mut apply_one: F,
+    ) -> Result<()>
+    where
+        F: for<'a> FnMut(&'a Inputs, DocId, &'a mut rcl::cst::Expr) -> Result<Doc<'a>>,
+    {
         let cfg = pprint::Config {
             width: Some(style_opts.width),
         };
         let (is_write_in_place, fnames) = match targets {
             FormatTarget::Stdout { fname } => {
                 let doc = self.loader.load_cli_target(&fname)?;
-                let cst = self.loader.get_cst(doc)?;
+                let mut cst = self.loader.get_cst(doc)?;
                 let inputs = self.loader.as_inputs();
-                let res = rcl::fmt_cst::format_expr(&inputs, &cst);
-                return self.print_doc_target(output, style_opts, res);
+                let res = apply_one(&inputs, doc, &mut cst)?;
+                return self.print_doc_target(output, &style_opts, res);
             }
             FormatTarget::InPlace { fnames } => (true, fnames),
             FormatTarget::Check { mut fnames } => {
@@ -186,9 +190,9 @@ impl App {
         for target in fnames {
             n_loaded += 1;
             let doc = self.loader.load_cli_target(&target)?;
-            let cst = self.loader.get_cst(doc)?;
+            let mut cst = self.loader.get_cst(doc)?;
             let inputs = self.loader.as_inputs();
-            let fmt_doc = rcl::fmt_cst::format_expr(&inputs, &cst);
+            let fmt_doc = apply_one(&inputs, doc, &mut cst)?;
             let res = fmt_doc.println(&cfg);
             let formatted = res.to_string_no_markup();
             let did_change = self.loader.get_doc(doc).data != &formatted[..];
@@ -198,7 +202,7 @@ impl App {
                     Target::File(fname) => fname,
                     Target::Stdin => {
                         let msg =
-                            "Formatting in-place is only possible for named files, not for stdin.";
+                            "Rewriting in-place is only possible for named files, not for stdin.";
                         return Error::new(msg).err();
                     }
                     Target::StdinDefault => {
@@ -352,7 +356,9 @@ impl App {
             } => {
                 // Unrestricted is safe, because `format` does not evaluate documents.
                 self.initialize_filesystem(SandboxMode::Unrestricted)?;
-                self.main_fmt(output, &style_opts, target)
+                self.handle_format_targets(output, style_opts, target, |inputs, _doc, cst| {
+                    Ok(rcl::fmt_cst::format_expr(inputs, cst))
+                })
             }
 
             Cmd::Patch {
@@ -365,29 +371,27 @@ impl App {
                 // Unrestricted is safe, because `patch` does not evaluate documents.
                 self.initialize_filesystem(SandboxMode::Unrestricted)?;
 
-                let input = self.loader.load_cli_target(&target)?;
                 let path_id = self.loader.load_string("path", path.clone());
                 let replacement_id = self.loader.load_string("replacement", replacement);
 
                 let path_segments = rcl::patch::parse_path_expr(&path, path_id)?;
 
-                let mut input_cst = self.loader.get_cst(input)?;
                 let mut replacement_cst = self.loader.get_cst(replacement_id)?;
 
-                let input_doc = self.loader.get_doc(input);
-                let input_str = input_doc.data;
+                self.handle_format_targets(output, style_opts, target, |inputs, doc, input_cst| {
+                    let input_doc = &inputs[doc];
+                    let input_str = input_doc.data;
 
-                rcl::patch::patch_expr(
-                    input_str,
-                    &path_segments,
-                    &mut input_cst,
-                    input_doc.span,
-                    &mut replacement_cst,
-                )?;
+                    rcl::patch::patch_expr(
+                        input_str,
+                        &path_segments,
+                        input_cst,
+                        input_doc.span,
+                        &mut replacement_cst,
+                    )?;
 
-                let inputs = self.loader.as_inputs();
-                let res = rcl::fmt_cst::format_expr(&inputs, &input_cst);
-                self.print_doc_target(output, &style_opts, res)
+                    Ok(rcl::fmt_cst::format_expr(inputs, input_cst))
+                })
             }
 
             Cmd::Highlight { fname } => {

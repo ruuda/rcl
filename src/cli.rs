@@ -201,7 +201,7 @@ const USAGE_PATCH: &str = r#"
 RCL -- A reasonable configuration language.
 
 Usage:
-  rcl [<options>] patch [<options>] <file> <path> <replacement>
+  rcl [<options>] patch [<options>] [<file>] <path> <replacement>
 
 The 'patch' command edits an RCL document, to replace the expression identified
 by <path> with the given <replacement>. This can be used to make automation
@@ -210,12 +210,12 @@ the new document in standard style.
 
 As an example, consider the file 'example.rcl':
 
-  let widget = { name = "foo", id = 32 };
+  let widget = { id = 1337 };
   widget
 
 The command 'rcl patch --in-place example.rcl widget.id 42' would rewrite it to:
 
-  let widget = { name = "foo", id = 42 };
+  let widget = { id = 42 };
   widget
 
 Arguments:
@@ -228,8 +228,13 @@ Arguments:
   <replacement>  The expression to replace the previous value with.
 
 Options:
+  --check                Report whether the file would be altered. If so, exit
+                         with exit code 1. When the file already contains the
+                         desired contents, exit with exit code 0. Formatting
+                         changes unrelated to the patch will also cause an exit
+                         code of 1.
   -i --in-place          Rewrite file in-place instead of writing to stdout.
-                         By default the formatted result is written to stdout.
+                         By default the patched result is written to stdout.
   -o --output <outfile>  Write to the given file instead of stdout. This is
                          incompatible with --in-place.
   -w --width <width>     Target width in number of columns, must be an integer.
@@ -359,7 +364,7 @@ pub enum Cmd {
     },
     Patch {
         style_opts: StyleOptions,
-        target: Target,
+        target: FormatTarget,
         output: OutputTarget,
         path: String,
         replacement: String,
@@ -622,15 +627,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
         }
         Some("format") => Cmd::Format {
             style_opts,
-            target: if in_place {
-                FormatTarget::InPlace { fnames: targets }
-            } else if check {
-                FormatTarget::Check { fnames: targets }
-            } else {
-                FormatTarget::Stdout {
-                    fname: get_unique_target(targets)?,
-                }
-            },
+            target: get_format_target(in_place, check, targets)?,
             output,
         },
         Some("patch") => {
@@ -644,9 +641,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             let path = pop_arg()?;
             Cmd::Patch {
                 style_opts,
-                // TODO: We should support the same as `format`, if only so that
-                // we can reuse the target parsing logic.
-                target: get_unique_target(targets)?,
+                target: get_format_target(in_place, check, targets)?,
                 path,
                 replacement,
                 output,
@@ -671,6 +666,19 @@ fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
         }
         Some(t) => Ok(t),
     }
+}
+
+fn get_format_target(in_place: bool, check: bool, targets: Vec<Target>) -> Result<FormatTarget> {
+    let result = if in_place {
+        FormatTarget::InPlace { fnames: targets }
+    } else if check {
+        FormatTarget::Check { fnames: targets }
+    } else {
+        FormatTarget::Stdout {
+            fname: get_unique_target(targets)?,
+        }
+    };
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -1020,7 +1028,9 @@ mod test {
         };
         let expected_cmd = Cmd::Patch {
             style_opts: StyleOptions::default(),
-            target: Target::File("infile".into()),
+            target: FormatTarget::Stdout {
+                fname: Target::File("infile".into()),
+            },
             output: OutputTarget::Stdout,
             path: "path".to_string(),
             replacement: "replacement".to_string(),
@@ -1073,7 +1083,9 @@ mod test {
 
         if let Cmd::Patch { target, output, .. } = &mut expected.1 {
             *output = OutputTarget::Stdout;
-            *target = Target::Stdin;
+            *target = FormatTarget::Stdout {
+                fname: Target::Stdin,
+            };
         };
         assert_eq!(
             parse(&["rcl", "patch", "-", "path", "replacement"]),
@@ -1082,7 +1094,9 @@ mod test {
 
         // If we omit one of the 3 positionals, the input file defaults to stdin.
         if let Cmd::Patch { target, .. } = &mut expected.1 {
-            *target = Target::StdinDefault;
+            *target = FormatTarget::Stdout {
+                fname: Target::StdinDefault,
+            };
         };
         assert_eq!(parse(&["rcl", "patch", "path", "replacement"]), expected);
 
