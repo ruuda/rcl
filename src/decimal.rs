@@ -658,6 +658,9 @@ mod test {
         // We should be able to reach the maximum exponents.
         assert_parse_decimal("1e32767", 1, 0, i16::MAX);
         assert_parse_decimal("1e-32768", 1, 0, i16::MIN);
+
+        // This is a regression test, e0 we parse as exponent 0.
+        assert_parse_decimal("1e0", 1, 0, 0);
     }
 
     #[test]
