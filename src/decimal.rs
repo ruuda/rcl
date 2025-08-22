@@ -123,10 +123,7 @@ impl Decimal {
                 b'+' => {}
                 b'-' if is_exp => exponent_sign = -1,
                 b'-' => mantissa_sign = -1,
-                b'e' | b'E' => {
-                    is_int = false;
-                    is_exp = true;
-                }
+                b'e' | b'E' => is_exp = true,
                 b'_' => {
                     // Numeric underscores are allowed, we just ignore them.
                     // This way we don't have to allocate a new string to filter
@@ -150,7 +147,7 @@ impl Decimal {
             exponent = if n == 0 { 0 } else { 1 };
         }
 
-        if is_int {
+        if is_int && !is_exp {
             // For integers, if the literal is too large to fit in an i64 and we
             // switched to imprecise, we don't want to implicitly turn that
             // integer literal into a float, so treat that as overflow.
@@ -646,9 +643,7 @@ mod test {
 
     #[test]
     fn decimal_parse_str_parses_exponent() {
-        // The 0e0 acquires one decimal, because otherwise we can't tell it's
-        // not an integer.
-        assert_parse_decimal("0e0", 0, 1, 0);
+        assert_parse_decimal("0e0", 0, 0, 0);
         assert_parse_decimal("1.0e42", 10, 1, 42);
         assert_parse_decimal("1.0e+42", 10, 1, 42);
         assert_parse_decimal("1.0e-42", 10, 1, -42);
@@ -658,6 +653,9 @@ mod test {
         // We should be able to reach the maximum exponents.
         assert_parse_decimal("1e32767", 1, 0, i16::MAX);
         assert_parse_decimal("1e-32768", 1, 0, i16::MIN);
+
+        // This is a regression test, e0 we parse as exponent 0.
+        assert_parse_decimal("1e0", 1, 0, 0);
     }
 
     #[test]

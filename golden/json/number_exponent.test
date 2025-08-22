@@ -1,4 +1,8 @@
-1e6
+[
+  1e6,
+  // This is a regression test, previously "1e0" evaluated to "0.1e1".
+  1e0,
+]
 
 # output:
-1e6
+[1e6, 1]
