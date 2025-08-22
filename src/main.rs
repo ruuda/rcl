@@ -20,6 +20,18 @@ use rcl::source::{DocId, Inputs, Span};
 use rcl::tracer::StderrTracer;
 use rcl::typecheck;
 
+/// The result of [`App::handle_format_targets`].
+struct FormatResult {
+    /// Whether we printed to stdout.
+    stdout: bool,
+    /// Whether we updated files in place.
+    in_place: bool,
+    /// Number of files changed, or that would change.
+    n_changed: u32,
+    /// Number of files inspected.
+    n_loaded: u32,
+}
+
 struct App {
     loader: Loader,
     opts: GlobalOptions,
@@ -152,45 +164,53 @@ impl App {
         StderrTracer::new(self.opts.markup)
     }
 
-    fn handle_format_targets<F, G>(
+    fn handle_format_targets<F>(
         &mut self,
         output: OutputTarget,
         style_opts: StyleOptions,
         targets: FormatTarget,
         mut apply_one: F,
-        mut report_stats: G,
-    ) -> Result<()>
+    ) -> Result<FormatResult>
     where
         F: for<'a> FnMut(&'a Inputs, DocId, &'a mut rcl::cst::Expr) -> Result<Doc<'a>>,
-        G: FnMut(bool, u32, u32) -> Result<()>,
     {
         let cfg = pprint::Config {
             width: Some(style_opts.width),
         };
-        let (is_write_in_place, fnames) = match targets {
+
+        let mut result = FormatResult {
+            stdout: false,
+            in_place: false,
+            n_changed: 0,
+            n_loaded: 0,
+        };
+
+        let fnames = match targets {
             FormatTarget::Stdout { fname } => {
                 let doc = self.loader.load_cli_target(&fname)?;
                 let mut cst = self.loader.get_cst(doc)?;
                 let inputs = self.loader.as_inputs();
                 let res = apply_one(&inputs, doc, &mut cst)?;
-                return self.print_doc_target(output, &style_opts, res);
+                self.print_doc_target(output, &style_opts, res)?;
+                result.stdout = true;
+                return Ok(result);
             }
-            FormatTarget::InPlace { fnames } => (true, fnames),
+            FormatTarget::InPlace { fnames } => {
+                result.in_place = true;
+                fnames
+            }
             FormatTarget::Check { mut fnames } => {
                 // For in-place formatting we really need files, but for checking,
                 // we can check stdin if the user did not specify any files.
                 if fnames.is_empty() {
                     fnames.push(Target::StdinDefault);
                 }
-                (false, fnames)
+                fnames
             }
         };
 
-        let mut n_changed: u32 = 0;
-        let mut n_loaded: u32 = 0;
-
         for target in fnames {
-            n_loaded += 1;
+            result.n_loaded += 1;
             let doc = self.loader.load_cli_target(&target)?;
             let mut cst = self.loader.get_cst(doc)?;
             let inputs = self.loader.as_inputs();
@@ -199,7 +219,7 @@ impl App {
             let formatted = res.to_string_no_markup();
             let did_change = self.loader.get_doc(doc).data != &formatted[..];
 
-            if is_write_in_place {
+            if result.in_place {
                 let fname = match target {
                     Target::File(fname) => fname,
                     Target::Stdin => {
@@ -216,20 +236,20 @@ impl App {
                 // that we don't waste space on CoW filesystems, and that we don't
                 // unnecessarily burn through SSDs in general.
                 if did_change {
-                    n_changed += 1;
+                    result.n_changed += 1;
                     self.print_to_file(MarkupMode::None, res, &fname)?;
                 }
             } else {
                 // We are in the --check case, not the --in-place case.
                 if did_change {
-                    n_changed += 1;
+                    result.n_changed += 1;
                     // TODO: Disable this print for patch.
                     println!("Would reformat {}", self.loader.get_doc(doc).name);
                 }
             }
         }
 
-        report_stats(is_write_in_place, n_changed, n_loaded)
+        Ok(result)
     }
 
     fn main(&mut self) -> Result<()> {
@@ -341,33 +361,26 @@ impl App {
             } => {
                 // Unrestricted is safe, because `format` does not evaluate documents.
                 self.initialize_filesystem(SandboxMode::Unrestricted)?;
-                self.handle_format_targets(
-                    output,
-                    style_opts,
-                    target,
-                    |inputs, _doc, cst| Ok(rcl::fmt_cst::format_expr(inputs, cst)),
-                    |is_write_in_place, n_changed, n_loaded| {
-                        if is_write_in_place {
-                            println!("Reformatted {} of {} files.", n_changed, n_loaded);
-                            return Ok(());
-                        }
-                        if n_changed == 0 {
-                            match n_loaded {
-                                1 => println!("The file is formatted correctly."),
-                                n => println!("All {} files are formatted correctly.", n),
-                            }
-                            Ok(())
-                        } else {
-                            let parts = vec![
-                                n_changed.to_string().into(),
-                                Doc::str(" of "),
-                                n_loaded.to_string().into(),
-                                Doc::str(" files would be reformatted."),
-                            ];
-                            Error::new(Doc::Concat(parts)).err()
-                        }
-                    },
-                )
+                let stats =
+                    self.handle_format_targets(output, style_opts, target, |inputs, _doc, cst| {
+                        Ok(rcl::fmt_cst::format_expr(inputs, cst))
+                    })?;
+                match (stats.n_changed, stats.n_loaded) {
+                    (_, _) if stats.stdout => { /* No stats to print, we printed the doc. */ }
+                    (k, n) if stats.in_place => println!("Reformatted {k} of {n} files."),
+                    (0, 1) => println!("The file is formatted correctly."),
+                    (0, n) => println!("All {} files are formatted correctly.", n),
+                    _ => {
+                        let parts = vec![
+                            stats.n_changed.to_string().into(),
+                            Doc::str(" of "),
+                            stats.n_loaded.to_string().into(),
+                            Doc::str(" files would be reformatted."),
+                        ];
+                        return Error::new(Doc::Concat(parts)).err();
+                    }
+                }
+                Ok(())
             }
 
             Cmd::Patch {
@@ -386,7 +399,7 @@ impl App {
                 let mut replacement_cst = self.loader.get_cst(replacement_id)?;
                 let mut consumed_replacement = false;
 
-                self.handle_format_targets(
+                let stats = self.handle_format_targets(
                     output,
                     style_opts,
                     target,
@@ -408,19 +421,15 @@ impl App {
 
                         Ok(rcl::fmt_cst::format_expr(inputs, input_cst))
                     },
-                    |is_write_in_place, n_changed, n_loaded| {
-                        assert_eq!(n_loaded, 1, "We loop exactly once above.");
-                        let msg = match n_changed {
-                            0 => {
-                                "The patch is a no-op, and the file is already formatted correctly."
-                            }
-                            1 if is_write_in_place => "Patch applied successfully.",
-                            _ => return Error::new("File would be patched or reformatted.").err(),
-                        };
-                        println!("{}", msg);
-                        Ok(())
-                    },
-                )
+                )?;
+                match (stats.n_changed, stats.n_loaded) {
+                    (_, _) if stats.stdout => { /* No stats to print, we printed the doc. */ }
+                    (1, 1) if stats.in_place => println!("Patch applied successfully."),
+                    (0, 1) => println!("The patch is a no-op."),
+                    (1, 1) => return Error::new("File would be patched or reformatted.").err(),
+                    _ => unreachable!("Patch patches at most 1 document."),
+                }
+                Ok(())
             }
 
             Cmd::Highlight { fname } => {
