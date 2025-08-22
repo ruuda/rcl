@@ -805,13 +805,23 @@ mod test {
         }
         assert_eq!(parse(&["rcl", "e", "infile", "--banner=prefix"]), expected);
 
+        // Test --output-depfile
+        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
+            eval_opts.banner = None;
+            eval_opts.output_depfile = Some("deps".to_string());
+        }
+        assert_eq!(
+            parse(&["rcl", "e", "infile", "--output-depfile=deps"]),
+            expected
+        );
+
         // Test that defaulting to stdin works. If '-' is there we get it
         // explicitly, if it's not, we get it implicitly.
         if let Cmd::Evaluate {
             fname, eval_opts, ..
         } = &mut expected.1
         {
-            eval_opts.banner = None;
+            eval_opts.output_depfile = None;
             *fname = Target::Stdin;
         }
         assert_eq!(parse(&["rcl", "e", "-"]), expected);

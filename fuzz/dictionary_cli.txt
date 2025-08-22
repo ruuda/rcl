@@ -21,6 +21,7 @@
 "--format"
 "--help"
 "--in-place"
+"--output-depfile"
 "--sandbox"
 "--version"
 "--width"
