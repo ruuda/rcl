@@ -26,6 +26,11 @@ struct App {
 }
 
 impl App {
+    fn initialize_filesystem(&mut self, sandbox_mode: SandboxMode) -> Result<()> {
+        self.loader
+            .initialize_filesystem(sandbox_mode, self.opts.workdir.as_deref())
+    }
+
     fn print_string(&self, mode: MarkupMode, data: MarkupString, out: &mut dyn Write) {
         let res = data.write_bytes(mode, out);
         if res.is_err() {
@@ -261,8 +266,7 @@ impl App {
                         .err();
                 }
 
-                self.loader
-                    .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
+                self.initialize_filesystem(eval_opts.sandbox)?;
 
                 // TODO: We can make these members, then we can share a lot of code between commands!
                 let mut tracer = self.get_tracer();
@@ -286,8 +290,7 @@ impl App {
                 fname,
                 output,
             } => {
-                self.loader
-                    .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
+                self.initialize_filesystem(eval_opts.sandbox)?;
 
                 let mut tracer = self.get_tracer();
                 let mut type_env = typecheck::prelude();
@@ -312,8 +315,7 @@ impl App {
                 query: expr,
                 output,
             } => {
-                self.loader
-                    .initialize_filesystem(eval_opts.sandbox, self.opts.workdir.as_deref())?;
+                self.initialize_filesystem(eval_opts.sandbox)?;
 
                 let input = self.loader.load_cli_target(&fname)?;
                 let query = self.loader.load_string("query", expr);
@@ -348,10 +350,8 @@ impl App {
                 target,
                 output,
             } => {
-                self.loader.initialize_filesystem(
-                    SandboxMode::Unrestricted,
-                    self.opts.workdir.as_deref(),
-                )?;
+                // Unrestricted is safe, because `format` does not evaluate documents.
+                self.initialize_filesystem(SandboxMode::Unrestricted)?;
                 self.main_fmt(output, &style_opts, target)
             }
 
@@ -362,10 +362,8 @@ impl App {
                 path,
                 replacement,
             } => {
-                self.loader.initialize_filesystem(
-                    SandboxMode::Unrestricted,
-                    self.opts.workdir.as_deref(),
-                )?;
+                // Unrestricted is safe, because `patch` does not evaluate documents.
+                self.initialize_filesystem(SandboxMode::Unrestricted)?;
 
                 let input = self.loader.load_cli_target(&target)?;
                 let path_id = self.loader.load_string("path", path.clone());
@@ -393,10 +391,8 @@ impl App {
             }
 
             Cmd::Highlight { fname } => {
-                self.loader.initialize_filesystem(
-                    SandboxMode::Unrestricted,
-                    self.opts.workdir.as_deref(),
-                )?;
+                // Unrestricted is safe, because `highlight` does not evaluate documents.
+                self.initialize_filesystem(SandboxMode::Unrestricted)?;
                 let doc = self.loader.load_cli_target(&fname)?;
                 let tokens = self.loader.get_tokens(doc)?;
                 let data = self.loader.get_doc(doc).data;
