@@ -22,8 +22,14 @@ Unreleased.
  * Syntax highlighters and editor plugins now highlight the `#!`-line.
  * Update the Zed plugin to leverage Tree-sitter-based bracket matching and
    indentation.
+
+Bugfixes:
+
  * Document the `--check` option in the help output of `rcl build` and
    `rcl format`. Previously they were only documented in the manual.
+ * Numbers with exponent 0, but without decimal dot, now format as integers
+   without exponent, rather than as numbers with decimal dot. For example,
+   `1e0` now formats as `1` rather than `0.1e1`.
 
 ## 0.9.0
 
