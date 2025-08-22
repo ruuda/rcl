@@ -4,6 +4,7 @@
 "fmt"
 "format"
 "highlight"
+"patch"
 "query"
 
 # Shorthands

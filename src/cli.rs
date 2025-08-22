@@ -1013,6 +1013,87 @@ mod test {
     }
 
     #[test]
+    fn parse_cmd_patch() {
+        let expected_opt = GlobalOptions {
+            markup: None,
+            workdir: None,
+        };
+        let expected_cmd = Cmd::Patch {
+            style_opts: StyleOptions::default(),
+            target: Target::File("infile".into()),
+            output: OutputTarget::Stdout,
+            path: "path".to_string(),
+            replacement: "replacement".to_string(),
+        };
+        let mut expected = (expected_opt, expected_cmd);
+        assert_eq!(
+            parse(&["rcl", "patch", "infile", "path", "replacement"]),
+            expected
+        );
+
+        if let Cmd::Patch { output, .. } = &mut expected.1 {
+            *output = OutputTarget::File("outfile".to_string());
+        };
+        // The --outfile can go anywhere; input, path, and replacement are positional.
+        assert_eq!(
+            parse(&[
+                "rcl",
+                "patch",
+                "infile",
+                "--output",
+                "outfile",
+                "path",
+                "replacement"
+            ]),
+            expected
+        );
+        assert_eq!(
+            parse(&[
+                "rcl",
+                "patch",
+                "--output=outfile",
+                "infile",
+                "path",
+                "replacement"
+            ]),
+            expected
+        );
+        assert_eq!(
+            parse(&[
+                "rcl",
+                "patch",
+                "infile",
+                "path",
+                "replacement",
+                "--output",
+                "outfile"
+            ]),
+            expected
+        );
+
+        if let Cmd::Patch { target, output, .. } = &mut expected.1 {
+            *output = OutputTarget::Stdout;
+            *target = Target::Stdin;
+        };
+        assert_eq!(
+            parse(&["rcl", "patch", "-", "path", "replacement"]),
+            expected
+        );
+
+        // If we omit one of the 3 positionals, the input file defaults to stdin.
+        if let Cmd::Patch { target, .. } = &mut expected.1 {
+            *target = Target::StdinDefault;
+        };
+        assert_eq!(parse(&["rcl", "patch", "path", "replacement"]), expected);
+
+        // If we omit more than one, that's an error.
+        assert_eq!(
+            fail_parse(&["rcl", "patch", "path"]),
+            "Error: Expected a path and replacement. See --help for usage.\n"
+        );
+    }
+
+    #[test]
     fn parse_cmd_handles_stdin_and_double_dash() {
         assert_eq!(
             parse(&["rcl", "highlight", "infile"]).1,
