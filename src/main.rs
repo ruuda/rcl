@@ -152,15 +152,17 @@ impl App {
         StderrTracer::new(self.opts.markup)
     }
 
-    fn handle_format_targets<F>(
+    fn handle_format_targets<F, G>(
         &mut self,
         output: OutputTarget,
         style_opts: StyleOptions,
         targets: FormatTarget,
         mut apply_one: F,
+        mut report_stats: G,
     ) -> Result<()>
     where
         F: for<'a> FnMut(&'a Inputs, DocId, &'a mut rcl::cst::Expr) -> Result<Doc<'a>>,
+        G: FnMut(bool, u32, u32) -> Result<()>,
     {
         let cfg = pprint::Config {
             width: Some(style_opts.width),
@@ -221,30 +223,13 @@ impl App {
                 // We are in the --check case, not the --in-place case.
                 if did_change {
                     n_changed += 1;
+                    // TODO: Disable this print for patch.
                     println!("Would reformat {}", self.loader.get_doc(doc).name);
                 }
             }
         }
 
-        if is_write_in_place {
-            println!("Reformatted {} of {} files.", n_changed, n_loaded);
-            return Ok(());
-        }
-        if n_changed == 0 {
-            match n_loaded {
-                1 => println!("The file is formatted correctly."),
-                n => println!("All {} files are formatted correctly.", n),
-            }
-            Ok(())
-        } else {
-            let parts = vec![
-                n_changed.to_string().into(),
-                Doc::str(" of "),
-                n_loaded.to_string().into(),
-                Doc::str(" files would be reformatted."),
-            ];
-            Error::new(Doc::Concat(parts)).err()
-        }
+        report_stats(is_write_in_place, n_changed, n_loaded)
     }
 
     fn main(&mut self) -> Result<()> {
@@ -356,9 +341,33 @@ impl App {
             } => {
                 // Unrestricted is safe, because `format` does not evaluate documents.
                 self.initialize_filesystem(SandboxMode::Unrestricted)?;
-                self.handle_format_targets(output, style_opts, target, |inputs, _doc, cst| {
-                    Ok(rcl::fmt_cst::format_expr(inputs, cst))
-                })
+                self.handle_format_targets(
+                    output,
+                    style_opts,
+                    target,
+                    |inputs, _doc, cst| Ok(rcl::fmt_cst::format_expr(inputs, cst)),
+                    |is_write_in_place, n_changed, n_loaded| {
+                        if is_write_in_place {
+                            println!("Reformatted {} of {} files.", n_changed, n_loaded);
+                            return Ok(());
+                        }
+                        if n_changed == 0 {
+                            match n_loaded {
+                                1 => println!("The file is formatted correctly."),
+                                n => println!("All {} files are formatted correctly.", n),
+                            }
+                            Ok(())
+                        } else {
+                            let parts = vec![
+                                n_changed.to_string().into(),
+                                Doc::str(" of "),
+                                n_loaded.to_string().into(),
+                                Doc::str(" files would be reformatted."),
+                            ];
+                            Error::new(Doc::Concat(parts)).err()
+                        }
+                    },
+                )
             }
 
             Cmd::Patch {
@@ -373,25 +382,45 @@ impl App {
 
                 let path_id = self.loader.load_string("path", path.clone());
                 let replacement_id = self.loader.load_string("replacement", replacement);
-
                 let path_segments = rcl::patch::parse_path_expr(&path, path_id)?;
-
                 let mut replacement_cst = self.loader.get_cst(replacement_id)?;
+                let mut consumed_replacement = false;
 
-                self.handle_format_targets(output, style_opts, target, |inputs, doc, input_cst| {
-                    let input_doc = &inputs[doc];
-                    let input_str = input_doc.data;
+                self.handle_format_targets(
+                    output,
+                    style_opts,
+                    target,
+                    |inputs, doc, input_cst| {
+                        if consumed_replacement {
+                            return Error::new("'rcl patch' handles only one target file.").err();
+                        }
 
-                    rcl::patch::patch_expr(
-                        input_str,
-                        &path_segments,
-                        input_cst,
-                        input_doc.span,
-                        &mut replacement_cst,
-                    )?;
+                        consumed_replacement = true;
+                        let input_doc = &inputs[doc];
+                        let input_str = input_doc.data;
+                        rcl::patch::patch_expr(
+                            input_str,
+                            &path_segments,
+                            input_cst,
+                            input_doc.span,
+                            &mut replacement_cst,
+                        )?;
 
-                    Ok(rcl::fmt_cst::format_expr(inputs, input_cst))
-                })
+                        Ok(rcl::fmt_cst::format_expr(inputs, input_cst))
+                    },
+                    |is_write_in_place, n_changed, n_loaded| {
+                        assert_eq!(n_loaded, 1, "We loop exactly once above.");
+                        let msg = match n_changed {
+                            0 => {
+                                "The patch is a no-op, and the file is already formatted correctly."
+                            }
+                            1 if is_write_in_place => "Patch applied successfully.",
+                            _ => return Error::new("File would be patched or reformatted.").err(),
+                        };
+                        println!("{}", msg);
+                        Ok(())
+                    },
+                )
             }
 
             Cmd::Highlight { fname } => {
