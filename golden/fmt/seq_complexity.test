@@ -1,0 +1,14 @@
+// The seq here, despite easily fitting on one line, has a depth of 3, which
+// we consider too complex for a single line, so we force it to be tall.
+[
+  for x in xs: for y in ys: x * y
+]
+
+# output:
+// The seq here, despite easily fitting on one line, has a depth of 3, which
+// we consider too complex for a single line, so we force it to be tall.
+[
+  for x in xs:
+  for y in ys:
+  x * y
+]

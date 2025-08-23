@@ -23,7 +23,16 @@ let multiline_tall = [
   x + y + z + u + v + w
 ];
 
-[oneline, multiline, multiline_tall]
+// A mix of `for`, `if`, and statements, and still they should go wide or tall
+// together.
+let stmts = [
+  let xs = std.range(0, 100); trace xs;
+  for x in xs: if x > 50: assert x > 50, "that condition should work";
+  let ys = std.range(x, 100); for y in ys:
+  x + y
+];
+
+[oneline, multiline, multiline_tall, stmts]
 
 # output:
 // Here we test that the seq elements get formatted either wide or tall.
@@ -43,4 +52,17 @@ let multiline_tall = [
   x + y + z + u + v + w
 ];
 
-[oneline, multiline, multiline_tall]
+// A mix of `for`, `if`, and statements, and still they should go wide or tall
+// together.
+let stmts = [
+  let xs = std.range(0, 100);
+  trace xs;
+  for x in xs:
+  if x > 50:
+  assert x > 50, "that condition should work";
+  let ys = std.range(x, 100);
+  for y in ys:
+  x + y
+];
+
+[oneline, multiline, multiline_tall, stmts]
