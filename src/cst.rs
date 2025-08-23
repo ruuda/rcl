@@ -100,9 +100,6 @@ pub struct Prefixed<T> {
 /// A prefixed statement, and the span of the inner statement.
 pub type SpanPrefixedStmt = (Span, Prefixed<Stmt>);
 
-/// A prefixed sequence control item, and the span of the inner item.
-pub type SpanPrefixedSeqControl = (Span, Prefixed<SeqControl>);
-
 /// A collection of `T`s separated by commas, with an optional trailing comma and non-code suffix.
 ///
 /// This is a list in the sense of a sequence of elements, it is not a list
@@ -364,7 +361,7 @@ pub enum SeqControl {
 /// "control items": statements, or loop control flow.
 #[derive(Debug)]
 pub struct Seq {
-    pub control: Box<[SpanPrefixedSeqControl]>,
+    pub control: Box<[Prefixed<SeqControl>]>,
     pub body: Prefixed<Yield>,
 }
 

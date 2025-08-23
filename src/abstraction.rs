@@ -365,7 +365,7 @@ impl<'a> Abstractor<'a> {
 
         // We take the flat list of control items from the CST, and build
         // the linked list like tree used in the AST.
-        for (_control_span, control) in seq.control.iter().rev() {
+        for control in seq.control.iter().rev() {
             body = match &control.inner {
                 SeqControl::Stmt { stmt } => ASeq::Stmt {
                     stmt: self.stmt(stmt)?,

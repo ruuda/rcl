@@ -1173,7 +1173,6 @@ impl<'a> Parser<'a> {
             // worth some complications to allow { a = b; p = q } notation.
             let next1 = self.peek();
             let next2 = self.peek_n(1);
-            let begin = self.peek_span();
 
             let control = match (next1, next2) {
                 (Token::KwAssert | Token::KwLet | Token::KwTrace, _) => self.parse_seq_stmt()?,
@@ -1183,12 +1182,11 @@ impl<'a> Parser<'a> {
                 _ => break self.parse_seq_assoc_expr()?,
             };
 
-            let span = self.span_from(begin);
             let item = Prefixed {
                 prefix,
                 inner: control,
             };
-            control_items.push((span, item));
+            control_items.push(item);
             prefix = self.parse_non_code();
         };
 

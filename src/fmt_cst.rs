@@ -665,7 +665,7 @@ impl<'a> Formatter<'a> {
 
         let mut parts = Vec::with_capacity(2 + seq.control.len() * 3);
 
-        for (_span, control) in seq.control.iter() {
+        for control in seq.control.iter() {
             parts.push(self.non_code(&control.prefix));
             parts.push(self.seq_control(&control.inner));
             parts.push(sep.clone());
