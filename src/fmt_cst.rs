@@ -675,11 +675,12 @@ impl<'a> Formatter<'a> {
         parts.push(self.yield_(&seq.body.inner));
 
         // The seq itself is a group: you can have a collection which is tall,
-        // but the seq inside can be wide.
-        // TODO: We should hoist the initial prefix out of this group. Without
-        // that, adding a comment above a for would force the entire thing to
-        // be tall.
-        group! { Doc::Concat(parts) }
+        // but the seq inside can be wide. However, for the initial non-code,
+        // we don't want the presence of a comment to force tall mode, so we
+        // take that one out of the group.
+        let prefix = parts.remove(0);
+        let group = group! { Doc::Concat (parts) };
+        concat! { prefix group }
     }
 
     pub fn type_(&self, type_: &Type) -> Doc<'a> {

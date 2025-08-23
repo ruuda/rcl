@@ -1,0 +1,11 @@
+[
+  // This comment should not force the entire seq to be tall.
+  for x in xs:
+  x * 2
+]
+
+# output:
+[
+  // This comment should not force the entire seq to be tall.
+  for x in xs: x * 2
+]
