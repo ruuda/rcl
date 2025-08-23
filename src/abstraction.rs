@@ -14,9 +14,13 @@
 //! * Removing syntactical differences (e.g. converting `k = v;` into `"k": v`).
 
 use crate::ast::{
-    CallArg, Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType, Yield,
+    CallArg, Expr as AExpr, Expr, FormatFragment, Seq as ASeq, Stmt as AStmt, Type as AType,
+    Yield as AYield,
 };
-use crate::cst::{Chain, Expr as CExpr, Seq as CSeq, Stmt as CStmt, StringPart, Type as CType};
+use crate::cst::{
+    Chain, Expr as CExpr, Seq as CSeq, SeqControl, Stmt as CStmt, StringPart, Type as CType,
+    Yield as CYield,
+};
 use crate::decimal::Decimal;
 use crate::error::{IntoError, Result};
 use crate::lexer::QuoteStyle;
@@ -179,7 +183,7 @@ impl<'a> Abstractor<'a> {
                 elements: elements
                     .elements
                     .iter()
-                    .map(|elem| self.seq(&elem.inner))
+                    .map(|elem| self.seq(elem))
                     .collect::<Result<Vec<_>>>()?,
             },
 
@@ -188,7 +192,7 @@ impl<'a> Abstractor<'a> {
                 elements: elements
                     .elements
                     .iter()
-                    .map(|elem| self.seq(&elem.inner))
+                    .map(|elem| self.seq(elem))
                     .collect::<Result<Vec<_>>>()?,
             },
 
@@ -311,29 +315,29 @@ impl<'a> Abstractor<'a> {
         Ok(result)
     }
 
-    /// Abstract a sequence element.
-    pub fn seq(&self, seq: &CSeq) -> Result<ASeq> {
-        let result = match seq {
-            CSeq::Elem { span, value } => ASeq::Yield(Yield::Elem {
+    /// Abstract a sequence yield.
+    pub fn yield_(&self, yield_: &CYield) -> Result<AYield> {
+        let result = match yield_ {
+            CYield::Elem { span, value } => AYield::Elem {
                 span: *span,
                 value: Box::new(self.expr(value)?),
-            }),
+            },
 
-            CSeq::AssocExpr {
+            CYield::AssocExpr {
                 op_span,
                 field_span,
                 field,
                 value_span,
                 value,
-            } => ASeq::Yield(Yield::Assoc {
+            } => AYield::Assoc {
                 op_span: *op_span,
                 key_span: *field_span,
                 value_span: *value_span,
                 key: Box::new(self.expr(field)?),
                 value: Box::new(self.expr(value)?),
-            }),
+            },
 
-            CSeq::AssocIdent {
+            CYield::AssocIdent {
                 op_span,
                 field,
                 value_span,
@@ -343,51 +347,60 @@ impl<'a> Abstractor<'a> {
                 // `"key": value` so we can treat them uniformly from here on.
                 let key_str = field.resolve(self.input);
                 let key_expr = AExpr::StringLit(key_str.into());
-                ASeq::Yield(Yield::Assoc {
+                AYield::Assoc {
                     op_span: *op_span,
                     key_span: *field,
                     value_span: *value_span,
                     key: Box::new(key_expr),
                     value: Box::new(self.expr(value)?),
-                })
+                }
             }
-
-            CSeq::Stmt { stmt, body, .. } => ASeq::Stmt {
-                stmt: self.stmt(stmt)?,
-                body: Box::new(self.seq(&body.inner)?),
-            },
-
-            CSeq::For {
-                idents,
-                collection_span,
-                collection,
-                body,
-            } => ASeq::For {
-                idents_span: idents
-                    .iter()
-                    .copied()
-                    .reduce(|x, y| x.union(y))
-                    .expect("Parser should have produced at least one ident."),
-                idents: idents
-                    .iter()
-                    .map(|span| span.resolve(self.input).into())
-                    .collect(),
-                collection_span: *collection_span,
-                collection: Box::new(self.expr(collection)?),
-                body: Box::new(self.seq(&body.inner)?),
-            },
-
-            CSeq::If {
-                condition_span,
-                condition,
-                body,
-            } => ASeq::If {
-                condition_span: *condition_span,
-                condition: Box::new(self.expr(condition)?),
-                body: Box::new(self.seq(&body.inner)?),
-            },
         };
         Ok(result)
+    }
+
+    /// Abstract a sequence element.
+    pub fn seq(&self, seq: &CSeq) -> Result<ASeq> {
+        let mut body = ASeq::Yield(self.yield_(&seq.body.inner)?);
+
+        // We take the flat list of control items from the CST, and build
+        // the linked list like tree used in the AST.
+        for control in seq.control.iter().rev() {
+            body = match &control.inner {
+                SeqControl::Stmt { stmt } => ASeq::Stmt {
+                    stmt: self.stmt(stmt)?,
+                    body: Box::new(body),
+                },
+                SeqControl::For {
+                    idents,
+                    collection_span,
+                    collection,
+                } => ASeq::For {
+                    idents_span: idents
+                        .iter()
+                        .copied()
+                        .reduce(|x, y| x.union(y))
+                        .expect("Parser should have produced at least one ident."),
+                    idents: idents
+                        .iter()
+                        .map(|span| span.resolve(self.input).into())
+                        .collect(),
+                    collection_span: *collection_span,
+                    collection: Box::new(self.expr(collection)?),
+                    body: Box::new(body),
+                },
+                SeqControl::If {
+                    condition_span,
+                    condition,
+                } => ASeq::If {
+                    condition_span: *condition_span,
+                    condition: Box::new(self.expr(condition)?),
+                    body: Box::new(body),
+                },
+            }
+        }
+
+        Ok(body)
     }
 
     /// Abstract an element in a chained expression.

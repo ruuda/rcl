@@ -11,6 +11,13 @@ let xs3 = {
   // And that is true of brace literals as well as bracket literals.
 };
 
+let xs4 = {
+  42
+  // In collections, a trailing comma is optional, but we can still have
+  // comments after the final element. The comment forces tall mode, which
+  // then does force a trailing comma on format, but that's fine.
+};
+
 let ys = foobar(
   0,
   // In a call, the comment should not be eaten either.
@@ -43,6 +50,13 @@ let xs2 = [
 ];
 let xs3 = {
   // And that is true of brace literals as well as bracket literals.
+};
+
+let xs4 = {
+  42,
+  // In collections, a trailing comma is optional, but we can still have
+  // comments after the final element. The comment forces tall mode, which
+  // then does force a trailing comma on format, but that's fine.
 };
 
 let ys = foobar(

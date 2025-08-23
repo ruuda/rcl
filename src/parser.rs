@@ -7,7 +7,10 @@
 
 //! The parser converts a sequence of tokens into a Concrete Syntax Tree.
 
-use crate::cst::{BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, Stmt, StringPart, Type, UnOp};
+use crate::cst::{
+    BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, SeqControl, Stmt, StringPart, Type, UnOp,
+    Yield,
+};
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
 use crate::pprint::{concat, Doc};
@@ -92,10 +95,15 @@ impl<'a> Parser<'a> {
     }
 
     /// Return the next code token, ignoring whitespace and non-code.
+    ///
+    /// Note, we don't peek past [`Token::Shebang`], because [`skip_non_code`]
+    /// does not skip over it, and a common pattern is to peek past non-code and
+    /// then for particular cases enforce that there is no comment there. We
+    /// don't allow a `#!` in that place either.
     fn peek_past_non_code(&self) -> Token {
         self.tokens[self.cursor..]
             .iter()
-            .filter(|t| !matches!(t.0, Token::Blank | Token::LineComment | Token::Shebang))
+            .filter(|t| !matches!(t.0, Token::Blank | Token::LineComment))
             .map(|t| t.0)
             .next()
             .unwrap_or(Token::Eof)
@@ -304,16 +312,6 @@ impl<'a> Parser<'a> {
             token if token == expected => Ok(self.consume()),
             _ => self.error(error).with_note(note_span, note).err(),
         }
-    }
-
-    fn parse_prefixed<T, F>(&mut self, parse_inner: F) -> Result<Prefixed<T>>
-    where
-        F: Fn(&mut Self) -> Result<T>,
-    {
-        let prefix = self.parse_non_code();
-        let inner = parse_inner(self)?;
-        let result = Prefixed { prefix, inner };
-        Ok(result)
     }
 
     /// Parse a top-level expression, which may start with a list of statements.
@@ -712,9 +710,9 @@ impl<'a> Parser<'a> {
         let mut allowed_op = None;
         let mut allowed_span = None;
         loop {
-            self.skip_non_code()?;
-            match to_binop(self.peek()) {
+            match to_binop(self.peek_past_non_code()) {
                 Some(op) if allowed_op.is_none() || allowed_op == Some(op) => {
+                    self.skip_non_code()?;
                     let span = self.consume();
                     self.skip_non_code()?;
                     let (rhs_span, rhs) = self.parse_expr_not_op()?;
@@ -796,9 +794,9 @@ impl<'a> Parser<'a> {
 
         loop {
             inner_span = self.span_from(begin);
-            self.skip_non_code()?;
-            match self.peek() {
+            match self.peek_past_non_code() {
                 Token::LParen => {
+                    self.skip_non_code()?;
                     let open = self.push_bracket()?;
                     let args = self.parse_call_args()?;
                     let close = self.pop_bracket()?;
@@ -806,6 +804,7 @@ impl<'a> Parser<'a> {
                     chain.push((inner_span, chain_expr));
                 }
                 Token::LBracket => {
+                    self.skip_non_code()?;
                     let open = self.push_bracket()?;
                     let (index_span, index) = self.parse_expr()?;
                     let close = self.pop_bracket()?;
@@ -818,6 +817,7 @@ impl<'a> Parser<'a> {
                     chain.push((inner_span, chain_expr));
                 }
                 Token::Dot => {
+                    self.skip_non_code()?;
                     self.consume();
                     self.skip_non_code()?;
                     let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
@@ -1079,12 +1079,13 @@ impl<'a> Parser<'a> {
     ///
     /// This corresponds to `seqs` in the grammar, but it is slightly different
     /// from the rule there to be able to incorporate noncode.
-    fn parse_seqs(&mut self) -> Result<List<Prefixed<Seq>>> {
+    fn parse_seqs(&mut self) -> Result<List<Seq>> {
         let mut result = Vec::new();
         let mut trailing_comma = false;
 
+        let mut prefix = self.parse_non_code();
+
         loop {
-            let prefix = self.parse_non_code();
             if matches!(self.peek(), Token::RBrace | Token::RBracket) {
                 let final_result = List {
                     elements: result.into_boxed_slice(),
@@ -1094,17 +1095,36 @@ impl<'a> Parser<'a> {
                 return Ok(final_result);
             }
 
-            let (_span, seq) = self.parse_seq()?;
-            let prefixed = Prefixed { prefix, inner: seq };
-            result.push(prefixed);
+            result.push(self.parse_seq(prefix)?);
+            prefix = self.parse_non_code();
             trailing_comma = false;
 
-            self.skip_non_code()?;
             match self.peek() {
                 Token::RBrace | Token::RBracket => continue,
                 Token::Comma => {
                     self.consume();
                     trailing_comma = true;
+
+                    // Any non-code after the comma is the prefix of the next
+                    // seq. If we already had a prefix, then there is non-code
+                    // between the previous seq and the comma. We shouldn't
+                    // really allow that, but since we parsed it, it's too late
+                    // to fail, so we'll move it over the comma instead.
+                    if prefix.is_empty() {
+                        prefix = self.parse_non_code();
+                    } else {
+                        let mut pfx = prefix.into_vec();
+                        // When we concatenate two non-codes, we should not
+                        // create two consecutive blanks, as that would create
+                        // an idempotency issue in the formatter. We drop all
+                        // blanks just before the comma.
+                        while let Some(NonCode::Blank(..)) = pfx.last() {
+                            pfx.pop();
+                        }
+                        pfx.extend(self.parse_non_code().into_vec().into_iter());
+                        prefix = pfx.into_boxed_slice();
+                    }
+
                     continue;
                 }
                 // All of the next tokens are unexpected, but we add special
@@ -1154,70 +1174,49 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_prefixed_seq(&mut self) -> Result<(Span, Prefixed<Seq>)> {
-        let ps = self.parse_prefixed(|s| s.parse_seq())?;
-        Ok((
-            ps.inner.0,
-            Prefixed {
-                prefix: ps.prefix,
-                inner: ps.inner.1,
-            },
-        ))
-    }
+    /// Parse a single element (or comprehension) inside a collection literal.
+    ///
+    /// We attach the input prefix to the nearest place in the `Seq` where it
+    /// belongs, which may be a control item, or the inner yield.
+    fn parse_seq(&mut self, mut prefix: Box<[NonCode]>) -> Result<Seq> {
+        let mut control_items = Vec::new();
 
-    fn parse_seq(&mut self) -> Result<(Span, Seq)> {
-        let begin = self.peek_span();
+        let body = loop {
+            // Here we have a lookahead of two tokens ... not great if we want to
+            // keep the grammar simple, but for making the syntax prettier it is
+            // worth some complications to allow { a = b; p = q } notation.
+            let next1 = self.peek();
+            let next2 = self.peek_n(1);
 
-        // Here we have a lookahead of two tokens ... not great if we want to
-        // keep the grammar simple, but for making the syntax prettier it is
-        // worth some complications to allow { a = b; p = q } notation.
-        let next1 = self.peek();
-        let next2 = self.peek_n(1);
+            let control = match (next1, next2) {
+                (Token::KwAssert | Token::KwLet | Token::KwTrace, _) => self.parse_seq_stmt()?,
+                (Token::KwFor, _) => self.parse_seq_for()?,
+                (Token::KwIf, _) => self.parse_seq_if()?,
+                (Token::Ident, Token::Eq1) => break self.parse_seq_assoc_ident()?,
+                _ => break self.parse_seq_assoc_expr()?,
+            };
 
-        let result = match (next1, next2) {
-            // TODO: Would need to skip noncode here ... maybe it's better to
-            // parse an expression, and re-interpret it later if it reads like a
-            // variable access?
-            (Token::Ident, Token::Eq1) => self.parse_seq_assoc_ident()?,
-            (Token::KwAssert | Token::KwLet | Token::KwTrace, _) => {
-                let stmt = self.parse_stmt()?;
-                let (body_span, body) = self.parse_prefixed_seq()?;
-                Seq::Stmt {
-                    stmt,
-                    body_span,
-                    body: Box::new(body),
-                }
-            }
-            (Token::KwFor, _) => self.parse_seq_for()?,
-            (Token::KwIf, _) => self.parse_seq_if()?,
-            _ => {
-                let (expr_span, expr) = self.parse_expr_op()?;
-                self.skip_non_code()?;
-                match self.peek() {
-                    Token::Colon => {
-                        let op = self.consume();
-                        self.skip_non_code()?;
-                        let (value_span, value) = self.parse_expr()?;
-                        Seq::AssocExpr {
-                            op_span: op,
-                            field_span: expr_span,
-                            field: Box::new(expr),
-                            value_span,
-                            value: Box::new(value),
-                        }
-                    }
-                    _ => Seq::Elem {
-                        span: expr_span,
-                        value: Box::new(expr),
-                    },
-                }
-            }
+            let item = Prefixed {
+                prefix,
+                inner: control,
+            };
+            control_items.push(item);
+            prefix = self.parse_non_code();
         };
 
-        Ok((self.span_from(begin), result))
+        let result = Seq {
+            control: control_items.into_boxed_slice(),
+            body: Prefixed {
+                prefix,
+                inner: body,
+            },
+        };
+
+        Ok(result)
     }
 
-    fn parse_seq_assoc_ident(&mut self) -> Result<Seq> {
+    /// Parse `ident = expr` inside a `Seq`.
+    fn parse_seq_assoc_ident(&mut self) -> Result<Yield> {
         let ident = self.consume();
 
         self.skip_non_code()?;
@@ -1226,7 +1225,7 @@ impl<'a> Parser<'a> {
         self.skip_non_code()?;
         let (value_span, value) = self.parse_expr()?;
 
-        let result = Seq::AssocIdent {
+        let result = Yield::AssocIdent {
             op_span: op,
             field: ident,
             value_span,
@@ -1236,7 +1235,38 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    fn parse_seq_for(&mut self) -> Result<Seq> {
+    /// Parse `expr` or `expr: expr` inside a `Seq`.
+    fn parse_seq_assoc_expr(&mut self) -> Result<Yield> {
+        let (expr_span, expr) = self.parse_expr_op()?;
+        let result = match self.peek_past_non_code() {
+            Token::Colon => {
+                self.skip_non_code()?;
+                let op = self.consume();
+                self.skip_non_code()?;
+                let (value_span, value) = self.parse_expr()?;
+                Yield::AssocExpr {
+                    op_span: op,
+                    field_span: expr_span,
+                    field: Box::new(expr),
+                    value_span,
+                    value: Box::new(value),
+                }
+            }
+            _ => Yield::Elem {
+                span: expr_span,
+                value: Box::new(expr),
+            },
+        };
+        Ok(result)
+    }
+
+    fn parse_seq_stmt(&mut self) -> Result<SeqControl> {
+        let stmt = self.parse_stmt()?;
+        let result = SeqControl::Stmt { stmt };
+        Ok(result)
+    }
+
+    fn parse_seq_for(&mut self) -> Result<SeqControl> {
         let _for = self.consume();
 
         // Parse the loop variables. Here a trailing comma is not allowed.
@@ -1265,19 +1295,16 @@ impl<'a> Parser<'a> {
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' after the collection.")?;
 
-        let (_body_span, body) = self.parse_prefixed_seq()?;
-
-        let result = Seq::For {
+        let result = SeqControl::For {
             idents: idents.into_boxed_slice(),
             collection_span,
             collection: Box::new(collection),
-            body: Box::new(body),
         };
 
         Ok(result)
     }
 
-    fn parse_seq_if(&mut self) -> Result<Seq> {
+    fn parse_seq_if(&mut self) -> Result<SeqControl> {
         let _if = self.consume();
 
         // See also the note in `parse_expr_if` about why we don't allow
@@ -1288,12 +1315,9 @@ impl<'a> Parser<'a> {
         self.skip_non_code()?;
         self.parse_token(Token::Colon, "Expected ':' after the condition.")?;
 
-        let (_body_span, body) = self.parse_prefixed_seq()?;
-
-        let result = Seq::If {
+        let result = SeqControl::If {
             condition_span,
             condition: Box::new(condition),
-            body: Box::new(body),
         };
 
         Ok(result)

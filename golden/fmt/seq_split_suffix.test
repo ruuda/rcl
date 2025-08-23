@@ -1,0 +1,52 @@
+let a = [
+  42
+  // This is a comment before the trailing comma, that is going to be moved after it.
+  ,
+];
+
+let b = [
+  42
+  // This one will merge
+  ,
+  // With the one below it.
+];
+
+let c = [
+  // Blanks before the comma get dropped.
+  42
+
+  ,
+];
+
+let d = [
+  // But blanks before the closing bracket do not.
+  42
+
+];
+
+null
+
+# output:
+let a = [
+  42,
+  // This is a comment before the trailing comma, that is going to be moved after it.
+];
+
+let b = [
+  42,
+  // This one will merge
+  // With the one below it.
+];
+
+let c = [
+  // Blanks before the comma get dropped.
+  42,
+];
+
+let d = [
+  // But blanks before the closing bracket do not.
+  42,
+
+];
+
+null
