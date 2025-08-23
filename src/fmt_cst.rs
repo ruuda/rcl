@@ -627,10 +627,10 @@ impl<'a> Formatter<'a> {
                 idents, collection, ..
             } => concat! {
                 Doc::str("for").with_markup(Markup::Keyword)
+                // Note, we use regular spaces here not, Doc::Sep.
+                // That means we don't break this over multiple lines,
+                // which so far seems fine.
                 " "
-                // TODO: This does not use a proper sep, which means we
-                // cannot break this over multiple lines. But maybe that's
-                // okay.
                 Doc::join(
                     idents.iter().map(|ident| self.span(*ident)),
                     ", ".into(),
