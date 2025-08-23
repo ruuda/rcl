@@ -7,7 +7,7 @@
 
 //! The implementation of `rcl patch`.
 
-use crate::cst::{Expr, Stmt, Yield};
+use crate::cst::{Expr, Seq, SeqControl, Stmt, Yield};
 use crate::error::{IntoError, Result};
 use crate::pprint::{concat, Doc};
 use crate::source::{DocId, Span};
@@ -48,7 +48,7 @@ pub fn parse_path_expr(path: &str, doc_id: DocId) -> Result<Vec<&str>> {
     }
 }
 
-/// Splice in the replacement into the source CST at the given path.
+/// Splice the replacement into the source CST at the given path.
 ///
 /// If a match was found, `replacement` will contain the replaced node. That is,
 /// we swap `replacement` with the target node.
@@ -75,7 +75,7 @@ pub fn patch_expr(
     source_span: Span,
     replacement: &mut Expr,
 ) -> Result<()> {
-    let (target, suffix) = match path.split_first() {
+    let target = match path.first() {
         Some(tf) => tf,
         None => {
             // If the path is empty, then we have arrived at the final target,
@@ -85,42 +85,24 @@ pub fn patch_expr(
         }
     };
 
-    // Construct the error lazily: there are multiple cases below where we want
-    // to report *this* error, with the entire source span as the search space,
-    // but we don't want to allocate the `Error` in the success case.
+    // There are multiple cases below where we want to report this error defined
+    // here, with the entire source span as the search space, but we don't want
+    // to allocate the `Error` in the success case, so we construct it lazily.
     let make_err = || {
-        source_span
-            .error(concat! {
-                "Could not find '"
-                Doc::highlight(target).into_owned()
-                "' in this expression."
-            })
-            .err()
+        let msg = concat! {
+            "Could not find '"
+            Doc::highlight(target).into_owned()
+            "' in this expression."
+        };
+        source_span.error(msg).err()
     };
 
     match source {
-        Expr::BraceLit { elements, .. } => {
+        Expr::BraceLit { elements, .. } | Expr::BracketLit { elements, .. } => {
             for element in elements.elements.iter_mut() {
-                match &mut element.body.inner {
-                    Yield::AssocIdent {
-                        field,
-                        value,
-                        value_span,
-                        ..
-                    } if field.resolve(input) == *target => {
-                        // We matched one segment of the path, now it's up to
-                        // the inner expression to match. If that fails and
-                        // returns Err, we do *not* continue the search to see
-                        // if anything else might match, we greedily follow the
-                        // path by first matches.
-                        return patch_expr(input, suffix, value, *value_span, replacement);
-                    }
-                    // TODO: Handle nested Stmt, probably by extracting a
-                    // function that traverses Seq. Maybe I need to refactor the
-                    // CST to unnest the statements first though.
-                    // Update: This refactor has now happened, but let me rebase
-                    // all this code before addressing this todo.
-                    _ => continue,
+                match patch_seq(input, path, element, replacement) {
+                    Some(result) => return result,
+                    None => continue,
                 }
             }
             make_err()
@@ -153,13 +135,61 @@ pub fn patch_expr(
     }
 }
 
-/// Splice in the replacement into the source CST at the given path.
+/// Splice the replacement into the source CST at the given path, if the path matches.
+///
+/// The path must not be empty, because seq elements themselves cannot be the
+/// target of a replacement, only the right-hand side of bindings can.
+///
+/// Returns `Ok` if the substitution was applied, `Err` if it failed inside, and
+/// `None` if the path did not match anywhere.
+pub fn patch_seq(
+    input: &str,
+    path: &[&str],
+    source: &mut Seq,
+    replacement: &mut Expr,
+) -> Option<Result<()>> {
+    let (target, suffix) = path
+        .split_first()
+        .expect("Should not call `patch_seq` with empty path.");
+
+    // First we check for any let bindings before the yield.
+    for control in source.control.iter_mut() {
+        match &mut control.inner {
+            SeqControl::Stmt { stmt } => match patch_stmt(input, path, stmt, replacement) {
+                Some(result) => return Some(result),
+                None => continue,
+            },
+            _ => continue,
+        }
+    }
+
+    // If there is no match yet, we try to match the yield itself, if it has
+    // record form (`ident = expr`).
+    match &mut source.body.inner {
+        Yield::AssocIdent {
+            field,
+            value,
+            value_span,
+            ..
+        } if field.resolve(input) == *target => {
+            // We matched one segment of the path, now it's up to the inner
+            // expression to match. If that fails and returns Err, we do *not*
+            // continue the search to see if anything else might match, we
+            // greedily follow the path by first matches only.
+            Some(patch_expr(input, suffix, value, *value_span, replacement))
+        }
+        _ => None,
+    }
+}
+
+/// Splice the replacement into the source CST at the given path.
 ///
 /// If the path matches this statement, either the substitution succeeds, and
 /// we return `Some(Ok)`, or it fails somewhere inside, and we return `Some(Err)`.
-/// If the path does not match this statement, we return `None`. The path must
-/// not be empty, because statements themselves cannot be the target of a
-/// replacement, only the right-hand side of let bindings can.
+/// If the path does not match this statement, we return `None`.
+///
+/// The path must not be empty, because statements themselves cannot be the
+/// target of a replacement, only the right-hand side of let bindings can.
 pub fn patch_stmt(
     input: &str,
     path: &[&str],
