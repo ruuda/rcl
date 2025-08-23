@@ -1110,8 +1110,20 @@ mod test {
             expected
         );
 
+        // A dash is a replacement expression, not a filename.
+        if let Cmd::Patch { replacement, .. } = &mut expected.1 {
+            *replacement = "-".to_string();
+        };
+        assert_eq!(parse(&["rcl", "patch", "-", "path", "-"]), expected);
+
         // If we omit one of the 3 positionals, the input file defaults to stdin.
-        if let Cmd::Patch { target, .. } = &mut expected.1 {
+        if let Cmd::Patch {
+            target,
+            replacement,
+            ..
+        } = &mut expected.1
+        {
+            *replacement = "replacement".to_string();
             *target = FormatTarget::Stdout {
                 fname: Target::StdinDefault,
             };
