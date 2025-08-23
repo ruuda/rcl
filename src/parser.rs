@@ -705,9 +705,9 @@ impl<'a> Parser<'a> {
         let mut allowed_op = None;
         let mut allowed_span = None;
         loop {
-            self.skip_non_code()?;
-            match to_binop(self.peek()) {
+            match to_binop(self.peek_past_non_code()) {
                 Some(op) if allowed_op.is_none() || allowed_op == Some(op) => {
+                    self.skip_non_code()?;
                     let span = self.consume();
                     self.skip_non_code()?;
                     let (rhs_span, rhs) = self.parse_expr_not_op()?;
@@ -789,9 +789,9 @@ impl<'a> Parser<'a> {
 
         loop {
             inner_span = self.span_from(begin);
-            self.skip_non_code()?;
-            match self.peek() {
+            match self.peek_past_non_code() {
                 Token::LParen => {
+                    self.skip_non_code()?;
                     let open = self.push_bracket()?;
                     let args = self.parse_call_args()?;
                     let close = self.pop_bracket()?;
@@ -799,6 +799,7 @@ impl<'a> Parser<'a> {
                     chain.push((inner_span, chain_expr));
                 }
                 Token::LBracket => {
+                    self.skip_non_code()?;
                     let open = self.push_bracket()?;
                     let (index_span, index) = self.parse_expr()?;
                     let close = self.pop_bracket()?;
@@ -811,6 +812,7 @@ impl<'a> Parser<'a> {
                     chain.push((inner_span, chain_expr));
                 }
                 Token::Dot => {
+                    self.skip_non_code()?;
                     self.consume();
                     self.skip_non_code()?;
                     let field = self.parse_token(Token::Ident, "Expected an identifier here.")?;
@@ -1224,11 +1226,9 @@ impl<'a> Parser<'a> {
     /// Parse `expr` or `expr: expr` inside a `Seq`.
     fn parse_seq_assoc_expr(&mut self) -> Result<Yield> {
         let (expr_span, expr) = self.parse_expr_op()?;
-        // TODO: Instead of skipping, we could consume it, and return a suffix,
-        // that we then push all the way up into a collection suffix if needed.
-        self.skip_non_code()?;
-        let result = match self.peek() {
+        let result = match self.peek_past_non_code() {
             Token::Colon => {
+                self.skip_non_code()?;
                 let op = self.consume();
                 self.skip_non_code()?;
                 let (value_span, value) = self.parse_expr()?;
