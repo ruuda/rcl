@@ -148,10 +148,6 @@ pub fn patch_seq(
     source: &mut Seq,
     replacement: &mut Expr,
 ) -> Option<Result<()>> {
-    let (target, suffix) = path
-        .split_first()
-        .expect("Should not call `patch_seq` with empty path.");
-
     // First we check for any let bindings before the yield.
     for control in source.control.iter_mut() {
         match &mut control.inner {
@@ -162,6 +158,10 @@ pub fn patch_seq(
             _ => continue,
         }
     }
+
+    let (target, suffix) = path
+        .split_first()
+        .expect("Should not call `patch_seq` with empty path.");
 
     // If there is no match yet, we try to match the yield itself, if it has
     // record form (`ident = expr`).
