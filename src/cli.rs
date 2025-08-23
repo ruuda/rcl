@@ -1105,6 +1105,43 @@ mod test {
             fail_parse(&["rcl", "patch", "path"]),
             "Error: Expected a path and replacement. See --help for usage.\n"
         );
+        assert_eq!(
+            fail_parse(&["rcl", "patch"]),
+            "Error: Expected a path and replacement. See --help for usage.\n"
+        );
+
+        // With --check and --in-place we control the target. In those cases,
+        // we do not default to stdin. Technically it would work for --check,
+        // but for --in-place it makes no sense.
+        if let Cmd::Patch { target, .. } = &mut expected.1 {
+            *target = FormatTarget::Check {
+                fnames: vec![Target::Stdin],
+            };
+        };
+        assert_eq!(
+            parse(&["rcl", "patch", "--check", "-", "path", "replacement"]),
+            expected
+        );
+
+        if let Cmd::Patch { target, .. } = &mut expected.1 {
+            *target = FormatTarget::Check {
+                fnames: vec![Target::File("infile".to_string())],
+            };
+        };
+        assert_eq!(
+            parse(&["rcl", "patch", "--check", "infile", "path", "replacement"]),
+            expected
+        );
+
+        if let Cmd::Patch { target, .. } = &mut expected.1 {
+            *target = FormatTarget::InPlace {
+                fnames: vec![Target::File("infile".to_string())],
+            };
+        };
+        assert_eq!(
+            parse(&["rcl", "patch", "-i", "infile", "path", "replacement"]),
+            expected
+        );
     }
 
     #[test]
