@@ -1114,6 +1114,13 @@ impl<'a> Parser<'a> {
                         prefix = self.parse_non_code();
                     } else {
                         let mut pfx = prefix.into_vec();
+                        // When we concatenate two non-codes, we should not
+                        // create two consecutive blanks, as that would create
+                        // an idempotency issue in the formatter. We drop all
+                        // blanks just before the comma.
+                        while let Some(NonCode::Blank(..)) = pfx.last() {
+                            pfx.pop();
+                        }
                         pfx.extend(self.parse_non_code().into_vec().into_iter());
                         prefix = pfx.into_boxed_slice();
                     }
