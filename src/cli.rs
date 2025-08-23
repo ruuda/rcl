@@ -970,6 +970,7 @@ mod test {
         };
         assert_eq!(parse(&["rcl", "rq", "infile", "input.name"]), expected);
 
+        // With one argument, the arg is the query, not the file.
         if let Cmd::Query {
             eval_opts,
             fname,
@@ -979,9 +980,26 @@ mod test {
         {
             eval_opts.format = OutputFormat::Rcl;
             *fname = Target::StdinDefault;
-            *query = "infile".to_string();
+            *query = "query".to_string();
         };
-        assert_eq!(parse(&["rcl", "q", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "q", "query"]), expected);
+
+        // A dash in query position is a query expression, not a file.
+        if let Cmd::Query { query, .. } = &mut expected.1 {
+            *query = "-".to_string();
+        };
+        assert_eq!(parse(&["rcl", "q", "-"]), expected);
+
+        if let Cmd::Query { fname, .. } = &mut expected.1 {
+            *fname = Target::File("infile".to_string());
+        };
+        assert_eq!(parse(&["rcl", "q", "infile", "-"]), expected);
+
+        // If we omit the query, that's an error.
+        assert_eq!(
+            fail_parse(&["rcl", "query"]),
+            "Error: Expected an input file and a query. See --help for usage.\n"
+        );
     }
 
     #[test]
