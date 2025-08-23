@@ -22,6 +22,7 @@ Unreleased.
  * Syntax highlighters and editor plugins now highlight the `#!`-line.
  * Update the Zed plugin to leverage Tree-sitter-based bracket matching and
    indentation.
+ * Comments are now allowed in more places.
 
 Bugfixes:
 
