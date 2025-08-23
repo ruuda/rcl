@@ -20,7 +20,7 @@ use rcl::source::{DocId, Inputs, Span};
 use rcl::tracer::StderrTracer;
 use rcl::typecheck;
 
-/// The result of [`App::handle_format_targets`].
+/// The result of [`App::process_format_targets`].
 struct FormatResult {
     /// Whether we printed to stdout.
     stdout: bool,
@@ -164,7 +164,8 @@ impl App {
         StderrTracer::new(self.opts.markup)
     }
 
-    fn handle_format_targets<F>(
+    /// Load all targets, apply `apply_one` to each, and write each output if applicable.
+    fn process_format_targets<F>(
         &mut self,
         output: OutputTarget,
         style_opts: StyleOptions,
@@ -243,8 +244,7 @@ impl App {
                 // We are in the --check case, not the --in-place case.
                 if did_change {
                     result.n_changed += 1;
-                    // TODO: Disable this print for patch.
-                    println!("Would reformat {}", self.loader.get_doc(doc).name);
+                    println!("Would modify {}", self.loader.get_doc(doc).name);
                 }
             }
         }
@@ -361,15 +361,17 @@ impl App {
             } => {
                 // Unrestricted is safe, because `format` does not evaluate documents.
                 self.initialize_filesystem(SandboxMode::Unrestricted)?;
-                let stats =
-                    self.handle_format_targets(output, style_opts, target, |inputs, _doc, cst| {
-                        Ok(rcl::fmt_cst::format_expr(inputs, cst))
-                    })?;
+                let stats = self.process_format_targets(
+                    output,
+                    style_opts,
+                    target,
+                    |inputs, _doc, cst| Ok(rcl::fmt_cst::format_expr(inputs, cst)),
+                )?;
                 match (stats.n_changed, stats.n_loaded) {
                     (_, _) if stats.stdout => { /* No stats to print, we printed the doc. */ }
                     (k, n) if stats.in_place => println!("Reformatted {k} of {n} files."),
                     (0, 1) => println!("The file is formatted correctly."),
-                    (0, n) => println!("All {} files are formatted correctly.", n),
+                    (0, n) => println!("All {n} files are formatted correctly."),
                     _ => {
                         let parts = vec![
                             stats.n_changed.to_string().into(),
@@ -399,7 +401,7 @@ impl App {
                 let mut replacement_cst = self.loader.get_cst(replacement_id)?;
                 let mut consumed_replacement = false;
 
-                let stats = self.handle_format_targets(
+                let stats = self.process_format_targets(
                     output,
                     style_opts,
                     target,
