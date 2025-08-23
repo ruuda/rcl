@@ -352,10 +352,18 @@ impl<'a> Abstractor<'a> {
                 })
             }
 
-            CSeq::Stmt { stmt, body, .. } => ASeq::Stmt {
-                stmt: self.stmt(stmt)?,
-                body: Box::new(self.seq(&body.inner)?),
-            },
+            CSeq::Statements { stmts, body, .. } => {
+                // We take the flat list of statements from the CST, and build
+                // the linked list like tree used in the AST.
+                let mut body = self.seq(&body.inner)?;
+                for (stmt_span, stmt) in stmts.iter().rev() {
+                    body = ASeq::Stmt {
+                        stmt: self.stmt(&stmt.inner)?,
+                        body: Box::new(body),
+                    };
+                }
+                body
+            }
 
             CSeq::For {
                 idents,
