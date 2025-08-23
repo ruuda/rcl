@@ -11,7 +11,9 @@
 //! pretty-printed for formatting.
 
 use crate::ast::UnOp;
-use crate::cst::{Chain, Expr, List, NonCode, Prefixed, Seq, Stmt, StringPart, Type};
+use crate::cst::{
+    Chain, Expr, List, NonCode, Prefixed, Seq, SeqControl, Stmt, StringPart, Type, Yield,
+};
 use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::markup::Markup;
 use crate::pprint::{concat, flush_indent, group, indent, Doc};
@@ -85,7 +87,7 @@ impl<'a> Formatter<'a> {
     /// comma for singleton list comprehensions.
     pub fn seq_opening_sep(&self, list: &List<Prefixed<Seq>>) -> Option<Doc<'a>> {
         match list.elements.len() {
-            1 if list.elements[0].inner.is_comprehension() => Some(Doc::SoftBreak),
+            1 if list.elements[0].inner.has_control() => Some(Doc::SoftBreak),
             _ => self.collection_opening_sep(list),
         }
     }
@@ -582,7 +584,7 @@ impl<'a> Formatter<'a> {
                 // add a separator, even when they are multi-line. It makes
                 // comprehensions look weird, which are regularly multi-line
                 // but only rarely are there multiple seqs in the collection.
-                _ if seqs.elements.len() == 1 => match seqs.elements[0].inner.is_comprehension() {
+                _ if seqs.elements.len() == 1 => match seqs.elements[0].inner.has_control() {
                     true => Doc::Empty,
                     false => Doc::tall(","),
                 },
@@ -608,83 +610,80 @@ impl<'a> Formatter<'a> {
         Doc::Concat(result)
     }
 
-    /// Format a sequence.
+    /// Format a yield inside a sequence.
+    pub fn yield_(&self, yield_: &Yield) -> Doc<'a> {
+        match yield_ {
+            Yield::Elem { value, .. } => self.expr(value),
+
+            Yield::AssocExpr { field, value, .. } => {
+                // TODO: Special-case an inner string for markup?
+                concat! { self.expr(field).with_markup(Markup::Field) ": " self.expr(value) }
+            }
+
+            Yield::AssocIdent { field, value, .. } => {
+                concat! { self.span(*field).with_markup(Markup::Field) " = " self.expr(value) }
+            }
+        }
+    }
+
+    /// Format a control item inside a sequence.
+    pub fn seq_control(&self, control: &SeqControl) -> Doc<'a> {
+        match control {
+            SeqControl::Stmt { stmt } => self.stmt(stmt),
+            SeqControl::For {
+                idents, collection, ..
+            } => concat! {
+                Doc::str("for").with_markup(Markup::Keyword)
+                " "
+                // TODO: This does not use a proper sep, which means we
+                // cannot break this over multiple lines. But maybe that's
+                // okay.
+                Doc::join(
+                    idents.iter().map(|ident| self.span(*ident)),
+                    ", ".into(),
+                )
+                " "
+                Doc::str("in").with_markup(Markup::Keyword)
+                " "
+                self.expr(collection)
+                ":"
+            },
+            SeqControl::If { condition, .. } => concat! {
+                Doc::str("if").with_markup(Markup::Keyword)
+                " "
+                self.expr(condition)
+                ":"
+            },
+        }
+    }
+
+    /// Format an element in a sequence (which can be a comprehension).
     pub fn seq(&self, seq: &Seq) -> Doc<'a> {
-        // If we have a deep seq, even though it *could* fit on one line,
-        // this is a complex thing akin to a nested for loop, usually it gets
-        // more readable if we spread it across multiple lines. So if the seq
-        // is deeper than 2, force it to be tall.
-        let sep = if seq.depth() > 2 {
+        // If we have a seq with multiple control items (statements or control
+        // flow), even though it *could* fit on one line, this is a complex
+        // thing akin to a nested for loop, usually it gets more readable if we
+        // spread it across multiple lines. So if the seq is deeper than 2,
+        // force it to be tall.
+        let sep = if seq.control.len() > 1 {
             Doc::HardBreak
         } else {
             Doc::Sep
         };
 
-        match seq {
-            Seq::Elem { value, .. } => self.expr(value),
+        let mut parts = Vec::with_capacity(2 + seq.control.len() * 3);
 
-            Seq::AssocExpr { field, value, .. } => {
-                // TODO: Special-case an inner string for markup?
-                concat! { self.expr(field).with_markup(Markup::Field) ": " self.expr(value) }
-            }
-
-            Seq::AssocIdent { field, value, .. } => {
-                concat! { self.span(*field).with_markup(Markup::Field) " = " self.expr(value) }
-            }
-
-            Seq::Stmt { stmt, body, .. } => {
-                let body_doc = self.seq(&body.inner);
-                concat! {
-                    self.stmt(stmt)
-                    sep
-                    self.non_code(&body.prefix)
-                    body_doc
-                }
-            }
-
-            Seq::For {
-                idents,
-                collection,
-                body,
-                ..
-            } => {
-                let body_doc = self.seq(&body.inner);
-                concat! {
-                    Doc::str("for").with_markup(Markup::Keyword)
-                    " "
-                    // TODO: This does not use a proper sep, which means we
-                    // cannot break this over multiple lines. But maybe that's
-                    // okay.
-                    Doc::join(
-                        idents.iter().map(|ident| self.span(*ident)),
-                        ", ".into(),
-                    )
-                    " "
-                    Doc::str("in").with_markup(Markup::Keyword)
-                    " "
-                    self.expr(collection)
-                    ":"
-                    sep
-                    self.non_code(&body.prefix)
-                    body_doc
-                }
-            }
-
-            Seq::If {
-                condition, body, ..
-            } => {
-                let body_doc = self.seq(&body.inner);
-                concat! {
-                    Doc::str("if").with_markup(Markup::Keyword)
-                    " "
-                    self.expr(condition)
-                    ":"
-                    sep
-                    self.non_code(&body.prefix)
-                    body_doc
-                }
-            }
+        for (_span, control) in seq.control.iter() {
+            parts.push(self.non_code(&control.prefix));
+            parts.push(self.seq_control(&control.inner));
+            parts.push(sep.clone());
         }
+
+        parts.push(self.non_code(&seq.body.prefix));
+        parts.push(self.yield_(&seq.body.inner));
+
+        // The seq itself is a group, it can be wide even when the surrounding
+        // collection is tall.
+        group! { Doc::Concat(parts) }
     }
 
     pub fn type_(&self, type_: &Type) -> Doc<'a> {

@@ -369,22 +369,14 @@ pub struct Seq {
 }
 
 impl Seq {
-    /// Whether the innermost seq is `Seq::Elem` (as opposed to `AssocExpr` or `AssocIdent`).
-    /// TODO: Maybe this can be deleted, now that we can match directly?
+    /// Whether the inner yield is `Yield::Elem` (as opposed to `AssocExpr` or `AssocIdent`).
     pub fn is_inner_elem(&self) -> bool {
         matches!(self.body.inner, Yield::Elem { .. })
     }
 
-    /// True when there are any control items, false if there is only the leaf inner item.
-    /// TODO: Do we need this?
+    /// True when there are any control items, false if there is only the yield.
     pub fn has_control(&self) -> bool {
         !self.control.is_empty()
-    }
-
-    /// Return the number of layers, where the innermost expression has depth 1.
-    /// TODO: Do we still need this?
-    pub fn depth(&self) -> u32 {
-        1 + self.control.len() as u32
     }
 }
 
