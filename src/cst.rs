@@ -364,8 +364,8 @@ pub enum SeqControl {
 /// "control items": statements, or loop control flow.
 #[derive(Debug)]
 pub struct Seq {
-    control: Box<[SpanPrefixedSeqControl]>,
-    body: Prefixed<Yield>,
+    pub control: Box<[SpanPrefixedSeqControl]>,
+    pub body: Prefixed<Yield>,
 }
 
 impl Seq {
