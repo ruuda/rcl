@@ -85,9 +85,9 @@ impl<'a> Formatter<'a> {
     /// For singleton comprehensions, we do not add a trailing comma. This means
     /// that we should not format wide/tall based on the presence of a trailing
     /// comma for singleton list comprehensions.
-    pub fn seq_opening_sep(&self, list: &List<Prefixed<Seq>>) -> Option<Doc<'a>> {
+    pub fn seq_opening_sep(&self, list: &List<Seq>) -> Option<Doc<'a>> {
         match list.elements.len() {
-            1 if list.elements[0].inner.has_control() => Some(Doc::SoftBreak),
+            1 if list.elements[0].has_control() => Some(Doc::SoftBreak),
             _ => self.collection_opening_sep(list),
         }
     }
@@ -555,25 +555,18 @@ impl<'a> Formatter<'a> {
     /// If the elements start or end with a key-value, return a separator, otherwise empty string.
     ///
     /// This is so that `{ a = 10 }` formats with spaces, but `{a, 10}` does not.
-    fn sep_key_value(&self, elements: &[Prefixed<Seq>]) -> Option<Doc<'a>> {
-        match elements.first().map(|x| x.inner.is_inner_elem()) {
+    fn sep_key_value(&self, elements: &[Seq]) -> Option<Doc<'a>> {
+        match elements.first().map(|x| x.is_inner_elem()) {
             Some(false) => Some(Doc::Sep),
             Some(true) => None,
             None => None,
         }
     }
 
-    pub fn seqs(&self, seqs: &List<Prefixed<Seq>>) -> Doc<'a> {
+    pub fn seqs(&self, seqs: &List<Seq>) -> Doc<'a> {
         let mut result = Vec::new();
         for (i, elem) in seqs.elements.iter().enumerate() {
-            let elem_doc = self.seq(&elem.inner);
-
-            // We wrap the inner Seq in a group, so you can have a collection
-            // that consists of multiple comprehensions, and each one fits on
-            // a line, so they are all formatted wide, but the collection itself
-            // is formatted tall.
-            result.push(self.non_code(&elem.prefix));
-            result.push(group! { elem_doc });
+            result.push(self.seq(elem));
 
             let is_last = i + 1 == seqs.elements.len();
             let sep_doc = match i {
@@ -584,7 +577,7 @@ impl<'a> Formatter<'a> {
                 // add a separator, even when they are multi-line. It makes
                 // comprehensions look weird, which are regularly multi-line
                 // but only rarely are there multiple seqs in the collection.
-                _ if seqs.elements.len() == 1 => match seqs.elements[0].inner.has_control() {
+                _ if seqs.elements.len() == 1 => match seqs.elements[0].has_control() {
                     true => Doc::Empty,
                     false => Doc::tall(","),
                 },
@@ -681,8 +674,11 @@ impl<'a> Formatter<'a> {
         parts.push(self.non_code(&seq.body.prefix));
         parts.push(self.yield_(&seq.body.inner));
 
-        // The seq itself is a group, it can be wide even when the surrounding
-        // collection is tall.
+        // The seq itself is a group: you can have a collection which is tall,
+        // but the seq inside can be wide.
+        // TODO: We should hoist the initial prefix out of this group. Without
+        // that, adding a comment above a for would force the entire thing to
+        // be tall.
         group! { Doc::Concat(parts) }
     }
 

@@ -184,14 +184,14 @@ pub enum Expr {
     BraceLit {
         open: Span,
         close: Span,
-        elements: List<Prefixed<Seq>>,
+        elements: List<Seq>,
     },
 
     /// A `[]`-enclosed collection literal.
     BracketLit {
         open: Span,
         close: Span,
-        elements: List<Prefixed<Seq>>,
+        elements: List<Seq>,
     },
 
     /// An expression enclosed in `()`.

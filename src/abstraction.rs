@@ -183,7 +183,7 @@ impl<'a> Abstractor<'a> {
                 elements: elements
                     .elements
                     .iter()
-                    .map(|elem| self.seq(&elem.inner))
+                    .map(|elem| self.seq(elem))
                     .collect::<Result<Vec<_>>>()?,
             },
 
@@ -192,7 +192,7 @@ impl<'a> Abstractor<'a> {
                 elements: elements
                     .elements
                     .iter()
-                    .map(|elem| self.seq(&elem.inner))
+                    .map(|elem| self.seq(elem))
                     .collect::<Result<Vec<_>>>()?,
             },
 
@@ -366,9 +366,9 @@ impl<'a> Abstractor<'a> {
         // We take the flat list of control items from the CST, and build
         // the linked list like tree used in the AST.
         for (_control_span, control) in seq.control.iter().rev() {
-            body = match control.inner {
+            body = match &control.inner {
                 SeqControl::Stmt { stmt } => ASeq::Stmt {
-                    stmt: self.stmt(&stmt)?,
+                    stmt: self.stmt(stmt)?,
                     body: Box::new(body),
                 },
                 SeqControl::For {
@@ -385,16 +385,16 @@ impl<'a> Abstractor<'a> {
                         .iter()
                         .map(|span| span.resolve(self.input).into())
                         .collect(),
-                    collection_span,
-                    collection: Box::new(self.expr(&collection)?),
+                    collection_span: *collection_span,
+                    collection: Box::new(self.expr(collection)?),
                     body: Box::new(body),
                 },
                 SeqControl::If {
                     condition_span,
                     condition,
                 } => ASeq::If {
-                    condition_span,
-                    condition: Box::new(self.expr(&condition)?),
+                    condition_span: *condition_span,
+                    condition: Box::new(self.expr(condition)?),
                     body: Box::new(body),
                 },
             }
