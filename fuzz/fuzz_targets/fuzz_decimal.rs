@@ -120,6 +120,17 @@ fuzz_target!(|input: Input| -> Corpus {
             };
 
             let a_str = a.format();
+
+            // `parse_str` rejects long inputs on purpose, but if we have an
+            // input with 255 decimals, then we might get a string that long.
+            // I don't consider failing to roundtrip that one an error, we can't
+            // encounter one in RCL source as input. Perhaps it is possible to
+            // get one through arithmetic and calls to `round`, but even then,
+            // if this one doesn't round-trip, I think that's okay.
+            if a_str.len() > 255 {
+                return Corpus::Reject;
+            }
+
             let b = match Decimal::parse_str(&a_str) {
                 Some(r) => Decimal::from(r),
                 _ => panic!("Failed to parse output of Decimal::format: {a_str}"),
