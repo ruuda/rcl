@@ -205,7 +205,7 @@ Usage:
 
 The 'patch' command edits an RCL document, to replace the expression identified
 by <path> with the given <replacement>. This can be used to make automation
-update a configuration that is otherwise written by hand. This command formats
+edit a configuration that is otherwise written by hand. This command formats
 the new document in standard style.
 
 As an example, consider the file 'example.rcl':
