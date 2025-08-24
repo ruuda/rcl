@@ -395,32 +395,22 @@ impl App {
                 // Unrestricted is safe, because `patch` does not evaluate documents.
                 self.initialize_filesystem(SandboxMode::Unrestricted)?;
 
-                let path_id = self.loader.load_string("path", path.clone());
-                let replacement_id = self.loader.load_string("replacement", replacement);
-                let path_segments = rcl::patch::parse_path_expr(&path, path_id)?;
-                let mut replacement_cst = self.loader.get_cst(replacement_id)?;
-                let mut consumed_replacement = false;
+                let mut patcher = Some(rcl::patch::Patcher::new(
+                    &mut self.loader,
+                    &path,
+                    replacement,
+                )?);
 
                 let stats = self.process_format_targets(
                     output,
                     style_opts,
                     target,
                     |inputs, doc, input_cst| {
-                        if consumed_replacement {
-                            return Error::new("'rcl patch' handles only one target file.").err();
-                        }
-
-                        consumed_replacement = true;
                         let input_doc = &inputs[doc];
-                        let input_str = input_doc.data;
-                        rcl::patch::patch_expr(
-                            input_str,
-                            &path_segments,
-                            input_cst,
-                            input_doc.span,
-                            &mut replacement_cst,
-                        )?;
-
+                        let patcher = patcher.take().ok_or_else(|| {
+                            Error::new("'rcl patch' handles only one target file.")
+                        })?;
+                        patcher.apply(input_doc.data, input_doc.span, input_cst)?;
                         Ok(rcl::fmt_cst::format_expr(inputs, input_cst))
                     },
                 )?;

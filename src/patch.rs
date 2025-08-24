@@ -9,9 +9,42 @@
 
 use crate::cst::{Expr, Seq, SeqControl, Stmt, Yield};
 use crate::error::{IntoError, Result};
+use crate::loader::Loader;
 use crate::pprint::{concat, Doc};
 use crate::source::{DocId, Span};
 use crate::string::is_identifier;
+
+pub struct Patcher<'a> {
+    path: Vec<&'a str>,
+    replacement: Expr,
+}
+
+impl<'a> Patcher<'a> {
+    /// Prepare a patcher by parsing the path and replacement.
+    pub fn new(loader: &mut Loader, path: &'a str, replacement: String) -> Result<Self> {
+        let path_id = loader.load_string("path", path.to_string());
+        let replacement_id = loader.load_string("replacement", replacement);
+        let result = Patcher {
+            path: parse_path_expr(path, path_id)?,
+            replacement: loader.get_cst(replacement_id)?,
+        };
+        Ok(result)
+    }
+
+    /// Apply the patch to the `source_cst`.
+    ///
+    /// Because this swaps the replacement CST into place, the patcher cannot be
+    /// reused afterwards.
+    pub fn apply(mut self, input: &str, source_span: Span, source_cst: &mut Expr) -> Result<()> {
+        patch_expr(
+            input,
+            &self.path,
+            source_cst,
+            source_span,
+            &mut self.replacement,
+        )
+    }
+}
 
 /// Parse a document path expression.
 ///
@@ -19,7 +52,7 @@ use crate::string::is_identifier;
 ///
 /// We take a `DocId`, to be able to report a span on error, so we can highlight
 /// the exact span of the problem.
-pub fn parse_path_expr(path: &str, doc_id: DocId) -> Result<Vec<&str>> {
+fn parse_path_expr(path: &str, doc_id: DocId) -> Result<Vec<&str>> {
     let mut result = Vec::new();
     let mut start = 0;
     loop {
@@ -68,7 +101,7 @@ pub fn parse_path_expr(path: &str, doc_id: DocId) -> Result<Vec<&str>> {
 /// itself. But we also point to the expected type, and then we'd print out the
 /// original 42, and it would be confusing. Better to just save the patched
 /// document first and evaluate it afterwards.
-pub fn patch_expr(
+fn patch_expr(
     input: &str,
     path: &[&str],
     source: &mut Expr,
@@ -142,7 +175,7 @@ pub fn patch_expr(
 ///
 /// Returns `Ok` if the substitution was applied, `Err` if it failed inside, and
 /// `None` if the path did not match anywhere.
-pub fn patch_seq(
+fn patch_seq(
     input: &str,
     path: &[&str],
     source: &mut Seq,
@@ -190,7 +223,7 @@ pub fn patch_seq(
 ///
 /// The path must not be empty, because statements themselves cannot be the
 /// target of a replacement, only the right-hand side of let bindings can.
-pub fn patch_stmt(
+fn patch_stmt(
     input: &str,
     path: &[&str],
     source: &mut Stmt,
