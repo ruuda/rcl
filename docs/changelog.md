@@ -18,11 +18,21 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased.
 
+Command-line:
+
+* The new [`rcl patch`](rcl_patch.md) command enables automation to safely edit
+  <abbr>RCL</abbr> documents.
+
+Language:
+
  * Add [`String.parse_number`](type_string.md#parse_number) method.
+ * Comments are now allowed in more places.
+
+Plugins:
+
  * Syntax highlighters and editor plugins now highlight the `#!`-line.
  * Update the Zed plugin to leverage Tree-sitter-based bracket matching and
    indentation.
- * Comments are now allowed in more places.
 
 Bugfixes:
 
