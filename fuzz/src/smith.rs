@@ -155,6 +155,8 @@ define_ops! {
     0xe6 => ModeJsonSuperset,
     /// Set the check mode to `JsonLines`.
     0xe7 => ModeJsonLines,
+    /// Set the check mode to `PatchIdempotent`
+    0xe8 => ModePatchIdempotent,
 }
 
 /// A helper for visualizing program execution for debug purposes.
@@ -511,6 +513,15 @@ impl<'a> ProgramBuilder<'a> {
             }
             Op::ModeJsonLines => {
                 self.mode = Mode::EvalJsonLines;
+            }
+            Op::ModePatchIdempotent => {
+                let replacement = self.expr_stack.pop()?;
+                let path = self.expr_stack.pop()?;
+                self.mode = Mode::PatchIdempotent {
+                    width: n as u32,
+                    path,
+                    replacement,
+                };
             }
         }
 
