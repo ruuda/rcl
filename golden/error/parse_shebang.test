@@ -1,0 +1,20 @@
+#! This line at the start is allowed.
+
+#! This line, not at the start, is silently allowed and treated like a comment.
+#! We ought to deny it, but it's not really harmful either, so for now we just
+#! keep it.
+let y = 42;
+
+let x =
+  #! But in places where comments are not allowed, like here, we do not allow
+  #! these #!-lines either.
+  42;
+
+# output:
+stdin:9:3
+  ╷
+9 │   #! But in places where comments are not allowed, like here, we do not allow
+  ╵   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Error: A #!-line is not allowed here.
+
+Help: Try moving it to the top of the file instead.

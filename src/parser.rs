@@ -95,11 +95,6 @@ impl<'a> Parser<'a> {
     }
 
     /// Return the next code token, ignoring whitespace and non-code.
-    ///
-    /// Note, we don't peek past [`Token::Shebang`], because [`skip_non_code`]
-    /// does not skip over it, and a common pattern is to peek past non-code and
-    /// then for particular cases enforce that there is no comment there. We
-    /// don't allow a `#!` in that place either.
     fn peek_past_non_code(&self) -> Token {
         self.tokens[self.cursor..]
             .iter()
@@ -277,6 +272,12 @@ impl<'a> Parser<'a> {
                             self.comment_anchor,
                             "Try inserting the comment above this instead.",
                         )
+                        .err();
+                }
+                Token::Shebang => {
+                    return self
+                        .error("A #!-line is not allowed here.")
+                        .with_help("Try moving it to the top of the file instead.")
                         .err();
                 }
                 _ => return Ok(()),
