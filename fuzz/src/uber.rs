@@ -44,13 +44,28 @@ use rcl::tracer::VoidTracer;
 #[derive(Debug)]
 pub enum Mode {
     Eval,
-    FormatIdempotent { width: u32 },
-    EvalJsonIdempotent { width: u32 },
-    EvalJsonCheck { width: u32 },
-    EvalTomlCheck { width: u32 },
-    EvalFormat { width: u32 },
+    FormatIdempotent {
+        width: u32,
+    },
+    EvalJsonIdempotent {
+        width: u32,
+    },
+    EvalJsonCheck {
+        width: u32,
+    },
+    EvalTomlCheck {
+        width: u32,
+    },
+    EvalFormat {
+        width: u32,
+    },
     EvalJsonSuperset,
     EvalJsonLines,
+    PatchIdempotent {
+        width: u32,
+        path: String,
+        replacement: String,
+    },
 }
 
 pub fn fuzz_main(mode: Mode, input: &str) {
@@ -103,6 +118,14 @@ fn fuzz_main_impl(loader: &mut Loader, mode: Mode, input: &str) -> Result<()> {
         }
         Mode::EvalJsonLines => {
             let _ = fuzz_eval_json_lines(loader, input);
+        }
+        Mode::PatchIdempotent {
+            width,
+            path,
+            replacement,
+        } => {
+            cfg.width = Some(width);
+            let _ = fuzz_patch_idempotent(loader, input, cfg, path, replacement);
         }
     };
 
@@ -277,5 +300,40 @@ fn fuzz_eval_json_lines(loader: &mut Loader, input: &str) -> Result<()> {
     let newlines_observed = jsonl_str.as_bytes().iter().filter(|b| **b == 0x0a).count();
     let newlines_expected = value.expect_list().len();
     assert_eq!(newlines_observed, newlines_expected);
+    Ok(())
+}
+
+/// Run the formatter twice and check for idempotency.
+fn fuzz_patch_idempotent(
+    loader: &mut Loader,
+    input: &str,
+    cfg: pprint::Config,
+    path: String,
+    replacement: String,
+) -> Result<()> {
+    // Round 1, we patch the input document.
+    let patcher = rcl::patch::Patcher::new(loader, &path, replacement.clone())?;
+    let id = loader.load_string("input", input.to_string());
+    let mut cst = loader.get_cst(id)?;
+    let doc_1 = loader.get_doc(id);
+    patcher.apply(doc_1.data, doc_1.span, &mut cst)?;
+
+    // We format the patched CST from round 1. This is the input for round 2.
+    let out1 = rcl::fmt_cst::format_expr(&loader.as_inputs(), &cst)
+        .println(&cfg)
+        .to_string_no_markup();
+
+    let patcher = rcl::patch::Patcher::new(loader, &path, replacement)?;
+    let id = loader.load_string("input", out1.to_string());
+    let mut cst = loader.get_cst(id)?;
+    let doc_2 = loader.get_doc(id);
+    patcher.apply(doc_2.data, doc_2.span, &mut cst)?;
+
+    // We format this version as well.
+    let out2 = rcl::fmt_cst::format_expr(&loader.as_inputs(), &cst)
+        .println(&cfg)
+        .to_string_no_markup();
+
+    assert_eq!(out1, out2, "Patching should be idempotent.");
     Ok(())
 }
