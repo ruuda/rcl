@@ -186,7 +186,7 @@ Build the shared object:
 Give the shared object the appropriate name for the Python interpreter to
 discover it:
 
-    mv target/debug/{libpyrcl,rcl}.so
+    mv target/debug/{librcl,rcl}.so
 
 Tell Python where to find the shared object, run the interpreter:
 

@@ -182,7 +182,7 @@
             buildAndTestSubdir = "pyrcl";
             postInstall =
               ''
-              mv $out/lib/libpyrcl.so $out/lib/rcl.so
+              mv $out/lib/librcl.so $out/lib/rcl.so
               cp ${./pyrcl}/rcl.pyi $out/lib/rcl.pyi
               '';
           };

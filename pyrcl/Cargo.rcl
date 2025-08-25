@@ -8,7 +8,14 @@ let root = import "//Cargo.rcl";
       description = "Python bindings to the RCL interpreter.",
     },
 
-  lib = { crate-type = ["cdylib"] },
+  lib = {
+    crate-type = ["cdylib"],
+    // When we build with Cargo, this will name the file `librcl.so`, which
+    // is no good for importing in Python (it needs to be named `rcl.so` for
+    // `import rcl` to work in Python). Fortunately, Maturin handles the
+    // rename, so `maturin build --zig` produces a correct wheel.
+    name = "rcl",
+  },
 
   dependencies = {
     rcl = { path = ".." },
