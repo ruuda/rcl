@@ -139,9 +139,6 @@ define_ops! {
     /// Replace the top element with an import expression.
     0x57 => ExprImport,
 
-    /// Push a copy of element _n_ of the expression stack to the top.
-    0x60 => ExprDup,
-
     // The instructions below modify the fuzz mode. The default mode is `Eval`,
     // and because it's the default, there is no instruction to set it.
     /// Set the check mode to `FormatIdempotent`.
@@ -493,11 +490,6 @@ impl<'a> ProgramBuilder<'a> {
             Op::ExprImport => {
                 let mut s = self.expr_stack.pop()?;
                 s.insert_str(0, "import ");
-                self.expr_stack.push(s);
-            }
-
-            Op::ExprDup => {
-                let s = nth(&self.expr_stack, n)?;
                 self.expr_stack.push(s);
             }
 
