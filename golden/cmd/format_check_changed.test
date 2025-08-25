@@ -1,0 +1,6 @@
+# command: ["format", "-", "--check"]
+{a=0}
+
+# output:
+Would modify stdin
+Error: 1 of 1 files would be reformatted.

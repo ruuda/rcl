@@ -1,0 +1,5 @@
+# command: ["query", "input.a"]
+{ a = 42 }
+
+# output:
+42
