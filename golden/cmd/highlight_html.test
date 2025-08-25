@@ -1,0 +1,12 @@
+# command: ["highlight", "--color=html"]
+// Comment.
+let a: Number = 1;
+assert a == 1, f"{a} is a number \u{2026}";
+[for x in std.range(0, 0xff): a]
+
+# output:
+<pre><code class="sourceCode"><span class="co">// Comment.</span>
+<span class="kw">let</span> <span class="n">a</span>: <span class="n">Number</span> = <span class="dv">1</span>;
+<span class="kw">assert</span> <span class="n">a</span> == <span class="dv">1</span>, <span class="st">f"</span><span class="dt">{</span><span class="n">a</span><span class="dt">}</span><span class="st"> is a number </span><span class="dt">\u{2026}</span><span class="st">"</span>;
+[<span class="kw">for</span> <span class="n">x</span> <span class="kw">in</span> <span class="n">std</span>.<span class="n">range</span>(<span class="dv">0</span>, <span class="dv">0xff</span>): <span class="n">a</span>]
+</code></pre>
