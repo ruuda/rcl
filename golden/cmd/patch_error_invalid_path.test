@@ -1,0 +1,11 @@
+# command: ["patch", "-", "invalid path", "1"]
+null
+
+# output:
+path:1:1
+  ╷
+1 │ invalid path
+  ╵ ^~~~~~~~~~~~
+Error: This path segment is not a valid identifier.
+
+Help: A document path can only contain identifiers, not list indexes or arbitrary keys.

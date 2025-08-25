@@ -1,0 +1,29 @@
+# command: ["patch", "-", "a.b", "1"]
+// This requires traversing let bindings in both a dict and list.
+// In both cases, we also include a non-immediate match, and we throw
+// in a SeqControl which is not a let-binding.
+{
+  p = 0,
+  let a = [
+    let q = 0;
+    if q > 0:
+    let b = 0;
+    42
+  ];
+  q = 0,
+}
+
+# output:
+// This requires traversing let bindings in both a dict and list.
+// In both cases, we also include a non-immediate match, and we throw
+// in a SeqControl which is not a let-binding.
+{
+  p = 0,
+  let a = [
+    let q = 0;
+    if q > 0:
+    let b = 1;
+    42
+  ];
+  q = 0,
+}
