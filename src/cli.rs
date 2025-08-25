@@ -30,6 +30,7 @@ Commands:
   evaluate     Evaluate a document to an output format.
   format       Auto-format an RCL document.
   highlight    Print a document with syntax highlighting.
+  patch        Replace a value inside an RCL document.
   query        Evaluate an expression against an input document.
 "#;
 
@@ -196,6 +197,52 @@ Options:
 See also --help for global options.
 "#;
 
+const USAGE_PATCH: &str = r#"
+RCL -- A reasonable configuration language.
+
+Usage:
+  rcl [<options>] patch [<options>] [<file>] <path> <replacement>
+
+The 'patch' command edits an RCL document, to replace the expression identified
+by <path> with the given <replacement>. This can be used to make automation
+edit a configuration that is otherwise written by hand. This command formats
+the new document in standard style.
+
+As an example, consider the file 'example.rcl':
+
+  let widget = { id = 1337 };
+  widget
+
+The command 'rcl patch --in-place example.rcl widget.id 42' would rewrite it to:
+
+  let widget = { id = 42 };
+  widget
+
+Arguments:
+  <file>         The input file to process, or '-' for stdin. Defaults to stdin
+                 when no file is specified.
+  <path>         The path inside the document that identifies the syntax node to
+                 replace. The path consists of identifiers separated by dots,
+                 where each identifier matches either a let-binding, or a key in
+                 a dict. Keys only match in record notation.
+  <replacement>  The expression to replace the previous value with.
+
+Options:
+  --check                Report whether the file would be altered. If so, exit
+                         with exit code 1. When the file already contains the
+                         desired contents, exit with exit code 0. Formatting
+                         changes unrelated to the patch will also cause an exit
+                         code of 1.
+  -i --in-place          Rewrite file in-place instead of writing to stdout.
+                         By default the patched result is written to stdout.
+  -o --output <outfile>  Write to the given file instead of stdout. This is
+                         incompatible with --in-place.
+  -w --width <width>     Target width in number of columns, must be an integer.
+                         Defaults to 80.
+
+See also --help for global options.
+"#;
+
 /// Options that apply to all subcommands.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct GlobalOptions {
@@ -314,6 +361,13 @@ pub enum Cmd {
         style_opts: StyleOptions,
         target: FormatTarget,
         output: OutputTarget,
+    },
+    Patch {
+        style_opts: StyleOptions,
+        target: FormatTarget,
+        output: OutputTarget,
+        path: String,
+        replacement: String,
     },
     Highlight {
         fname: Target,
@@ -448,6 +502,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
             Arg::Plain("format") | Arg::Plain("fmt") | Arg::Plain("f") if cmd.is_none() => {
                 cmd = Some("format");
             }
+            Arg::Plain("patch") if cmd.is_none() => {
+                cmd = Some("patch");
+            }
             Arg::Plain("highlight") | Arg::Plain("h") if cmd.is_none() => {
                 cmd = Some("highlight");
             }
@@ -496,6 +553,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
         }),
         Some("main") => Some(Cmd::Help {
             usage: &[USAGE_MAIN_INTRO, USAGE_MAIN_EXTENDED],
+        }),
+        Some("patch") => Some(Cmd::Help {
+            usage: &[USAGE_PATCH],
         }),
         Some("query") => Some(Cmd::Help {
             usage: &[USAGE_EVAL_QUERY],
@@ -567,17 +627,26 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
         }
         Some("format") => Cmd::Format {
             style_opts,
-            target: if in_place {
-                FormatTarget::InPlace { fnames: targets }
-            } else if check {
-                FormatTarget::Check { fnames: targets }
-            } else {
-                FormatTarget::Stdout {
-                    fname: get_unique_target(targets)?,
-                }
-            },
+            target: get_format_target(in_place, check, targets)?,
             output,
         },
+        Some("patch") => {
+            let mut pop_arg = || match targets.pop() {
+                Some(Target::File(expr)) => Ok(expr),
+                Some(Target::Stdin) => Ok("-".to_string()),
+                Some(Target::StdinDefault) => unreachable!("Produced only through absence of arg."),
+                None => Error::new("Expected a path and replacement. See --help for usage.").err(),
+            };
+            let replacement = pop_arg()?;
+            let path = pop_arg()?;
+            Cmd::Patch {
+                style_opts,
+                target: get_format_target(in_place, check, targets)?,
+                path,
+                replacement,
+                output,
+            }
+        }
         Some("highlight") => Cmd::Highlight {
             fname: get_unique_target(targets)?,
         },
@@ -597,6 +666,19 @@ fn get_unique_target(mut targets: Vec<Target>) -> Result<Target> {
         }
         Some(t) => Ok(t),
     }
+}
+
+fn get_format_target(in_place: bool, check: bool, targets: Vec<Target>) -> Result<FormatTarget> {
+    let result = if in_place {
+        FormatTarget::InPlace { fnames: targets }
+    } else if check {
+        FormatTarget::Check { fnames: targets }
+    } else {
+        FormatTarget::Stdout {
+            fname: get_unique_target(targets)?,
+        }
+    };
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -731,13 +813,23 @@ mod test {
         }
         assert_eq!(parse(&["rcl", "e", "infile", "--banner=prefix"]), expected);
 
+        // Test --output-depfile
+        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
+            eval_opts.banner = None;
+            eval_opts.output_depfile = Some("deps".to_string());
+        }
+        assert_eq!(
+            parse(&["rcl", "e", "infile", "--output-depfile=deps"]),
+            expected
+        );
+
         // Test that defaulting to stdin works. If '-' is there we get it
         // explicitly, if it's not, we get it implicitly.
         if let Cmd::Evaluate {
             fname, eval_opts, ..
         } = &mut expected.1
         {
-            eval_opts.banner = None;
+            eval_opts.output_depfile = None;
             *fname = Target::Stdin;
         }
         assert_eq!(parse(&["rcl", "e", "-"]), expected);
@@ -878,6 +970,7 @@ mod test {
         };
         assert_eq!(parse(&["rcl", "rq", "infile", "input.name"]), expected);
 
+        // With one argument, the arg is the query, not the file.
         if let Cmd::Query {
             eval_opts,
             fname,
@@ -887,9 +980,26 @@ mod test {
         {
             eval_opts.format = OutputFormat::Rcl;
             *fname = Target::StdinDefault;
-            *query = "infile".to_string();
+            *query = "query".to_string();
         };
-        assert_eq!(parse(&["rcl", "q", "infile"]), expected);
+        assert_eq!(parse(&["rcl", "q", "query"]), expected);
+
+        // A dash in query position is a query expression, not a file.
+        if let Cmd::Query { query, .. } = &mut expected.1 {
+            *query = "-".to_string();
+        };
+        assert_eq!(parse(&["rcl", "q", "-"]), expected);
+
+        if let Cmd::Query { fname, .. } = &mut expected.1 {
+            *fname = Target::File("infile".to_string());
+        };
+        assert_eq!(parse(&["rcl", "q", "infile", "-"]), expected);
+
+        // If we omit the query, that's an error.
+        assert_eq!(
+            fail_parse(&["rcl", "query"]),
+            "Error: Expected an input file and a query. See --help for usage.\n"
+        );
     }
 
     #[test]
@@ -926,6 +1036,142 @@ mod test {
             expected
         );
         assert_eq!(parse(&["rcl", "build", "--check", "other.rcl"]), expected);
+    }
+
+    #[test]
+    fn parse_cmd_patch() {
+        let expected_opt = GlobalOptions {
+            markup: None,
+            workdir: None,
+        };
+        let expected_cmd = Cmd::Patch {
+            style_opts: StyleOptions::default(),
+            target: FormatTarget::Stdout {
+                fname: Target::File("infile".into()),
+            },
+            output: OutputTarget::Stdout,
+            path: "path".to_string(),
+            replacement: "replacement".to_string(),
+        };
+        let mut expected = (expected_opt, expected_cmd);
+        assert_eq!(
+            parse(&["rcl", "patch", "infile", "path", "replacement"]),
+            expected
+        );
+
+        if let Cmd::Patch { output, .. } = &mut expected.1 {
+            *output = OutputTarget::File("outfile".to_string());
+        };
+        // The --outfile can go anywhere; input, path, and replacement are positional.
+        assert_eq!(
+            parse(&[
+                "rcl",
+                "patch",
+                "infile",
+                "--output",
+                "outfile",
+                "path",
+                "replacement"
+            ]),
+            expected
+        );
+        assert_eq!(
+            parse(&[
+                "rcl",
+                "patch",
+                "--output=outfile",
+                "infile",
+                "path",
+                "replacement"
+            ]),
+            expected
+        );
+        assert_eq!(
+            parse(&[
+                "rcl",
+                "patch",
+                "infile",
+                "path",
+                "replacement",
+                "--output",
+                "outfile"
+            ]),
+            expected
+        );
+
+        if let Cmd::Patch { target, output, .. } = &mut expected.1 {
+            *output = OutputTarget::Stdout;
+            *target = FormatTarget::Stdout {
+                fname: Target::Stdin,
+            };
+        };
+        assert_eq!(
+            parse(&["rcl", "patch", "-", "path", "replacement"]),
+            expected
+        );
+
+        // A dash is a replacement expression, not a filename.
+        if let Cmd::Patch { replacement, .. } = &mut expected.1 {
+            *replacement = "-".to_string();
+        };
+        assert_eq!(parse(&["rcl", "patch", "-", "path", "-"]), expected);
+
+        // If we omit one of the 3 positionals, the input file defaults to stdin.
+        if let Cmd::Patch {
+            target,
+            replacement,
+            ..
+        } = &mut expected.1
+        {
+            *replacement = "replacement".to_string();
+            *target = FormatTarget::Stdout {
+                fname: Target::StdinDefault,
+            };
+        };
+        assert_eq!(parse(&["rcl", "patch", "path", "replacement"]), expected);
+
+        // If we omit more than one, that's an error.
+        assert_eq!(
+            fail_parse(&["rcl", "patch", "path"]),
+            "Error: Expected a path and replacement. See --help for usage.\n"
+        );
+        assert_eq!(
+            fail_parse(&["rcl", "patch"]),
+            "Error: Expected a path and replacement. See --help for usage.\n"
+        );
+
+        // With --check and --in-place we control the target. In those cases,
+        // we do not default to stdin. Technically it would work for --check,
+        // but for --in-place it makes no sense.
+        if let Cmd::Patch { target, .. } = &mut expected.1 {
+            *target = FormatTarget::Check {
+                fnames: vec![Target::Stdin],
+            };
+        };
+        assert_eq!(
+            parse(&["rcl", "patch", "--check", "-", "path", "replacement"]),
+            expected
+        );
+
+        if let Cmd::Patch { target, .. } = &mut expected.1 {
+            *target = FormatTarget::Check {
+                fnames: vec![Target::File("infile".to_string())],
+            };
+        };
+        assert_eq!(
+            parse(&["rcl", "patch", "--check", "infile", "path", "replacement"]),
+            expected
+        );
+
+        if let Cmd::Patch { target, .. } = &mut expected.1 {
+            *target = FormatTarget::InPlace {
+                fnames: vec![Target::File("infile".to_string())],
+            };
+        };
+        assert_eq!(
+            parse(&["rcl", "patch", "-i", "infile", "path", "replacement"]),
+            expected
+        );
     }
 
     #[test]

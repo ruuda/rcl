@@ -1,0 +1,9 @@
+# command: ["patch", "-", "a", "1"]
+// Here we traverse the let expression (rather than let inside seq).
+let a = 0;
+null
+
+# output:
+// Here we traverse the let expression (rather than let inside seq).
+let a = 1;
+null

@@ -1,0 +1,3 @@
+// See also _input_fmt_ok.rcl, which is formatted correctly.
+// This current file is not.
+{a=0}

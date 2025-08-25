@@ -36,6 +36,7 @@ pub mod lexer;
 pub mod loader;
 pub mod markup;
 pub mod parser;
+pub mod patch;
 pub mod pprint;
 pub mod runtime;
 pub mod source;

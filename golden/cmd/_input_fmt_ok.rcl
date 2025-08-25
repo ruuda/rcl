@@ -1,0 +1,6 @@
+// This file exists to test passing file names on the command line. Virtually
+// all tests pass the input on stdin, because that's how the test runner works,
+// but we do want to test some parts of `main`, and the loader, so we have this
+// file here whose primary purpose is to be referenced from other tests in this
+// directory.
+null

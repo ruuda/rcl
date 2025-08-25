@@ -14,6 +14,7 @@ Other commands:
  * [build](rcl_build.md)
  * [format](rcl_format.md)
  * [highlight](rcl_highlight.md)
+ * [patch](rcl_patch.md)
 
 ## Global options
 

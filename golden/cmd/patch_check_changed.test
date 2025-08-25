@@ -1,0 +1,6 @@
+# command: ["patch", "-", "a", "1", "--check"]
+{ a = 0 }
+
+# output:
+Would modify stdin
+Error: File would be patched or reformatted.

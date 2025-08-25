@@ -310,7 +310,7 @@ pub fn highlight_span<'a>(inputs: &'a Inputs, span: Span, markup: Markup) -> Doc
     use std::cmp;
     use unicode_width::UnicodeWidthStr;
 
-    let doc = &inputs[span.doc().0 as usize];
+    let doc = &inputs[span.doc()];
     let input = doc.data;
 
     // Locate the line that contains the error.

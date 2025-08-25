@@ -4,6 +4,7 @@
 "fmt"
 "format"
 "highlight"
+"patch"
 "query"
 
 # Shorthands
@@ -21,6 +22,7 @@
 "--format"
 "--help"
 "--in-place"
+"--output-depfile"
 "--sandbox"
 "--version"
 "--width"

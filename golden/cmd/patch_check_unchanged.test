@@ -1,0 +1,5 @@
+# command: ["patch", "-", "a", "0", "--check"]
+{ a = 0 }
+
+# output:
+The patch is a no-op.

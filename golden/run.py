@@ -39,13 +39,14 @@ OPTIONS
 """
 
 import difflib
+import json
 import os
 import re
 import subprocess
 import sys
 import tomllib
 
-from typing import Iterable, Iterator, List, Optional
+from typing import List, Optional
 
 
 STRIP_ESCAPES = re.compile("\x1b[^m]+m")
@@ -61,6 +62,7 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
     """
     input_lines: List[str] = []
     golden_lines: List[str] = []
+    header_lines: List[str] = []
 
     with open(fname, "r", encoding="utf-8") as f:
         target = input_lines
@@ -83,9 +85,19 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
     rcl_bin = os.getenv("RCL_BIN", default="target/debug/rcl")
 
     # Decide which subcommand to test based on the test directory.
+    cmd_suffix = ["-"]
     match os.path.basename(os.path.dirname(fname)):
         case "build":
             cmd = ["build", "--dry-run"]
+
+        case "cmd":
+            # For files in the `cmd` directory, the exact RCL arguments are
+            # configurable as part of the test.
+            header = input_lines.pop(0)
+            assert header.startswith("# command: ")
+            header_lines = [header]
+            cmd = json.loads(header.removeprefix("# command: "))
+            cmd_suffix = []
 
         case "error" | "types":
             cmd = ["eval"]
@@ -132,7 +144,7 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
             raise ValueError(f"No command-line known for {unknown}.")
 
     result = subprocess.run(
-        [rcl_bin, "-C", os.path.dirname(fname), *cmd, "-"],
+        [rcl_bin, "-C", os.path.dirname(fname), *cmd, *cmd_suffix],
         input="".join(input_lines),
         capture_output=True,
         encoding="utf-8",
@@ -163,6 +175,9 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
 
     if rewrite_output:
         with open(fname, "w", encoding="utf-8") as f:
+            for line in header_lines:
+                f.write(line)
+
             for line in input_lines:
                 f.write(line)
 

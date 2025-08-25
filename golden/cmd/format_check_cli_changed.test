@@ -1,0 +1,5 @@
+# command: ["format", "--check", "_input_fmt_ok.rcl", "_input_fmt_err.rcl"]
+
+# output:
+Would modify _input_fmt_err.rcl
+Error: 1 of 2 files would be reformatted.

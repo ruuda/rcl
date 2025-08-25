@@ -1,0 +1,9 @@
+# command: ["patch", "-", "a", "invalid replacement"]
+{ a = 0 }
+
+# output:
+replacement:1:9
+  ╷
+1 │ invalid replacement
+  ╵         ^~~~~~~~~~~
+Error: Unexpected content after the main expression.

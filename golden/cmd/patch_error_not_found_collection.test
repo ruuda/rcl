@@ -1,0 +1,9 @@
+# command: ["patch", "-", "b", "1"]
+{ a = 0 }
+
+# output:
+stdin:1:1
+  ╷
+1 │ { a = 0 }
+  ╵ ^~~~~~~~~
+Error: Could not find 'b' in this expression.

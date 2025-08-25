@@ -1,0 +1,4 @@
+# command: ["format", "--check", "_input_fmt_ok.rcl"]
+
+# output:
+The file is formatted correctly.

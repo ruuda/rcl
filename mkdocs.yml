@@ -46,6 +46,7 @@ nav:
       - "rcl evaluate": "rcl_evaluate.md"
       - "rcl format": "rcl_format.md"
       - "rcl highlight": "rcl_highlight.md"
+      - "rcl patch": "rcl_patch.md"
       - "rcl query": "rcl_query.md"
   - "Development":
       - "About": "about.md"

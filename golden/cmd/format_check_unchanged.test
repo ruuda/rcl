@@ -1,0 +1,5 @@
+# command: ["format", "-", "--check"]
+{ a = 0 }
+
+# output:
+The file is formatted correctly.
