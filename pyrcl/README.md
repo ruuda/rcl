@@ -2,7 +2,7 @@
 
 This directory contains Python bindings for RCL, built with PyO3.
 
-## Building
+## Building the module
 
 Build the shared object, from the repository root:
 
@@ -19,3 +19,20 @@ Tell Python where to find the shared object, run the interpreter:
     >>> import rcl
     >>> help(rcl.loads)
     >>> rcl.load_file("examples/buckets.rcl")
+
+## Building a wheel
+
+[Maturin][maturin] can build a Python wheel:
+
+    maturin build --manifest-path pyrcl/Cargo.toml
+
+Maturin can also build a portable manylinux wheel. We automate this as part of
+the Nix flake:
+
+    nix build .#pyrcl-wheel --out-link result
+    uv run --with result/*.whl python
+    >>> import rcl
+    >>> rcl.loads("20 + 22")
+    42
+
+[maturin]: https://www.maturin.rs/
