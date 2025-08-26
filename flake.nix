@@ -128,6 +128,7 @@
             "Cargo.toml"
             # Files needed by Maturin to build the Python wheel and sdist.
             ".pyi"
+            "package.md"
             "pyproject.toml"
           ];
 

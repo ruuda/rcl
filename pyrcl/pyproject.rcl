@@ -10,11 +10,19 @@ let author = { name = "Ruud van Asseldonk", email = "dev+pypi@veniogames.com" };
     name = "rcl-lang",
     version = pkg.version,
     description = pkg.description,
+    license = pkg.license,
+    readme = "package.md",
+
     authors = [author],
     maintainers = [author],
-    license = pkg.license,
+
+    // Be sure to keep this in sync with the py310 Cargo feature,
+    // and the list of supported Python version classifiers below.
+    // TODO: We _could_ generate this from one variable!
+    requires-python = ">= 3.10",
 
     keywords = [
+      "configuration",
       "configuration language",
       "rcl",
       "json",
@@ -24,34 +32,23 @@ let author = { name = "Ruud van Asseldonk", email = "dev+pypi@veniogames.com" };
 
     classifiers = [
       "Development Status :: 4 - Beta",
-      "Environment :: Console",
       "License :: OSI Approved :: Apache Software License",
-      "Programming Language :: Python",
+      "Programming Language :: Python :: 3.10",
+      "Programming Language :: Python :: 3.11",
+      "Programming Language :: Python :: 3.12",
+      "Programming Language :: Python :: 3.13",
       "Topic :: File Formats :: JSON",
       "Typing :: Typed",
+      "Intended Audience :: Developers",
+      "Intended Audience :: System Administrators",
     ],
 
     urls = {
-      homepage = "https://rcl-lang.org/",
-      documentation = "https://docs.ruuda.nl/rcl/python_bindings/",
-      github = "https://github.com/ruuda/rcl",
-      codeberg = "https://codeberg.org/ruuda/rcl",
-      changelog = "https://docs.ruuda.nl/rcl/changelog/",
-    },
-
-    readme = {
-      content-type = "text/markdown",
-      text =
-        """
-        # The RCL Configuration Language
-
-        This package contains Python bindings for [RCL](https://rcl-lang.org).
-
-        * [General RCL documentation](https://docs.ruuda.nl/rcl/)
-        * [Python module docs](https://docs.ruuda.nl/rcl/python_bindings/)
-
-        This package is experimental.
-        """,
+      "Homepage": "https://rcl-lang.org/",
+      "Documentation": "https://docs.ruuda.nl/rcl/python_bindings/",
+      "GitHub": "https://github.com/ruuda/rcl",
+      "Codeberg": "https://codeberg.org/ruuda/rcl",
+      "Changelog": "https://docs.ruuda.nl/rcl/changelog/",
     },
   },
 
