@@ -20,7 +20,7 @@ license = "Apache-2.0"
 maintainers = [
   { email = "dev+pypi@veniogames.com", name = "Ruud van Asseldonk" },
 ]
-name = "rcl"
+name = "rcl-lang"
 readme = { content-type = "text/markdown", text = "# The RCL Configuration Language\n\nThis package contains Python bindings for [RCL](https://rcl-lang.org).\n\n* [General RCL documentation](https://docs.ruuda.nl/rcl/)\n* [Python module docs](https://docs.ruuda.nl/rcl/python_bindings/)\n\nThis package is experimental.\n" }
 urls = { changelog = "https://docs.ruuda.nl/rcl/changelog/", codeberg = "https://codeberg.org/ruuda/rcl", documentation = "https://docs.ruuda.nl/rcl/python_bindings/", github = "https://github.com/ruuda/rcl", homepage = "https://rcl-lang.org/" }
 version = "0.9.0"

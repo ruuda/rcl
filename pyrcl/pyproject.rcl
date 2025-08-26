@@ -5,7 +5,9 @@ let author = { name = "Ruud van Asseldonk", email = "dev+pypi@veniogames.com" };
 
 {
   project = {
-    name = "rcl",
+    // We name the package "rcl-lang" rather than "rcl", because "rcl" is already
+    // taken on Pypi.
+    name = "rcl-lang",
     version = pkg.version,
     description = pkg.description,
     authors = [author],
