@@ -20,9 +20,9 @@ Tell Python where to find the shared object, run the interpreter:
     >>> help(rcl.loads)
     >>> rcl.load_file("examples/buckets.rcl")
 
-## Building a wheel
+## Building a Python package
 
-[Maturin][maturin] can build a Python wheel:
+[Maturin] can build a Python wheel:
 
     maturin build --manifest-path pyrcl/Cargo.toml
 
@@ -35,4 +35,10 @@ the Nix flake:
     >>> rcl.loads("20 + 22")
     42
 
-[maturin]: https://www.maturin.rs/
+The same flake attribute also contains an `sdist` archive. We publish them
+together to Pypi using [Twine]:
+
+    twine upload result/*
+
+[Maturin]: https://www.maturin.rs/
+[Twine]:   https://twine.readthedocs.io/en/latest/
