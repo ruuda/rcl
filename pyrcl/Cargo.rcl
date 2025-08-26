@@ -22,7 +22,18 @@ let root = import "//Cargo.rcl";
     pyo3 = {
       version = "0.20.2",
       default-features = false,
-      features = ["macros", "extension-module"],
+      features = [
+        "macros",
+        "extension-module",
+        // We use the generic ABI, so we don't have to build binaries for every
+        // specific Python version. The policy is to select the oldest version
+        // still supported in an Ubuntu LTS, or Debian oldstable. At this time,
+        // that's 3.10 in Ubuntu 22.04.
+        // Ubuntu: 3.10 <https://packages.ubuntu.com/jammy/python3>
+        // Debian: 3.11 <https://packages.debian.org/oldstable/python3>
+        "abi3",
+        "abi3-py310",
+      ],
     },
   },
 }

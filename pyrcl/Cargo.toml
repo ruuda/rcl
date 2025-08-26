@@ -1,7 +1,12 @@
 # This file is generated, see build.rcl in the repository root.
 
 [dependencies]
-pyo3 = { default-features = false, features = ["macros", "extension-module"], version = "0.20.2" }
+pyo3 = { default-features = false, features = [
+  "macros",
+  "extension-module",
+  "abi3",
+  "abi3-py310",
+], version = "0.20.2" }
 rcl = { path = ".." }
 
 [lib]
