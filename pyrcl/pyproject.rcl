@@ -1,0 +1,60 @@
+let crate = import "Cargo.rcl";
+let pkg = crate.package;
+
+let author = { name = "Ruud van Asseldonk", email = "dev+pypi@veniogames.com" };
+
+{
+  project = {
+    name = "rcl",
+    version = pkg.version,
+    description = pkg.description,
+    authors = [author],
+    maintainers = [author],
+    license = pkg.license,
+
+    keywords = [
+      "configuration language",
+      "rcl",
+      "json",
+      "toml",
+      "yaml",
+    ],
+
+    classifiers = [
+      "Development Status :: 4 - Beta",
+      "Environment :: Console",
+      "License :: OSI Approved :: Apache Software License",
+      "Programming Language :: Python",
+      "Topic :: File Formats :: JSON",
+      "Typing :: Typed",
+    ],
+
+    urls = {
+      homepage = "https://rcl-lang.org/",
+      documentation = "https://docs.ruuda.nl/rcl/python_bindings/",
+      github = "https://github.com/ruuda/rcl",
+      codeberg = "https://codeberg.org/ruuda/rcl",
+      changelog = "https://docs.ruuda.nl/rcl/changelog/",
+    },
+
+    readme = {
+      content-type = "text/markdown",
+      text =
+        """
+        # The RCL Configuration Language
+
+        This package contains Python bindings for [RCL](https://rcl-lang.org).
+
+        * [General RCL documentation](https://docs.ruuda.nl/rcl/)
+        * [Python module docs](https://docs.ruuda.nl/rcl/python_bindings/)
+
+        This package is experimental.
+        """,
+    },
+  },
+
+  build-system = {
+    requires = ["maturin>=1.1,<2.0"],
+    build-backend = "maturin",
+  },
+}

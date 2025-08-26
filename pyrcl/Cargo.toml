@@ -15,7 +15,7 @@ name = "rcl"
 
 [package]
 authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
-description = "Python bindings to the RCL interpreter."
+description = "Python bindings to the RCL configuration language."
 edition = "2021"
 license = "Apache-2.0"
 name = "pyrcl"

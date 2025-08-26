@@ -120,9 +120,15 @@
             ".rs"
             "Cargo.lock"
             "Cargo.toml"
-            # For the Python bindings, we include the pyi type hints, it's not
-            # worth making a separate source set.
+          ];
+
+          rustPythonSources = pkgs.lib.sourceFilesBySuffices ./. [
+            ".rs"
+            "Cargo.lock"
+            "Cargo.toml"
+            # Files needed by Maturin to build the Python wheel and sdist.
             ".pyi"
+            "pyproject.toml"
           ];
 
           treeSitterSources = pkgs.lib.sourceFilesBySuffices ./grammar/tree-sitter-rcl [
@@ -210,7 +216,7 @@
           # Shared parameters for the Nix package and the wheel.
           pyrcl-common = {
             inherit version;
-            src = rustSources;
+            src = rustPythonSources;
             cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "pyrcl";
           };

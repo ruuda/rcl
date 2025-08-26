@@ -5,7 +5,7 @@ let root = import "//Cargo.rcl";
     root.package
     | {
       name = "pyrcl",
-      description = "Python bindings to the RCL interpreter.",
+      description = "Python bindings to the RCL configuration language.",
     },
 
   lib = {
