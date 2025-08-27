@@ -2,9 +2,11 @@
   description = "RCL";
 
   # Pin to a Nixpkgs version that has the same rustc as in rust-toolchain.toml.
-  inputs.nixpkgs.url = "nixpkgs/dfcffbd74fd6f0419370d8240e445252a39f4d10";
-
-  inputs.rust-overlay.url = "github:oxalica/rust-overlay";
+  # We also use oxalica/rust-overlay for nightly binaries, but for various use
+  # cases, such as generating coverage reports, we rely on tools from Nixkpgs,
+  # so the version needs to match.
+  inputs.nixpkgs.url = "nixpkgs/9a9dae8f6319600fa9aebde37f340975cab4b8c0";
+  inputs.rust-overlay.url = "github:oxalica/rust-overlay?rev=10faa81b4c0135a04716cbd1649260d82b2890cd";
   inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
   outputs = { self, nixpkgs, rust-overlay }:
@@ -60,10 +62,24 @@
                   python scripts/gen_mapfiles.py
                   '';
               });
+
+              # We take a more recent version of auditwheel, it builds cleaner
+              # wheels (with no empty lib dir), and it is able to automatically
+              # infer the minimal manylinux compatibility.
+              auditwheel = super.auditwheel.overridePythonAttrs (attrs: rec {
+                version = "6.4.2";
+                src = super.fetchPypi {
+                  pname = "auditwheel";
+                  inherit version;
+                  hash = "sha256-t6Ya/JGDtrXGYd5ZylhvnHIARFpAnFjN8gSdb3FjbVE=";
+                };
+                propagatedBuildInputs = attrs.propagatedBuildInputs ++ [super.packaging];
+              });
             };
           };
 
           pythonEnv = python.withPackages (ps: [
+            ps.auditwheel
             ps.mkdocs
             ps.mypy
             ps.pygments
@@ -74,21 +90,39 @@
             ps.setuptools
           ]);
 
-          # Define a custom toolchain from our toolchain file. For most
-          # derivations we don't use it, we instead use the rustc from Nixpkgs,
-          # to avoid unnecessary fetching/rebuilding. But for WASM, we need a
-          # specific nightly toolchain with support for this target.
-          rustWasm = pkgs.rust-bin.selectLatestNightlyWith (toolchain:
-            toolchain.default.override {
-              extensions = [ "rust-src" ];
-              targets = [ "wasm32-unknown-unknown" ];
-            }
-          );
+          # We need at least Maturin 1.9.2, which contains a bugfix for setting
+          # the author metadata in the wheel.
+          maturin = pkgs.maturin.overrideAttrs (attrs: rec {
+            version = "1.9.3";
+            src = pkgs.fetchFromGitHub {
+              owner = "PyO3";
+              repo = "maturin";
+              rev = "v${version}";
+              hash = "sha256-VhL4nKXyONXbxriEHta0vCnWY1j82oDOLoxVigaggSc=";
+            };
+            cargoDeps = attrs.cargoDeps.overrideAttrs {
+              inherit src;
+              outputHash = "sha256-LHpzDl+xeH81QBp511wTlGeLC8o4GRed7HUREMJRkqI=";
+            };
+          });
+
+          # Get a nightly Rust toolchain, for building WASM binaries. We pin to
+          # the nightly at the release date six weeks before the pinned Rust
+          # version, so for 1.75, this was about the date below. We need a
+          # version for which Rust 1.75 can compile the stdlib, but if we go too
+          # far, the `unwinding` crate requires edition 2024.
+          rustWasm = pkgs.rust-bin.nightly."2023-11-09".default.override {
+            extensions = [ "rust-src" ];
+            targets = [ "wasm32-unknown-unknown" ];
+          };
 
           rustSources = pkgs.lib.sourceFilesBySuffices ./. [
             ".rs"
             "Cargo.lock"
             "Cargo.toml"
+            # For the Python bindings, we include the pyi type hints, it's not
+            # worth making a separate source set.
+            ".pyi"
           ];
 
           treeSitterSources = pkgs.lib.sourceFilesBySuffices ./grammar/tree-sitter-rcl [
@@ -114,18 +148,18 @@
             buildPhase = "tree-sitter generate";
             checkPhase =
               ''
-              # Tree sitter wants to write to ~/.config by default, but that
-              # does not exist in the sandbox. Give it a directory to write to.
-              mkdir tree-sitter-home
-              export TREE_SITTER_DIR=tree-sitter-home
-              export TREE_SITTER_LIBDIR=tree-sitter-home
+              # Tree-sitter puts lockfiles and build output in $XDG_CACHE_HOME
+              # when we configure it. Without it tries ~/.cache, which fails
+              # inside the Nix build where there is no home.
+              mkdir $TMP/ts_out
+              export XDG_CACHE_HOME=$TMP/ts_out
               tree-sitter generate --build
               tree-sitter test
               '';
             installPhase =
               ''
               mkdir -p $out/lib
-              cp tree-sitter-home/rcl.so $out/lib
+              cp $TMP/ts_out/tree-sitter/lib/rcl.so $out/lib
 
               mkdir -p $out/dev/bindings
               cp -r bindings/rust $out/dev/bindings
@@ -173,19 +207,66 @@
               '';
           });
 
-          pyrcl = pkgs.rustPlatform.buildRustPackage rec {
+          # Shared parameters for the Nix package and the wheel.
+          pyrcl-common = {
             inherit version;
-            name = "pyrcl";
             src = rustSources;
-            nativeBuildInputs = [python];
             cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "pyrcl";
+          };
+
+          pyrcl = pkgs.rustPlatform.buildRustPackage (pyrcl-common // {
+            name = "pyrcl";
+            nativeBuildInputs = [python];
             postInstall =
               ''
               mv $out/lib/librcl.so $out/lib/rcl.so
-              cp ${./pyrcl}/rcl.pyi $out/lib/rcl.pyi
+              cp pyrcl/rcl.pyi $out/lib/rcl.pyi
               '';
-          };
+          });
+
+          pyrcl-wheel = pkgs.rustPlatform.buildRustPackage (pyrcl-common // {
+            name = "pyrcl-wheel";
+
+            nativeBuildInputs = [pythonEnv maturin pkgs.zig];
+
+            # Cargo-auditable, which Nixpkgs enables by default, breaks building
+            # with Zig, because it passes the --undefined linker flag, which Zig
+            # does not support.
+            # See <https://github.com/rust-cross/cargo-zigbuild/issues/162>.
+            auditable = false;
+
+            # Work around a Zig AccessDenied issue,
+            # see <https://github.com/ziglang/zig/issues/6810>.
+            XDG_CACHE_HOME = "xdg_cache";
+            CARGO_ZIGBUILD_CACHE_DIR="cargo_zigbuild_cache";
+            buildPhase =
+              ''
+              # Maturn sdist includes everything from the local directory
+              # in its output tarball, so we run it first, before the build
+              # command pollutes the directory with the zigbuild cache etc.
+              maturin sdist --manifest-path pyrcl/Cargo.toml
+              maturin build --manifest-path pyrcl/Cargo.toml \
+                --offline \
+                --zig \
+                --compatibility manylinux2014 \
+                --release \
+                --strip
+
+              # Maturin suffered a regression somewhere after v1.1, where it is
+              # no longer assigning the correct manylinux platform tags to the
+              # wheel, it tags it as merely "cp310-abi3-linux_x86_64". We can
+              # fix that using 'auditwheel', which will detect compatibility,
+              # assign the right tags, and put a renamed file in the wheel dir.
+              auditwheel repair --wheel-dir wheelhouse target/wheels/*.whl
+              '';
+            installPhase =
+              ''
+              mkdir -p $out
+              cp target/wheels/*.tar.gz $out
+              cp wheelhouse/*.whl $out
+              '';
+          });
 
           rcl-wasm = pkgs.rustPlatform.buildRustPackage rec {
             inherit version;
@@ -212,6 +293,7 @@
 
               wasm-opt -Oz \
                 target/wasm32-unknown-unknown/release-wasm/rcl_wasm.wasm \
+                --enable-bulk-memory \
                 --output target/rcl.wasm
 
               wasm-bindgen \
@@ -273,6 +355,7 @@
             devShells.default = pkgs.mkShell {
               name = "rcl";
               nativeBuildInputs = [
+                maturin
                 # For consistency we could take `python.pkgs.black`, but it
                 # rebuilds half the Python universe, so instead we take the
                 # cached version that does not depend on our patched pygments.
@@ -280,7 +363,6 @@
                 pkgs.binaryen
                 pkgs.esbuild
                 pkgs.grcov
-                pkgs.maturin
                 pkgs.nodejs  # Required for tree-sitter.
                 pkgs.rustup
                 pkgs.tree-sitter
@@ -391,7 +473,7 @@
             };
 
             packages = {
-              inherit fuzzers-coverage rcl pyrcl treeSitterRcl website;
+              inherit fuzzers-coverage rcl pyrcl pyrcl-wheel treeSitterRcl website;
 
               default = rcl;
               wasm = rcl-wasm;

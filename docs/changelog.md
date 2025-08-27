@@ -42,6 +42,11 @@ Bugfixes:
    without exponent, rather than as numbers with decimal dot. For example,
    `1e0` now formats as `1` rather than `0.1e1`.
 
+Compatibility:
+
+ * RCL is now developed against Rust 1.75, up from 1.70 before. Compatibility
+   with toolchains older than 1.75 is not guaranteed.
+
 ## 0.9.0
 
 Released 2025-07-10.

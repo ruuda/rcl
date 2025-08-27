@@ -12,7 +12,7 @@ let root = import "//Cargo.rcl";
 
   dependencies = {
     wasm-bindgen = {
-      version = "=0.2.84",
+      version = "=0.2.89",
       default-features = false,
       features = ["std"],
     },
@@ -29,16 +29,18 @@ let root = import "//Cargo.rcl";
   target = {
     "cfg(wasm)": {
       dev-dependencies = {
-        allocator-api2 = "0.2.16",
-        compiler_builtins = "0.1.108",
-        dlmalloc = "0.2.6",
-        fortanix-sgx-abi = "0.5.0",
+        allocator-api2 = "=0.2.15",
+        compiler_builtins = "=0.1.103",
+        dlmalloc = "=0.2.4",
+        fortanix-sgx-abi = "=0.5.0",
         getopts = "=0.2.21",
-        hermit-abi = "0.3.9",
-        r-efi = "4.3.0",
-        r-efi-alloc = "1.0.0",
-        rustc-demangle = "0.1.23",
-        unwinding = "0.2.1",
+        hashbrown = "=0.14.2",
+        hermit-abi = "= 0.3.2",
+        libc = "=0.2.150",
+        r-efi = "=4.2.0",
+        r-efi-alloc = "=1.0.0",
+        rustc-demangle = "=0.1.23",
+        unicode-width = "=0.1.10",
         wasi = "=0.11.0",
       },
     },
