@@ -26,5 +26,8 @@ let opts_toml = {
     opts_toml
     | { contents = import "//grammar/zed/extension.rcl" },
   "pyrcl/Cargo.toml": opts_toml | { contents = import "//pyrcl/Cargo.rcl" },
+  "pyrcl/pyproject.toml":
+    opts_toml
+    | { contents = import "//pyrcl/pyproject.rcl" },
   "wasm/Cargo.toml": opts_toml | { contents = import "//wasm/Cargo.rcl" },
 }

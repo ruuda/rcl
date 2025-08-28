@@ -1,0 +1,38 @@
+# This file is generated, see build.rcl in the repository root.
+
+[build-system]
+build-backend = "maturin"
+requires = ["maturin>=1.1,<2.0"]
+
+[project]
+authors = [{ email = "dev+pypi@veniogames.com", name = "Ruud van Asseldonk" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: File Formats :: JSON",
+  "Typing :: Typed",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+]
+description = "Python bindings to the RCL configuration language."
+keywords = [
+  "configuration",
+  "configuration language",
+  "rcl",
+  "json",
+  "toml",
+  "yaml",
+]
+license = "Apache-2.0"
+maintainers = [
+  { email = "dev+pypi@veniogames.com", name = "Ruud van Asseldonk" },
+]
+name = "rcl-lang"
+readme = "package.md"
+requires-python = ">= 3.10"
+urls = { Changelog = "https://docs.ruuda.nl/rcl/changelog/", Codeberg = "https://codeberg.org/ruuda/rcl", Documentation = "https://docs.ruuda.nl/rcl/python_bindings/", GitHub = "https://github.com/ruuda/rcl", Homepage = "https://rcl-lang.org/" }
+version = "0.9.0"

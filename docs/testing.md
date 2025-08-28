@@ -72,8 +72,8 @@ pretty-printer. They verify the following properties:
 To run the fuzzers you need [`cargo-fuzz`][cargo-fuzz] and a nightly toolchain.
 Then start e.g. the smith fuzzer or source-based fuzzer:
 
-    cargo +nightly-2023-06-03 fuzz run fuzz_smith -- -timeout=3
-    cargo +nightly-2023-06-03 fuzz run fuzz_source -- -dict=fuzz/dictionary.txt -timeout=3
+    cargo +nightly-2023-11-09 fuzz run fuzz_smith -- -timeout=3
+    cargo +nightly-2023-11-09 fuzz run fuzz_source -- -dict=fuzz/dictionary.txt -timeout=3
 
 Unlike the other fuzzers, the inputs to the smith fuzzer are not human-readable.
 To see what kind of inputs the fuzzer is exploring, you can use the `smithctl`

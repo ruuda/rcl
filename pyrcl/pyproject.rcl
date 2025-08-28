@@ -1,0 +1,59 @@
+let crate = import "Cargo.rcl";
+let pkg = crate.package;
+
+let author = { name = "Ruud van Asseldonk", email = "dev+pypi@veniogames.com" };
+
+{
+  project = {
+    // We name the package "rcl-lang" rather than "rcl", because "rcl" is already
+    // taken on Pypi.
+    name = "rcl-lang",
+    version = pkg.version,
+    description = pkg.description,
+    license = pkg.license,
+    readme = "package.md",
+
+    authors = [author],
+    maintainers = [author],
+
+    // Be sure to keep this in sync with the py310 Cargo feature,
+    // and the list of supported Python version classifiers below.
+    // TODO: We _could_ generate this from one variable!
+    requires-python = ">= 3.10",
+
+    keywords = [
+      "configuration",
+      "configuration language",
+      "rcl",
+      "json",
+      "toml",
+      "yaml",
+    ],
+
+    classifiers = [
+      "Development Status :: 4 - Beta",
+      "License :: OSI Approved :: Apache Software License",
+      "Programming Language :: Python :: 3.10",
+      "Programming Language :: Python :: 3.11",
+      "Programming Language :: Python :: 3.12",
+      "Programming Language :: Python :: 3.13",
+      "Topic :: File Formats :: JSON",
+      "Typing :: Typed",
+      "Intended Audience :: Developers",
+      "Intended Audience :: System Administrators",
+    ],
+
+    urls = {
+      "Homepage": "https://rcl-lang.org/",
+      "Documentation": "https://docs.ruuda.nl/rcl/python_bindings/",
+      "GitHub": "https://github.com/ruuda/rcl",
+      "Codeberg": "https://codeberg.org/ruuda/rcl",
+      "Changelog": "https://docs.ruuda.nl/rcl/changelog/",
+    },
+  },
+
+  build-system = {
+    requires = ["maturin>=1.1,<2.0"],
+    build-backend = "maturin",
+  },
+}

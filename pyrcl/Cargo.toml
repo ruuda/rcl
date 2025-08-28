@@ -1,15 +1,21 @@
 # This file is generated, see build.rcl in the repository root.
 
 [dependencies]
-pyo3 = { default-features = false, features = ["macros", "extension-module"], version = "0.20.2" }
+pyo3 = { default-features = false, features = [
+  "macros",
+  "extension-module",
+  "abi3",
+  "abi3-py310",
+], version = "0.20.2" }
 rcl = { path = ".." }
 
 [lib]
 crate-type = ["cdylib"]
+name = "rcl"
 
 [package]
 authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
-description = "Python bindings to the RCL interpreter."
+description = "Python bindings to the RCL configuration language."
 edition = "2021"
 license = "Apache-2.0"
 name = "pyrcl"

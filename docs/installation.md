@@ -48,24 +48,17 @@ To build a static binary rather than a dynamically linked one:
 [cargo]:  https://doc.rust-lang.org/cargo/guide/
 [rustup]: https://rust-lang.github.io/rustup/index.html
 
-## Python module from source
+## Python module
 
-To build the Python module, follow the steps as before, but build the `pyrcl`
-directory:
+The Python module is available [from Pypi as `rcl-lang`][pypi]. You can install
+it with your favorite Python package manager, e.g.:
 
-    cargo build --release --manifest-path pyrcl/Cargo.toml
-
-Then rename `libpyrcl.so` to `rcl.so` so that Python can discover it, and copy
-it to a location on the `PYTHONPATH`, e.g.:
-
-    cp target/release/libpyrcl.so ./rcl.so
-
-Now you can use the module as any regular one:
-
-    $ python3
+    uv run --with rcl-lang python3
     >>> import rcl
     >>> rcl.loads("10 + 32")
     42
 
-It is also possible to build a wheel that can be installed into a virtualenv
-using [Maturin](https://www.maturin.rs/).
+To build the Python module from source, see `README.md` in the `pyrcl` directory
+in the repository.
+
+[pypi]: https://pypi.org/project/rcl-lang/

@@ -177,24 +177,6 @@ View coverage of the golden tests:
 
 For how to run the fuzzers, see [`docs/testing.md`](docs/testing.md).
 
-## Building the Python module
-
-Build the shared object:
-
-    cargo build --manifest-path pyrcl/Cargo.toml
-
-Give the shared object the appropriate name for the Python interpreter to
-discover it:
-
-    mv target/debug/{libpyrcl,rcl}.so
-
-Tell Python where to find the shared object, run the interpreter:
-
-    PYTHONPATH=target/debug python3
-    >>> import rcl
-    >>> help(rcl.loads)
-    >>> rcl.load_file("examples/buckets.rcl")
-
 ## Building WASM
 
 See [the readme in the `wasm` directory](wasm/README.md).
