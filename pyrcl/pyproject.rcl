@@ -11,7 +11,7 @@ let author = { name = "Ruud van Asseldonk", email = "dev+pypi@veniogames.com" };
     version = pkg.version,
     description = pkg.description,
     license = pkg.license,
-    readme = "package.md",
+    readme = "package_readme.md",
 
     authors = [author],
     maintainers = [author],
