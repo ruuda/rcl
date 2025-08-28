@@ -59,7 +59,7 @@ Aside from Tree-sitter specific tests, there is a fuzzer that verifies that
 any output that is accepted by <abbr>RCL</abbr>’s parser is also accepted by
 Tree-sitter. It can help to ensure that the grammars remain in sync. To run it:
 
-    cargo +nightly-2023-06-03 fuzz run fuzz_tree_sitter
+    cargo +nightly-2023-11-09 fuzz run fuzz_tree_sitter
 
 See also the [testing chapter](testing.md#running-the-fuzzers).
 
