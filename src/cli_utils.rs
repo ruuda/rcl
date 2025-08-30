@@ -153,6 +153,9 @@ macro_rules! parse_option {
         $args_iter:ident: $option:expr, $parser:expr
     } => {
         match $args_iter.next() {
+            // Clippy is wrong here; probably it doesn't know that due to the
+            // macro, the construction and call site of the closure are far away.
+            #[allow(clippy::redundant_closure_call)]
             Some(Arg::Plain(value)) => match $parser(&value[..]) {
                 Ok(r) => r,
                 Err(..) => {
