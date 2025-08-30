@@ -14,14 +14,15 @@ sections:
 
 ```toml
 [[language]]
-name = "rcl"
 auto-format = false
+comment-tokens = ["//"]
 file-types = ["rcl"]
 formatter = { command = "rcl", args = ["format", "-"] }
+grammar = "rcl"
 indent = { tab-width = 2, unit = "  " }
+name = "rcl"
 roots = ["build.rcl"]
 scope = "source.rcl"
-grammar = "rcl"
 
 [[grammar]]
 name = "rcl"

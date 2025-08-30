@@ -38,8 +38,10 @@ Python module:
 Plugins:
 
  * Syntax highlighters and editor plugins now highlight the `#!`-line.
- * Update the Zed plugin to leverage Tree-sitter-based bracket matching and
+ * Update the Zed extension to leverage Tree-sitter-based bracket matching and
    indentation.
+ * Update the [Helix configuration](syntax_highlighting.md#helix) to include
+   `comment-tokens`.
 
 Bugfixes:
 
