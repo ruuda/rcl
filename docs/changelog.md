@@ -28,6 +28,13 @@ Language:
  * Add [`String.parse_number`](type_string.md#parse_number) method.
  * Comments are now allowed in more places.
 
+Python module:
+
+ * The Python module is now published to Pypi as [`rcl-lang`][pypi-rcl], see
+   also the updated [installation instructions](installation.md#python-module).
+
+[pypi-rcl]: https://pypi.org/project/rcl-lang/
+
 Plugins:
 
  * Syntax highlighters and editor plugins now highlight the `#!`-line.
