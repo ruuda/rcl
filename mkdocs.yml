@@ -53,3 +53,4 @@ nav:
       - "Testing": "testing.md"
       - "Grammars": "grammars.md"
       - "Tree-sitter": "tree_sitter.md"
+      - "Releasing": "releasing.md"
