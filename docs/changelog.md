@@ -14,9 +14,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Next
+## 0.10.0
 
-Unreleased.
+Released 2025-08-30.
 
 Command-line:
 
@@ -50,11 +50,16 @@ Bugfixes:
  * Numbers with exponent 0, but without decimal dot, now format as integers
    without exponent, rather than as numbers with decimal dot. For example,
    `1e0` now formats as `1` rather than `0.1e1`.
+ * Correct the error message for empty `0b` and `0x` literals.
 
 Compatibility:
 
  * RCL is now developed against Rust 1.75, up from 1.70 before. Compatibility
    with toolchains older than 1.75 is not guaranteed.
+
+Note, the Git tag is signed with [a different key][gpg-2025] than previous tags.
+
+[gpg-2025]: https://ruudvanasseldonk.com/2025/rotating-my-pgp-key
 
 ## 0.9.0
 
