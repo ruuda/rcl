@@ -1122,7 +1122,7 @@ impl<'a> Parser<'a> {
                         while let Some(NonCode::Blank(..)) = pfx.last() {
                             pfx.pop();
                         }
-                        pfx.extend(self.parse_non_code().into_vec().into_iter());
+                        pfx.extend(self.parse_non_code().into_vec());
                         prefix = pfx.into_boxed_slice();
                     }
 
