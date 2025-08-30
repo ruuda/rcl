@@ -321,7 +321,7 @@ dependencies = [
 
 [[package]]
 name = "pyrcl"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "pyo3",
  "rcl",
@@ -353,14 +353,14 @@ dependencies = [
 
 [[package]]
 name = "rcl"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "unicode-width",
 ]
 
 [[package]]
 name = "rcl-fuzz"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "arbitrary",
  "libfuzzer-sys",
@@ -374,7 +374,7 @@ dependencies = [
 
 [[package]]
 name = "rcl-wasm"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "allocator-api2",
  "compiler_builtins",
@@ -558,7 +558,7 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-rcl"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "cc",
  "tree-sitter",

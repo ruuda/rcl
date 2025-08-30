@@ -6,7 +6,7 @@ id = "rcl"
 name = "RCL"
 repository = "https://github.com/rcl-lang/zed-rcl"
 schema_version = 1
-version = "0.9.0"
+version = "0.10.0"
 
 [grammars]
 rcl = { commit = "e371920de7d1921a4ac9c6d78bd74ea3e94dfade", repository = "https://github.com/rcl-lang/tree-sitter-rcl" }
