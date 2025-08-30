@@ -14,6 +14,16 @@ for how to get the Python module.
 
 [install]: installation.md#python-module-from-source
 
+## Value mapping
+
+RCL values map to the corresponding Python values where possible: strings to
+strings, dicts to dicts, listst to lists, etc. Other values map as follows:
+
+ * `null` maps to `None`.
+ * Numbers that are integral map to `int`.
+ * Numbers that have a decimal point map to `float`.
+ * Functions are not supported at this time, they can’t be returned to Python.
+
 ## load_file
 
     rcl.load_file(path: str) -> Any
