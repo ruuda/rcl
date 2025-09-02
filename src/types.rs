@@ -479,9 +479,11 @@ impl SourcedType {
     ///
     /// What it means to be a subtype: if we take an arbitrary instance `t` of
     /// type `T`, is it an instance of `U`? There are three possible outcomes:
+    ///
     /// 1. Yes, irrespective of `t`. `T` is a subtype of `U`: `T ≤ U`.
     /// 2. No, irrespective of `t`. `T` is not a subtype of `U`: `not (T ≤ U)`.
     /// 3. It depends on `t`, the two types are not orderable.
+    ///
     /// Note that case 2 (`not (T ≤ U)`) does not imply the converse! It does
     /// *not* mean that `U ≤ T` holds!
     ///
