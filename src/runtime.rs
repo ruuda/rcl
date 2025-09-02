@@ -232,7 +232,7 @@ impl Value {
         }
     }
 
-    /// As [`expect_string`], but make an owned `Rc` copy instead of borrowing.
+    /// As [`Value::expect_string`], but make an owned `Rc` copy instead of borrowing.
     #[inline]
     pub fn expect_string_clone(&self) -> Rc<str> {
         match self {

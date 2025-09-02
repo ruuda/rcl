@@ -458,6 +458,8 @@
                 rcl build --check --directory ${rclTomlSources} | tee $out
                 '';
 
+              # Build documentation with warnings denied, so the check fails if
+              # rustdoc is not happy (for example due to broken links).
               docRcl = rcl.overrideAttrs (attrs: {
                 name = "rcl-doc";
                 src = rustSourcesAll;

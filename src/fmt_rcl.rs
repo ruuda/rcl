@@ -7,7 +7,7 @@
 
 //! Formatter that prints values as RCL.
 //!
-//! This formatter is very similar to the one in [`fmt_json`].
+//! This formatter is very similar to the one in [`crate::fmt_json`].
 
 use crate::markup::Markup;
 use crate::pprint::{concat, group, indent, Doc};

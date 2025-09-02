@@ -7,7 +7,7 @@
 
 //! Formatter that prints types as RCL type expressions.
 //!
-//! This formatter is superficially similar to the one in [`fmt_rcl`].
+//! This formatter is superficially similar to the one in [`crate::fmt_rcl`].
 
 use crate::error::{Error, IntoError};
 use crate::markup::Markup;

@@ -108,7 +108,7 @@ pub trait Filesystem {
     ///
     /// This creates intermediate directories if needed, and checks the sandbox
     /// policy at every step along the way. The `from` path is relative to the
-    /// working directory, just like with [`resolve`].
+    /// working directory, just like with [Filesystem::`resolve`].
     fn open_build_output(&self, out_path: &str, from: &str, mode: OpenMode) -> Result<fs::File>;
 
     /// Return `path`, but relative to the working directory, if possible.

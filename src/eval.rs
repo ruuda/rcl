@@ -691,7 +691,7 @@ impl<'a> Evaluator<'a> {
 
     /// While joining values for string formatting, push one fragment.
     ///
-    /// This powers both format strings as well as `List.join`.
+    /// This powers both format strings and `List.join`.
     pub fn push_format_fragment(out: &mut Vec<Rc<str>>, span: Span, value: &Value) -> Result<()> {
         match value {
             Value::Bool(b) => out.push((if *b { "true" } else { "false" }).into()),
@@ -712,7 +712,7 @@ impl<'a> Evaluator<'a> {
         Ok(())
     }
 
-    /// Join fragments pushed by [`push_format_fragment`] into one string.
+    /// Join fragments pushed by [`Evaluator::push_format_fragment`] into one string.
     pub fn join_format_fragments(fragments: Vec<Rc<str>>) -> Value {
         let mut result = String::with_capacity(fragments.iter().map(|s| s.len()).sum());
 

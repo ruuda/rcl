@@ -7,7 +7,7 @@
 
 //! Formatter that prints values as TOML.
 //!
-//! This formatter is similar to the one in [`fmt_json`].
+//! This formatter is similar to the one in [`crate::fmt_json`].
 
 use std::collections::BTreeMap;
 

@@ -115,7 +115,7 @@ pub enum Expr {
 
     /// A dict or set literal (depending on the element types) enclosed in `{}`.
     ///
-    /// The typechecker replaces this by either [`SetLit`] or [`DictLit`].
+    /// The typechecker replaces this by either [`Expr::SetLit`] or [`Expr::DictLit`].
     BraceLit { open: Span, elements: Vec<Seq> },
 
     /// A list literal enclosed in `[]`.
