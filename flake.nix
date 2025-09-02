@@ -458,6 +458,14 @@
                 rcl build --check --directory ${rclTomlSources} | tee $out
                 '';
 
+              docRcl = rcl.overrideAttrs (attrs: {
+                name = "rcl-doc";
+                src = rustSourcesAll;
+                RUSTDOCFLAGS="--deny warnings";
+                buildPhase = "cargo doc --no-deps --workspace";
+                installPhase = "cp -R target/doc $out";
+              });
+
               typecheckPython = pkgs.runCommand
                 "check-typecheck-python"
                 { buildInputs = [ pythonEnv ]; }

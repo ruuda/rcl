@@ -11,6 +11,7 @@ rcl = { path = ".." }
 
 [lib]
 crate-type = ["cdylib"]
+doc = false
 name = "rcl"
 
 [package]

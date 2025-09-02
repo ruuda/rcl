@@ -15,6 +15,10 @@ let root = import "//Cargo.rcl";
     // `import rcl` to work in Python). Fortunately, Maturin handles the
     // rename, so `maturin build --zig` produces a correct wheel.
     name = "rcl",
+
+    // Because the library name is `rcl` like the main crate, it creates
+    // a conflict for rustdoc, so we have to skip this one.
+    doc = false,
   },
 
   dependencies = {
