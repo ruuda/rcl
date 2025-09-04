@@ -30,6 +30,14 @@
           overlays = [ rust-overlay.overlays.default ];
           pkgs = import nixpkgs { inherit overlays system; };
 
+          # Targets that we want to cross-compile binaries for.
+          binary-targets = [
+            "aarch64-apple-darwin"
+            "aarch64-unknown-linux-gnu"
+            "armv7-unknown-linux-gnueabihf"
+            "x86_64-unknown-linux-gnu"
+          ];
+
           python = pkgs.python311.override {
             packageOverrides = self: super: {
               # This package is not in Nixpkgs, define it here.
@@ -114,6 +122,14 @@
           rustWasm = pkgs.rust-bin.nightly."2023-11-09".default.override {
             extensions = [ "rust-src" ];
             targets = [ "wasm32-unknown-unknown" ];
+          };
+
+          # For cross-compiling, we also get the prebuilt binaries from the
+          # overlay, but here we don't need nightly.
+          rustToolchainToml = builtins.fromTOML (builtins.readFile ./rust-toolchain.toml);
+          rustVersion = rustToolchainToml.toolchain.channel;
+          rustCross = pkgs.rust-bin.stable."${rustVersion}".default.override {
+            targets = binary-targets;
           };
 
           rustSources = pkgs.lib.sourceFilesBySuffices ./. [
@@ -274,6 +290,45 @@
               cp wheelhouse/*.whl $out
               '';
           });
+
+          # Cross-compile binaries for various targets, so we can offer prebuilt
+          # binaries while still building with a single command, and keeping the
+          # build reproducible. We don't use Nix' cross-compilation here, because
+          # the resulting binary is not suitable for the Nix store, it's portable.
+          rcl-binaries = pkgs.rustPlatform.buildRustPackage rec {
+            inherit version;
+            name = "rcl-binaries";
+            src = rustSources;
+            cargoLock.lockFile = ./Cargo.lock;
+
+            doCheck = false; # We already test the normal builds.
+            auditable = false; # See also the comment above in pyrcl-wheel.
+
+            nativeBuildInputs = [
+              pkgs.cargo-zigbuild
+              pkgs.zig
+              rustCross
+            ];
+
+            targets = binary-targets;
+
+            XDG_CACHE_HOME = "xdg_cache";
+            CARGO_ZIGBUILD_CACHE_DIR="cargo_zigbuild_cache";
+            buildPhase =
+              ''
+              for target in $targets; do
+              cargo zigbuild --target $target --release
+              done
+              '';
+
+            installPhase =
+              ''
+              mkdir -p $out
+              for target in $targets; do
+              cp target/$target/release/rcl "$out/rcl-$version-$target"
+              done
+              '';
+          };
 
           rcl-wasm = pkgs.rustPlatform.buildRustPackage rec {
             inherit version;
@@ -493,6 +548,7 @@
               inherit fuzzers-coverage rcl pyrcl pyrcl-wheel treeSitterRcl website;
 
               default = rcl;
+              binaries = rcl-binaries;
               wasm = rcl-wasm;
 
               coverage = pkgs.runCommand
