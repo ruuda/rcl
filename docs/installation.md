@@ -1,27 +1,22 @@
 # Installation
 
 RCL is written in Rust and builds with [Cargo][cargo]. RCL has few dependencies,
-so it’s quick and easy to build from source, but you can also use one of the
-options below that automate the process.
+so it’s quick and easy to build from source, but you can also use the prebuilt
+binaries, or use the Nix flake.
 
 [cargo]: https://doc.rust-lang.org/cargo/guide/
 
-## As a Nix flake
+## Prebuilt binaries
 
-The repository includes a Nix flake. You can run <abbr>RCL</abbr> with a
-[flake-enabled][flakes] version of [Nix][nix], such as Nix 2.18:
+Binaries for several platforms are available from the [GitHub releases page][gh-rel].
+Download the one appropriate one to a location on your `PATH`, and make it
+executable:
 
-    nix run 'github:ruuda/rcl?ref=v0.10.0' -- --help
+    curl -Lo ~/.local/bin/rcl https://github.com/ruuda/rcl/releases/download/v0.10.0/rcl-0.10.0-x86_64-unknown-linux-gnu
+    chmod +x ~/.local/bin/rcl
+    rcl --help
 
-[flakes]: https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake
-[nix]:    https://nixos.org/download
-
-The Nix flake also includes the Python module:
-
-    PYTHONPATH=$(nix build github:ruuda/rcl?ref=v0.10.0#pyrcl --print-out-paths)/lib python3
-
-The Nix flake also includes a shell with all the tools needed for development,
-as well as the environment that is tested on <abbr>CI</abbr>.
+[gh-rel]: https://github.com/ruuda/rcl/releases
 
 ## From source
 
@@ -45,6 +40,23 @@ Put the binary on your `PATH` to be able to use it system-wide, e.g.:
 
 See the [building chapter](building.md) for more details about building from
 source, including cross-compilation and building static binaries.
+
+## As a Nix flake
+
+The repository includes a Nix flake. You can run <abbr>RCL</abbr> with a
+[flake-enabled][flakes] version of [Nix][nix], such as Nix 2.18:
+
+    nix run 'github:ruuda/rcl?ref=v0.10.0' -- --help
+
+[flakes]: https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake
+[nix]:    https://nixos.org/download
+
+The Nix flake also includes the Python module:
+
+    PYTHONPATH=$(nix build github:ruuda/rcl?ref=v0.10.0#pyrcl --print-out-paths)/lib python3
+
+The Nix flake also includes a shell with all the tools needed for development,
+as well as the environment that is tested on <abbr>CI</abbr>.
 
 ## Python module
 

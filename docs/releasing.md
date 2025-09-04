@@ -79,6 +79,16 @@ nix build .#pyrcl-wheel
 twine upload $(nix path-info .#pyrcl-wheel)/*
 ```
 
+### GitHub
+
+We host the prebuilt binaries on GitHub. Build them:
+
+```console
+nix build .#binaries
+```
+
+Then create a release on GitHub and attach them.
+
 ### Extensions
 
 For releases that have impact on the grammars or extensions:

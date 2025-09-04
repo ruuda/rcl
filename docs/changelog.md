@@ -14,6 +14,13 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Next
+
+Unreleased.
+
+ * [Prebuilt binaries](installation.md#prebuilt-binaries) are now available for
+   several platforms. They are hosted [on Github](https://github.com/ruuda/rcl/releases).
+
 ## 0.10.0
 
 Released 2025-08-30.
