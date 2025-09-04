@@ -50,6 +50,7 @@ nav:
       - "rcl query": "rcl_query.md"
   - "Development":
       - "About": "about.md"
+      - "Building": "building.md"
       - "Testing": "testing.md"
       - "Grammars": "grammars.md"
       - "Tree-sitter": "tree_sitter.md"

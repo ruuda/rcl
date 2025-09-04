@@ -40,13 +40,11 @@ Put the binary on your `PATH` to be able to use it system-wide, e.g.:
 
     cp target/release/rcl ~/.local/bin
 
-To build a static binary rather than a dynamically linked one:
-
-    cargo build --release --target x86_64-unknown-linux-musl
-    cp target/x86_64-unknown-linux-musl/release/rcl ~/.local/bin
-
 [cargo]:  https://doc.rust-lang.org/cargo/guide/
 [rustup]: https://rust-lang.github.io/rustup/index.html
+
+See the [building chapter](building.md) for more details about building from
+source, including cross-compilation and building static binaries.
 
 ## Python module
 
