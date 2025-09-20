@@ -623,6 +623,14 @@ impl<'a> Formatter<'a> {
             Yield::AssocIdent { field, value, .. } => {
                 concat! { self.span(*field).with_markup(Markup::Field) " = " self.expr(value) }
             }
+
+            Yield::UnpackElems { collection, .. } => concat! {
+                ".." self.expr(collection)
+            },
+
+            Yield::UnpackAssocs { collection, .. } => concat! {
+                "..." self.expr(collection)
+            },
         }
     }
 
@@ -647,12 +655,6 @@ impl<'a> Formatter<'a> {
                 " "
                 self.expr(collection)
                 ":"
-            },
-            SeqControl::UnpackElems { collection, .. } => concat! {
-                ".." self.expr(collection)
-            },
-            SeqControl::UnpackAssocs { collection, .. } => concat! {
-                "..." self.expr(collection)
             },
             SeqControl::If { condition, .. } => concat! {
                 Doc::str("if").with_markup(Markup::Keyword)

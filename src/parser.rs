@@ -1203,6 +1203,8 @@ impl<'a> Parser<'a> {
                 (Token::KwAssert | Token::KwLet | Token::KwTrace, _) => self.parse_seq_stmt()?,
                 (Token::KwFor, _) => self.parse_seq_for()?,
                 (Token::KwIf, _) => self.parse_seq_if()?,
+                (Token::DotDot, _) => break self.parse_seq_unpack_elems()?,
+                (Token::DotDotDot, _) => break self.parse_seq_unpack_assocs()?,
                 (Token::Ident, Token::Eq1) => break self.parse_seq_assoc_ident()?,
                 _ => break self.parse_seq_assoc_expr()?,
             };
@@ -1223,6 +1225,34 @@ impl<'a> Parser<'a> {
             },
         };
 
+        Ok(result)
+    }
+
+    /// Parse `..xs` inside a `Seq`.
+    fn parse_seq_unpack_elems(&mut self) -> Result<Yield> {
+        let _dotdot = self.consume();
+
+        self.skip_non_code()?;
+        let (collection_span, collection) = self.parse_expr()?;
+
+        let result = Yield::UnpackElems {
+            collection_span,
+            collection: Box::new(collection),
+        };
+        Ok(result)
+    }
+
+    /// Parse `...xs` inside a `Seq`.
+    fn parse_seq_unpack_assocs(&mut self) -> Result<Yield> {
+        let _dotdotdot = self.consume();
+
+        self.skip_non_code()?;
+        let (collection_span, collection) = self.parse_expr()?;
+
+        let result = Yield::UnpackAssocs {
+            collection_span,
+            collection: Box::new(collection),
+        };
         Ok(result)
     }
 

@@ -330,6 +330,18 @@ pub enum Yield {
         value_span: Span,
         value: Box<Expr>,
     },
+
+    /// `..xs` is a shorthand for `for x in xs: x`.
+    UnpackElems {
+        collection_span: Span,
+        collection: Box<Expr>,
+    },
+
+    /// `...xs` is a shorthand for `for k, v in xs: k: v`.
+    UnpackAssocs {
+        collection_span: Span,
+        collection: Box<Expr>,
+    },
 }
 
 /// Control flow or a statement inside a collection literal.
@@ -344,18 +356,6 @@ pub enum SeqControl {
     /// Loop over the collection, binding the values to `idents`.
     For {
         idents: Box<[Span]>,
-        collection_span: Span,
-        collection: Box<Expr>,
-    },
-
-    /// `..xs` is a shorthand for `for x in xs: x`.
-    UnpackElems {
-        collection_span: Span,
-        collection: Box<Expr>,
-    },
-
-    /// `...xs` is a shorthand for `for k, v in xs: k: v`.
-    UnpackAssocs {
         collection_span: Span,
         collection: Box<Expr>,
     },
