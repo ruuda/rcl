@@ -200,6 +200,12 @@ pub enum Token {
     /// `.`
     Dot,
 
+    /// `..`
+    DotDot,
+
+    /// `...`
+    DotDotDot,
+
     /// `/`
     Slash,
 
@@ -649,6 +655,11 @@ impl<'a> Lexer<'a> {
     fn lex_in_punct(&mut self) -> Result<Lexeme> {
         debug_assert!(self.start < self.input.len());
 
+        // There is one punctuation trigraph.
+        if self.input.as_bytes()[self.start..].starts_with(b"...") {
+            return Ok((Token::DotDotDot, self.span(3)));
+        }
+
         if let Some(result) = self.lex_in_punct_digraph() {
             return Ok(result);
         }
@@ -671,6 +682,7 @@ impl<'a> Lexer<'a> {
             b"!=" => Token::Neq,
             b"->" => Token::ThinArrow,
             b"=>" => Token::FatArrow,
+            b".." => Token::DotDot,
             _ => return None,
         };
 
