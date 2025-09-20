@@ -348,6 +348,18 @@ pub enum SeqControl {
         collection: Box<Expr>,
     },
 
+    /// `..xs` is a shorthand for `for x in xs: x`.
+    UnpackElems {
+        collection_span: Span,
+        collection: Box<Expr>,
+    },
+
+    /// `...xs` is a shorthand for `for k, v in xs: k: v`.
+    UnpackAssocs {
+        collection_span: Span,
+        collection: Box<Expr>,
+    },
+
     /// Enter the loop only if the condition is true.
     If {
         condition_span: Span,

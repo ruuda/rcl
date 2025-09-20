@@ -397,6 +397,20 @@ impl<'a> Abstractor<'a> {
                     condition: Box::new(self.expr(condition)?),
                     body: Box::new(body),
                 },
+                SeqControl::UnpackElems {
+                    collection_span,
+                    collection,
+                } => ASeq::Yield(AYield::UnpackElems {
+                    collection_span: *collection_span,
+                    collection: Box::new(self.expr(collection)?),
+                }),
+                SeqControl::UnpackAssocs {
+                    collection_span,
+                    collection,
+                } => ASeq::Yield(AYield::UnpackAssocs {
+                    collection_span: *collection_span,
+                    collection: Box::new(self.expr(collection)?),
+                }),
             }
         }
 

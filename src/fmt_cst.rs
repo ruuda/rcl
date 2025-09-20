@@ -648,6 +648,12 @@ impl<'a> Formatter<'a> {
                 self.expr(collection)
                 ":"
             },
+            SeqControl::UnpackElems { collection, .. } => concat! {
+                ".." self.expr(collection)
+            },
+            SeqControl::UnpackAssocs { collection, .. } => concat! {
+                "..." self.expr(collection)
+            },
             SeqControl::If { condition, .. } => concat! {
                 Doc::str("if").with_markup(Markup::Keyword)
                 " "

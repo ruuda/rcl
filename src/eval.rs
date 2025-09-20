@@ -1014,6 +1014,12 @@ impl<'a> Evaluator<'a> {
                 on_assoc(key, value);
                 Ok(())
             }
+            Seq::Yield(Yield::UnpackElems { collection: _, .. }) => {
+                unimplemented!("TODO: Implement unpack elems.")
+            }
+            Seq::Yield(Yield::UnpackAssocs { collection: _, .. }) => {
+                unimplemented!("TODO: Implement unpack assocs.")
+            }
             Seq::For {
                 idents_span,
                 idents,

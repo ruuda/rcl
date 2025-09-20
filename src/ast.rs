@@ -258,6 +258,18 @@ pub enum Yield {
         key: Box<Expr>,
         value: Box<Expr>,
     },
+
+    /// Yield all scalar elements from a collection.
+    UnpackElems {
+        collection_span: Span,
+        collection: Box<Expr>,
+    },
+
+    /// Yield all key-value paris from a dict.
+    UnpackAssocs {
+        collection_span: Span,
+        collection: Box<Expr>,
+    },
 }
 
 /// One or more elements of a sequence.
