@@ -15,7 +15,7 @@
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, Ident, Seq, Stmt, Type as AType, UnOp, Yield};
-use crate::error::{IntoError, Result};
+use crate::error::{Error, IntoError, Result};
 use crate::fmt_type::format_type;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
@@ -848,7 +848,7 @@ impl<'a> TypeChecker<'a> {
             Yield::Elem { span, value } => match &mut seq_type {
                 SeqType::SetOrDict => {
                     let t = self.check_expr(type_any(), *span, value)?;
-                    Ok(SeqType::UntypedSet(*span, t))
+                    Ok(SeqType::UntypedSet(SeqSourceSet::Scalar(*span), t))
                 }
                 SeqType::TypedList { elem_super, elem_infer } | SeqType::TypedSet { elem_super, elem_infer, .. } => {
                     // First we check that the element satisfies the requirement.
@@ -870,14 +870,8 @@ impl<'a> TypeChecker<'a> {
                     *elem_type_meet = elem_type_meet.meet(&elem_type);
                     Ok(seq_type)
                 }
-                SeqType::UntypedDict(first, _k, _v) => {
-                    span
-                        .error("Expected key-value, not a scalar element.")
-                        .with_note(
-                            *first,
-                            "The collection is a dict and not a set, because it starts with a key-value.",
-                        )
-                        .err()
+                SeqType::UntypedDict(src, _k, _v) => {
+                    src.add_note(span.error("Expected key-value, not a scalar element.")).err()
                 }
             }
             Yield::Assoc { op_span, key_span, key, value_span, value } => match &mut seq_type {
@@ -895,7 +889,7 @@ impl<'a> TypeChecker<'a> {
                         other => other,
                     }?;
                     let v = self.check_expr(type_any(), *value_span, value)?;
-                    Ok(SeqType::UntypedDict(*op_span, k, v))
+                    Ok(SeqType::UntypedDict(SeqSourceDict::Assoc(*op_span), k, v))
                 }
                 SeqType::TypedDict { key_super, key_infer, value_super, value_infer, .. } => {
                     let k = self.check_expr(key_super, *key_span, key)?;
@@ -916,13 +910,9 @@ impl<'a> TypeChecker<'a> {
                     set_source.explain_error(Side::Expected, &mut error);
                     error.err()
                 }
-                SeqType::UntypedSet(first, _elem) => op_span
-                    .error("Expected scalar element, not key-value.")
-                    .with_note(
-                        *first,
-                        "The collection is a set and not a dict, because it starts with a scalar value.",
-                    )
-                    .err(),
+                SeqType::UntypedSet(src, _elem) => src.add_note(
+                    op_span.error("Expected scalar element, not key-value.")
+                ).err(),
                 SeqType::UntypedDict(_first, key_meet, value_meet) => {
                     let k = self.check_expr(type_any(), *key_span, key)?;
                     let v = self.check_expr(type_any(), *value_span, value)?;
@@ -931,7 +921,14 @@ impl<'a> TypeChecker<'a> {
                     Ok(seq_type)
                 }
             }
-            Yield::UnpackElems { collection: _, .. } => unimplemented!("TODO: Typecheck unpack elems."),
+            Yield::UnpackElems { unpack_span, collection_span, collection } => match &mut seq_type {
+                SeqType::SetOrDict => {
+                    let t = self.check_expr(type_any(), *collection_span, collection)?;
+                    // TODO: Extract elem type from t.
+                    Ok(SeqType::UntypedSet(SeqSourceSet::Unpack(*unpack_span), t))
+                }
+                _ => unimplemented!()
+            },
             Yield::UnpackAssocs { collection: _, .. } => unimplemented!("TODO: Typecheck unpack assoc."),
         }
     }
@@ -981,6 +978,48 @@ impl<'a> TypeChecker<'a> {
                 self.check_expr(type_any(), *message_span, message)?;
                 Ok(())
             }
+        }
+    }
+}
+
+/// We know it's a set due to this reason.
+enum SeqSourceSet {
+    Scalar(Span),
+    Unpack(Span),
+}
+
+/// We know it's a dict due to this reason.
+enum SeqSourceDict {
+    Assoc(Span),
+    Unpack(Span),
+}
+
+impl SeqSourceSet {
+    fn add_note(&self, err: Error) -> Error {
+        match *self {
+            SeqSourceSet::Scalar(first) => err.with_note(
+                first,
+                "The collection is a set and not a dict, because it starts with a scalar value.",
+            ),
+            SeqSourceSet::Unpack(unpack) => err.with_note(
+                unpack,
+                "The collection is a set and not a dict, because of this scalar unpack.",
+            ),
+        }
+    }
+}
+
+impl SeqSourceDict {
+    fn add_note(&self, err: Error) -> Error {
+        match *self {
+            SeqSourceDict::Assoc(first) => err.with_note(
+                first,
+                "The collection is a dict and not a set, because it starts with a key-value.",
+            ),
+            SeqSourceDict::Unpack(unpack) => err.with_note(
+                unpack,
+                "The collection is a dict and not a set, because of the key-value unpack here.",
+            ),
         }
     }
 }
@@ -1040,12 +1079,12 @@ enum SeqType {
     /// We found a set, as evidenced by the span of the first scalar.
     ///
     /// We also track the `meet` of all the elements.
-    UntypedSet(Span, SourcedType),
+    UntypedSet(SeqSourceSet, SourcedType),
 
     /// We found a dict, as evidenced by the span of the first key-value.
     ///
     /// We also track the `meet` of the key and value types.
-    UntypedDict(Span, SourcedType, SourcedType),
+    UntypedDict(SeqSourceDict, SourcedType, SourcedType),
 }
 
 impl SeqType {

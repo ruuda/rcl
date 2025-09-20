@@ -1230,12 +1230,13 @@ impl<'a> Parser<'a> {
 
     /// Parse `..xs` inside a `Seq`.
     fn parse_seq_unpack_elems(&mut self) -> Result<Yield> {
-        let _dotdot = self.consume();
+        let dotdot = self.consume();
 
         self.skip_non_code()?;
         let (collection_span, collection) = self.parse_expr()?;
 
         let result = Yield::UnpackElems {
+            unpack_span: dotdot,
             collection_span,
             collection: Box::new(collection),
         };
@@ -1244,12 +1245,13 @@ impl<'a> Parser<'a> {
 
     /// Parse `...xs` inside a `Seq`.
     fn parse_seq_unpack_assocs(&mut self) -> Result<Yield> {
-        let _dotdotdot = self.consume();
+        let dotdotdot = self.consume();
 
         self.skip_non_code()?;
         let (collection_span, collection) = self.parse_expr()?;
 
         let result = Yield::UnpackAssocs {
+            unpack_span: dotdotdot,
             collection_span,
             collection: Box::new(collection),
         };

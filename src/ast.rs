@@ -261,12 +261,14 @@ pub enum Yield {
 
     /// Yield all scalar elements from a collection.
     UnpackElems {
+        unpack_span: Span,
         collection_span: Span,
         collection: Box<Expr>,
     },
 
     /// Yield all key-value paris from a dict.
     UnpackAssocs {
+        unpack_span: Span,
         collection_span: Span,
         collection: Box<Expr>,
     },

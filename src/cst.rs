@@ -333,12 +333,14 @@ pub enum Yield {
 
     /// `..xs` is a shorthand for `for x in xs: x`.
     UnpackElems {
+        unpack_span: Span,
         collection_span: Span,
         collection: Box<Expr>,
     },
 
     /// `...xs` is a shorthand for `for k, v in xs: k: v`.
     UnpackAssocs {
+        unpack_span: Span,
         collection_span: Span,
         collection: Box<Expr>,
     },
