@@ -913,13 +913,34 @@ impl<'a> TypeChecker<'a> {
                     Ok(seq_type)
                 }
             }
-            Yield::UnpackElems { unpack_span, collection_span, collection } => match &mut seq_type {
-                SeqType::SetOrDict => {
-                    let t = self.check_expr(type_any(), *collection_span, collection)?;
-                    // TODO: Extract elem type from t.
-                    Ok(SeqType::UntypedSet(SeqSourceSet::Unpack(*unpack_span), t))
+            Yield::UnpackElems { unpack_span, collection_span, collection } => {
+                let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
+                match (&mut seq_type, collection_type.element_type()) {
+                    (SeqType::SetOrDict, ElementType::Any) => Ok(SeqType::SetOrDict),
+                    (SeqType::SetOrDict, ElementType::Scalar(inner)) => Ok(SeqType::UntypedSet(SeqSourceSet::Unpack(*unpack_span), (*inner).clone())),
+                    (_, ElementType::Dict(..)) => {
+                        unimplemented!("Report error, tell user to use `...` instead.");
+                    }
+                    (SeqType::UntypedDict(..) | SeqType::TypedDict { .. }, _) => {
+                        unimplemented!("Report error, tell user to use `...` instead.");
+                    }
+                    (_, ElementType::None) => {
+                        // TODO: Can probably also deduplicate this between the for loop.
+                        unimplemented!("Report error, encountered type is not iterable.");
+                    }
+                    (SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet), ElementType::Scalar(inner)) => {
+                        *elem_type_meet = elem_type_meet.meet(&*inner);
+                        Ok(seq_type)
+                    }
+                    (SeqType::TypedList { elem_super, elem_infer } | SeqType::TypedSet { elem_super, elem_infer, .. }, ElementType::Scalar(elem)) => {
+                        // TODO: How do we report this, highlighting the unpack
+                        // span as the culprit is a bit unfortunate?
+                        elem.is_subtype_of(elem_super).check(*unpack_span)?;
+                        *elem_infer = elem_infer.meet(&*elem);
+                        Ok(seq_type)
+                    }
+                    _ => unimplemented!("TODO: Typecheck this case."),
                 }
-                _ => unimplemented!()
             },
             Yield::UnpackAssocs { collection: _, .. } => unimplemented!("TODO: Typecheck unpack assoc."),
         }
