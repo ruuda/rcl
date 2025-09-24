@@ -21,7 +21,7 @@ use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::type_diff::{report_type_mismatch, Typed};
 use crate::type_source::Source;
-use crate::types::{Dict, Function, FunctionArg, Side, SourcedType, Type, Union};
+use crate::types::{Dict, ElementType, Function, FunctionArg, Side, SourcedType, Type, Union};
 
 pub type Env = crate::env::Env<SourcedType>;
 
@@ -768,15 +768,15 @@ impl<'a> TypeChecker<'a> {
                 let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
                 let ck = self.env.checkpoint();
 
-                match &collection_type.type_ {
+                match collection_type.element_type() {
                     // If we don't know the type, we can't verify the number of
                     // loop variables, and we don't know their types.
-                    Type::Any => {
+                    ElementType::Any => {
                         for ident in idents {
                             self.env.push(ident.clone(), type_any().clone());
                         }
                     }
-                    Type::Dict(dict) => {
+                    ElementType::Dict(dict) => {
                         if idents.len() != 2 {
                             // TODO: Deduplicate runtime error. Make it a method
                             // on the type? Same for functions?
@@ -791,37 +791,29 @@ impl<'a> TypeChecker<'a> {
                         self.env.push(idents[0].clone(), dict.key.clone());
                         self.env.push(idents[1].clone(), dict.value.clone());
                     }
-                    Type::List(element_type) => {
+                    ElementType::Scalar(element_type) => {
                         if idents.len() != 1 {
                             return idents_span
                                 .error("Expected a single variable.")
                                 .with_note(
                                     *collection_span,
-                                    "This is a list, it yields one element per iteration.",
+                                    concat! {
+                                        "This is a "
+                                        collection_type.type_.short_name().to_ascii_lowercase()
+                                        ", it yields one element per iteration."
+                                    },
                                 )
                                 .err();
                         }
-                        self.env.push(idents[0].clone(), (**element_type).clone());
+                        self.env.push(idents[0].clone(), (*element_type).clone());
                     }
-                    Type::Set(element_type) => {
-                        if idents.len() != 1 {
-                            return idents_span
-                                .error("Expected a single variable.")
-                                .with_note(
-                                    *collection_span,
-                                    "This is a set, it yields one element per iteration.",
-                                )
-                                .err();
-                        }
-                        self.env.push(idents[0].clone(), (**element_type).clone());
-                    }
-                    not_collection => {
+                    _not_collection => {
                         return collection_span
                             .error("This is not iterable.")
                             .with_body(concat! {
                                 "Expected a collection, but got:"
                                 Doc::HardBreak Doc::HardBreak
-                                indent! { format_type(not_collection).into_owned() }
+                                indent! { format_type(&collection_type.type_).into_owned() }
                             })
                             .err()
                     }
