@@ -17,7 +17,9 @@ let x = y; x
 Assert
 ======
 
-assert p == q, r; s
+assert p == q: r;
+assert p == q, r;
+s
 
 ---
 
@@ -26,7 +28,11 @@ assert p == q, r; s
     (stmt_assert
       condition: (expr_binop (ident) (binop) (ident))
       message: (ident))
-    (ident)))
+    (expr_stmt
+      (stmt_assert
+        condition: (expr_binop (ident) (binop) (ident))
+        message: (ident))
+      (ident))))
 
 =====
 Trace

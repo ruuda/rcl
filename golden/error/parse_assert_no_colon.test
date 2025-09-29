@@ -1,0 +1,9 @@
+assert false
+0
+
+# output:
+stdin:2:1
+  ╷
+2 │ 0
+  ╵ ^
+Error: Expected ':' here between the assertion condition and message.

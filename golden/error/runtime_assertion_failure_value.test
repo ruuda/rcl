@@ -1,10 +1,10 @@
-assert false, { message = "The message is not just a string.", value = 12 };
+assert false: { message = "The message is not just a string.", value = 12 };
 0
 
 # output:
 stdin:1:8
   ╷
-1 │ assert false, { message = "The message is not just a string.", value = 12 };
+1 │ assert false: { message = "The message is not just a string.", value = 12 };
   ╵        ^~~~~
 Error: Assertion failed. {
   message = "The message is not just a string.",

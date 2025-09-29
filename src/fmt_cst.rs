@@ -294,7 +294,7 @@ impl<'a> Formatter<'a> {
                         indent! {
                             Doc::Sep
                             self.expr(condition)
-                            ","
+                            ":"
                             Doc::Sep
                             self.expr(message)
                             ";"

@@ -27,7 +27,7 @@ let multiline_tall = [
 // together.
 let stmts = [
   let xs = std.range(0, 100); trace xs;
-  for x in xs: if x > 50: assert x > 50, "that condition should work";
+  for x in xs: if x > 50: assert x > 50: "that condition should work";
   let ys = std.range(x, 100); for y in ys:
   x + y
 ];
@@ -59,7 +59,7 @@ let stmts = [
   trace xs;
   for x in xs:
   if x > 50:
-  assert x > 50, "that condition should work";
+  assert x > 50: "that condition should work";
   let ys = std.range(x, 100);
   for y in ys:
   x + y

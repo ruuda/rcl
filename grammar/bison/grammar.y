@@ -101,7 +101,7 @@ fstring
 
 stmt
   : "let" IDENT optional_type_hint '=' expr ';'
-  | "assert" expr ',' expr ';'
+  | "assert" expr ':' expr ';'
   | "trace" expr ';'
   ;
 

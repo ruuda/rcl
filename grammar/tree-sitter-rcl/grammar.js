@@ -222,7 +222,10 @@ module.exports = grammar({
     stmt_assert: $ => seq(
       "assert",
       field("condition", $._expr),
-      ",",
+      // TODO: In a future version, we should accept only ':', for now we also
+      // accept comma for backwards compatibility. When changing this, be sure
+      // to also update `parser.rs`.
+      choice(":", ","),
       field("message", $._expr),
     ),
     stmt_trace: $ => seq(

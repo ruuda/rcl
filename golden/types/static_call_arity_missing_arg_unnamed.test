@@ -7,7 +7,7 @@ let g: (Any) -> Number = f;
 
 // This assertion would crash the program if we ever got to runtime. But the
 // arity error below should be detected at typecheck time already.
-assert false, "This should fail statically before it fails at runtime.";
+assert false: "This should fail statically before it fails at runtime.";
 
 // Now when we call `g`, we can infer from the type that we are passing too few
 // arguments, but we can't name the missing argument.

@@ -1,10 +1,10 @@
-assert true, "This assertion should pass.";
-assert false, "This assertion should fail.";
+assert true: "This assertion should pass.";
+assert false: "This assertion should fail.";
 0
 
 # output:
 stdin:2:8
   ╷
-2 │ assert false, "This assertion should fail.";
+2 │ assert false: "This assertion should fail.";
   ╵        ^~~~~
 Error: Assertion failed. This assertion should fail.
