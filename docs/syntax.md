@@ -385,13 +385,13 @@ You can use assertions in expressions and inside comprehensions:
 
 ```rcl
 // Expression form:
-assert condition, "Message for when the assertion fails.";
+assert condition: "Message for when the assertion fails.";
 body
 
 // Comprehension form:
 [
   for widget in widgets:
-  assert widget.is_valid(), f"Widget {widget.id} is invalid.";
+  assert widget.is_valid(): f"Widget {widget.id} is invalid.";
   widget
 ]
 ```

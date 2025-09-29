@@ -20,6 +20,13 @@ Unreleased.
 
  * [Prebuilt binaries](installation.md#prebuilt-binaries) are now available for
    several platforms. They are hosted [on Github](https://github.com/ruuda/rcl/releases).
+ * [Assertions](syntax.md#assertions) now use a `:` to separate the condition
+   and the message, i.e. `assert cond: "message";` rather than
+   `assert cond, "message";`. The standard formatting for assertions that do not
+   fit on a single line is now like `if` expressions, rather than like function
+   calls. For compatibility, a comma is still accepted for now. This will likely
+   change in a future release. In that case it will be clearly marked as a
+   change with compatibility impact in the release notes.
 
 ## 0.10.0
 
