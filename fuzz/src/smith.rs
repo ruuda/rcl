@@ -126,7 +126,7 @@ define_ops! {
     0x50 => ExprLet,
     /// Replace the top 2 elements with `let {0}: {T} = {0}; {1}`.
     0x51 => ExprTypedLet,
-    /// Replace the top 3 elements with `assert {0}, {1}; {2}`.
+    /// Replace the top 3 elements with `assert {0}: {1}; {2}`.
     0x52 => ExprAssert,
     /// Replace the top 2 elements with `trace {0}; {2}`.
     0x53 => ExprTrace,
@@ -451,7 +451,7 @@ impl<'a> ProgramBuilder<'a> {
                 let message = self.expr_stack.pop()?;
                 let body = self.expr_stack.pop()?;
                 self.expr_stack
-                    .push(format!("assert {condition}, {message}; {body}"));
+                    .push(format!("assert {condition}: {message}; {body}"));
             }
             Op::ExprTrace => {
                 let message = self.expr_stack.pop()?;

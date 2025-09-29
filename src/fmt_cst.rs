@@ -288,18 +288,13 @@ impl<'a> Formatter<'a> {
             Stmt::Assert {
                 condition, message, ..
             } => {
-                concat! {
+                group! {
                     Doc::str("assert").with_markup(Markup::Keyword)
-                    group! {
-                        indent! {
-                            Doc::Sep
-                            self.expr(condition)
-                            ","
-                            Doc::Sep
-                            self.expr(message)
-                            ";"
-                        }
-                    }
+                    " "
+                    self.expr(condition)
+                    ":"
+                    Doc::Sep
+                    indent! { self.expr(message) ";" }
                 }
             }
             Stmt::Trace { message, .. } => {

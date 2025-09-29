@@ -3,7 +3,7 @@
   b = {1, 2, 3}.all(x => x > 2),
   c = {1, 2, 3}.all(x => x > 0),
   // The assertion is never hit, we never evaluate the predicate on the third element.
-  d = {1, 2, 3}.all(x => assert x != 3, "'any' short-circuits."; x < 2),
+  d = {1, 2, 3}.all(x => assert x != 3: "'any' short-circuits."; x < 2),
 }
 
 # output:

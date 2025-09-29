@@ -1,13 +1,13 @@
 // A line break is not allowed in document fragments for the pretty-printer,
 // and printing assertion messages uses the pretty-printer, so it should break
 // the string into lines and not crash. This is a regression test.
-assert false, "This message\nhas a line break in it.";
+assert false: "This message\nhas a line break in it.";
 0
 
 # output:
 stdin:4:8
   ╷
-4 │ assert false, "This message\nhas a line break in it.";
+4 │ assert false: "This message\nhas a line break in it.";
   ╵        ^~~~~
 Error: Assertion failed. This message
 has a line break in it.

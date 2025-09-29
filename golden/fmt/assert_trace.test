@@ -1,22 +1,29 @@
-assert true == true, "The two true booleans should be equal";
+assert true == true: "The two true booleans should be equal";
 trace "Some short message";
 
-assert this_is_a_much_longer_assertion_that_does_not_fit(), [
+assert this_is_a_much_longer_assertion_that_does_not_fit(): [
   "If you include its error message."
 ];
 trace f"And this is a much longer trace message which has a hole in it {
 0
 } but nonetheless should not be line-wrapped.";
 
+// For historical reasons, assertions are allowed to use comma
+// in addition to colon, but the formatter always outputs colon.
+assert true, "The comma is allowed, for now.";
+
 0
 
 # output:
-assert true == true, "The two true booleans should be equal";
+assert true == true: "The two true booleans should be equal";
 trace "Some short message";
 
-assert
-  this_is_a_much_longer_assertion_that_does_not_fit(),
+assert this_is_a_much_longer_assertion_that_does_not_fit():
   ["If you include its error message."];
 trace f"And this is a much longer trace message which has a hole in it {0} but nonetheless should not be line-wrapped.";
+
+// For historical reasons, assertions are allowed to use comma
+// in addition to colon, but the formatter always outputs colon.
+assert true: "The comma is allowed, for now.";
 
 0

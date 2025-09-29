@@ -452,23 +452,29 @@ impl<'a> Parser<'a> {
         self.skip_non_code()?;
         let (condition_span, condition) = self.parse_expr()?;
 
-        // After the condition is a comma, but if the user wrote a semicolon,
+        // After the condition is a colon, but if the user wrote a semicolon,
         // then explain that the message is not optional (unlike in Python).
+        // For historical reasons, we also allow a comma instead of a colon:
+        // up to version 0.10.0, RCL used a comma like Python.
+        // TODO: Remove this compatibility, and make the comma an error. We can
+        // keep a friendly error to point Pythonistas in the right direction.
+        // TODO: Be sure to update the Tree-sitter grammar when changing this.
         self.skip_non_code()?;
         match self.peek() {
+            Token::Colon => self.consume(),
             Token::Comma => self.consume(),
             Token::Semicolon => {
                 return self
-                    .error("Expected ',' here between the assertion condition and message.")
+                    .error("Expected ':' here between the assertion condition and message.")
                     .with_help(
-                        "An assertion has the form 'assert <condition>, <message>;'. \
+                        "An assertion has the form 'assert <condition>: <message>;'. \
                         The message is not optional.",
                     )
                     .err();
             }
             _ => {
                 return self
-                    .error("Expected ',' here between the assertion condition and message.")
+                    .error("Expected ':' here between the assertion condition and message.")
                     .err()
             }
         };

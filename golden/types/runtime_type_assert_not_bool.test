@@ -1,11 +1,11 @@
 let not_bool: Any = 0;
-assert not_bool, "We don't even get here";
+assert not_bool: "We don't even get here";
 null
 
 # output:
 stdin:2:8
   ╷
-2 │ assert not_bool, "We don't even get here";
+2 │ assert not_bool: "We don't even get here";
   ╵        ^~~~~~~~
 Error: Type mismatch. Expected a value that fits this type:
 

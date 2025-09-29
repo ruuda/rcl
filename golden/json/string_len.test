@@ -9,7 +9,7 @@ let strings = [
 ];
 [
   for s in strings:
-  assert s.len() == s.chars().len(), ["String.len counts chars.", s, s.chars()];
+  assert s.len() == s.chars().len(): ["String.len counts chars.", s, s.chars()];
   s.len()
 ]
 

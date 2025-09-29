@@ -1,20 +1,20 @@
-[1, 2, 3].map(x => assert false, "This crashes"; x)
+[1, 2, 3].map(x => assert false: "This crashes"; x)
 
 # output:
 stdin:1:27
   ╷
-1 │ [1, 2, 3].map(x => assert false, "This crashes"; x)
+1 │ [1, 2, 3].map(x => assert false: "This crashes"; x)
   ╵                           ^~~~~
 Error: Assertion failed. This crashes
 
 stdin:1:15
   ╷
-1 │ [1, 2, 3].map(x => assert false, "This crashes"; x)
+1 │ [1, 2, 3].map(x => assert false: "This crashes"; x)
   ╵               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In internal call to mapping function from 'List.map'.
 
 stdin:1:14
   ╷
-1 │ [1, 2, 3].map(x => assert false, "This crashes"; x)
+1 │ [1, 2, 3].map(x => assert false: "This crashes"; x)
   ╵              ^
 In call to method 'List.map'.
