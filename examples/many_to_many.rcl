@@ -1,0 +1,63 @@
+// Here is a classic problem. Suppose we have a many-to-many relationship.
+// Common real-world examples are user-group and group-permission, but in this
+// example we'll go with recipe-ingredient. How do we flatten that relationship
+// into a configuration file? Do recipes specify their ingredients, or do
+// ingredients specify the recipes that use them? There is something to say for
+// both:
+//
+// * If recipes specify their ingredients, per recipe you can see at a glance
+//   what the ingredients are.
+//
+// * If ingredients specify the recipes that use them, you can see at a glance
+//   which recipes are affected when we run out.
+//
+// What if we want to be able to see both at a glance? We could specify the
+// relationship in *both* places, but that creates a risk of it going out of
+// sync. In RCL, we can avoid that problem by asserting that the relationship
+// is complete both ways.
+
+let config = {
+  recipes = {
+    cake = {
+      ingredients = {"egg", "flour", "butter", "sugar"},
+      duration = "1 hour",
+    },
+    pancake = {
+      ingredients = {"egg", "flour", "milk"},
+      duration = "10 minutes",
+    },
+  },
+
+  ingredients = {
+    butter = { location = "fridge", recipes = ["cake"] },
+    egg = { location = "shelf", recipes = ["cake", "pancake"] },
+    flour = { location = "shelf", recipes = ["cake", "pancake"] },
+    milk = { location = "fridge", recipes = ["pancake"] },
+    sugar = { location = "shelf", recipes = ["cake"] },
+  },
+
+  locations = {
+    shelf = { ingredients = {"egg", "flour", "sugar"} },
+    fridge = { ingredients = {"butter", "milk"} },
+  },
+};
+
+let check_recipe = [
+  for name, recipe in config.recipes:
+  for ingredient in recipe.ingredients:
+  assert config.ingredients[ingredient].recipes.contains(name):
+    f"Ingredient {ingredient} must list recipe {name}.";
+  null
+];
+let check_ingredient = [
+  for name, ingredient in config.ingredients:
+  assert config.locations[ingredient.location].ingredients.contains(name):
+    f"Location {ingredient.location} must list ingredient {name}.";
+
+  for recipe in ingredient.recipes:
+  assert config.recipes[recipe].ingredients.contains(name):
+    f"Recipe {recipe} must list ingredient {name}.";
+  null
+];
+
+config
