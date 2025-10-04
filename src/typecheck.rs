@@ -915,47 +915,116 @@ impl<'a> TypeChecker<'a> {
             }
             Yield::UnpackElems { unpack_span, collection_span, collection } => {
                 let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
-                match (&mut seq_type, collection_type.element_type()) {
-                    (SeqType::SetOrDict, ElementType::Any) => Ok(SeqType::SetOrDict),
-                    (SeqType::SetOrDict, ElementType::Scalar(inner)) => Ok(SeqType::UntypedSet(SeqSourceSet::Unpack(*unpack_span), (*inner).clone())),
-                    (_, ElementType::None) => {
-                        // TODO: Can probably also deduplicate this between the for loop.
-                        unimplemented!("Report error, encountered type is not iterable.");
-                    }
-                    (SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet), ElementType::Scalar(inner)) => {
-                        *elem_type_meet = elem_type_meet.meet(&*inner);
-                        Ok(seq_type)
-                    }
-                    (SeqType::TypedList { elem_super, elem_infer } | SeqType::TypedSet { elem_super, elem_infer, .. }, ElementType::Scalar(elem)) => {
-                        elem.is_subtype_of(elem_super).check_unpack_scalar(*unpack_span)?;
-                        *elem_infer = elem_infer.meet(&*elem);
-                        Ok(seq_type)
-                    }
-                    (SeqType::TypedList { .. } | SeqType::UntypedList(..), ElementType::Dict(..)) => {
-                        unimplemented!("TODO: Error that expected list.");
-                    }
-                    // TODO: These next two should go in UnpackAssocs instead,
-                    // but I cherry-picked them here for now.
-                    (SeqType::UntypedDict(_src, key_meet, value_meet), ElementType::Dict(kv)) => {
-                        *key_meet = key_meet.meet(&kv.key);
-                        *value_meet = value_meet.meet(&kv.value);
-                        Ok(seq_type)
-                    }
-                    (SeqType::TypedDict { key_super, key_infer, value_super, value_infer, .. }, ElementType::Dict(kv)) => {
-                        // TODO: Reporting span.
-                        kv.key.is_subtype_of(key_super).check_unpack_key(*unpack_span)?;
-                        kv.value.is_subtype_of(value_super).check_unpack_value(*unpack_span)?;
-                        *key_infer = key_infer.meet(&kv.key);
-                        *value_infer = value_infer.meet(&kv.value);
-                        Ok(seq_type)
-                    }
-                    (SeqType::TypedDict { .. } | SeqType::UntypedDict(..), ElementType::Scalar(..)) => {
-                        unimplemented!("TODO: Error that expected dict.");
-                    }
-                    _ => unimplemented!("TODO: Typecheck this case."),
-                }
+                self.check_yield_unpack_elems(seq_type, *unpack_span, collection_type)
             },
-            Yield::UnpackAssocs { collection: _, .. } => unimplemented!("TODO: Typecheck unpack assoc."),
+            Yield::UnpackAssocs { unpack_span, collection_span, collection } => {
+                let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
+                self.check_yield_unpack_assocs(seq_type, *unpack_span, collection_type)
+            }
+        }
+    }
+
+    /// Visit a `..xs` (double dot) unpack inside a sequence literal.
+    fn check_yield_unpack_elems(
+        &mut self,
+        mut seq_type: SeqType,
+        unpack_span: Span,
+        collection_type: SourcedType,
+    ) -> Result<SeqType> {
+        match (&mut seq_type, collection_type.element_type()) {
+            // If we weren't sure whether it's a dict or set, and then there is
+            // a scalar unpack, then now we know it's a set.
+            (SeqType::SetOrDict, ElementType::Any) => Ok(SeqType::UntypedSet(
+                SeqSourceSet::Unpack(unpack_span),
+                type_any().clone(),
+            )),
+            (SeqType::SetOrDict, ElementType::Scalar(inner)) => Ok(SeqType::UntypedSet(
+                SeqSourceSet::Unpack(unpack_span),
+                (*inner).clone(),
+            )),
+            (_, ElementType::None) => {
+                // TODO: Can probably also deduplicate this between the for loop.
+                unimplemented!("Report error, encountered type is not iterable.");
+            }
+            (
+                SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet),
+                ElementType::Scalar(inner),
+            ) => {
+                *elem_type_meet = elem_type_meet.meet(&*inner);
+                Ok(seq_type)
+            }
+            (
+                SeqType::TypedList {
+                    elem_super,
+                    elem_infer,
+                }
+                | SeqType::TypedSet {
+                    elem_super,
+                    elem_infer,
+                    ..
+                },
+                ElementType::Scalar(elem),
+            ) => {
+                elem.is_subtype_of(elem_super)
+                    .check_unpack_scalar(unpack_span)?;
+                *elem_infer = elem_infer.meet(&*elem);
+                Ok(seq_type)
+            }
+            (SeqType::TypedList { .. } | SeqType::UntypedList(..), ElementType::Dict(..)) => {
+                unimplemented!("TODO: Error that expected list.");
+            }
+            _ => unimplemented!("TODO: Typecheck this case."),
+        }
+    }
+
+    /// Visit a `...xs` (triple dot) unpack inside a sequence literal.
+    fn check_yield_unpack_assocs(
+        &mut self,
+        mut seq_type: SeqType,
+        unpack_span: Span,
+        collection_type: SourcedType,
+    ) -> Result<SeqType> {
+        match (&mut seq_type, collection_type.element_type()) {
+            // If we weren't sure whether it's a dict or set, and then there is
+            // a dict unpack, then now we know it's a dict.
+            (SeqType::SetOrDict, ElementType::Any) => Ok(SeqType::UntypedDict(
+                SeqSourceDict::Unpack(unpack_span),
+                type_any().clone(),
+                type_any().clone(),
+            )),
+            (SeqType::SetOrDict, ElementType::Scalar(..)) => {
+                unimplemented!("TODO: Report error about unpack type.");
+            }
+            (_, ElementType::None) => {
+                // TODO: Can probably also deduplicate this between the for loop.
+                unimplemented!("Report error, encountered type is not iterable.");
+            }
+            (SeqType::UntypedDict(_src, key_meet, value_meet), ElementType::Dict(kv)) => {
+                *key_meet = key_meet.meet(&kv.key);
+                *value_meet = value_meet.meet(&kv.value);
+                Ok(seq_type)
+            }
+            (
+                SeqType::TypedDict {
+                    key_super,
+                    key_infer,
+                    value_super,
+                    value_infer,
+                    ..
+                },
+                ElementType::Dict(kv),
+            ) => {
+                kv.key
+                    .is_subtype_of(key_super)
+                    .check_unpack_key(unpack_span)?;
+                kv.value
+                    .is_subtype_of(value_super)
+                    .check_unpack_value(unpack_span)?;
+                *key_infer = key_infer.meet(&kv.key);
+                *value_infer = value_infer.meet(&kv.value);
+                Ok(seq_type)
+            }
+            _ => unimplemented!("TODO: Typecheck this case."),
         }
     }
 
