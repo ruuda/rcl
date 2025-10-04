@@ -918,12 +918,6 @@ impl<'a> TypeChecker<'a> {
                 match (&mut seq_type, collection_type.element_type()) {
                     (SeqType::SetOrDict, ElementType::Any) => Ok(SeqType::SetOrDict),
                     (SeqType::SetOrDict, ElementType::Scalar(inner)) => Ok(SeqType::UntypedSet(SeqSourceSet::Unpack(*unpack_span), (*inner).clone())),
-                    (_, ElementType::Dict(..)) => {
-                        unimplemented!("Report error, tell user to use `...` instead.");
-                    }
-                    (SeqType::UntypedDict(..) | SeqType::TypedDict { .. }, _) => {
-                        unimplemented!("Report error, tell user to use `...` instead.");
-                    }
                     (_, ElementType::None) => {
                         // TODO: Can probably also deduplicate this between the for loop.
                         unimplemented!("Report error, encountered type is not iterable.");
@@ -938,6 +932,27 @@ impl<'a> TypeChecker<'a> {
                         elem.is_subtype_of(elem_super).check(*unpack_span)?;
                         *elem_infer = elem_infer.meet(&*elem);
                         Ok(seq_type)
+                    }
+                    (SeqType::TypedList { .. } | SeqType::UntypedList(..), ElementType::Dict(..)) => {
+                        unimplemented!("TODO: Error that expected list.");
+                    }
+                    // TODO: These next two should go in UnpackAssocs instead,
+                    // but I cherry-picked them here for now.
+                    (SeqType::UntypedDict(_src, key_meet, value_meet), ElementType::Dict(kv)) => {
+                        *key_meet = key_meet.meet(&kv.key);
+                        *value_meet = value_meet.meet(&kv.value);
+                        Ok(seq_type)
+                    }
+                    (SeqType::TypedDict { key_super, key_infer, value_super, value_infer, .. }, ElementType::Dict(kv)) => {
+                        // TODO: Reporting span.
+                        kv.key.is_subtype_of(key_super).check(*unpack_span)?;
+                        kv.value.is_subtype_of(value_super).check(*unpack_span)?;
+                        *key_infer = key_infer.meet(&kv.key);
+                        *value_infer = value_infer.meet(&kv.value);
+                        Ok(seq_type)
+                    }
+                    (SeqType::TypedDict { .. } | SeqType::UntypedDict(..), ElementType::Scalar(..)) => {
+                        unimplemented!("TODO: Error that expected dict.");
                     }
                     _ => unimplemented!("TODO: Typecheck this case."),
                 }
