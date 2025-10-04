@@ -1015,26 +1015,17 @@ impl<'a> TypeChecker<'a> {
                 type_any().clone(),
                 type_any().clone(),
             )),
-            (_, ElementType::None) => self
-                .error_not_iterable(collection_span, collection_type)
-                .err(),
-            (_, ElementType::Scalar(..)) => {
-                collection_span
-                    .error("Type mismatch in unpack.")
-                    .with_body(concat! {
-                        "Expected " Doc::str("Dict").with_markup(Markup::Type) ", but got:"
-                        Doc::HardBreak Doc::HardBreak
-                        indent! { format_type(&collection_type.type_).into_owned() }
-                    })
-                    .with_help(concat! {
-                        // We could use a note and point at the `..`, but it makes
-                        // the error verbose. I think just a hint is enough.
-                        "'" Doc::highlight("...") "' unpacks dicts, use '"
-                        Doc::highlight("..")
-                        "' to unpack lists and sets."
-                    })
-                    .err()
+            (SeqType::UntypedDict(..), ElementType::Any) => {
+                unimplemented!("TODO: Insert runtime type check for unpack.")
             }
+            (SeqType::TypedDict { .. }, ElementType::Any) => {
+                unimplemented!("TODO: Insert runtime type check for unpack.")
+            }
+            (SeqType::SetOrDict, ElementType::Dict(dict)) => Ok(SeqType::UntypedDict(
+                SeqSourceDict::Unpack(unpack_span),
+                dict.key.clone(),
+                dict.value.clone(),
+            )),
             (SeqType::UntypedDict(_src, key_meet, value_meet), ElementType::Dict(kv)) => {
                 *key_meet = key_meet.meet(&kv.key);
                 *value_meet = value_meet.meet(&kv.value);
@@ -1060,7 +1051,35 @@ impl<'a> TypeChecker<'a> {
                 *value_infer = value_infer.meet(&kv.value);
                 Ok(seq_type)
             }
-            _ => unimplemented!("TODO: Typecheck this case."),
+            (_, ElementType::None) => self
+                .error_not_iterable(collection_span, collection_type)
+                .err(),
+            (_, ElementType::Scalar(..)) => {
+                collection_span
+                    .error("Type mismatch in unpack.")
+                    .with_body(concat! {
+                        "Expected " Doc::str("Dict").with_markup(Markup::Type) ", but got:"
+                        Doc::HardBreak Doc::HardBreak
+                        indent! { format_type(&collection_type.type_).into_owned() }
+                    })
+                    .with_help(concat! {
+                        // We could use a note and point at the `..`, but it makes
+                        // the error verbose. I think just a hint is enough.
+                        "'" Doc::highlight("...") "' unpacks dicts, use '"
+                        Doc::highlight("..")
+                        "' to unpack lists and sets."
+                    })
+                    .err()
+            }
+            (
+                SeqType::TypedList { .. }
+                | SeqType::TypedSet { .. }
+                | SeqType::UntypedList(..)
+                | SeqType::UntypedSet(..),
+                _,
+            ) => {
+                unimplemented!("TODO: Report wrong unpack");
+            }
         }
     }
 
