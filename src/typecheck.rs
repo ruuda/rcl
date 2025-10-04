@@ -927,9 +927,7 @@ impl<'a> TypeChecker<'a> {
                         Ok(seq_type)
                     }
                     (SeqType::TypedList { elem_super, elem_infer } | SeqType::TypedSet { elem_super, elem_infer, .. }, ElementType::Scalar(elem)) => {
-                        // TODO: How do we report this, highlighting the unpack
-                        // span as the culprit is a bit unfortunate?
-                        elem.is_subtype_of(elem_super).check(*unpack_span)?;
+                        elem.is_subtype_of(elem_super).check_unpack_scalar(*unpack_span)?;
                         *elem_infer = elem_infer.meet(&*elem);
                         Ok(seq_type)
                     }
@@ -945,8 +943,8 @@ impl<'a> TypeChecker<'a> {
                     }
                     (SeqType::TypedDict { key_super, key_infer, value_super, value_infer, .. }, ElementType::Dict(kv)) => {
                         // TODO: Reporting span.
-                        kv.key.is_subtype_of(key_super).check(*unpack_span)?;
-                        kv.value.is_subtype_of(value_super).check(*unpack_span)?;
+                        kv.key.is_subtype_of(key_super).check_unpack_key(*unpack_span)?;
+                        kv.value.is_subtype_of(value_super).check_unpack_value(*unpack_span)?;
                         *key_infer = key_infer.meet(&kv.key);
                         *value_infer = value_infer.meet(&kv.value);
                         Ok(seq_type)

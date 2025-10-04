@@ -70,8 +70,24 @@ pub enum Typed<T> {
 }
 
 impl<T> TypeDiff<T> {
-    /// Report the diff as a type error, or extract its result.
     pub fn check(self, at: Span) -> Result<Typed<T>> {
+        self.check_with_context(at, "")
+    }
+
+    pub fn check_unpack_scalar(self, at: Span) -> Result<Typed<T>> {
+        self.check_with_context(at, " in unpacked element")
+    }
+
+    pub fn check_unpack_key(self, at: Span) -> Result<Typed<T>> {
+        self.check_with_context(at, " in unpacked key")
+    }
+
+    pub fn check_unpack_value(self, at: Span) -> Result<Typed<T>> {
+        self.check_with_context(at, " in unpacked value")
+    }
+
+    /// Report the diff as a type error, or extract its result.
+    fn check_with_context(self, at: Span, location_context: &'static str) -> Result<Typed<T>> {
         match self {
             TypeDiff::Ok(t) => Ok(Typed::Type(t)),
             TypeDiff::Defer(t) => Ok(Typed::Defer(t)),
@@ -80,6 +96,7 @@ impl<T> TypeDiff<T> {
                     at.error(concat! {
                         "Expected a value of type "
                         "Void".format_type()
+                        location_context
                         ", but no such values exist."
                     })
                 } else {
@@ -90,8 +107,12 @@ impl<T> TypeDiff<T> {
                     debug_assert_ne!(expected.type_, Type::Any, "Any should not cause errors.");
 
                     // A top-level type error, we can report with a simple message.
-                    at.error("Type mismatch.")
-                        .with_body(report_type_mismatch(&expected, &actual))
+                    at.error(concat! {
+                        "Type mismatch"
+                        location_context
+                        "."
+                    })
+                    .with_body(report_type_mismatch(&expected, &actual))
                 };
 
                 // If we have it, explain why the expected type is expected.
@@ -109,6 +130,7 @@ impl<T> TypeDiff<T> {
                 error.err()
             }
             TypeDiff::Error(diff) => {
+                // TODO: Integrate `location_context`.
                 // If the error is nested somewhere inside a type, then we
                 // resort to a more complex format where we first print the
                 // type itself, with the error part replaced with a placeholder,
