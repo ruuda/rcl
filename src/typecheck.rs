@@ -17,6 +17,7 @@ use std::rc::Rc;
 use crate::ast::{BinOp, Expr, Ident, Seq, Stmt, Type as AType, UnOp, Yield};
 use crate::error::{Error, IntoError, Result};
 use crate::fmt_type::format_type;
+use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::type_diff::{report_type_mismatch, Typed};
@@ -951,6 +952,25 @@ impl<'a> TypeChecker<'a> {
             (_, ElementType::None) => self
                 .error_not_iterable(collection_span, collection_type)
                 .err(),
+            (_, ElementType::Dict(..)) => {
+                collection_span
+                    .error("Type mismatch in unpack.")
+                    .with_body(concat! {
+                        "Expected " Doc::str("List").with_markup(Markup::Type)
+                        " or " Doc::str("Set").with_markup(Markup::Type)
+                        ", but got:"
+                        Doc::HardBreak Doc::HardBreak
+                        indent! { format_type(&collection_type.type_).into_owned() }
+                    })
+                    .with_help(concat! {
+                        // We could use a note and point at the `..`, but it makes
+                        // the error verbose. I think just a hint is enough.
+                        "'" Doc::highlight("..") "' unpacks lists and sets, use '"
+                        Doc::highlight("...")
+                        "' to unpack dicts."
+                    })
+                    .err()
+            }
             (
                 SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet),
                 ElementType::Scalar(inner),
@@ -975,9 +995,6 @@ impl<'a> TypeChecker<'a> {
                 *elem_infer = elem_infer.meet(&*elem);
                 Ok(seq_type)
             }
-            (SeqType::TypedList { .. } | SeqType::UntypedList(..), ElementType::Dict(..)) => {
-                unimplemented!("TODO: Error that expected list.");
-            }
             _ => unimplemented!("TODO: Typecheck this case."),
         }
     }
@@ -998,12 +1015,26 @@ impl<'a> TypeChecker<'a> {
                 type_any().clone(),
                 type_any().clone(),
             )),
-            (SeqType::SetOrDict, ElementType::Scalar(..)) => {
-                unimplemented!("TODO: Report error about unpack type.");
-            }
             (_, ElementType::None) => self
                 .error_not_iterable(collection_span, collection_type)
                 .err(),
+            (_, ElementType::Scalar(..)) => {
+                collection_span
+                    .error("Type mismatch in unpack.")
+                    .with_body(concat! {
+                        "Expected " Doc::str("Dict").with_markup(Markup::Type) ", but got:"
+                        Doc::HardBreak Doc::HardBreak
+                        indent! { format_type(&collection_type.type_).into_owned() }
+                    })
+                    .with_help(concat! {
+                        // We could use a note and point at the `..`, but it makes
+                        // the error verbose. I think just a hint is enough.
+                        "'" Doc::highlight("...") "' unpacks dicts, use '"
+                        Doc::highlight("..")
+                        "' to unpack lists and sets."
+                    })
+                    .err()
+            }
             (SeqType::UntypedDict(_src, key_meet, value_meet), ElementType::Dict(kv)) => {
                 *key_meet = key_meet.meet(&kv.key);
                 *value_meet = value_meet.meet(&kv.value);
