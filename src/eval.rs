@@ -1014,11 +1014,24 @@ impl<'a> Evaluator<'a> {
                 on_assoc(key, value);
                 Ok(())
             }
-            Seq::Yield(Yield::UnpackElems { collection: _, .. }) => {
-                unimplemented!("TODO: Implement unpack elems.")
+            Seq::Yield(Yield::UnpackElems { collection, .. }) => {
+                match self.eval_expr(env, collection)? {
+                    Value::List(xs) => xs.iter().cloned().for_each(on_scalar),
+                    Value::Set(xs) => xs.iter().cloned().for_each(on_scalar),
+                    _ => panic!("TODO: Report not iterable, or fix the typechecker?"),
+                }
+                Ok(())
             }
-            Seq::Yield(Yield::UnpackAssocs { collection: _, .. }) => {
-                unimplemented!("TODO: Implement unpack assocs.")
+            Seq::Yield(Yield::UnpackAssocs { collection, .. }) => {
+                match self.eval_expr(env, collection)? {
+                    Value::Dict(xs) => {
+                        for (key, value) in xs.iter() {
+                            on_assoc(key.clone(), value.clone());
+                        }
+                    }
+                    _ => panic!("TODO: Report not iterable, or fix the typechecker?"),
+                }
+                Ok(())
             }
             Seq::For {
                 idents_span,
