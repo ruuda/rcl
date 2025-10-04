@@ -138,6 +138,8 @@ define_ops! {
     0x56 => ExprFor,
     /// Replace the top element with an import expression.
     0x57 => ExprImport,
+    /// Replace the top element with `..{0}` or `...{0}`.
+    0x58 => ExprUnpack,
 
     // The instructions below modify the fuzz mode. The default mode is `Eval`,
     // and because it's the default, there is no instruction to set it.
@@ -490,6 +492,15 @@ impl<'a> ProgramBuilder<'a> {
             Op::ExprImport => {
                 let mut s = self.expr_stack.pop()?;
                 s.insert_str(0, "import ");
+                self.expr_stack.push(s);
+            }
+            Op::ExprUnpack => {
+                let mut s = self.expr_stack.pop()?;
+                if n & 1 == 0 {
+                    s.insert_str(0, "..");
+                } else {
+                    s.insert_str(0, "...");
+                }
                 self.expr_stack.push(s);
             }
 
