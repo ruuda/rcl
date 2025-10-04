@@ -747,6 +747,16 @@ impl<'a> TypeChecker<'a> {
         Ok(result_type)
     }
 
+    fn error_not_iterable(&self, collection_span: Span, collection_type: SourcedType) -> Error {
+        collection_span
+            .error("This is not iterable.")
+            .with_body(concat! {
+                "Expected a collection, but got:"
+                Doc::HardBreak Doc::HardBreak
+                indent! { format_type(&collection_type.type_).into_owned() }
+            })
+    }
+
     fn check_seq(&mut self, seq: &mut Seq, seq_type: SeqType) -> Result<SeqType> {
         match seq {
             Seq::Yield(yield_) => self.check_yield(yield_, seq_type),
@@ -808,13 +818,8 @@ impl<'a> TypeChecker<'a> {
                         self.env.push(idents[0].clone(), (*element_type).clone());
                     }
                     _not_collection => {
-                        return collection_span
-                            .error("This is not iterable.")
-                            .with_body(concat! {
-                                "Expected a collection, but got:"
-                                Doc::HardBreak Doc::HardBreak
-                                indent! { format_type(&collection_type.type_).into_owned() }
-                            })
+                        return self
+                            .error_not_iterable(*collection_span, collection_type)
                             .err()
                     }
                 }
@@ -915,11 +920,11 @@ impl<'a> TypeChecker<'a> {
             }
             Yield::UnpackElems { unpack_span, collection_span, collection } => {
                 let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
-                self.check_yield_unpack_elems(seq_type, *unpack_span, collection_type)
+                self.check_yield_unpack_elems(seq_type, *unpack_span, *collection_span, collection_type)
             },
             Yield::UnpackAssocs { unpack_span, collection_span, collection } => {
                 let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
-                self.check_yield_unpack_assocs(seq_type, *unpack_span, collection_type)
+                self.check_yield_unpack_assocs(seq_type, *unpack_span, *collection_span, collection_type)
             }
         }
     }
@@ -929,6 +934,7 @@ impl<'a> TypeChecker<'a> {
         &mut self,
         mut seq_type: SeqType,
         unpack_span: Span,
+        collection_span: Span,
         collection_type: SourcedType,
     ) -> Result<SeqType> {
         match (&mut seq_type, collection_type.element_type()) {
@@ -942,10 +948,9 @@ impl<'a> TypeChecker<'a> {
                 SeqSourceSet::Unpack(unpack_span),
                 (*inner).clone(),
             )),
-            (_, ElementType::None) => {
-                // TODO: Can probably also deduplicate this between the for loop.
-                unimplemented!("Report error, encountered type is not iterable.");
-            }
+            (_, ElementType::None) => self
+                .error_not_iterable(collection_span, collection_type)
+                .err(),
             (
                 SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet),
                 ElementType::Scalar(inner),
@@ -982,6 +987,7 @@ impl<'a> TypeChecker<'a> {
         &mut self,
         mut seq_type: SeqType,
         unpack_span: Span,
+        collection_span: Span,
         collection_type: SourcedType,
     ) -> Result<SeqType> {
         match (&mut seq_type, collection_type.element_type()) {
@@ -995,10 +1001,9 @@ impl<'a> TypeChecker<'a> {
             (SeqType::SetOrDict, ElementType::Scalar(..)) => {
                 unimplemented!("TODO: Report error about unpack type.");
             }
-            (_, ElementType::None) => {
-                // TODO: Can probably also deduplicate this between the for loop.
-                unimplemented!("Report error, encountered type is not iterable.");
-            }
+            (_, ElementType::None) => self
+                .error_not_iterable(collection_span, collection_type)
+                .err(),
             (SeqType::UntypedDict(_src, key_meet, value_meet), ElementType::Dict(kv)) => {
                 *key_meet = key_meet.meet(&kv.key);
                 *value_meet = value_meet.meet(&kv.value);
