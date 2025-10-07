@@ -973,9 +973,14 @@ impl<'a> TypeChecker<'a> {
             }
             (
                 SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet),
-                ElementType::Scalar(inner),
+                elem_type,
             ) => {
-                *elem_type_meet = elem_type_meet.meet(&*inner);
+                let inner = match &elem_type {
+                    ElementType::Any => type_any(),
+                    ElementType::Scalar(inner) => inner.as_ref(),
+                    _ => unreachable!("We handle all other cases in the outer match."),
+                };
+                *elem_type_meet = elem_type_meet.meet(inner);
                 Ok(seq_type)
             }
             (
@@ -988,13 +993,19 @@ impl<'a> TypeChecker<'a> {
                     elem_infer,
                     ..
                 },
-                ElementType::Scalar(elem),
+                elem_type,
             ) => {
+                let inner = match &elem_type {
+                    ElementType::Any => type_any(),
+                    ElementType::Scalar(inner) => inner.as_ref(),
+                    _ => unreachable!("We handle all other cases in the outer match."),
+                };
                 // TODO: If this returns a defer, then we need to turn the node
                 // into a type checked unpack!
-                elem.is_subtype_of(elem_super)
+                inner
+                    .is_subtype_of(elem_super)
                     .check_unpack_scalar(unpack_span)?;
-                *elem_infer = elem_infer.meet(&*elem);
+                *elem_infer = elem_infer.meet(inner);
                 Ok(seq_type)
             }
             _ => unimplemented!("TODO: Typecheck this case."),
@@ -1026,42 +1037,11 @@ impl<'a> TypeChecker<'a> {
                 type_any().clone(),
                 type_any().clone(),
             )),
-            (SeqType::UntypedDict(..), ElementType::Any) => {
-                unimplemented!("TODO: Insert runtime type check for unpack.")
-            }
-            (SeqType::TypedDict { .. }, ElementType::Any) => {
-                unimplemented!("TODO: Insert runtime type check for unpack.")
-            }
             (SeqType::SetOrDict, ElementType::Dict(dict)) => Ok(SeqType::UntypedDict(
                 SeqSourceDict::Unpack(unpack_span),
                 dict.key.clone(),
                 dict.value.clone(),
             )),
-            (SeqType::UntypedDict(_src, key_meet, value_meet), ElementType::Dict(kv)) => {
-                *key_meet = key_meet.meet(&kv.key);
-                *value_meet = value_meet.meet(&kv.value);
-                Ok(seq_type)
-            }
-            (
-                SeqType::TypedDict {
-                    key_super,
-                    key_infer,
-                    value_super,
-                    value_infer,
-                    ..
-                },
-                ElementType::Dict(kv),
-            ) => {
-                kv.key
-                    .is_subtype_of(key_super)
-                    .check_unpack_key(unpack_span)?;
-                kv.value
-                    .is_subtype_of(value_super)
-                    .check_unpack_value(unpack_span)?;
-                *key_infer = key_infer.meet(&kv.key);
-                *value_infer = value_infer.meet(&kv.value);
-                Ok(seq_type)
-            }
             (_, ElementType::None) => self
                 .error_not_iterable(collection_span, collection_type)
                 .err(),
@@ -1074,6 +1054,41 @@ impl<'a> TypeChecker<'a> {
                 })
                 .with_help(help_unpack_type())
                 .err(),
+            (SeqType::UntypedDict(_src, key_meet, value_meet), elem_type) => {
+                let (key, value) = match &elem_type {
+                    ElementType::Any => (type_any(), type_any()),
+                    ElementType::Dict(kv) => (&kv.key, &kv.value),
+                    _ => unreachable!("We handle all other cases in the outer match."),
+                };
+                *key_meet = key_meet.meet(key);
+                *value_meet = value_meet.meet(value);
+                Ok(seq_type)
+            }
+            (
+                SeqType::TypedDict {
+                    key_super,
+                    key_infer,
+                    value_super,
+                    value_infer,
+                    ..
+                },
+                elem_type,
+            ) => {
+                let (key, value) = match &elem_type {
+                    ElementType::Any => (type_any(), type_any()),
+                    ElementType::Dict(kv) => (&kv.key, &kv.value),
+                    _ => unreachable!("We handle all other cases in the outer match."),
+                };
+                // TODO: If these checks do not return `Typed`, we need to insert
+                // a runtime type check.
+                key.is_subtype_of(key_super).check_unpack_key(unpack_span)?;
+                value
+                    .is_subtype_of(value_super)
+                    .check_unpack_value(unpack_span)?;
+                *key_infer = key_infer.meet(key);
+                *value_infer = value_infer.meet(value);
+                Ok(seq_type)
+            }
             (SeqType::TypedList { .. } | SeqType::UntypedList(..), _) => unpack_span
                 .error("Invalid dict unpack in list.")
                 .with_help(help_unpack_type())
