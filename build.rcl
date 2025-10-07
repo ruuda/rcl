@@ -17,17 +17,20 @@ let opts_toml = {
 };
 
 {
-  "Cargo.toml": opts_toml | { contents = import "//Cargo.rcl" },
-  "fuzz/Cargo.toml": opts_toml | { contents = import "//fuzz/Cargo.rcl" },
-  "grammar/tree-sitter-rcl/Cargo.toml":
-    opts_toml
-    | { contents = import "//grammar/tree-sitter-rcl/Cargo.rcl" },
-  "grammar/zed/extension.toml":
-    opts_toml
-    | { contents = import "//grammar/zed/extension.rcl" },
-  "pyrcl/Cargo.toml": opts_toml | { contents = import "//pyrcl/Cargo.rcl" },
-  "pyrcl/pyproject.toml":
-    opts_toml
-    | { contents = import "//pyrcl/pyproject.rcl" },
-  "wasm/Cargo.toml": opts_toml | { contents = import "//wasm/Cargo.rcl" },
+  "Cargo.toml": { ...opts_toml, contents = import "//Cargo.rcl" },
+  "fuzz/Cargo.toml": { ...opts_toml, contents = import "//fuzz/Cargo.rcl" },
+  "grammar/tree-sitter-rcl/Cargo.toml": {
+    ...opts_toml,
+    contents = import "//grammar/tree-sitter-rcl/Cargo.rcl",
+  },
+  "grammar/zed/extension.toml": {
+    ...opts_toml,
+    contents = import "//grammar/zed/extension.rcl",
+  },
+  "pyrcl/Cargo.toml": { ...opts_toml, contents = import "//pyrcl/Cargo.rcl" },
+  "pyrcl/pyproject.toml": {
+    ...opts_toml,
+    contents = import "//pyrcl/pyproject.rcl",
+  },
+  "wasm/Cargo.toml": { ...opts_toml, contents = import "//wasm/Cargo.rcl" },
 }
