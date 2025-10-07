@@ -990,6 +990,8 @@ impl<'a> TypeChecker<'a> {
                 },
                 ElementType::Scalar(elem),
             ) => {
+                // TODO: If this returns a defer, then we need to turn the node
+                // into a type checked unpack!
                 elem.is_subtype_of(elem_super)
                     .check_unpack_scalar(unpack_span)?;
                 *elem_infer = elem_infer.meet(&*elem);

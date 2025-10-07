@@ -266,7 +266,7 @@ pub enum Yield {
         collection: Box<Expr>,
     },
 
-    /// Yield all key-value paris from a dict.
+    /// Yield all key-value pairs from a dict.
     UnpackAssocs {
         unpack_span: Span,
         collection_span: Span,

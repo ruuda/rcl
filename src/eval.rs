@@ -1014,22 +1014,45 @@ impl<'a> Evaluator<'a> {
                 on_assoc(key, value);
                 Ok(())
             }
-            Seq::Yield(Yield::UnpackElems { collection, .. }) => {
+            Seq::Yield(Yield::UnpackElems {
+                collection,
+                collection_span,
+                ..
+            }) => {
                 match self.eval_expr(env, collection)? {
                     Value::List(xs) => xs.iter().cloned().for_each(on_scalar),
                     Value::Set(xs) => xs.iter().cloned().for_each(on_scalar),
-                    _ => panic!("TODO: Report not iterable, or fix the typechecker?"),
+                    Value::Dict(..) => {
+                        return collection_span
+                            .error("Expected a list or set to unpack, but this is a dict.")
+                            .err()
+                    }
+                    _ => return collection_span.error("This is not iterable.").err(),
                 }
                 Ok(())
             }
-            Seq::Yield(Yield::UnpackAssocs { collection, .. }) => {
+            Seq::Yield(Yield::UnpackAssocs {
+                collection,
+                collection_span,
+                ..
+            }) => {
                 match self.eval_expr(env, collection)? {
                     Value::Dict(xs) => {
                         for (key, value) in xs.iter() {
                             on_assoc(key.clone(), value.clone());
                         }
                     }
-                    _ => panic!("TODO: Report not iterable, or fix the typechecker?"),
+                    Value::List(..) => {
+                        return collection_span
+                            .error("Expected a dict to unpack, but this is a list.")
+                            .err()
+                    }
+                    Value::Set(..) => {
+                        return collection_span
+                            .error("Expected a dict to unpack, but this is a set.")
+                            .err()
+                    }
+                    _ => return collection_span.error("This is not iterable.").err(),
                 }
                 Ok(())
             }
