@@ -1,12 +1,11 @@
 let root = import "//Cargo.rcl";
 
 {
-  package =
-    root.package
-    | {
-      name = "pyrcl",
-      description = "Python bindings to the RCL configuration language.",
-    },
+  package = {
+    ...root.package,
+    name = "pyrcl",
+    description = "Python bindings to the RCL configuration language.",
+  },
 
   lib = {
     crate-type = ["cdylib"],

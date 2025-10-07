@@ -1,12 +1,11 @@
 let root = import "//Cargo.rcl";
 
 {
-  package =
-    root.package
-    | {
-      name = "rcl-wasm",
-      description = "WASM entry points for RCL functionality.",
-    },
+  package = {
+    ...root.package,
+    name = "rcl-wasm",
+    description = "WASM entry points for RCL functionality.",
+  },
 
   lib = { crate-type = ["cdylib"] },
 
