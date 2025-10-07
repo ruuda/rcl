@@ -1007,6 +1007,15 @@ impl<'a> TypeChecker<'a> {
         collection_span: Span,
         collection_type: SourcedType,
     ) -> Result<SeqType> {
+        let help_unpack_type = || {
+            concat! {
+                // We could use a note and point at the `..`, but it makes
+                // the error verbose. I think just a hint is enough.
+                "'" Doc::highlight("...") "' unpacks dicts, use '"
+                Doc::highlight("..")
+                "' to unpack lists and sets."
+            }
+        };
         match (&mut seq_type, collection_type.element_type()) {
             // If we weren't sure whether it's a dict or set, and then there is
             // a dict unpack, then now we know it's a dict.
@@ -1054,31 +1063,25 @@ impl<'a> TypeChecker<'a> {
             (_, ElementType::None) => self
                 .error_not_iterable(collection_span, collection_type)
                 .err(),
-            (_, ElementType::Scalar(..)) => {
-                collection_span
-                    .error("Type mismatch in unpack.")
-                    .with_body(concat! {
-                        "Expected " Doc::str("Dict").with_markup(Markup::Type) ", but got:"
-                        Doc::HardBreak Doc::HardBreak
-                        indent! { format_type(&collection_type.type_).into_owned() }
-                    })
-                    .with_help(concat! {
-                        // We could use a note and point at the `..`, but it makes
-                        // the error verbose. I think just a hint is enough.
-                        "'" Doc::highlight("...") "' unpacks dicts, use '"
-                        Doc::highlight("..")
-                        "' to unpack lists and sets."
-                    })
+            (_, ElementType::Scalar(..)) => collection_span
+                .error("Type mismatch in unpack.")
+                .with_body(concat! {
+                    "Expected " Doc::str("Dict").with_markup(Markup::Type) ", but got:"
+                    Doc::HardBreak Doc::HardBreak
+                    indent! { format_type(&collection_type.type_).into_owned() }
+                })
+                .with_help(help_unpack_type())
+                .err(),
+            (SeqType::TypedList { .. } | SeqType::UntypedList(..), _) => unpack_span
+                .error("Invalid dict unpack in list.")
+                .with_help(help_unpack_type())
+                .err(),
+            (SeqType::TypedSet { .. } | SeqType::UntypedSet(..), _) => {
+                // TODO: Explain why it's a list and not a dict.
+                unpack_span
+                    .error("Invalid dict unpack in set.")
+                    .with_help(help_unpack_type())
                     .err()
-            }
-            (
-                SeqType::TypedList { .. }
-                | SeqType::TypedSet { .. }
-                | SeqType::UntypedList(..)
-                | SeqType::UntypedSet(..),
-                _,
-            ) => {
-                unimplemented!("TODO: Report wrong unpack");
             }
         }
     }
