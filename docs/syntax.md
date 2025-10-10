@@ -82,7 +82,7 @@ operator: `a - b`.
 
 ## Lists
 
-Lists are surrounded by `[]`. The list separator is `,` and a trailing comma is
+Lists are enclosed by `[]`. The list separator is `,` and a trailing comma is
 allowed but not required.
 
 ```rcl
@@ -94,7 +94,7 @@ allowed but not required.
 
 ## Dictionaries
 
-Dictionaries, _dicts_ for short, are surrounded by `{}`.  Dicts can be written
+Dictionaries, _dicts_ for short, are enclosed by `{}`.  Dicts can be written
 in json form, where the left-hand side is an expression. Then the key and value
 are separated by `:`. The element separator is `,`. A trailing comma is
 optional.
@@ -133,7 +133,7 @@ Note, without type annotations, the empty collection `{}` is a dict, not a set.
 
 ## Sets
 
-Sets are surrounded by `{}` and work otherwise the same as lists. The following
+Sets are enclosed by `{}` and work otherwise the same as lists. The following
 list contains two identical sets:
 
 ```rcl
@@ -314,6 +314,45 @@ let should_log_verbose =
 
 [pony-ops]: https://tutorial.ponylang.io/expressions/ops.html#precedence
 
+## Unpack
+
+Inside collection literals (list, dicts, and sets), `..` and `...` unpack other
+collections. A double dot, `..`, unpacks elements from lists and sets:
+
+```rcl
+let xs = [1, 2, 3];
+[0, ..xs, 4]
+// Evaluates to:
+[0, 1, 2, 3, 4]
+```
+
+A triple dot, `...`, unpacks key-value pairs from dicts:
+```rcl
+let opts = { model = "Nexus", generation = 7 };
+{ ...opts, name = "Rachael" }
+/// Evaluates to:
+{
+  model = "Nexus",
+  generation = 6,
+  name = "Rachael",
+}
+```
+
+When a key occurs multiple times in a dict, the last value is kept. This applies
+to unpack as well:
+
+```rcl
+let defaults = { kind = "fruit", tasty = true };
+
+{ ...defaults, name = "grapefruit", tasty = false }
+// The last 'tasty' wins, the above evaluates to:
+{ kind = "fruit", name = "grapefruit", tasty = false }
+
+{ name = "grapefruit", tasty = false, ...defaults }
+// The defaults overwrite earlier keys, the above evaluates to:
+{ kind = "fruit", name = "grapefruit", tasty = true }
+```
+
 ## Comprehensions
 
 Inside collection literals (lists, dicts, and sets), aside from single
@@ -342,7 +381,7 @@ These can be combined arbitrarily:
 ```rcl
 let labels = {
   for server in servers:
-  let all_server_labels = server_labels[server] | default_labels;
+  let all_server_labels = { ..server_labels[server], ..default_labels };
   for label in all_server_labels:
   if not excluded_labels.contains(label):
   label
