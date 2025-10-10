@@ -99,6 +99,17 @@ Return the number of keys in the dict. For example:
 { four = 4, five = 5, six = 6 }.len()
 ```
 
+## union
+
+To take the union of dicts, use [unpack](syntax.md#unpack):
+
+```rcl
+let xs = { a = 1, b = 2 };
+let ys = { a = 4, c = 5 };
+// Evaluates to { a = 4, b = 2, c = 5 }.
+{ ...xs, ...ys }
+```
+
 ## values
 
 ```rcl

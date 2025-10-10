@@ -267,3 +267,14 @@ Return the sum of the elements in the set. For example:
 // Evaluates to 42.
 {3, 7, 11, 21}.sum()
 ```
+
+## union
+
+To take the union of sets, use [unpack](syntax.md#unpack):
+
+```rcl
+let xs = { 1, 2, 3 };
+let ys = { 3, 4, 5 };
+// Evaluates to { 1, 2, 3, 4, 5 }.
+{ ..xs, ..ys }
+```
