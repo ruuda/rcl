@@ -858,7 +858,7 @@ impl<'a> TypeChecker<'a> {
                 }
                 SeqType::TypedDict { dict_source, .. } => {
                     let mut error = span.error(
-                        "Expected key-value, not a scalar element, because the collection is a dict."
+                        "Expected key-value, not a single element, because the collection is a dict."
                     );
                     dict_source.explain_error(Side::Expected, &mut error);
                     error.err()
@@ -869,7 +869,7 @@ impl<'a> TypeChecker<'a> {
                     Ok(seq_type)
                 }
                 SeqType::UntypedDict(src, _k, _v) => {
-                    src.add_note(span.error("Expected key-value, not a scalar element.")).err()
+                    src.add_note(span.error("Expected key-value, not a single element.")).err()
                 }
             }
             Yield::Assoc { op_span, key_span, key, value_span, value } => match &mut seq_type {
@@ -897,19 +897,19 @@ impl<'a> TypeChecker<'a> {
                     Ok(seq_type)
                 }
                 SeqType::TypedList { .. } | SeqType::UntypedList(..) => op_span
-                    .error("Expected scalar element, not key-value.")
+                    .error("Expected single element, not key-value.")
                     .with_help(
                         "Key-value pairs are allowed in dicts, which are enclosed in '{}', not '[]'.",
                     ).err(),
                 SeqType::TypedSet { set_source, .. } => {
                     let mut error = op_span.error(
-                        "Expected scalar element, not key-value, because the collection is a set."
+                        "Expected single element, not key-value, because the collection is a set."
                     );
                     set_source.explain_error(Side::Expected, &mut error);
                     error.err()
                 }
                 SeqType::UntypedSet(src, _elem) => src.add_note(
-                    op_span.error("Expected scalar element, not key-value.")
+                    op_span.error("Expected single element, not key-value.")
                 ).err(),
                 SeqType::UntypedDict(_first, key_meet, value_meet) => {
                     let k = self.check_expr(type_any(), *key_span, key)?;
@@ -1176,11 +1176,11 @@ impl SeqSourceSet {
         match *self {
             SeqSourceSet::Scalar(first) => err.with_note(
                 first,
-                "The collection is a set and not a dict, because it starts with a scalar value.",
+                "The collection is a set and not a dict, because it starts with a single value.",
             ),
             SeqSourceSet::Unpack(unpack) => err.with_note(
                 unpack,
-                "The collection is a set and not a dict, because of this scalar unpack.",
+                "The collection is a set and not a dict, because of this unpack.",
             ),
         }
     }
