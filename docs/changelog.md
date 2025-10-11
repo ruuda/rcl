@@ -18,16 +18,28 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased.
 
- * [Prebuilt binaries](installation.md#prebuilt-binaries) are now available for
-   several platforms. They are hosted [on Github](https://github.com/ruuda/rcl/releases).
+Language:
+
+ * Add [unpack](syntax.md#unpack). For example, `[1, 2, ..xs]` unpacks the list
+   or set `xs` into the surrounding list, and `{ a = 1, ...ys }` unpacks the
+   dict `ys` into the surrounding dict. Unpack supersedes the `|` operator as
+   the preferred way to express dict and set unions. As such, the `|` operator
+   is deprecated, and will be removed in a future version.
  * [Assertions](syntax.md#assertions) now use a `:` to separate the condition
    and the message, i.e. `assert cond: "message";` rather than
    `assert cond, "message";`. The standard formatting for assertions that do not
    fit on a single line is now like `if` expressions, rather than like function
-   calls. For compatibility, a comma is still accepted for now. This will likely
-   change in a future release. In that case it will be clearly marked as a
-   change with compatibility impact in the release notes.
+   calls. For compatibility, a comma is still accepted for now. This will be
+   removed in a future release.
+
+Command-line:
+
  * A new CLI option, `--about`, prints license and dependency information.
+
+Packaging:
+
+ * [Prebuilt binaries](installation.md#prebuilt-binaries) are now available for
+   several platforms. They are hosted [on Github](https://github.com/ruuda/rcl/releases).
 
 ## 0.10.0
 
