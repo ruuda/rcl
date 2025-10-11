@@ -902,7 +902,11 @@ impl<'a> Parser<'a> {
                 .with_help("If this should be an expression, try wrapping it in parentheses.")
                 .err(),
 
-            _ => self.error("Expected a term here.").err(),
+            // The parser jargon is that we expect a *term* here, which is more
+            // narrow than "expression", but users should not need to know the
+            // names of every AST node to make sense of error messages. (Looking
+            // at you PHP, T_PAAMAYIM_NEKUDOTAYIM ...)
+            _ => self.error("Expected an expression here.").err(),
         }
     }
 

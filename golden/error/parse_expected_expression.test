@@ -5,4 +5,4 @@ stdin:1:1
   ╷
 1 │ *
   ╵ ^
-Error: Expected a term here.
+Error: Expected an expression here.
