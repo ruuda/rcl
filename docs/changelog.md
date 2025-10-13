@@ -20,17 +20,16 @@ Unreleased.
 
 Language:
 
- * Add [unpack](syntax.md#unpack). For example, `[1, 2, ..xs]` unpacks the list
-   or set `xs` into the surrounding list, and `{ a = 1, ...ys }` unpacks the
-   dict `ys` into the surrounding dict. Unpack supersedes the `|` operator as
-   the preferred way to express dict and set unions. As such, the `|` operator
-   is deprecated, and will be removed in a future version.
+ * Add [unpack](syntax.md#unpack): `..` and `...` syntax that can be used inside
+   lists, sets, and dicts to unpack one collection into another.
+ * Unpack can be used to express dict and set unions without the need for
+   the `|` operator. As such, the `|` operator is now deprecated, and will
+   be removed in a future version.
  * [Assertions](syntax.md#assertions) now use a `:` to separate the condition
-   and the message, i.e. `assert cond: "message";` rather than
-   `assert cond, "message";`. The standard formatting for assertions that do not
-   fit on a single line is now like `if` expressions, rather than like function
-   calls. For compatibility, a comma is still accepted for now. This will be
-   removed in a future release.
+   and the message. For example, `assert cond: "message";` rather than
+   `assert cond, "message";`. For compatibility, <abbr>RCL</abbr> still accepts
+   a comma for now. The formatter will automatically update documents to the new
+   syntax. The new standard format is also slightly more compact for long assertions.
 
 Command-line:
 
@@ -40,6 +39,10 @@ Packaging:
 
  * [Prebuilt binaries](installation.md#prebuilt-binaries) are now available for
    several platforms. They are hosted [on Github](https://github.com/ruuda/rcl/releases).
+
+The changes and deprecations are backwards compatible. If a future version
+removes compatibility with the older syntax, that will be clearly marked in the
+changelog.
 
 ## 0.10.0
 
