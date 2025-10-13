@@ -67,3 +67,29 @@ For single
       (ident)
       (seq_elem
         (ident)))))
+
+=================
+Unpack (elements)
+=================
+
+[..xs]
+
+---
+
+(source_file
+  (expr_term_brackets
+    (seq_unpack_elems
+      (ident))))
+
+===============
+Unpack (assocs)
+===============
+
+{...xs}
+
+---
+
+(source_file
+  (expr_term_braces
+    (seq_unpack_assocs
+      (ident))))
