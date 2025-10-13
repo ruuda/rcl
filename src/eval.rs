@@ -1027,7 +1027,11 @@ impl<'a> Evaluator<'a> {
                             .error("Expected a list or set to unpack, but this is a dict.")
                             .err()
                     }
-                    _ => return collection_span.error("This is not iterable.").err(),
+                    _ => {
+                        return collection_span
+                            .error("Expected a list or set to unpack; this is not iterable.")
+                            .err()
+                    }
                 }
                 Ok(())
             }
@@ -1052,7 +1056,11 @@ impl<'a> Evaluator<'a> {
                             .error("Expected a dict to unpack, but this is a set.")
                             .err()
                     }
-                    _ => return collection_span.error("This is not iterable.").err(),
+                    _ => {
+                        return collection_span
+                            .error("Expected a dict to unpack, but this is not a dict.")
+                            .err()
+                    }
                 }
                 Ok(())
             }
