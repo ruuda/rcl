@@ -1,0 +1,9 @@
+let xs = [ 2, 3, 5 ];
+let ys = [ 5, 7, 11 ];
+{
+  as_list = [ ..xs, ..ys ],
+  as_set = { ..xs, ..ys },
+}
+
+# output:
+{ as_list = [2, 3, 5, 5, 7, 11], as_set = {2, 3, 5, 7, 11} }
