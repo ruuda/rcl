@@ -1,0 +1,19 @@
+let long_unpack = { .. widgets.properties_a, .. widgets.properties_b,..widgets.properties_c};
+let short_unpack = [ ..xs, .. ys ];
+let dict_unpack = { k = v, ... default_options, ... additional_options, for p, q in ys: ...q };
+null
+
+# output:
+let long_unpack = {
+  ..widgets.properties_a,
+  ..widgets.properties_b,
+  ..widgets.properties_c,
+};
+let short_unpack = [..xs, ..ys ];
+let dict_unpack = {
+  k = v,
+  ...default_options,
+  ...additional_options,
+  for p, q in ys: ...q,
+};
+null
