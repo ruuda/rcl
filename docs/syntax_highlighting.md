@@ -26,7 +26,7 @@ scope = "source.rcl"
 
 [[grammar]]
 name = "rcl"
-source = { git = "https://github.com/ruuda/rcl.git", rev = "master", subpath = "grammar/tree-sitter-rcl" }
+source = { git = "https://github.com/rcl-lang/tree-sitter-rcl.git", rev = "master" }
 ```
 
 Furthermore, copy `grammar/tree-sitter-rcl/queries/highlights_helix.scm` into
