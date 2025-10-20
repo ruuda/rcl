@@ -40,6 +40,6 @@ unique. A list is called _array_ in json.
 A [set](syntax.md#sets) is a collection of values where each value is unique.
 
 ### Unpack
-Inside collections, `..` and `...` [_unpack_](syntax.md#unpack)  collections.
-Some languages call these operators _spread_ operator. In Python, they are
+Inside collections, `..` and `...` [_unpack_](syntax.md#unpack) collections.
+Some languages call these operators a _spread_ operator. In Python, they are
 written as `*` and `**` rather than `..` and `...`.
