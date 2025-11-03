@@ -69,7 +69,7 @@ the default value. For example:
 ```rcl
 let d = { a = 1, b = 2 };
 // Evaluates to [1, 26].
-[for needle = ["a", "z"]: d.get(needle, 26)]
+[for needle in ["a", "z"]: d.get(needle, 26)]
 ```
 
 ## keys
