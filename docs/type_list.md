@@ -46,6 +46,17 @@ Return whether the predicate is true for any element in the list. For example:
 This method short-circuits: when the outcome is decided, it will not call the
 predicate for the remaining elements in the list.
 
+## concat
+
+To concatenate lists, use [unpack](syntax.md#unpack):
+
+```rcl
+let xs = [1, 2, 3];
+let ys = [4, 5, 6];
+// Evaluates to [1, 2, 3, 4, 5, 6].
+[..xs, ..ys]
+```
+
 ## contains
 
 ```rcl
