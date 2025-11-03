@@ -418,6 +418,15 @@ let large_numbers = [100, 200, 300];
 [1, 2, 3, 10, 100, 200, 300]
 ```
 
+Unpack can be combined with comprehensions:
+
+```rcl
+let nested = [[1, 2], [3, 4]];
+[for xs in nested: ..xs]
+// Evaluates to:
+[1, 2, 3, 4]
+```
+
 ## Assertions
 
 You can use assertions in expressions and inside comprehensions:
