@@ -1102,13 +1102,20 @@ impl<'a> TypeChecker<'a> {
                 .error("Invalid dict unpack in list.")
                 .with_help(help_unpack_type())
                 .err(),
-            (SeqType::TypedSet { .. } | SeqType::UntypedSet(..), _) => {
-                // TODO: Explain why it's a list and not a dict.
-                full_span
-                    .error("Invalid dict unpack in set.")
-                    .with_help(help_unpack_type())
-                    .err()
+
+            // For list, it's clear why a list is a list (the square brackets),
+            // so we can get away with one error. For sets we can't tell from
+            // the brackets, so we include in the error *why* it's a set and not
+            // a dict.
+            (SeqType::TypedSet { set_source, .. }, _) => {
+                let mut err = full_span.error("Invalid dict unpack in set.");
+                set_source.explain_error(Side::Actual, &mut err);
+                err.with_help(help_unpack_type()).err()
             }
+            (SeqType::UntypedSet(set_source, ..), _) => set_source
+                .add_note(full_span.error("Invalid dict unpack in set."))
+                .with_help(help_unpack_type())
+                .err(),
         }
     }
 

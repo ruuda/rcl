@@ -1,0 +1,14 @@
+let xs = [1, 2];
+let ys = {...xs};
+ys
+
+# output:
+stdin:2:14
+  ╷
+2 │ let ys = {...xs};
+  ╵              ^~
+Error: Type mismatch in unpack. Expected Dict, but got:
+
+  List[Number]
+
+Help: '...' unpacks dicts, use '..' to unpack lists and sets.

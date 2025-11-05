@@ -1,0 +1,10 @@
+[1, ...{}]
+
+# output:
+stdin:1:5
+  ╷
+1 │ [1, ...{}]
+  ╵     ^~~~~
+Error: Invalid dict unpack in list.
+
+Help: '...' unpacks dicts, use '..' to unpack lists and sets.

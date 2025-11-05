@@ -1,0 +1,18 @@
+// The first element makes this {}-literal a set rather than a dict,
+// and inside a set, ...-unpack is invalid.
+{1, ...{}}
+
+# output:
+stdin:3:5
+  ╷
+3 │ {1, ...{}}
+  ╵     ^~~~~
+Error: Invalid dict unpack in set.
+
+stdin:3:2
+  ╷
+3 │ {1, ...{}}
+  ╵  ^
+Note: The collection is a set and not a dict, because it starts with a single value.
+
+Help: '...' unpacks dicts, use '..' to unpack lists and sets.

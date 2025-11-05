@@ -1,0 +1,10 @@
+[..12]
+
+# output:
+stdin:1:4
+  ╷
+1 │ [..12]
+  ╵    ^~
+Error: This is not iterable. Expected a collection, but got:
+
+  Number

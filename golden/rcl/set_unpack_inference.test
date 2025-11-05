@@ -1,0 +1,8 @@
+let xs = [1, 2, 3];
+// Inferred to be a Set due to the scalar unpack.
+let ys = {..xs};
+let zs: Set[Number] = ys;
+zs
+
+# output:
+{1, 2, 3}
