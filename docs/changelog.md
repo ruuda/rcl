@@ -26,10 +26,10 @@ Language:
    the `|` operator. As such, the `|` operator is now deprecated, and will
    be removed in a future version.
  * [Assertions](syntax.md#assertions) now use a `:` to separate the condition
-   and the message. For example, `assert cond: "message";` rather than
+   and the message: `assert cond: "message";` rather than
    `assert cond, "message";`. For compatibility, <abbr>RCL</abbr> still accepts
    a comma for now. The formatter will automatically update documents to the new
-   syntax. The new standard format is also slightly more compact for long assertions.
+   syntax. The standard format is now more compact for multi-line assertions.
 
 Command-line:
 
