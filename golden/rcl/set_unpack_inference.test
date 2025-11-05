@@ -2,7 +2,26 @@ let xs = [1, 2, 3];
 // Inferred to be a Set due to the scalar unpack.
 let ys = {..xs};
 let zs: Set[Number] = ys;
-zs
+
+// The set is inferred to have element type Any,
+// which fits the annotation.
+let ps: List[Any] = [1, 2, 3];
+let qs1: Set[Any] = {..ps};
+
+// It can also happen that we don't know the collection type.
+// We still get element type `Any` then.
+let ps2: Any = [1, 2, 3];
+let qs2: Set[Any] = {..ps2};
+
+// This time we don't have a top-down annotation, so we don't know if the {}
+// is a dict or set at the start. The .. forces it to be a set.
+let qs3 = {..ps};
+
+// This also works if the collection type is Any.
+let ps4: Any = [1, 2, 3];
+let qs4 = {..ps4};
+
+null
 
 # output:
-{1, 2, 3}
+null
