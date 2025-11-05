@@ -6,7 +6,7 @@ ys
 stdin:2:31
   ╷
 2 │ let ys: Dict[Number, Any] = { ...bool_keys };
-  ╵                               ^~~
+  ╵                               ^~~~~~~~~~~~
 Error: Type mismatch in unpacked key. Expected Number but found Bool.
 
 stdin:2:14

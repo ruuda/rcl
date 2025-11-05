@@ -6,7 +6,7 @@ ys
 stdin:2:25
   ╷
 2 │ let ys: List[Number] = [..bools];
-  ╵                         ^~
+  ╵                         ^~~~~~~
 Error: Type mismatch in unpacked element. Expected Number but found Bool.
 
 stdin:2:14

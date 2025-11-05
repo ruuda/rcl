@@ -938,6 +938,7 @@ impl<'a> TypeChecker<'a> {
         collection_span: Span,
         collection_type: SourcedType,
     ) -> Result<SeqType> {
+        let full_span = unpack_span.union(collection_span);
         let help_unpack_type = || {
             concat! {
                 // We could use a note and point at the `..`, but it makes
@@ -954,11 +955,11 @@ impl<'a> TypeChecker<'a> {
             // If we weren't sure whether it's a dict or set, and then there is
             // a scalar unpack, then now we know it's a set.
             (SeqType::SetOrDict, ElementType::Any) => Ok(SeqType::UntypedSet(
-                SeqSourceSet::Unpack(unpack_span),
+                SeqSourceSet::Unpack(full_span),
                 type_any().clone(),
             )),
             (SeqType::SetOrDict, ElementType::Scalar(inner)) => Ok(SeqType::UntypedSet(
-                SeqSourceSet::Unpack(unpack_span),
+                SeqSourceSet::Unpack(full_span),
                 (*inner).clone(),
             )),
             (_, ElementType::None) => self
@@ -1008,11 +1009,11 @@ impl<'a> TypeChecker<'a> {
                 // into a type checked unpack!
                 inner
                     .is_subtype_of(elem_super)
-                    .check_unpack_scalar(unpack_span)?;
+                    .check_unpack_scalar(full_span)?;
                 *elem_infer = elem_infer.meet(inner);
                 Ok(seq_type)
             }
-            (SeqType::UntypedDict(..) | SeqType::TypedDict { .. }, _) => unpack_span
+            (SeqType::UntypedDict(..) | SeqType::TypedDict { .. }, _) => full_span
                 .error("Invalid unpack in dict.")
                 .with_help(help_unpack_type())
                 .err(),
@@ -1027,6 +1028,7 @@ impl<'a> TypeChecker<'a> {
         collection_span: Span,
         collection_type: SourcedType,
     ) -> Result<SeqType> {
+        let full_span = unpack_span.union(collection_span);
         let help_unpack_type = || {
             concat! {
                 // We could use a note and point at the `..`, but it makes
@@ -1040,12 +1042,12 @@ impl<'a> TypeChecker<'a> {
             // If we weren't sure whether it's a dict or set, and then there is
             // a dict unpack, then now we know it's a dict.
             (SeqType::SetOrDict, ElementType::Any) => Ok(SeqType::UntypedDict(
-                SeqSourceDict::Unpack(unpack_span),
+                SeqSourceDict::Unpack(full_span),
                 type_any().clone(),
                 type_any().clone(),
             )),
             (SeqType::SetOrDict, ElementType::Dict(dict)) => Ok(SeqType::UntypedDict(
-                SeqSourceDict::Unpack(unpack_span),
+                SeqSourceDict::Unpack(full_span),
                 dict.key.clone(),
                 dict.value.clone(),
             )),
@@ -1088,21 +1090,21 @@ impl<'a> TypeChecker<'a> {
                 };
                 // TODO: If these checks do not return `Typed`, we need to insert
                 // a runtime type check.
-                key.is_subtype_of(key_super).check_unpack_key(unpack_span)?;
+                key.is_subtype_of(key_super).check_unpack_key(full_span)?;
                 value
                     .is_subtype_of(value_super)
-                    .check_unpack_value(unpack_span)?;
+                    .check_unpack_value(full_span)?;
                 *key_infer = key_infer.meet(key);
                 *value_infer = value_infer.meet(value);
                 Ok(seq_type)
             }
-            (SeqType::TypedList { .. } | SeqType::UntypedList(..), _) => unpack_span
+            (SeqType::TypedList { .. } | SeqType::UntypedList(..), _) => full_span
                 .error("Invalid dict unpack in list.")
                 .with_help(help_unpack_type())
                 .err(),
             (SeqType::TypedSet { .. } | SeqType::UntypedSet(..), _) => {
                 // TODO: Explain why it's a list and not a dict.
-                unpack_span
+                full_span
                     .error("Invalid dict unpack in set.")
                     .with_help(help_unpack_type())
                     .err()
