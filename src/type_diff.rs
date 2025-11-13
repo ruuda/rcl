@@ -69,6 +69,12 @@ pub enum Typed<T> {
     Defer(T),
 }
 
+impl<T> Typed<T> {
+    pub fn is_defer(&self) -> bool {
+        matches!(self, Typed::Defer(..))
+    }
+}
+
 impl<T> TypeDiff<T> {
     pub fn check(self, at: Span) -> Result<Typed<T>> {
         self.check_with_context(at, "")
@@ -76,14 +82,6 @@ impl<T> TypeDiff<T> {
 
     pub fn check_unpack_scalar(self, at: Span) -> Result<Typed<T>> {
         self.check_with_context(at, " in unpacked element")
-    }
-
-    pub fn check_unpack_key(self, at: Span) -> Result<Typed<T>> {
-        self.check_with_context(at, " in unpacked key")
-    }
-
-    pub fn check_unpack_value(self, at: Span) -> Result<Typed<T>> {
-        self.check_with_context(at, " in unpacked value")
     }
 
     /// Report the diff as a type error, or extract its result.

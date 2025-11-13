@@ -364,6 +364,7 @@ impl<'a> Abstractor<'a> {
                 unpack_span: *unpack_span,
                 collection_span: *collection_span,
                 collection: Box::new(self.expr(collection)?),
+                check_elem_type: None,
             },
 
             CYield::UnpackAssocs {

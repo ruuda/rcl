@@ -264,6 +264,15 @@ pub enum Yield {
         unpack_span: Span,
         collection_span: Span,
         collection: Box<Expr>,
+
+        /// If set, we need to perform a runtime type check on every element.
+        ///
+        /// `UnpackAssocs` does not have the corresponding field, because only
+        /// dicts can be unpacked, so that one we can handle by wrapping the
+        /// collection expression in a `CheckType` node. While we could do that
+        /// here too and use a union type, we can get clearer errors with a
+        /// first-class check.
+        check_elem_type: Option<SourcedType>,
     },
 
     /// Yield all key-value pairs from a dict.

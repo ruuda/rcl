@@ -919,13 +919,12 @@ impl<'a> TypeChecker<'a> {
                     Ok(seq_type)
                 }
             }
-            Yield::UnpackElems { unpack_span, collection_span, collection } => {
+            Yield::UnpackElems { unpack_span, collection_span, collection, check_elem_type } => {
                 let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
-                self.check_yield_unpack_elems(seq_type, *unpack_span, *collection_span, collection_type)
+                self.check_yield_unpack_elems(seq_type, *unpack_span, *collection_span, collection_type, check_elem_type)
             },
             Yield::UnpackAssocs { unpack_span, collection_span, collection } => {
-                let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
-                self.check_yield_unpack_assocs(seq_type, *unpack_span, *collection_span, collection_type)
+                self.check_yield_unpack_assocs(seq_type, *unpack_span, collection, *collection_span)
             }
         }
     }
@@ -937,6 +936,7 @@ impl<'a> TypeChecker<'a> {
         unpack_span: Span,
         collection_span: Span,
         collection_type: SourcedType,
+        check_elem_type: &mut Option<SourcedType>,
     ) -> Result<SeqType> {
         let full_span = unpack_span.union(collection_span);
         let help_unpack_type = || {
@@ -1007,6 +1007,7 @@ impl<'a> TypeChecker<'a> {
                 };
                 // TODO: If this returns a defer, then we need to turn the node
                 // into a type checked unpack!
+                // TODO: Put it in `check_elem_type.
                 inner
                     .is_subtype_of(elem_super)
                     .check_unpack_scalar(full_span)?;
@@ -1025,9 +1026,22 @@ impl<'a> TypeChecker<'a> {
         &mut self,
         mut seq_type: SeqType,
         unpack_span: Span,
+        collection: &mut Expr,
         collection_span: Span,
-        collection_type: SourcedType,
     ) -> Result<SeqType> {
+        // If we already know the result must be a dict of the given type, then
+        // we can propagate the expectation inwards when checking the yield,
+        // because if the outer collection is expected to be Dict[K, V], then
+        // the inner collection must also be Dict[K, V]. In other cases, we
+        // typecheck the inner collection first with a less strict requirement,
+        // and then we verify compatibility below in the big element type match.
+        let collection_type = match &seq_type {
+            SeqType::TypedDict { dict_source, .. } => {
+                self.check_expr(dict_source, collection_span, collection)?
+            }
+            _ => self.check_expr(type_any(), collection_span, collection)?,
+        };
+
         let full_span = unpack_span.union(collection_span);
         let help_unpack_type = || {
             concat! {
@@ -1075,28 +1089,18 @@ impl<'a> TypeChecker<'a> {
             }
             (
                 SeqType::TypedDict {
-                    key_super,
                     key_infer,
-                    value_super,
                     value_infer,
                     ..
                 },
-                elem_type,
+                ElementType::Dict(kv),
             ) => {
-                let (key, value) = match &elem_type {
-                    ElementType::Any => (type_any(), type_any()),
-                    ElementType::Dict(kv) => (&kv.key, &kv.value),
-                    _ => unreachable!("We handle all other cases in the outer match."),
-                };
-                // TODO: If these checks do not return `Typed`, we need to insert
-                // a runtime type check.
-                key.is_subtype_of(key_super).check_unpack_key(full_span)?;
-                value
-                    .is_subtype_of(value_super)
-                    .check_unpack_value(full_span)?;
-                *key_infer = key_infer.meet(key);
-                *value_infer = value_infer.meet(value);
+                *key_infer = key_infer.meet(&kv.key);
+                *value_infer = value_infer.meet(&kv.value);
                 Ok(seq_type)
+            }
+            (SeqType::TypedDict { .. }, ElementType::Any) => {
+                unreachable!("TypedDict checks that the collection is a dict.")
             }
             (SeqType::TypedList { .. } | SeqType::UntypedList(..), _) => full_span
                 .error("Invalid dict unpack in list.")

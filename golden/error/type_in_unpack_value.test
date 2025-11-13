@@ -3,11 +3,15 @@ let ys: Dict[Any, Number] = { ...bool_values };
 ys
 
 # output:
-stdin:2:31
+stdin:2:34
   ╷
 2 │ let ys: Dict[Any, Number] = { ...bool_values };
-  ╵                               ^~~~~~~~~~~~~~
-Error: Type mismatch in unpacked value. Expected Number but found Bool.
+  ╵                                  ^~~~~~~~~~~
+Error: Type mismatch inside this type:
+
+  Dict[Number, <E1>]
+
+At E1: Expected Number but found Bool.
 
 stdin:2:19
   ╷
