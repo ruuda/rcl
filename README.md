@@ -43,7 +43,7 @@ It does that as follows:
    self-documenting, omit them in straightforward code.
  * **Built-in json queries.**
    A language for manipulating structured data makes a pretty good query tool.
-   Run map and filter pipelines straight from your command-line.
+   Run map and filter pipelines straight from your terminal.
 
 [cmd]:       https://docs.ruuda.nl/rcl/rcl/
 [cmd-build]: https://docs.ruuda.nl/rcl/rcl_build/#
