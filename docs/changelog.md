@@ -18,8 +18,6 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased.
 
-Language:
-
  * Add [unpack](syntax.md#unpack): `..` and `...` syntax that can be used inside
    lists, sets, and dicts to unpack one collection into another.
  * The `|` operator is now deprecated, and will be removed in a future version.
@@ -29,13 +27,7 @@ Language:
    `assert cond, "message";`. For compatibility, <abbr>RCL</abbr> still accepts
    a comma for now. The formatter will automatically update documents to the new
    syntax. The standard format is now more compact for multi-line assertions.
-
-Command-line:
-
  * A new CLI option, `--about`, prints license and dependency information.
-
-Packaging:
-
  * [Prebuilt binaries](installation.md#prebuilt-binaries) are now available for
    several platforms. They are hosted [on Github](https://github.com/ruuda/rcl/releases).
 
