@@ -122,12 +122,11 @@ impl<T> TypeDiff<T> {
                 error.err()
             }
             TypeDiff::Error(diff) => {
-                // TODO: Integrate `location_context`.
                 // If the error is nested somewhere inside a type, then we
                 // resort to a more complex format where we first print the
                 // type itself, with the error part replaced with a placeholder,
                 // and then we add a secondary error to explain the placeholder.
-                crate::fmt_type::DiffFormatter::report(at, &diff).err()
+                crate::fmt_type::DiffFormatter::report(at, location_context, &diff).err()
             }
         }
     }
