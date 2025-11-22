@@ -643,10 +643,9 @@ impl SourcedType {
     pub fn element_type(&self) -> ElementType {
         match &self.type_ {
             // If it's any, it could be a collection, but we can't pinpoint
-            // where it came from.
-            // TODO: For unions, we should `join` their elements. If you have
-            // e.g. `Union[Set[T], List[T]]`, we can still say something about
-            // the element type.
+            // where it came from. If it's a union, if every element is a
+            // collection then we could still conclude something about the
+            // element type, but we are not going to bother, and say `Any`.
             Type::Any | Type::Union(_) => ElementType::Any,
             Type::List(inner) => ElementType::Scalar(inner.clone()),
             Type::Set(inner) => ElementType::Scalar(inner.clone()),
