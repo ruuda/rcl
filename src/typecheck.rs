@@ -943,9 +943,6 @@ impl<'a> TypeChecker<'a> {
             concat! {
                 // We could use a note and point at the `..`, but it makes
                 // the error verbose. I think just a hint is enough.
-                // TODO: Sometimes the collection to unpack *is* a list,
-                // so the `..` is correct, but the surrounding collection is a list
-                // or set. Then this help is confusing!
                 "'" Doc::highlight("..") "' unpacks lists and sets, use '"
                 Doc::highlight("...")
                 "' to unpack dicts."
