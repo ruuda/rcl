@@ -290,7 +290,6 @@ Binary operators that operate between two expressions, e.g. `x and y`:
 | `<=`     | Less than or equal to |
 | `>`      | Greater than |
 | `>=`     | Greater than or equal to |
-| `|`      | Set or dict union, right-biased for dicts |
 | `+`      | Numeric addition |
 | `-`      | Numeric subtraction |
 | `*`      | Numeric multiplication |

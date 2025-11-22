@@ -22,9 +22,8 @@ Language:
 
  * Add [unpack](syntax.md#unpack): `..` and `...` syntax that can be used inside
    lists, sets, and dicts to unpack one collection into another.
- * Unpack can be used to express dict and set unions without the need for
-   the `|` operator. As such, the `|` operator is now deprecated, and will
-   be removed in a future version.
+ * The `|` operator is now deprecated, and will be removed in a future version.
+   The new unpack feature can be used to express dict and set unions instead.
  * [Assertions](syntax.md#assertions) now use a `:` to separate the condition
    and the message: `assert cond: "message";` rather than
    `assert cond, "message";`. For compatibility, <abbr>RCL</abbr> still accepts

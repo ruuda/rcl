@@ -16,6 +16,8 @@ to handle optional keys gracefully.
 
 ## Union operator
 
+**This operator is deprecated.** Use [unpack](#union) instead.
+
 The `|` operator returns the union of two dictionaries. When a key occurs on
 both sides, the value is taken from the right side.
 
