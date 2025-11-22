@@ -101,7 +101,7 @@ pub struct DiffFormatter<'a> {
 }
 
 impl<'a> DiffFormatter<'a> {
-    pub fn report(at: Span, mismatch: &'a Mismatch) -> Error {
+    pub fn report(at: Span, location_context: &'static str, mismatch: &'a Mismatch) -> Error {
         let mut state = DiffFormatter { errors: Vec::new() };
         let mut parts = vec![concat! {
             Doc::HardBreak
@@ -118,9 +118,8 @@ impl<'a> DiffFormatter<'a> {
             };
             parts.push(message);
         }
-        let mut error = at
-            .error("Type mismatch inside this type:")
-            .with_body(Doc::Concat(parts).into_owned());
+        let message = concat! { "Type mismatch inside this type" location_context ":" };
+        let mut error = at.error(message).with_body(Doc::Concat(parts).into_owned());
         for inner_error in state.errors.iter() {
             inner_error
                 .expected

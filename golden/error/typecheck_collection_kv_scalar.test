@@ -8,7 +8,7 @@ stdin:3:3
   ╷
 3 │   "single",
   ╵   ^~~~~~~~
-Error: Expected key-value, not a scalar element.
+Error: Expected key-value, not a single element.
 
 stdin:2:8
   ╷

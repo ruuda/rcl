@@ -355,6 +355,27 @@ impl<'a> Abstractor<'a> {
                     value: Box::new(self.expr(value)?),
                 }
             }
+
+            CYield::UnpackElems {
+                unpack_span,
+                collection_span,
+                collection,
+            } => AYield::UnpackElems {
+                unpack_span: *unpack_span,
+                collection_span: *collection_span,
+                collection: Box::new(self.expr(collection)?),
+                check_elem_type: None,
+            },
+
+            CYield::UnpackAssocs {
+                unpack_span,
+                collection_span,
+                collection,
+            } => AYield::UnpackAssocs {
+                unpack_span: *unpack_span,
+                collection_span: *collection_span,
+                collection: Box::new(self.expr(collection)?),
+            },
         };
         Ok(result)
     }

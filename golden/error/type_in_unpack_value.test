@@ -1,0 +1,26 @@
+let bool_values = { 0: false, 1: true };
+let ys: Dict[Any, Number] = { ...bool_values };
+ys
+
+# output:
+stdin:2:34
+  ╷
+2 │ let ys: Dict[Any, Number] = { ...bool_values };
+  ╵                                  ^~~~~~~~~~~
+Error: Type mismatch inside this type:
+
+  Dict[Number, <E1>]
+
+At E1: Expected Number but found Bool.
+
+stdin:2:19
+  ╷
+2 │ let ys: Dict[Any, Number] = { ...bool_values };
+  ╵                   ^~~~~~
+Note: Expected Number because of this annotation.
+
+stdin:1:24
+  ╷
+1 │ let bool_values = { 0: false, 1: true };
+  ╵                        ^~~~~
+Note: Found Bool because of this value.

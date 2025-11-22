@@ -1,14 +1,13 @@
 let root = import "//Cargo.rcl";
 
 {
-  package =
-    root.package
-    | {
-      name = "rcl-fuzz",
-      description = "Fuzz targets and helpers for testing RCL.",
-      publish = false,
-      metadata = { cargo-fuzz = true },
-    },
+  package = {
+    ...root.package,
+    name = "rcl-fuzz",
+    description = "Fuzz targets and helpers for testing RCL.",
+    publish = false,
+    metadata = { cargo-fuzz = true },
+  },
 
   dependencies = {
     arbitrary = { version = "1.3.0", features = ["derive"] },

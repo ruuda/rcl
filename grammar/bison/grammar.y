@@ -122,6 +122,8 @@ seq
   : expr_op
   | expr_op ':' expr
   | IDENT '=' expr ',' seq
+  | ".." expr
+  | "..." expr
   | stmt seq
   | "for" idents "in" expr_op ':' seq
   | "if" expr_op ':' seq

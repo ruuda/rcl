@@ -48,6 +48,6 @@ let var = {
       for tag in tags:
       tag
     };
-    host: group_tags | device_tags
+    host: { ..group_tags, ..device_tags }
   },
 }

@@ -11,23 +11,22 @@
 // version number in one single place, so it's impossible to forget to bump
 // one of them when making a new release.
 
-let opts_toml = {
+let target_toml = contents => {
   format = "toml",
   banner = "# This file is generated, see build.rcl in the repository root.\n",
+  contents = contents,
 };
 
 {
-  "Cargo.toml": opts_toml | { contents = import "//Cargo.rcl" },
-  "fuzz/Cargo.toml": opts_toml | { contents = import "//fuzz/Cargo.rcl" },
-  "grammar/tree-sitter-rcl/Cargo.toml":
-    opts_toml
-    | { contents = import "//grammar/tree-sitter-rcl/Cargo.rcl" },
-  "grammar/zed/extension.toml":
-    opts_toml
-    | { contents = import "//grammar/zed/extension.rcl" },
-  "pyrcl/Cargo.toml": opts_toml | { contents = import "//pyrcl/Cargo.rcl" },
-  "pyrcl/pyproject.toml":
-    opts_toml
-    | { contents = import "//pyrcl/pyproject.rcl" },
-  "wasm/Cargo.toml": opts_toml | { contents = import "//wasm/Cargo.rcl" },
+  "Cargo.toml": target_toml(import "//Cargo.rcl"),
+  "fuzz/Cargo.toml": target_toml(import "//fuzz/Cargo.rcl"),
+  "grammar/tree-sitter-rcl/Cargo.toml": target_toml(
+    import "//grammar/tree-sitter-rcl/Cargo.rcl",
+  ),
+  "grammar/zed/extension.toml": target_toml(
+    import "//grammar/zed/extension.rcl",
+  ),
+  "pyrcl/Cargo.toml": target_toml(import "//pyrcl/Cargo.rcl"),
+  "pyrcl/pyproject.toml": target_toml(import "//pyrcl/pyproject.rcl"),
+  "wasm/Cargo.toml": target_toml(import "//wasm/Cargo.rcl"),
 }

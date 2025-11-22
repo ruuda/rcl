@@ -1,0 +1,9 @@
+let xs: Any = null;
+[..xs]
+
+# output:
+stdin:2:4
+  ╷
+2 │ [..xs]
+  ╵    ^~
+Error: Expected a list or set to unpack; this is not iterable.

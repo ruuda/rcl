@@ -16,6 +16,8 @@ to handle optional keys gracefully.
 
 ## Union operator
 
+**This operator is deprecated.** Use [unpack](#union) instead.
+
 The `|` operator returns the union of two dictionaries. When a key occurs on
 both sides, the value is taken from the right side.
 
@@ -97,6 +99,17 @@ Return the number of keys in the dict. For example:
 ```rcl
 // Evaluates to 3.
 { four = 4, five = 5, six = 6 }.len()
+```
+
+## union
+
+To take the union of dicts, use [unpack](syntax.md#unpack):
+
+```rcl
+let xs = { a = 1, b = 2 };
+let ys = { a = 4, c = 5 };
+// Evaluates to { a = 4, b = 2, c = 5 }.
+{ ...xs, ...ys }
 ```
 
 ## values

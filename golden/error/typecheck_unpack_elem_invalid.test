@@ -1,0 +1,12 @@
+// The key-value makes the {}-literal a dict,
+// and inside there, .. is invalid.
+{ a = 1, ..[] }
+
+# output:
+stdin:3:10
+  ╷
+3 │ { a = 1, ..[] }
+  ╵          ^~~~
+Error: Invalid unpack in dict.
+
+Help: '..' unpacks lists and sets, use '...' to unpack dicts.

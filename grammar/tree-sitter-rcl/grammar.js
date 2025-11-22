@@ -246,6 +246,8 @@ module.exports = grammar({
       $.seq_elem,
       $.seq_assoc_expr,
       $.seq_assoc_ident,
+      $.seq_unpack_elems,
+      $.seq_unpack_assocs,
       $.seq_stmt,
       $.seq_for,
       $.seq_if,
@@ -261,6 +263,8 @@ module.exports = grammar({
       "=",
       field("value", $._expr),
     ),
+    seq_unpack_elems: $ => seq("..", $._expr),
+    seq_unpack_assocs: $ => seq("...", $._expr),
     seq_stmt: $ => seq($._stmt, ";", $._seq),
     seq_for: $ => seq(
       "for",

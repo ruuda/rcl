@@ -1,0 +1,22 @@
+let opts: Any = { a = 1 };
+
+// Inferred to have Any as key and value,
+// because `opts` is Any.
+let kv1 = { ...opts };
+
+// As above, but now instead of inferring, we confirm the type.
+let kv2: Dict[Any, Any] = { ...opts };
+
+// If it's determined to be key-value from something other than
+// unpack, we can still infer key and value types `Any` from an
+// unpack:
+let kv3 = { a = 1, ...opts };
+
+// Unpack joins the inferred key and value types.
+let join_key: Dict[Number, Any] = { ...{ 0: true }, ...{ 1: null } };
+let join_value: Dict[Any, Bool] = { ...{ 0: true }, ...{ null: true } };
+
+null
+
+# output:
+null

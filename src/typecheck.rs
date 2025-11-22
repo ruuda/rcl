@@ -15,13 +15,14 @@
 use std::rc::Rc;
 
 use crate::ast::{BinOp, Expr, Ident, Seq, Stmt, Type as AType, UnOp, Yield};
-use crate::error::{IntoError, Result};
+use crate::error::{Error, IntoError, Result};
 use crate::fmt_type::format_type;
+use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::source::Span;
 use crate::type_diff::{report_type_mismatch, Typed};
 use crate::type_source::Source;
-use crate::types::{Dict, Function, FunctionArg, Side, SourcedType, Type, Union};
+use crate::types::{Dict, ElementType, Function, FunctionArg, Side, SourcedType, Type, Union};
 
 pub type Env = crate::env::Env<SourcedType>;
 
@@ -747,6 +748,16 @@ impl<'a> TypeChecker<'a> {
         Ok(result_type)
     }
 
+    fn error_not_iterable(&self, collection_span: Span, collection_type: SourcedType) -> Error {
+        collection_span
+            .error("This is not iterable.")
+            .with_body(concat! {
+                "Expected a collection, but got:"
+                Doc::HardBreak Doc::HardBreak
+                indent! { format_type(&collection_type.type_).into_owned() }
+            })
+    }
+
     fn check_seq(&mut self, seq: &mut Seq, seq_type: SeqType) -> Result<SeqType> {
         match seq {
             Seq::Yield(yield_) => self.check_yield(yield_, seq_type),
@@ -768,15 +779,15 @@ impl<'a> TypeChecker<'a> {
                 let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
                 let ck = self.env.checkpoint();
 
-                match &collection_type.type_ {
+                match collection_type.element_type() {
                     // If we don't know the type, we can't verify the number of
                     // loop variables, and we don't know their types.
-                    Type::Any => {
+                    ElementType::Any => {
                         for ident in idents {
                             self.env.push(ident.clone(), type_any().clone());
                         }
                     }
-                    Type::Dict(dict) => {
+                    ElementType::Dict(dict) => {
                         if idents.len() != 2 {
                             // TODO: Deduplicate runtime error. Make it a method
                             // on the type? Same for functions?
@@ -791,38 +802,25 @@ impl<'a> TypeChecker<'a> {
                         self.env.push(idents[0].clone(), dict.key.clone());
                         self.env.push(idents[1].clone(), dict.value.clone());
                     }
-                    Type::List(element_type) => {
+                    ElementType::Scalar(element_type) => {
                         if idents.len() != 1 {
                             return idents_span
                                 .error("Expected a single variable.")
                                 .with_note(
                                     *collection_span,
-                                    "This is a list, it yields one element per iteration.",
+                                    concat! {
+                                        "This is a "
+                                        collection_type.type_.short_name().to_ascii_lowercase()
+                                        ", it yields one element per iteration."
+                                    },
                                 )
                                 .err();
                         }
-                        self.env.push(idents[0].clone(), (**element_type).clone());
+                        self.env.push(idents[0].clone(), (*element_type).clone());
                     }
-                    Type::Set(element_type) => {
-                        if idents.len() != 1 {
-                            return idents_span
-                                .error("Expected a single variable.")
-                                .with_note(
-                                    *collection_span,
-                                    "This is a set, it yields one element per iteration.",
-                                )
-                                .err();
-                        }
-                        self.env.push(idents[0].clone(), (**element_type).clone());
-                    }
-                    not_collection => {
-                        return collection_span
-                            .error("This is not iterable.")
-                            .with_body(concat! {
-                                "Expected a collection, but got:"
-                                Doc::HardBreak Doc::HardBreak
-                                indent! { format_type(not_collection).into_owned() }
-                            })
+                    _not_collection => {
+                        return self
+                            .error_not_iterable(*collection_span, collection_type)
                             .err()
                     }
                 }
@@ -848,7 +846,7 @@ impl<'a> TypeChecker<'a> {
             Yield::Elem { span, value } => match &mut seq_type {
                 SeqType::SetOrDict => {
                     let t = self.check_expr(type_any(), *span, value)?;
-                    Ok(SeqType::UntypedSet(*span, t))
+                    Ok(SeqType::UntypedSet(SeqSourceSet::Scalar(*span), t))
                 }
                 SeqType::TypedList { elem_super, elem_infer } | SeqType::TypedSet { elem_super, elem_infer, .. } => {
                     // First we check that the element satisfies the requirement.
@@ -860,7 +858,7 @@ impl<'a> TypeChecker<'a> {
                 }
                 SeqType::TypedDict { dict_source, .. } => {
                     let mut error = span.error(
-                        "Expected key-value, not a scalar element, because the collection is a dict."
+                        "Expected key-value, not a single element, because the collection is a dict."
                     );
                     dict_source.explain_error(Side::Expected, &mut error);
                     error.err()
@@ -870,14 +868,8 @@ impl<'a> TypeChecker<'a> {
                     *elem_type_meet = elem_type_meet.meet(&elem_type);
                     Ok(seq_type)
                 }
-                SeqType::UntypedDict(first, _k, _v) => {
-                    span
-                        .error("Expected key-value, not a scalar element.")
-                        .with_note(
-                            *first,
-                            "The collection is a dict and not a set, because it starts with a key-value.",
-                        )
-                        .err()
+                SeqType::UntypedDict(src, _k, _v) => {
+                    src.add_note(span.error("Expected key-value, not a single element.")).err()
                 }
             }
             Yield::Assoc { op_span, key_span, key, value_span, value } => match &mut seq_type {
@@ -885,7 +877,7 @@ impl<'a> TypeChecker<'a> {
                     let k = match self.check_expr(type_any(), *key_span, key) {
                         Err(err) if matches!(key.as_ref(), Expr::Var { .. }) => {
                             err.with_note(*op_span, concat! {
-                                "To use unquoted keys, replace '" 
+                                "To use unquoted keys, replace '"
                                 Doc::highlight(":")
                                 "' with '"
                                 Doc::highlight("=")
@@ -895,7 +887,7 @@ impl<'a> TypeChecker<'a> {
                         other => other,
                     }?;
                     let v = self.check_expr(type_any(), *value_span, value)?;
-                    Ok(SeqType::UntypedDict(*op_span, k, v))
+                    Ok(SeqType::UntypedDict(SeqSourceDict::Assoc(*op_span), k, v))
                 }
                 SeqType::TypedDict { key_super, key_infer, value_super, value_infer, .. } => {
                     let k = self.check_expr(key_super, *key_span, key)?;
@@ -905,24 +897,20 @@ impl<'a> TypeChecker<'a> {
                     Ok(seq_type)
                 }
                 SeqType::TypedList { .. } | SeqType::UntypedList(..) => op_span
-                    .error("Expected scalar element, not key-value.")
+                    .error("Expected single element, not key-value.")
                     .with_help(
                         "Key-value pairs are allowed in dicts, which are enclosed in '{}', not '[]'.",
                     ).err(),
                 SeqType::TypedSet { set_source, .. } => {
                     let mut error = op_span.error(
-                        "Expected scalar element, not key-value, because the collection is a set."
+                        "Expected single element, not key-value, because the collection is a set."
                     );
                     set_source.explain_error(Side::Expected, &mut error);
                     error.err()
                 }
-                SeqType::UntypedSet(first, _elem) => op_span
-                    .error("Expected scalar element, not key-value.")
-                    .with_note(
-                        *first,
-                        "The collection is a set and not a dict, because it starts with a scalar value.",
-                    )
-                    .err(),
+                SeqType::UntypedSet(src, _elem) => src.add_note(
+                    op_span.error("Expected single element, not key-value.")
+                ).err(),
                 SeqType::UntypedDict(_first, key_meet, value_meet) => {
                     let k = self.check_expr(type_any(), *key_span, key)?;
                     let v = self.check_expr(type_any(), *value_span, value)?;
@@ -931,6 +919,208 @@ impl<'a> TypeChecker<'a> {
                     Ok(seq_type)
                 }
             }
+            Yield::UnpackElems { unpack_span, collection_span, collection, check_elem_type } => {
+                self.check_yield_unpack_elems(seq_type, *unpack_span, collection, *collection_span, check_elem_type)
+            },
+            Yield::UnpackAssocs { unpack_span, collection_span, collection } => {
+                self.check_yield_unpack_assocs(seq_type, *unpack_span, collection, *collection_span)
+            }
+        }
+    }
+
+    /// Visit a `..xs` (double dot) unpack inside a sequence literal.
+    fn check_yield_unpack_elems(
+        &mut self,
+        mut seq_type: SeqType,
+        unpack_span: Span,
+        collection: &mut Expr,
+        collection_span: Span,
+        check_elem_type: &mut Option<SourcedType>,
+    ) -> Result<SeqType> {
+        let collection_type = self.check_expr(type_any(), collection_span, collection)?;
+        let full_span = unpack_span.union(collection_span);
+        let help_unpack_type = || {
+            concat! {
+                // We could use a note and point at the `..`, but it makes
+                // the error verbose. I think just a hint is enough.
+                "'" Doc::highlight("..") "' unpacks lists and sets, use '"
+                Doc::highlight("...")
+                "' to unpack dicts."
+            }
+        };
+        match (&mut seq_type, collection_type.element_type()) {
+            // If we weren't sure whether it's a dict or set, and then there is
+            // a scalar unpack, then now we know it's a set.
+            (SeqType::SetOrDict, ElementType::Any) => Ok(SeqType::UntypedSet(
+                SeqSourceSet::Unpack(full_span),
+                type_any().clone(),
+            )),
+            (SeqType::SetOrDict, ElementType::Scalar(inner)) => Ok(SeqType::UntypedSet(
+                SeqSourceSet::Unpack(full_span),
+                (*inner).clone(),
+            )),
+            (_, ElementType::None) => self
+                .error_not_iterable(collection_span, collection_type)
+                .err(),
+            (_, ElementType::Dict(..)) => collection_span
+                .error("Type mismatch in unpack.")
+                .with_body(concat! {
+                    "Expected " Doc::str("List").with_markup(Markup::Type)
+                    " or " Doc::str("Set").with_markup(Markup::Type)
+                    ", but got:"
+                    Doc::HardBreak Doc::HardBreak
+                    indent! { format_type(&collection_type.type_).into_owned() }
+                })
+                .with_help(help_unpack_type())
+                .err(),
+            (
+                SeqType::UntypedList(elem_type_meet) | SeqType::UntypedSet(.., elem_type_meet),
+                elem_type,
+            ) => {
+                let inner = match &elem_type {
+                    ElementType::Any => type_any(),
+                    ElementType::Scalar(inner) => inner.as_ref(),
+                    _ => unreachable!("We handle all other cases in the outer match."),
+                };
+                *elem_type_meet = elem_type_meet.meet(inner);
+                Ok(seq_type)
+            }
+            (
+                SeqType::TypedList {
+                    elem_super,
+                    elem_infer,
+                }
+                | SeqType::TypedSet {
+                    elem_super,
+                    elem_infer,
+                    ..
+                },
+                elem_type,
+            ) => {
+                let inner = match &elem_type {
+                    ElementType::Any => type_any(),
+                    ElementType::Scalar(inner) => inner.as_ref(),
+                    _ => unreachable!("We handle all other cases in the outer match."),
+                };
+                // Typecheck the inferred type against the expected one. If we
+                // can't confirm this statically, then we need to set the
+                // expected element type for the runtime type check.
+                match inner
+                    .is_subtype_of(elem_super)
+                    .check_unpack_scalar(full_span)?
+                {
+                    Typed::Type(_) => { /* Statically ok. */ }
+                    Typed::Defer(_) => *check_elem_type = Some(elem_super.clone()),
+                }
+                *elem_infer = elem_infer.meet(inner);
+                Ok(seq_type)
+            }
+            (SeqType::UntypedDict(..) | SeqType::TypedDict { .. }, _) => full_span
+                .error("Invalid unpack in dict.")
+                .with_help(help_unpack_type())
+                .err(),
+        }
+    }
+
+    /// Visit a `...xs` (triple dot) unpack inside a sequence literal.
+    fn check_yield_unpack_assocs(
+        &mut self,
+        mut seq_type: SeqType,
+        unpack_span: Span,
+        collection: &mut Expr,
+        collection_span: Span,
+    ) -> Result<SeqType> {
+        // If we already know the result must be a dict of the given type, then
+        // we can propagate the expectation inwards when checking the yield,
+        // because if the outer collection is expected to be Dict[K, V], then
+        // the inner collection must also be Dict[K, V]. In other cases, we
+        // typecheck the inner collection first with a less strict requirement,
+        // and then we verify compatibility below in the big element type match.
+        let collection_type = match &seq_type {
+            SeqType::TypedDict { dict_source, .. } => {
+                self.check_expr(dict_source, collection_span, collection)?
+            }
+            _ => self.check_expr(type_any(), collection_span, collection)?,
+        };
+
+        let full_span = unpack_span.union(collection_span);
+        let help_unpack_type = || {
+            concat! {
+                // We could use a note and point at the `..`, but it makes
+                // the error verbose. I think just a hint is enough.
+                "'" Doc::highlight("...") "' unpacks dicts, use '"
+                Doc::highlight("..")
+                "' to unpack lists and sets."
+            }
+        };
+        match (&mut seq_type, collection_type.element_type()) {
+            (SeqType::TypedList { .. } | SeqType::UntypedList(..), _) => full_span
+                .error("Invalid dict unpack in list.")
+                .with_help(help_unpack_type())
+                .err(),
+            // If we weren't sure whether it's a dict or set, and then there is
+            // a dict unpack, then now we know it's a dict.
+            (SeqType::SetOrDict, ElementType::Any) => Ok(SeqType::UntypedDict(
+                SeqSourceDict::Unpack(full_span),
+                type_any().clone(),
+                type_any().clone(),
+            )),
+            (SeqType::SetOrDict, ElementType::Dict(dict)) => Ok(SeqType::UntypedDict(
+                SeqSourceDict::Unpack(full_span),
+                dict.key.clone(),
+                dict.value.clone(),
+            )),
+            (_, ElementType::None) => self
+                .error_not_iterable(collection_span, collection_type)
+                .err(),
+            (_, ElementType::Scalar(..)) => collection_span
+                .error("Type mismatch in unpack.")
+                .with_body(concat! {
+                    "Expected " Doc::str("Dict").with_markup(Markup::Type) ", but got:"
+                    Doc::HardBreak Doc::HardBreak
+                    indent! { format_type(&collection_type.type_).into_owned() }
+                })
+                .with_help(help_unpack_type())
+                .err(),
+            (SeqType::UntypedDict(_src, key_meet, value_meet), elem_type) => {
+                let (key, value) = match &elem_type {
+                    ElementType::Any => (type_any(), type_any()),
+                    ElementType::Dict(kv) => (&kv.key, &kv.value),
+                    _ => unreachable!("We handle all other cases in the outer match."),
+                };
+                *key_meet = key_meet.meet(key);
+                *value_meet = value_meet.meet(value);
+                Ok(seq_type)
+            }
+            (
+                SeqType::TypedDict {
+                    key_infer,
+                    value_infer,
+                    ..
+                },
+                ElementType::Dict(kv),
+            ) => {
+                *key_infer = key_infer.meet(&kv.key);
+                *value_infer = value_infer.meet(&kv.value);
+                Ok(seq_type)
+            }
+            (SeqType::TypedDict { .. }, ElementType::Any) => {
+                unreachable!("TypedDict checks that the collection is a dict.")
+            }
+
+            // For list, it's clear why a list is a list (the square brackets),
+            // so we can get away with one error. For sets we can't tell from
+            // the brackets, so we include in the error *why* it's a set and not
+            // a dict.
+            (SeqType::TypedSet { set_source, .. }, _) => {
+                let mut err = full_span.error("Invalid dict unpack in set.");
+                set_source.explain_error(Side::Actual, &mut err);
+                err.with_help(help_unpack_type()).err()
+            }
+            (SeqType::UntypedSet(set_source, ..), _) => set_source
+                .add_note(full_span.error("Invalid dict unpack in set."))
+                .with_help(help_unpack_type())
+                .err(),
         }
     }
 
@@ -979,6 +1169,48 @@ impl<'a> TypeChecker<'a> {
                 self.check_expr(type_any(), *message_span, message)?;
                 Ok(())
             }
+        }
+    }
+}
+
+/// We know it's a set due to this reason.
+enum SeqSourceSet {
+    Scalar(Span),
+    Unpack(Span),
+}
+
+/// We know it's a dict due to this reason.
+enum SeqSourceDict {
+    Assoc(Span),
+    Unpack(Span),
+}
+
+impl SeqSourceSet {
+    fn add_note(&self, err: Error) -> Error {
+        match *self {
+            SeqSourceSet::Scalar(first) => err.with_note(
+                first,
+                "The collection is a set and not a dict, because it starts with a single value.",
+            ),
+            SeqSourceSet::Unpack(unpack) => err.with_note(
+                unpack,
+                "The collection is a set and not a dict, because of this unpack.",
+            ),
+        }
+    }
+}
+
+impl SeqSourceDict {
+    fn add_note(&self, err: Error) -> Error {
+        match *self {
+            SeqSourceDict::Assoc(first) => err.with_note(
+                first,
+                "The collection is a dict and not a set, because it starts with a key-value.",
+            ),
+            SeqSourceDict::Unpack(unpack) => err.with_note(
+                unpack,
+                "The collection is a dict and not a set, because of the key-value unpack here.",
+            ),
         }
     }
 }
@@ -1038,12 +1270,12 @@ enum SeqType {
     /// We found a set, as evidenced by the span of the first scalar.
     ///
     /// We also track the `meet` of all the elements.
-    UntypedSet(Span, SourcedType),
+    UntypedSet(SeqSourceSet, SourcedType),
 
     /// We found a dict, as evidenced by the span of the first key-value.
     ///
     /// We also track the `meet` of the key and value types.
-    UntypedDict(Span, SourcedType, SourcedType),
+    UntypedDict(SeqSourceDict, SourcedType, SourcedType),
 }
 
 impl SeqType {

@@ -623,6 +623,14 @@ impl<'a> Formatter<'a> {
             Yield::AssocIdent { field, value, .. } => {
                 concat! { self.span(*field).with_markup(Markup::Field) " = " self.expr(value) }
             }
+
+            Yield::UnpackElems { collection, .. } => concat! {
+                ".." self.expr(collection)
+            },
+
+            Yield::UnpackAssocs { collection, .. } => concat! {
+                "..." self.expr(collection)
+            },
         }
     }
 

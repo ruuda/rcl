@@ -1,0 +1,14 @@
+let kv = { a = 1 };
+let ys = [..kv];
+ys
+
+# output:
+stdin:2:13
+  ╷
+2 │ let ys = [..kv];
+  ╵             ^~
+Error: Type mismatch in unpack. Expected List or Set, but got:
+
+  Dict[String, Number]
+
+Help: '..' unpacks lists and sets, use '...' to unpack dicts.

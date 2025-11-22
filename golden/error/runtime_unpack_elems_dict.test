@@ -1,0 +1,10 @@
+let xs: Any = { a = 1 };
+// This causes a runtime error, expected scalar elements but got dict.
+[..xs]
+
+# output:
+stdin:3:4
+  ╷
+3 │ [..xs]
+  ╵    ^~
+Error: Expected a list or set to unpack, but this is a dict.

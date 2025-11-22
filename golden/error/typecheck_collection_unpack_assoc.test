@@ -1,0 +1,16 @@
+let xs = {};
+let ys = { ...xs, 42 };
+ys
+
+# output:
+stdin:2:19
+  ╷
+2 │ let ys = { ...xs, 42 };
+  ╵                   ^~
+Error: Expected key-value, not a single element.
+
+stdin:2:12
+  ╷
+2 │ let ys = { ...xs, 42 };
+  ╵            ^~~~~
+Note: The collection is a dict and not a set, because of the key-value unpack here.

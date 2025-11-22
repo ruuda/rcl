@@ -32,10 +32,12 @@ let default_options = {
   format = "toml",
 };
 {
-  "users/rachael.toml": default_options | {
+  "users/rachael.toml": {
+    ...default_options,
     contents = { name = "Rachael Tyrell", generation = 7 },
   },
-  "users/rbatty.toml": default_options | {
+  "users/rbatty.toml": {
+    ...default_options,
     contents = { name = "Roy Batty", generation = 6 },
   },
 }

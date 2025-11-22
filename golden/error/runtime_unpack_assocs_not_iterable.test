@@ -1,0 +1,9 @@
+let xs: Any = null;
+{...xs}
+
+# output:
+stdin:2:5
+  ╷
+2 │ {...xs}
+  ╵     ^~
+Error: Expected a dict to unpack, but this is not a dict.

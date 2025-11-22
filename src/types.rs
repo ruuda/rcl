@@ -393,6 +393,18 @@ pub enum Side {
     Actual,
 }
 
+/// The element type of a collection type.
+pub enum ElementType {
+    /// We don't know the type, so the element type could be anything.
+    Any,
+    /// The type is certainly a collection (list or set), and this is the element type.
+    Scalar(Rc<SourcedType>),
+    /// The type is certainly a dict, and these are the key and value types.
+    Dict(Rc<Dict>),
+    /// The type is certainly not something that has an inner element type.
+    None,
+}
+
 /// A type and its source.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct SourcedType {
@@ -624,6 +636,21 @@ impl SourcedType {
                 actual: self.clone(),
                 expected: other.clone(),
             }),
+        }
+    }
+
+    /// If the type is a list, set, or dict, return its element type(s).
+    pub fn element_type(&self) -> ElementType {
+        match &self.type_ {
+            // If it's any, it could be a collection, but we can't pinpoint
+            // where it came from. If it's a union, if every element is a
+            // collection then we could still conclude something about the
+            // element type, but we are not going to bother, and say `Any`.
+            Type::Any | Type::Union(_) => ElementType::Any,
+            Type::List(inner) => ElementType::Scalar(inner.clone()),
+            Type::Set(inner) => ElementType::Scalar(inner.clone()),
+            Type::Dict(inner) => ElementType::Dict(inner.clone()),
+            _ => ElementType::None,
         }
     }
 

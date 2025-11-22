@@ -5,6 +5,6 @@ stdin:1:7
   ╷
 1 │ ["key": "value"]
   ╵       ^
-Error: Expected scalar element, not key-value.
+Error: Expected single element, not key-value.
 
 Help: Key-value pairs are allowed in dicts, which are enclosed in '{}', not '[]'.

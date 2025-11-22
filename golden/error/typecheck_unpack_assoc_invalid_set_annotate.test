@@ -1,0 +1,17 @@
+let xs: Set[Any] = {...{}};
+xs
+
+# output:
+stdin:1:21
+  ╷
+1 │ let xs: Set[Any] = {...{}};
+  ╵                     ^~~~~
+Error: Invalid dict unpack in set.
+
+stdin:1:9
+  ╷
+1 │ let xs: Set[Any] = {...{}};
+  ╵         ^~~~~~~~
+Note: Found Set because of this annotation.
+
+Help: '...' unpacks dicts, use '..' to unpack lists and sets.

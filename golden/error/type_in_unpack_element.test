@@ -1,0 +1,22 @@
+let bools = [true, false];
+let ys: List[Number] = [..bools];
+ys
+
+# output:
+stdin:2:25
+  ╷
+2 │ let ys: List[Number] = [..bools];
+  ╵                         ^~~~~~~
+Error: Type mismatch in unpacked element. Expected Number but found Bool.
+
+stdin:2:14
+  ╷
+2 │ let ys: List[Number] = [..bools];
+  ╵              ^~~~~~
+Note: Expected Number because of this annotation.
+
+stdin:1:14
+  ╷
+1 │ let bools = [true, false];
+  ╵              ^~~~
+Note: Found Bool because of this value.
