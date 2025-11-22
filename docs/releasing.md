@@ -66,6 +66,8 @@ Ensure no problematic dependencies snuck in:
 It would be nice to turn this into a Nix flake check, but unfortunately that’s
 not easy due to tools downloading crate metadata on the fly.
 
+Also, verify that dependencies listed in `rcl --about` match the crate.
+
 ## Publishing
 
 ### Repository

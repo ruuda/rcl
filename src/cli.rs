@@ -44,10 +44,11 @@ Command shorthands:
   q            Alias for 'query'.
 
 Global options:
-  -h --help             Show this screen, or command-specific help.
-  --version             Show version.
+  --about               Print license and dependency information.
   --color <mode>        Set how output is colored, see modes below.
   -C --directory <dir>  Change the working directory.
+  -h --help             Show this screen, or command-specific help.
+  --version             Show version.
 
 Color modes:
   ansi    Always color output using ANSI escape codes.
@@ -243,6 +244,15 @@ Options:
 See also --help for global options.
 "#;
 
+const USAGE_ABOUT: &str = r#"
+RCL -- A reasonable configuration language.
+Copyright 2025 Ruud van Asseldonk and contributors
+Licensed under the Apache 2.0 license <https://www.apache.org/licenses/>.
+
+This program incorporates the following Apache 2.0-licensed library:
+  unicode-width <https://github.com/unicode-rs/unicode-width>
+"#;
+
 /// Options that apply to all subcommands.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct GlobalOptions {
@@ -399,6 +409,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
 
     while let Some(arg) = args.next() {
         match arg.as_ref() {
+            Arg::Long("about") => cmd_help = Some("about"),
             Arg::Long("banner") => {
                 eval_opts.banner = parse_option! {
                     args: arg,
@@ -538,6 +549,9 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
     }
 
     let help_opt = match cmd_help {
+        Some("about") => Some(Cmd::Help {
+            usage: &[USAGE_ABOUT],
+        }),
         Some("build") => Some(Cmd::Help {
             usage: &[USAGE_BUILD],
         }),
@@ -913,9 +927,10 @@ mod test {
     }
 
     #[test]
-    fn parse_cmd_help_version() {
+    fn parse_cmd_help_about_version() {
         assert!(matches!(parse(&["rcl", "--help"]).1, Cmd::Help { .. }));
         assert!(matches!(parse(&["rcl", "--version"]).1, Cmd::Version));
+        assert!(matches!(parse(&["rcl", "--about"]).1, Cmd::Help { .. }));
         assert!(matches!(parse(&["rcl", "eval", "-h"]).1, Cmd::Help { .. }));
         assert!(matches!(
             parse(&["rcl", "format", "-h"]).1,

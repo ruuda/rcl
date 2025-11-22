@@ -27,6 +27,7 @@ Unreleased.
    calls. For compatibility, a comma is still accepted for now. This will likely
    change in a future release. In that case it will be clearly marked as a
    change with compatibility impact in the release notes.
+ * A new CLI option, `--about`, prints license and dependency information.
 
 ## 0.10.0
 
