@@ -19,7 +19,10 @@ In `bison` there is a Bison grammar. It can be compiled to check for errors,
 but the goal is not to be used directly; the goal is to provide a readable yet
 precise specification of the grammar, and to act as an aid in designing the
 grammar, to avoid making ad-hoc decisions in the hand-written parser that are
-difficult to parse with more general tools.
+difficult to parse with more general tools. To check the grammar for
+ambiguities:
+
+    bison -Werror=all grammar/bison/grammar.y
 
 ## Tree-sitter
 

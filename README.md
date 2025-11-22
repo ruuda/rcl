@@ -151,10 +151,6 @@ Run golden tests:
     cargo build
     golden/run.py
 
-Check the grammar for ambiguities:
-
-    bison -Werror=all grammar/bison/grammar.y
-
 Run unit tests and lints:
 
     cargo test
