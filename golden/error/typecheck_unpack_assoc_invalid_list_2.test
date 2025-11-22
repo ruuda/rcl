@@ -1,0 +1,13 @@
+// This is a regression test, previously this reported a type error
+// for expecting Dict but finding List, rather than complaining about
+// the dict unpack in the list.
+[1, ...[1, 2, 3]]
+
+# output:
+stdin:4:5
+  ╷
+4 │ [1, ...[1, 2, 3]]
+  ╵     ^~~~~~~~~~~~
+Error: Invalid dict unpack in list.
+
+Help: '...' unpacks dicts, use '..' to unpack lists and sets.

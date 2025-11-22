@@ -1057,6 +1057,10 @@ impl<'a> TypeChecker<'a> {
             }
         };
         match (&mut seq_type, collection_type.element_type()) {
+            (SeqType::TypedList { .. } | SeqType::UntypedList(..), _) => full_span
+                .error("Invalid dict unpack in list.")
+                .with_help(help_unpack_type())
+                .err(),
             // If we weren't sure whether it's a dict or set, and then there is
             // a dict unpack, then now we know it's a dict.
             (SeqType::SetOrDict, ElementType::Any) => Ok(SeqType::UntypedDict(
@@ -1106,10 +1110,6 @@ impl<'a> TypeChecker<'a> {
             (SeqType::TypedDict { .. }, ElementType::Any) => {
                 unreachable!("TypedDict checks that the collection is a dict.")
             }
-            (SeqType::TypedList { .. } | SeqType::UntypedList(..), _) => full_span
-                .error("Invalid dict unpack in list.")
-                .with_help(help_unpack_type())
-                .err(),
 
             // For list, it's clear why a list is a list (the square brackets),
             // so we can get away with one error. For sets we can't tell from
