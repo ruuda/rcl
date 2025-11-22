@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::{BinOp, CallArg, Expr, FormatFragment, Seq, Stmt, UnOp, Yield};
-use crate::error::{Error, IntoError, Result};
+use crate::error::{Error, IntoError, PathElement, Result};
 use crate::fmt_rcl::{self, format_rcl};
 use crate::loader::Loader;
 use crate::pprint::{concat, indent, Doc};
@@ -1015,14 +1015,34 @@ impl<'a> Evaluator<'a> {
                 Ok(())
             }
             Seq::Yield(Yield::UnpackElems {
+                unpack_span,
                 collection,
                 collection_span,
+                check_elem_type,
                 ..
             }) => {
-                match self.eval_expr(env, collection)? {
-                    Value::List(xs) => xs.iter().cloned().for_each(on_scalar),
-                    Value::Set(xs) => xs.iter().cloned().for_each(on_scalar),
-                    Value::Dict(..) => {
+                let full_span = unpack_span.union(*collection_span);
+                match (self.eval_expr(env, collection)?, check_elem_type) {
+                    (Value::List(xs), None) => xs.iter().cloned().for_each(on_scalar),
+                    (Value::Set(xs), None) => xs.iter().cloned().for_each(on_scalar),
+                    (Value::List(xs), Some(elem_type)) => {
+                        for (i, x) in xs.iter().enumerate() {
+                            x.is_instance_of(full_span, elem_type)
+                                .map_err(|err| err.with_path_element(PathElement::Index(i)))?;
+                            on_scalar(x.clone());
+                        }
+                    }
+                    (Value::Set(xs), Some(elem_type)) => {
+                        // For the set, we report the index of the error like
+                        // with lists. Even though set elements have no real
+                        // index, sets do have an iteration order.
+                        for (i, x) in xs.iter().enumerate() {
+                            x.is_instance_of(full_span, elem_type)
+                                .map_err(|err| err.with_path_element(PathElement::Index(i)))?;
+                            on_scalar(x.clone());
+                        }
+                    }
+                    (Value::Dict(..), _) => {
                         return collection_span
                             .error("Expected a list or set to unpack, but this is a dict.")
                             .err()

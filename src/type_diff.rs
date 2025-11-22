@@ -69,12 +69,6 @@ pub enum Typed<T> {
     Defer(T),
 }
 
-impl<T> Typed<T> {
-    pub fn is_defer(&self) -> bool {
-        matches!(self, Typed::Defer(..))
-    }
-}
-
 impl<T> TypeDiff<T> {
     pub fn check(self, at: Span) -> Result<Typed<T>> {
         self.check_with_context(at, "")

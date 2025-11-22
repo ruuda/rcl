@@ -920,8 +920,7 @@ impl<'a> TypeChecker<'a> {
                 }
             }
             Yield::UnpackElems { unpack_span, collection_span, collection, check_elem_type } => {
-                let collection_type = self.check_expr(type_any(), *collection_span, collection)?;
-                self.check_yield_unpack_elems(seq_type, *unpack_span, *collection_span, collection_type, check_elem_type)
+                self.check_yield_unpack_elems(seq_type, *unpack_span, collection, *collection_span, check_elem_type)
             },
             Yield::UnpackAssocs { unpack_span, collection_span, collection } => {
                 self.check_yield_unpack_assocs(seq_type, *unpack_span, collection, *collection_span)
@@ -934,10 +933,11 @@ impl<'a> TypeChecker<'a> {
         &mut self,
         mut seq_type: SeqType,
         unpack_span: Span,
+        collection: &mut Expr,
         collection_span: Span,
-        collection_type: SourcedType,
         check_elem_type: &mut Option<SourcedType>,
     ) -> Result<SeqType> {
+        let collection_type = self.check_expr(type_any(), collection_span, collection)?;
         let full_span = unpack_span.union(collection_span);
         let help_unpack_type = || {
             concat! {
@@ -1005,12 +1005,16 @@ impl<'a> TypeChecker<'a> {
                     ElementType::Scalar(inner) => inner.as_ref(),
                     _ => unreachable!("We handle all other cases in the outer match."),
                 };
-                // TODO: If this returns a defer, then we need to turn the node
-                // into a type checked unpack!
-                // TODO: Put it in `check_elem_type.
-                inner
+                // Typecheck the inferred type against the expected one. If we
+                // can't confirm this statically, then we need to set the
+                // expected element type for the runtime type check.
+                match inner
                     .is_subtype_of(elem_super)
-                    .check_unpack_scalar(full_span)?;
+                    .check_unpack_scalar(full_span)?
+                {
+                    Typed::Type(_) => { /* Statically ok. */ }
+                    Typed::Defer(_) => *check_elem_type = Some(elem_super.clone()),
+                }
                 *elem_infer = elem_infer.meet(inner);
                 Ok(seq_type)
             }
