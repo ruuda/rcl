@@ -1,0 +1,24 @@
+let xs: Any = [1, 2, 3];
+let ys: List[Bool] = [..xs];
+ys
+
+# output:
+stdin:2:25
+  ╷
+2 │ let ys: List[Bool] = [..xs];
+  ╵                         ^~
+in value
+at index 0
+Error: Type mismatch. Expected a value that fits this type:
+
+  Bool
+
+But got this value:
+
+  1
+
+stdin:2:14
+  ╷
+2 │ let ys: List[Bool] = [..xs];
+  ╵              ^~~~
+Note: Expected Bool because of this annotation.

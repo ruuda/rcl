@@ -1,0 +1,6 @@
+let xs: Any = {1, 2, 3};
+let ys: Set[Number] = {..xs};
+ys
+
+# output:
+{1, 2, 3}

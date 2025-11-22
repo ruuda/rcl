@@ -1015,19 +1015,22 @@ impl<'a> Evaluator<'a> {
                 Ok(())
             }
             Seq::Yield(Yield::UnpackElems {
-                unpack_span,
                 collection,
                 collection_span,
                 check_elem_type,
                 ..
             }) => {
-                let full_span = unpack_span.union(*collection_span);
                 match (self.eval_expr(env, collection)?, check_elem_type) {
                     (Value::List(xs), None) => xs.iter().cloned().for_each(on_scalar),
                     (Value::Set(xs), None) => xs.iter().cloned().for_each(on_scalar),
                     (Value::List(xs), Some(elem_type)) => {
                         for (i, x) in xs.iter().enumerate() {
-                            x.is_instance_of(full_span, elem_type)
+                            // We report the error at the collection span, not
+                            // the full unpack span, because the error includes
+                            // the index, so we get "error in value at index n",
+                            // and it's index n of the list, I think that makes
+                            // a bit more sense than blaming the full unpack.
+                            x.is_instance_of(*collection_span, elem_type)
                                 .map_err(|err| err.with_path_element(PathElement::Index(i)))?;
                             on_scalar(x.clone());
                         }
@@ -1037,7 +1040,7 @@ impl<'a> Evaluator<'a> {
                         // with lists. Even though set elements have no real
                         // index, sets do have an iteration order.
                         for (i, x) in xs.iter().enumerate() {
-                            x.is_instance_of(full_span, elem_type)
+                            x.is_instance_of(*collection_span, elem_type)
                                 .map_err(|err| err.with_path_element(PathElement::Index(i)))?;
                             on_scalar(x.clone());
                         }
