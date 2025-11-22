@@ -57,6 +57,15 @@ good to confirm:
 
     tools/fuzz_all.py
 
+### Check dependency licenses
+
+Ensure no problematic dependencies snuck in:
+
+    tools/check_deps.py
+
+It would be nice to turn this into a Nix flake check, but unfortunately that’s
+not easy due to tools downloading crate metadata on the fly.
+
 ## Publishing
 
 ### Repository
