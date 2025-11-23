@@ -169,6 +169,7 @@ fn rcl_evaluate_query_impl<'a>(
     Ok(())
 }
 
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[wasm_bindgen]
 pub fn rcl_evaluate_query(
     input: *const Value,
@@ -177,7 +178,9 @@ pub fn rcl_evaluate_query(
     out_width: u32,
     max_len: u32,
 ) {
-    // Safety: We assume here that the caller passes the result of evaluate_query_value.
+    // Safety: We assume here that the caller passes the result of
+    // `evaluate_query_value`. There's little point in marking this method
+    // unsafe as it's a JS interface, so silence the Clippy advice.
     let input_val: &Value = unsafe { &(*input) };
     let cfg = PrintConfig {
         width: out_width,

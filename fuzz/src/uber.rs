@@ -211,7 +211,7 @@ fn fuzz_eval_json_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -
         // limitation of Serde, so we do allow this mismatch.
         Err(err)
             if err.is_syntax()
-                && json_str.contains("e")
+                && json_str.contains('e')
                 && err.to_string().contains("number out of range") =>
         {
             Ok(())
@@ -257,6 +257,7 @@ fn fuzz_eval_format(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Re
 /// Check that any json that Serde can parse, can be evaluated as RCL.
 ///
 /// This is the closest we can get to testing that RCL is a json superset.
+#[allow(clippy::if_same_then_else)]
 fn fuzz_eval_json_superset(loader: &mut Loader, input: &str) {
     // First try to deserialize the input using Serde. If this fails, then we
     // don't even attempt RCL; this is about json supersets.

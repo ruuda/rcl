@@ -8,6 +8,8 @@
 //! A fuzzer to verify various properties of the `Decimal` implementation.
 
 #![no_main]
+// In this fuzzer we intentionally check that decimals are equal to itself.
+#![allow(clippy::eq_op)]
 
 use std::cmp::Ordering;
 use std::num::FpCategory;

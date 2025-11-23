@@ -10,6 +10,8 @@
 //! See also the [`rcl_fuzz::smith`] module.
 
 #![no_main]
+// Used by fuzz_mutator.
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use libfuzzer_sys::{fuzz_mutator, fuzz_target};
 use rcl_fuzz::random::WyRand;
