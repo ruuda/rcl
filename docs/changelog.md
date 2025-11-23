@@ -14,9 +14,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Next
+## 0.11.0
 
-Unreleased.
+Released 2025-11-23.
 
  * Add [unpack](syntax.md#unpack): `..` and `...` syntax that can be used inside
    lists, sets, and dicts to unpack one collection into another.
