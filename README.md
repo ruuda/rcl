@@ -123,10 +123,10 @@ target/release/rcl fmt examples/tags.rcl
 
 ## Status
 
-RCL is a hobby project without stability promise. It is usable and useful,
-well-tested, and well-documented, but also still experimental, and it may have
-breaking changes. Syntax highlighting is available for major editors like Vim,
-Emacs, Helix, and Zed.
+RCL is usable and useful, well-tested, and well-documented. It is still pre-1.0,
+though backwards-incompatible changes have been rare in the past years. Syntax
+highlighting is available for major editors like Vim, Emacs, Helix, and Zed.
+RCL is a community project without commercial support.
 
 ## Support RCL
 
