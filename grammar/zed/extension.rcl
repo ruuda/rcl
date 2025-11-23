@@ -14,7 +14,7 @@ let root = import "//Cargo.rcl";
       repository = "https://github.com/rcl-lang/tree-sitter-rcl",
       // When tools/update_repos.py exports this to the zed-rcl repository, it
       // replaces this commit with the HEAD of the tree-sitter-rcl repository.
-      commit = "8e12740263615de4e5697b5ae4701dd1092a3e6d",
+      commit = "a6e42ed21e23c32b76c1d8cb13ec60cdd0ed860d",
     },
   },
 }
