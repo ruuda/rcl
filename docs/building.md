@@ -48,3 +48,11 @@ fix the discrepancies is welcome:
  * aarch64-apple-darwin
 
 [reproducible]: https://reproducible-builds.org/
+
+## Python module
+
+See the readme in the `pyrcl` directory for how to build the Python module.
+
+## Wasm module
+
+See the readme in the `wasm` directory for how to build the Webassembly module.

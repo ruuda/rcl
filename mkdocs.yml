@@ -49,9 +49,10 @@ nav:
       - "rcl patch": "rcl_patch.md"
       - "rcl query": "rcl_query.md"
   - "Development":
-      - "About": "about.md"
+      - "Overview": "development.md"
       - "Building": "building.md"
       - "Testing": "testing.md"
       - "Grammars": "grammars.md"
       - "Tree-sitter": "tree_sitter.md"
       - "Releasing": "releasing.md"
+      - "About": "about.md"

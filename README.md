@@ -142,40 +142,9 @@ favorite editor if it is not yet supported.
 
 ## Development
 
-Run all tests and checks below in one command:
+To get started hacking on RCL, see [`docs/development.md`][dev-docs].
 
-    nix flake check
-
-Run golden tests:
-
-    cargo build
-    golden/run.py
-
-Run unit tests and lints:
-
-    cargo test
-    cargo clippy
-
-Typecheck Python sources
-
-    mypy --strict --exclude pyrcl .
-    mypy --strict pyrcl
-
-Check formatting:
-
-    cargo fmt
-    black .
-
-View coverage of the golden tests:
-
-    nix build .#coverage --out-link result
-    xdg-open result/index.html
-
-For how to run the fuzzers, see [`docs/testing.md`](docs/testing.md).
-
-## Building WASM
-
-See [the readme in the `wasm` directory](wasm/README.md).
+[dev-docs]: https://docs.ruuda.nl/rcl/development/
 
 ## License
 
