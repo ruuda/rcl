@@ -139,7 +139,7 @@ If you want to get all the _unique_ values, you can convert the result into a
 set with a comprehension:
 
 ```rcl
-{for distro in machine_distros.values(): distro}
+{ ..machine_distros.values() }
 // Evaluates to:
 {"ubuntu:20.04", "ubuntu:22.04", "ubuntu:23.10"}
 ```
