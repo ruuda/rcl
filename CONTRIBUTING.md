@@ -15,5 +15,6 @@ requests, please consider:
  * Be nice.
  * Please do not discuss politics in the issue tracker,
    the issue tracker is for technical issues.
+ * Do not post LLM-generated content.
 
 [proper-commit]: http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html
