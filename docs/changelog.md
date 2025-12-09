@@ -14,6 +14,13 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Next
+
+Unreleased.
+
+ * Add [`Set.transitive_closure`](type_set.md#transitive_closure), which is
+   useful for flattening trees.
+
 ## 0.11.0
 
 Released 2025-11-23.
