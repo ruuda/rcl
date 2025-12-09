@@ -1,0 +1,14 @@
+{0}.transitive_closure(x => x + 1)
+
+# output:
+stdin:1:24
+  ╷
+1 │ {0}.transitive_closure(x => x + 1)
+  ╵                        ^~~~~~~~~~
+Error: Type mismatch. Expected the expand function to return a list or set, but it returned 1.
+
+stdin:1:23
+  ╷
+1 │ {0}.transitive_closure(x => x + 1)
+  ╵                       ^
+In call to method 'Set.transitive_closure'.

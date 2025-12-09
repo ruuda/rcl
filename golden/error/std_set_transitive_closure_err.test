@@ -1,0 +1,20 @@
+{0}.transitive_closure(x => assert false: "Oops."; x)
+
+# output:
+stdin:1:36
+  ╷
+1 │ {0}.transitive_closure(x => assert false: "Oops."; x)
+  ╵                                    ^~~~~
+Error: Assertion failed. Oops.
+
+stdin:1:24
+  ╷
+1 │ {0}.transitive_closure(x => assert false: "Oops."; x)
+  ╵                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In internal call to the expansion function from 'transitive_closure'.
+
+stdin:1:23
+  ╷
+1 │ {0}.transitive_closure(x => assert false: "Oops."; x)
+  ╵                       ^
+In call to method 'Set.transitive_closure'.

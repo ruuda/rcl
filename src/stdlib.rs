@@ -746,7 +746,11 @@ fn builtin_set_transitive_closure(eval: &mut Evaluator, call: MethodCall) -> Res
                 // misleading.
                 err.replace_call_frame(
                     expand_span,
-                    concat! { "In internal call to expand from '" Doc::highlight("transitive_closure") "'." },
+                    concat! {
+                        "In internal call to the expansion function from '"
+                        Doc::highlight("transitive_closure")
+                        "'."
+                    },
                 );
                 err
             })?;
