@@ -82,6 +82,7 @@
 "sum"
 "to_lowercase"
 "to_uppercase"
+"transitive_closure"
 "values"
 "empty_set"
 "format_json"

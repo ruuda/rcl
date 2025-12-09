@@ -268,6 +268,51 @@ Return the sum of the elements in the set. For example:
 {3, 7, 11, 21}.sum()
 ```
 
+## transitive_closure
+
+```rcl
+Set.transitive_closure: (self: Set[T], expand: (T) -> Set[T]) -> Set[T]
+```
+
+Return the _transitive closure_ of the relation `expand`. In graph terms,
+starting with a set of nodes `self`, the transitive closure is the set of all
+nodes that are reachable from the initial set of nodes, whether directly through
+an edge, or indirectly through multiple hops. The function `expand` takes one
+node, and should return the nodes one hop removed; it should follow the
+outgoing edges. It can return those nodes either as a `Set[T]` or `List[T]`.
+
+The transitive closure is often useful to flatten trees. For example:
+
+```rcl
+let packages = {
+  is-number = { version = "7.0.0" },
+  is-odd = { version = "3.0.1", deps = ["is-number"] },
+  is-even = { version = "1.0.0", deps = ["is-odd", "mocha"] },
+  mocha = { version = "11.7.5", deps = ["diff", "picocolors"] },
+  diff = { version = "8.0.2" },
+  picocolors = { version = "1.1.1" },
+};
+
+// Evaluates to {"is-number", "is-odd"}.
+{"is-odd"}.transitive_closure(p => packages[p].get("deps", []))
+
+// Evaluates to {"diff", "is-even", "is-number", "is-odd", "mocha",
+// "picocolors"}.
+{"is-even"}.transitive_closure(p => packages[p].get("deps", []))
+```
+
+It is fine when multiple calls to `expand` return the same value, and even to
+return values that were already expanded, for example in a graph where nodes
+have multiple incoming edges or cycles:
+
+```rcl
+let out_edges = { a = {"b", "c"}, b = {"c", "a"}, c = {"a", "b"} };
+
+// Does not hang, despite the cycles in the graph.
+// Evaluates to {"a", "b", "c"}.
+{"a"}.transitive_closure(p => out_edges[p])
+```
+
 ## union
 
 To take the union of sets, use [unpack](syntax.md#unpack):

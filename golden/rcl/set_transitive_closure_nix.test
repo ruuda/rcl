@@ -1,0 +1,25 @@
+// This is a real output of `nix flake archive --dry-run --json`, and finding
+// all store paths that occur in it is one of the motivating cases for adding
+// the `transitive_closure` method.
+let nix_flake_archive = {
+  inputs = {
+    nixpkgs = {
+      inputs = {},
+      path = "/nix/store/nlbjx0mp83p2qzf1rkmzbgvq1wxfir81-source",
+    },
+    rust-overlay = {
+      inputs = {},
+      path = "/nix/store/5m7gz0f40875k7wypbfiapynxl69fhwm-source",
+    },
+  },
+  path = "/nix/store/3d4k8bmkpl765rfjj80yzl8v8f72h9d2-source",
+};
+
+{nix_flake_archive}.transitive_closure(p => p.inputs.values()).map(p => p.path)
+
+# output:
+{
+  "/nix/store/3d4k8bmkpl765rfjj80yzl8v8f72h9d2-source",
+  "/nix/store/5m7gz0f40875k7wypbfiapynxl69fhwm-source",
+  "/nix/store/nlbjx0mp83p2qzf1rkmzbgvq1wxfir81-source",
+}

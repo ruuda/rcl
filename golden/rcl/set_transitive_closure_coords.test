@@ -1,0 +1,41 @@
+// This is a more artificial example of transitive closure, that exercises
+// cases where the expand function returns points that are already explored
+// or pending on the frontier. We flood-fill a 5x5 grid.
+{[3, 3]}.transitive_closure(p => {
+  for dx in [-1, 0, 1]:
+  for dy in [-1, 0, 1]:
+  let x = p[0] + dx;
+  let y = p[1] + dy;
+  if (x >= 0) and (x < 5):
+  if (y >= 0) and (y < 5):
+  [x, y]
+})
+
+# output:
+{
+  [0, 0],
+  [0, 1],
+  [0, 2],
+  [0, 3],
+  [0, 4],
+  [1, 0],
+  [1, 1],
+  [1, 2],
+  [1, 3],
+  [1, 4],
+  [2, 0],
+  [2, 1],
+  [2, 2],
+  [2, 3],
+  [2, 4],
+  [3, 0],
+  [3, 1],
+  [3, 2],
+  [3, 3],
+  [3, 4],
+  [4, 0],
+  [4, 1],
+  [4, 2],
+  [4, 3],
+  [4, 4],
+}

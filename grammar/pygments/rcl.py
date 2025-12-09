@@ -68,6 +68,7 @@ BUILTINS = (
     "sum",
     "to_lowercase",
     "to_uppercase",
+    "transitive_closure",
     "values",
     # std and its members
     "empty_set",
