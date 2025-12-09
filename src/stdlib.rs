@@ -713,6 +713,73 @@ fn builtin_set_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     Ok(Value::Set(Rc::new(result)))
 }
 
+builtin_method!(
+    "Set.transitive_closure",
+    (expand: (fn (element: Any) -> {Any})) -> {Any},
+    const SET_TRANSITIVE_CLOSURE,
+    builtin_set_transitive_closure
+);
+fn builtin_set_transitive_closure(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let mut closed = BTreeSet::new();
+    let mut frontier = call.receiver.expect_set().clone();
+
+    let expand = &call.call.args[0].value;
+    let expand_span = call.call.args[0].span;
+
+    while let Some(elem) = frontier.pop_first() {
+        // See also the comments in `builtin_generic_map_impl` for how we handle
+        // spans of internal calls.
+        let args = [CallArg {
+            span: expand_span,
+            value: elem.clone(),
+        }];
+        let call = FunctionCall {
+            call_open: expand_span,
+            call_close: expand_span,
+            args: &args,
+        };
+        let expansion = eval
+            .eval_call(expand_span, expand, call)
+            .map_err(|mut err| {
+                // If the call includes a call frame for this call, then replace
+                // it with a more descriptive message, since the span is a bit
+                // misleading.
+                err.replace_call_frame(
+                    expand_span,
+                    concat! { "In internal call to expand from '" Doc::highlight("transitive_closure") "'." },
+                );
+                err
+            })?;
+
+        closed.insert(elem);
+
+        match expansion {
+            Value::List(xs) => xs.iter().for_each(|x| {
+                if !closed.contains(x) {
+                    frontier.insert(x.clone());
+                }
+            }),
+            Value::Set(xs) => xs.iter().for_each(|x| {
+                if !closed.contains(x) {
+                    frontier.insert(x.clone());
+                }
+            }),
+            not_collection => {
+                return expand_span
+                    .error("Type mismatch.")
+                    .with_body(concat! {
+                        "Expected the expand function to return a list or set, but it returned "
+                        format_rcl(&not_collection).into_owned()
+                        "."
+                    })
+                    .err();
+            }
+        }
+    }
+
+    Ok(Value::Set(Rc::new(closed)))
+}
+
 fn builtin_sum_impl<'a>(
     call: MethodCall,
     xs: impl IntoIterator<Item = &'a Value>,
