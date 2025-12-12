@@ -1,0 +1,22 @@
+// This is a regression test for a hang identified by the fuzzer:
+// we can continue to generate new values infinitely. It did exit
+// due to the evaluation budget eventually, but far too slowly.
+// This case is particularly bad, because we build an ever growing
+// nested list, and the BTreeSet needs to descend into both to
+// compute their `Ord` relation.
+{0}.transitive_closure(x => [[x]])
+
+# output:
+stdin:7:5
+  ╷
+7 │ {0}.transitive_closure(x => [[x]])
+  ╵     ^~~~~~~~~~~~~~~~~~
+Error: A value in the transitive closure exceeds the maximum nesting depth: [
+  [[[[[[[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]]]]]]],
+]
+
+stdin:7:23
+  ╷
+7 │ {0}.transitive_closure(x => [[x]])
+  ╵                       ^
+In call to method 'Set.transitive_closure'.

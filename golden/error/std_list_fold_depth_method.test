@@ -1,0 +1,19 @@
+// The depth increases, because the List.len method retains its receiver.
+std.range(0, 50).fold([], (acc, x) => [null, true, acc.len])
+
+# output:
+stdin:2:18
+  ╷
+2 │ std.range(0, 50).fold([], (acc, x) => [null, true, acc.len])
+  ╵                  ^~~~
+Error: Accumulator exceeds the maximum nesting depth: [
+  null,
+  true,
+  «method List.len»,
+]
+
+stdin:2:22
+  ╷
+2 │ std.range(0, 50).fold([], (acc, x) => [null, true, acc.len])
+  ╵                      ^
+In call to method 'List.fold'.

@@ -1,0 +1,15 @@
+// See also the other transitive closure depth test.
+{0}.transitive_closure(x => [_ => x])
+
+# output:
+stdin:2:5
+  ╷
+2 │ {0}.transitive_closure(x => [_ => x])
+  ╵     ^~~~~~~~~~~~~~~~~~
+Error: A value in the transitive closure exceeds the maximum nesting depth: «function 0:82..88»
+
+stdin:2:23
+  ╷
+2 │ {0}.transitive_closure(x => [_ => x])
+  ╵                       ^
+In call to method 'Set.transitive_closure'.

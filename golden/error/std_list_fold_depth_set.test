@@ -1,0 +1,59 @@
+// This is a regression test for a hang due to deeply nested values.
+// The hang is even worse for e.g. x => {x, {x}}, but that would make
+// the test too slow.
+std.range(0, 1000).fold([], (x, _) => {x, 1})
+
+# output:
+stdin:4:20
+  ╷
+4 │ std.range(0, 1000).fold([], (x, _) => {x, 1})
+  ╵                    ^~~~
+Error: Accumulator exceeds the maximum nesting depth: {
+  1,
+  {
+    1,
+    {
+      1,
+      {
+        1,
+        {
+          1,
+          {
+            1,
+            {
+              1,
+              {
+                1,
+                {
+                  1,
+                  {
+                    1,
+                    {
+                      1,
+                      {
+                        1,
+                        {
+                          1,
+                          {
+                            1,
+                            {1, {1, {1, {1, {1, {1, {1, {1, {1, {1, []}}}}}}}}}},
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}
+
+stdin:4:24
+  ╷
+4 │ std.range(0, 1000).fold([], (x, _) => {x, 1})
+  ╵                        ^
+In call to method 'List.fold'.

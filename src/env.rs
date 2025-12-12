@@ -74,4 +74,9 @@ impl<T> Env<T> {
         );
         self.bindings.truncate(n);
     }
+
+    /// Return the maximum of the function `f` applied to every binding.
+    pub fn map_fold_max<F: FnMut(&T) -> u32>(&self, mut f: F) -> u32 {
+        self.bindings.iter().map(|b| f(&b.1)).max().unwrap_or(0)
+    }
 }

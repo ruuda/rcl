@@ -331,6 +331,31 @@ impl Value {
         type_.explain_error(Side::Expected, &mut error);
         error.err()
     }
+
+    /// Return the depth of the most deeply nested primitive value.
+    ///
+    /// This is expensive to compute as it traverses the entire value. Its goal
+    /// is to prevent very deep values where the `Ord` implementation is very
+    /// expensive.
+    pub fn depth(&self) -> u32 {
+        match self {
+            Value::Null => 0,
+            Value::Bool(..) => 0,
+            Value::Number(..) => 0,
+            Value::String(..) => 0,
+            Value::List(xs) => 1 + xs.iter().map(Value::depth).max().unwrap_or(0),
+            Value::Set(xs) => 1 + xs.iter().map(Value::depth).max().unwrap_or(0),
+            Value::Dict(kv) => {
+                1 + u32::max(
+                    kv.keys().map(Value::depth).max().unwrap_or(0),
+                    kv.values().map(Value::depth).max().unwrap_or(0),
+                )
+            }
+            Value::Function(f) => 1 + f.env.map_fold_max(Value::depth),
+            Value::BuiltinFunction(..) => 0,
+            Value::BuiltinMethod(m) => 1 + m.receiver.depth(),
+        }
+    }
 }
 
 impl<'a> From<&'a str> for Value {

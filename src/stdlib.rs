@@ -18,6 +18,7 @@ use crate::fmt_rcl::format_rcl;
 use crate::markup::Markup;
 use crate::pprint::{concat, indent, Doc};
 use crate::runtime::{builtin_function, builtin_method, FunctionCall, MethodCall, Value};
+use crate::source::Span;
 use crate::types::AsTypeName;
 
 builtin_function!(
@@ -713,6 +714,32 @@ fn builtin_set_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     Ok(Value::Set(Rc::new(result)))
 }
 
+/// Confirm that the value is not too deeply nested.
+///
+/// Functions that can recursively build values, such as fold and transitive
+/// closure, can generate values that have a "size" that grows at runtime,
+/// beyond anything proportional to the input. E.g. transitive closure with
+/// expansion `x => [[x]]`. Those deeply nested objects are problematic to put
+/// in a `BTreeSet`, because the `Ord` implementation has to descend all the
+/// way into the value, and for larger sets like what transitive closure builds,
+/// this slows everything to a crawl. The fuzzer *will* find pathological cases
+/// like this and hang on them, so we ban them.
+fn check_value_depth(error_span: Span, description: &'static str, value: &Value) -> Result<()> {
+    #[cfg(any(fuzzing, debug_assertions))]
+    let max_depth = 25;
+
+    #[cfg(all(not(fuzzing), not(debug_assertions)))]
+    let max_depth = 250;
+
+    if value.depth() < max_depth {
+        Ok(())
+    } else {
+        let msg = concat! { description " exceeds the maximum nesting depth:" };
+        let body = format_rcl(value).into_owned();
+        error_span.error(msg).with_body(body).err()
+    }
+}
+
 builtin_method!(
     "Set.transitive_closure",
     (expand: (fn (element: Any) -> {Any})) -> {Any},
@@ -725,8 +752,13 @@ fn builtin_set_transitive_closure(eval: &mut Evaluator, call: MethodCall) -> Res
 
     let expand = &call.call.args[0].value;
     let expand_span = call.call.args[0].span;
+    let method_span = call.method_span;
 
     while let Some(elem) = frontier.pop_first() {
+        // Prevent hangs from deeply nested values that are expensive to put in
+        // the BTreeSet.
+        check_value_depth(method_span, "A value in the transitive closure", &elem)?;
+
         // See also the comments in `builtin_generic_map_impl` for how we handle
         // spans of internal calls.
         let args = [CallArg {
@@ -1341,6 +1373,7 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let list = call.receiver.expect_list();
     let seed = &call.call.args[0];
     let reduce = &call.call.args[1];
+    let method_span = call.method_span;
 
     let mut acc = seed.value.clone();
 
@@ -1373,6 +1406,9 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
             );
             err
         })?;
+
+        // Avoid hangs from very deeply nested values.
+        check_value_depth(method_span, "Accumulator", &acc)?;
     }
 
     Ok(acc)
