@@ -726,7 +726,7 @@ fn builtin_set_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
 /// like this and hang on them, so we ban them.
 fn check_value_depth(error_span: Span, description: &'static str, value: &Value) -> Result<()> {
     #[cfg(any(fuzzing, debug_assertions))]
-    let max_depth = 25;
+    let max_depth = 10;
 
     #[cfg(all(not(fuzzing), not(debug_assertions)))]
     let max_depth = 250;
