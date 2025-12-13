@@ -24,6 +24,8 @@ Unreleased.
    `x >= -1` is now valid. Previously this required parentheses around the `-1`.
  * Fix the `rcl format` formatting of collections that use unpack. Previously,
    lists and sets inadvertently included a trailing space.
+ * Comments are now allowed in more places, in particular right after `=>` in
+   functions.
 
 ## 0.11.0
 

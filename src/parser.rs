@@ -680,7 +680,6 @@ impl<'a> Parser<'a> {
 
         self.skip_non_code()?;
         self.parse_token(Token::FatArrow, "Expected '=>' here.")?;
-        self.skip_non_code()?;
         let (body_span, body) = self.parse_expr()?;
 
         let result = Expr::Function {
