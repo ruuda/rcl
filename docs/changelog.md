@@ -27,6 +27,8 @@ Unreleased.
  * Comments are now allowed in more places, in particular right after `=>` in
    functions.
  * Add [`Set.to_list`](type_set.md#to_list) method.
+ * Add [`List.to_set_dedup`](type_list.md#to_set_dedup)
+   and [`List.to_set_unique`](type_list.md#to_set_unique) methods.
 
 ## 0.11.0
 

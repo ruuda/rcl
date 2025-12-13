@@ -68,6 +68,8 @@ BUILTINS = (
     "sum",
     "to_list",
     "to_lowercase",
+    "to_set_dedup",
+    "to_set_unique",
     "to_uppercase",
     "transitive_closure",
     "values",

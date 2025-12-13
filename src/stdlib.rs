@@ -727,6 +727,50 @@ fn builtin_set_to_list(_eval: &mut Evaluator, call: MethodCall) -> Result<Value>
     Ok(Value::List(Rc::new(result)))
 }
 
+builtin_method!(
+    "List.to_set_unique",
+    () -> {Any},
+    const LIST_TO_SET_UNIQUE,
+    builtin_list_to_set_unique
+);
+fn builtin_list_to_set_unique(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    let mut result = BTreeSet::new();
+
+    for elem in list.iter() {
+        let is_new = result.insert(elem.clone());
+        if !is_new {
+            return call
+                .receiver_span
+                .error(concat! {
+                    "Expected unique elements to convert to set, but got a duplicate: "
+                    format_rcl(elem).into_owned()
+                })
+                .with_help(concat! {
+                    "Use '" Doc::highlight("to_set_dedup") "' to discard duplicates."
+                })
+                .err();
+        }
+    }
+
+    Ok(Value::Set(Rc::new(result)))
+}
+
+builtin_method!(
+    "List.to_set_dedup",
+    () -> {Any},
+    const LIST_TO_SET_DEDUP,
+    builtin_list_to_set_dedup
+);
+fn builtin_list_to_set_dedup(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let list = call.receiver.expect_list();
+    let mut result = BTreeSet::new();
+    for elem in list.iter() {
+        result.insert(elem.clone());
+    }
+    Ok(Value::Set(Rc::new(result)))
+}
+
 /// Confirm that the value is not too deeply nested.
 ///
 /// Functions that can recursively build values, such as fold and transitive

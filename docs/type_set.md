@@ -274,7 +274,8 @@ Return the sum of the elements in the set. For example:
 Set.to_list: (self: Set[T]) -> List[T]
 ```
 
-Convert the set to a list. This is equivalent to a list comprehension:
+Convert the set to a list. This is equivalent to a [list
+comprehension](syntax.md#comprehensions):
 
 ```rcl
 let set = {1, 2, 3};
