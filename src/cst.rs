@@ -380,9 +380,12 @@ pub struct Seq {
 }
 
 impl Seq {
-    /// Whether the inner yield is `Yield::Elem` (as opposed to `AssocExpr` or `AssocIdent`).
+    /// Whether the inner yield is for single elements, as opposed to assocs.
     pub fn is_inner_elem(&self) -> bool {
-        matches!(self.body.inner, Yield::Elem { .. })
+        matches!(
+            self.body.inner,
+            Yield::Elem { .. } | Yield::UnpackElems { .. }
+        )
     }
 
     /// True when there are any control items, false if there is only the yield.

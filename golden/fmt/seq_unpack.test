@@ -9,7 +9,7 @@ let long_unpack = {
   ..widgets.properties_b,
   ..widgets.properties_c,
 };
-let short_unpack = [..xs, ..ys ];
+let short_unpack = [..xs, ..ys];
 let dict_unpack = {
   k = v,
   ...default_options,

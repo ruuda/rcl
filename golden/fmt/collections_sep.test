@@ -18,6 +18,12 @@ let ys = {for y in ys: y * 2};
 let xs = { for x in xs: name = x };
 let ys = { for y in ys: "name": y };
 
+// The same is still true in the presence of unpack,
+// lists and dicts are tight, dicts get spacing.
+let xs = [for x in xs: ..x];
+let ys = {for y in ys: ..x};
+let zs = { for z in zs: ...z };
+
 null
 
 # output:
@@ -40,5 +46,11 @@ let ys = {for y in ys: y * 2};
 // But dict comprehensions do for consistency with dicts.
 let xs = { for x in xs: name = x };
 let ys = { for y in ys: "name": y };
+
+// The same is still true in the presence of unpack,
+// lists and dicts are tight, dicts get spacing.
+let xs = [for x in xs: ..x];
+let ys = {for y in ys: ..x};
+let zs = { for z in zs: ...z };
 
 null
