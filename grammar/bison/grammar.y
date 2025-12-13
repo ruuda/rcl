@@ -67,7 +67,10 @@ expr_unop: expr_not_op | UNOP expr_unop;
 // dedicated one for every binop, so you can repeat the same binop without
 // parens, but you cannot mix multiple different ones. To keep this file simple,
 // we don't expand it out here and we have just one generic binop.
-expr_binop: expr_not_op | expr_not_op BINOP expr_binop;
+// Also note, we allow `expr_unop` as the final term in a binop chain,
+// because there it's not confusing, but we do not allow it in the middle,
+// where it could lead to confusion.
+expr_binop: expr_unop | expr_not_op BINOP expr_binop;
 
 // Because we disallow confusing operator combinations without parens, the nodes
 // of an operator are "not binary operator", "not binop" for short.

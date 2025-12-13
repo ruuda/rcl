@@ -601,20 +601,6 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Return an error if we find a unary operator.
-    ///
-    /// This is used before `parse_expr_not_op` to provide more helpful error
-    /// messages in places where unary operators are not allowed.
-    fn check_no_unop(&self) -> Result<()> {
-        match self.peek() {
-            token if to_unop(token).is_some() => self
-                .error("Expected an expression here.")
-                .with_help("Wrap the expression in parentheses to use this operator here.")
-                .err(),
-            _ => self.check_bad_unop(),
-        }
-    }
-
     /// Check if we should parse a function (`true`) or a different expression.
     ///
     /// There is an ambiguity in e.g. `(x)`, which could be an identifier in
@@ -736,8 +722,19 @@ impl<'a> Parser<'a> {
                     self.skip_non_code()?;
                     let span = self.consume();
                     self.skip_non_code()?;
-                    self.check_no_unop()?;
-                    let (rhs_span, rhs) = self.parse_expr_not_op()?;
+                    self.check_bad_unop()?;
+
+                    // In a chain of binary operators, if we have an unop, it
+                    // may only occur in the final right-hand side, not in the
+                    // middle of the chain. We don't need any special handling
+                    // for that, because unops cannot contain binops, so if we
+                    // end up trying to parse an unop here, if a binop follows,
+                    // that would be reported from `parse_expr_unop`.
+                    let (rhs_span, rhs) = match to_unop(self.peek()) {
+                        Some(..) => self.parse_expr_unop()?,
+                        None => self.parse_expr_not_op()?,
+                    };
+
                     allowed_span = Some(span);
                     allowed_op = Some(op);
                     result = Expr::BinOp {
