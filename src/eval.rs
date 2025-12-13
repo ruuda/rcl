@@ -465,6 +465,7 @@ impl<'a> Evaluator<'a> {
                     (Value::Set(_), "sort") => Some(&stdlib::SET_SORT),
                     (Value::Set(_), "sort_by") => Some(&stdlib::SET_SORT_BY),
                     (Value::Set(_), "sum") => Some(&stdlib::SET_SUM),
+                    (Value::Set(_), "to_list") => Some(&stdlib::SET_TO_LIST),
                     (Value::Set(_), "transitive_closure") => Some(&stdlib::SET_TRANSITIVE_CLOSURE),
 
                     _other => None,

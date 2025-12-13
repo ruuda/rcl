@@ -714,6 +714,19 @@ fn builtin_set_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     Ok(Value::Set(Rc::new(result)))
 }
 
+builtin_method!(
+    "Set.to_list",
+    () -> [Any],
+    const SET_TO_LIST,
+    builtin_set_to_list
+);
+fn builtin_set_to_list(_eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+    let set = call.receiver.expect_set();
+    let mut result = Vec::with_capacity(set.len());
+    result.extend(set.iter().cloned());
+    Ok(Value::List(Rc::new(result)))
+}
+
 /// Confirm that the value is not too deeply nested.
 ///
 /// Functions that can recursively build values, such as fold and transitive

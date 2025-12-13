@@ -66,6 +66,7 @@ BUILTINS = (
     "split_lines",
     "starts_with",
     "sum",
+    "to_list",
     "to_lowercase",
     "to_uppercase",
     "transitive_closure",
