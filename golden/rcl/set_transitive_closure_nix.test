@@ -15,7 +15,11 @@ let nix_flake_archive = {
   path = "/nix/store/3d4k8bmkpl765rfjj80yzl8v8f72h9d2-source",
 };
 
-{nix_flake_archive}.transitive_closure(p => p.inputs.values()).map(p => p.path)
+{nix_flake_archive}
+  .transitive_closure(p => p.inputs.values())
+  .to_list()
+  .map(p => p.path)
+  .to_set_dedup()
 
 # output:
 {

@@ -533,6 +533,10 @@ fn builtin_generic_map_impl<
     Ok(())
 }
 
+// TODO: Move into `List.map`, if `Set.map` does not return.
+// In the past both `List.map` and `Set.map` used this generic map
+// implementation, however we removed `Set.map` because returning the result
+// as a set was a footgun. Maybe it will make a comeback, but return a list?
 fn builtin_map_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
     eval: &mut Evaluator,
     call: MethodCall,
@@ -582,6 +586,10 @@ fn builtin_filter_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
     })
 }
 
+// TODO: Move into `List.flat_map`, if `Set.flat_map` does not return.
+// In the past both `List.flat_map` and `Set.flat_map` used this generic map
+// implementation, however we removed `Set.flat_map` because returning the
+// result as a set was a footgun. Maybe it will make a comeback, but return a list?
 fn builtin_flat_map_impl<'a, I: IntoIterator<Item = &'a Value>, F: FnMut(Value)>(
     eval: &mut Evaluator,
     call: MethodCall,
@@ -664,38 +672,6 @@ fn builtin_list_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> 
     let mut result = Vec::new();
     builtin_filter_impl(eval, call, "List.filter", list, |v| result.push(v))?;
     Ok(Value::List(Rc::new(result)))
-}
-
-builtin_method!(
-    "Set.map",
-    // TODO: Add type variables so we can describe this more accurately.
-    (map_element: (fn (element: Any) -> Any)) -> {Any},
-    const SET_MAP,
-    builtin_set_map
-);
-fn builtin_set_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
-    let set = call.receiver.expect_set();
-    let mut result = BTreeSet::new();
-    builtin_map_impl(eval, call, "Set.map", set, |v| {
-        result.insert(v);
-    })?;
-    Ok(Value::Set(Rc::new(result)))
-}
-
-builtin_method!(
-    "Set.flat_map",
-    // TODO: Add type variables so we can describe this more accurately.
-    (map_element: (fn (element: Any) -> {Any})) -> {Any},
-    const SET_FLAT_MAP,
-    builtin_set_flat_map
-);
-fn builtin_set_flat_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
-    let set = call.receiver.expect_set();
-    let mut result = BTreeSet::new();
-    builtin_flat_map_impl(eval, call, "Set.flat_map", set, |v| {
-        result.insert(v);
-    })?;
-    Ok(Value::Set(Rc::new(result)))
 }
 
 builtin_method!(
