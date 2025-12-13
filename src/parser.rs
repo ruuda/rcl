@@ -601,6 +601,20 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    /// Return an error if we find a unary operator.
+    ///
+    /// This is used before `parse_expr_not_op` to provide more helpful error
+    /// messages in places where unary operators are not allowed.
+    fn check_no_unop(&self) -> Result<()> {
+        match self.peek() {
+            token if to_unop(token).is_some() => self
+                .error("Expected an expression here.")
+                .with_help("Wrap the expression in parentheses to use this operator here.")
+                .err(),
+            _ => self.check_bad_unop(),
+        }
+    }
+
     /// Check if we should parse a function (`true`) or a different expression.
     ///
     /// There is an ambiguity in e.g. `(x)`, which could be an identifier in
@@ -722,6 +736,7 @@ impl<'a> Parser<'a> {
                     self.skip_non_code()?;
                     let span = self.consume();
                     self.skip_non_code()?;
+                    self.check_no_unop()?;
                     let (rhs_span, rhs) = self.parse_expr_not_op()?;
                     allowed_span = Some(span);
                     allowed_op = Some(op);
@@ -790,9 +805,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr_not_op(&mut self) -> Result<(Span, Expr)> {
-        // TODO: check for operators before, and report a pretty error
-        // to clarify that parens must be used to disambiguate.
-
         let begin = self.peek_span();
         let base_expr = self.parse_expr_term()?;
         let mut inner_span;

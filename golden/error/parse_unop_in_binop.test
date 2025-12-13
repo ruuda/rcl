@@ -1,0 +1,13 @@
+// Unop inside binop is not allowed, because it makes the expression below
+// ambiguous, is it 'true and (not false) and true' or 'true and (not (false
+// and true))'?
+true and not false and true
+
+# output:
+stdin:4:10
+  ╷
+4 │ true and not false and true
+  ╵          ^~~
+Error: Expected an expression here.
+
+Help: Wrap the expression in parentheses to use this operator here.
