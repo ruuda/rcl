@@ -1,0 +1,23 @@
+[
+  // In final position, an unop in binop is allowed:
+  true and not false,
+  true and true and not false,
+  10 > -1,
+  10 * -1,
+
+  // In the middle it would be confusing, so it's disallowed:
+  true and not false and true
+]
+
+# output:
+stdin:9:22
+  ╷
+9 │   true and not false and true
+  ╵                      ^~~
+Error: Parentheses are needed to clarify the precedence of this operator.
+
+stdin:9:12
+  ╷
+9 │   true and not false and true
+  ╵            ^~~
+Note: Without parentheses, it is not clear whether this operator applies only to the left-hand side, or the full expression.

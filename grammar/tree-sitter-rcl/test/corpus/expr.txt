@@ -200,6 +200,42 @@ x and y + z
     (binop)
     (ident)))
 
+==========
+Binop unop
+==========
+
+// An unop is allowed in final position
+x and not y
+
+---
+
+(source_file
+  (comment)
+  (expr_binop
+    (ident)
+    (binop (binop_keyword))
+    (expr_unop
+      (unop (unop_keyword))
+      (ident))))
+
+==========
+Unop binop
+==========
+
+// But a binop is not allowed inside an unop
+not x and y
+
+---
+
+(source_file
+  (comment)
+  (expr_unop
+    (unop (unop_keyword))
+    (ERROR
+      (ident)
+      (ident))
+    (ident)))
+
 ==============
 Number decimal
 ==============

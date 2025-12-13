@@ -165,7 +165,10 @@ module.exports = grammar({
     // implemented in the parser, it is more akin to a logic error, and it's
     // only disallowed to force code to be unambiguous for humans. For this
     // parser, nothing prevents us from just parsing it.
-    expr_binop: $ => seq($._expr_not_op, repeat1(seq($.binop, $._expr_not_op))),
+    expr_binop: $ => seq(
+        repeat1(seq($._expr_not_op, $.binop)),
+        choice($.expr_unop, $._expr_not_op),
+    ),
 
     _expr_not_op: $ => choice(
       $._expr_term,

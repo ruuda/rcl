@@ -722,7 +722,19 @@ impl<'a> Parser<'a> {
                     self.skip_non_code()?;
                     let span = self.consume();
                     self.skip_non_code()?;
-                    let (rhs_span, rhs) = self.parse_expr_not_op()?;
+                    self.check_bad_unop()?;
+
+                    // In a chain of binary operators, if we have an unop, it
+                    // may only occur in the final right-hand side, not in the
+                    // middle of the chain. We don't need any special handling
+                    // for that, because unops cannot contain binops, so if we
+                    // end up trying to parse an unop here, if a binop follows,
+                    // that would be reported from `parse_expr_unop`.
+                    let (rhs_span, rhs) = match to_unop(self.peek()) {
+                        Some(..) => self.parse_expr_unop()?,
+                        None => self.parse_expr_not_op()?,
+                    };
+
                     allowed_span = Some(span);
                     allowed_op = Some(op);
                     result = Expr::BinOp {
@@ -790,9 +802,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr_not_op(&mut self) -> Result<(Span, Expr)> {
-        // TODO: check for operators before, and report a pretty error
-        // to clarify that parens must be used to disambiguate.
-
         let begin = self.peek_span();
         let base_expr = self.parse_expr_term()?;
         let mut inner_span;

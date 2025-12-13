@@ -20,6 +20,8 @@ Unreleased.
 
  * Add [`Set.transitive_closure`](type_set.md#transitive_closure), which is
    useful for flattening trees.
+ * Relax the grammar for unary operators after binary operators. In particular,
+   `x >= -1` is now valid. Previously this required parentheses around the `-1`.
 
 ## 0.11.0
 
