@@ -352,14 +352,28 @@ let defaults = { kind = "fruit", tasty = true };
 { kind = "fruit", name = "grapefruit", tasty = true }
 ```
 
+Unpack is equivalent to a [comprehension](#comprehensions):
+
+```rcl
+let xs = [1, 2, 42];
+// These two are equivalent:
+let a = [for x in xs: x];
+let b = [..xs];
+
+let user = { name = "Eldon Tyrell", email = "eldon@tyrell.com" };
+// These two are equivalent:
+let a = { for k, v in user: k: v };
+let b = { ...user };
+```
+
 ## Comprehensions
 
 Inside collection literals (lists, dicts, and sets), aside from single
-elements, it is possible to use comprehensions. There are three supported
-constructs: `for`, `if`, and `let`.
+elements and unpacks, it is possible to use comprehensions. There are three
+supported constructs: `for`, `if`, and `let`.
 
 ```rcl
-let dict = {"name": "pear", "flavor": "sweet"};
+let dict = { name = "pear", flavor = "sweet" };
 [for key, value in dict: value]
 // Evaluates to:
 ["pear", "sweet"]
@@ -370,9 +384,9 @@ let dict = {"name": "pear", "flavor": "sweet"};
 // When log_level >= 2, evaluates to:
 ["Verbose message"]
 
-{let x = 10; "value": x}
+{ let x = 10; value = x }
 // Evaluates to:
-{"value": 10}
+{ value = 10 }
 ```
 
 These can be combined arbitrarily:
@@ -380,7 +394,7 @@ These can be combined arbitrarily:
 ```rcl
 let labels = {
   for server in servers:
-  let all_server_labels = { ..server_labels[server], ..default_labels };
+  let all_server_labels = { ..server.labels, ..default_labels };
   for label in all_server_labels:
   if not excluded_labels.contains(label):
   label
