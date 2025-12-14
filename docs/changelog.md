@@ -18,17 +18,60 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased.
 
- * Add [`Set.transitive_closure`](type_set.md#transitive_closure), which is
-   useful for flattening trees.
- * Relax the grammar for unary operators after binary operators. In particular,
-   `x >= -1` is now valid. Previously this required parentheses around the `-1`.
- * Fix the `rcl format` formatting of collections that use unpack. Previously,
-   lists and sets inadvertently included a trailing space.
- * Comments are now allowed in more places, in particular right after `=>` in
-   functions.
- * Add [`Set.to_list`](type_set.md#to_list) method.
- * Add [`List.to_set_dedup`](type_list.md#to_set_dedup)
-   and [`List.to_set_unique`](type_list.md#to_set_unique) methods.
+**Changes with compatibility impact:**
+
+ * [`Set.map`](type_set.md#map) and [`Set.flat_map`](type_set.md#flat_map) have
+   been removed, as they were a common source of mistakes. See below for
+   alternatives.
+
+New features and bugfixes:
+
+* Add [`Set.transitive_closure`](type_set.md#transitive_closure), which is
+  useful for flattening trees.
+* Add [`Set.to_list`](type_set.md#to_list),
+  [`List.to_set_dedup`](type_list.md#to_set_dedup),
+  and [`List.to_set_unique`](type_list.md#to_set_unique).
+* Relax the grammar for unary operators after binary operators. In particular,
+  `x >= -1` is now valid. Previously this required parentheses around the `-1`.
+* Comments are now allowed in more places, in particular right after `=>` in
+  functions.
+* Fix the `rcl format` formatting of collections that use unpack. Previously,
+  lists and sets inadvertently included a trailing space.
+
+### Alternatives for Set.map and Set.flat_map, and rationale for removal
+
+These methods returned sets,
+and the implicit deduplication could be unexpected. For example, the following
+snippet looks like it sums the lengths of the strings:
+
+```rcl
+let fruits = {"apple", "orange", "banana"};
+fruits.map(x => x.len()).sum()
+```
+
+In reality, it summed the _unique_ lengths of the strings, for a total of 11,
+instead of the expected 17.
+
+To update, you can use the new [`Set.to_list`](type_set.md#to_list)
+method to convert to a list and apply [`List.map`](type_list.md#map) or
+[`List.flat_map`](type_list#flat_map), possibly followed by the new
+[`List.to_set_dedup`](type_list.md#to_set_dedup) if deduplication was
+intentional. Alternatively, you can use a
+[comprehension](syntax.md#comprehensions).
+
+```rcl
+// Identical to the previous behavior, returns 5 + 6 = 11.
+fruits.to_list().map(x => x.len()).to_set_dedup().sum()
+
+// If deduplication was not intended, keep the list. Returns 5 + 6 + 6 = 17.
+fruits.to_list().map(x => x.len()).sum()
+
+// Alternatively, use a set comprehension when deduplication was desired.
+{for fruit in fruits: fruit.len()}.sum()
+
+// Or a list comprehension when deduplication was not intended.
+[for fruit in fruits: fruit.len()].sum()
+```
 
 ## 0.11.0
 
