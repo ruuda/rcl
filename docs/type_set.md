@@ -105,36 +105,30 @@ command.
 
 ## flat_map
 
-```rcl
-Set.flat_map: (self: Set[T], map_element: T -> Set[U]) -> Set[U]
-```
-
-Construct a new set by taking every element in the set, applying `map_element`
-to it (which should return a collection), and concatenating those results.
-`flat_map` is like [`map`](#map), except that it flattens the result. It is
-equivalent to a [set comprehension](syntax.md#comprehensions) with a nested
-loop: `a` and `b` are identical in this example:
+To flat-map a function over a set, you can either use a
+[comprehension](syntax.md#comprehensions), or convert the set to a list with
+[`to_list`](#to_list) and then use [`List.flat_map`](type_list.md#flat_map):
 
 ```rcl
 let apps = {
   { name = "sshd", ports = {22} },
   { name = "nginx", ports = {80, 443} },
+  { name = "caddy", ports = {80, 443} },
 };
-let a = apps.flat_map(app => app.ports);
-let b = {
-  for app in apps:
-  for port in app.ports:
-  port
-};
-// Both a and b evaluate to:
-{22, 80, 443}
+
+// Convert to list and then map, evaluates to {22, 80, 443}.
+apps.to_list().flat_map(app => app.ports).to_set_dedup()
+
+// List comprehension, evaluates to [80, 443, 80, 443, 22].
+[for app in apps: ..app.ports]
+
+// Set comprehension, evaluates to {22, 80, 443}.
+{for app in apps: ..app.ports}
 ```
 
-Set comprehensions are often clearer in configuration files, especially when
-the body is large. They are also more general: set comprehensions support
-arbitrary nesting, filtering with `if`, and let-bindings are accessible to the
-inner scope. Still, `flat_map` can be useful, especially for iteratively
-refining a query in an [`rcl query`][query] command.
+In the past, sets had a `flat_map` method. It returned a set, and the implicit
+deduplication of the results could be unexpected. Therefore, `Set.flat_map` was
+removed in <abbr>RCL</abbr> 0.12.0 in favor of more explicit alternatives.
 
 ## group_by
 
@@ -179,26 +173,27 @@ method fails and reports the conflicting values. See also
 
 ## map
 
-```rcl
-Set.map: (self: Set[T], map_element: T -> U) -> Set[U]
-```
-
-Construct a new set by applying `map_element` to every element in the set.
-The result is equivalent to a [set comprehension](syntax.md#comprehensions),
-`a` and `b` are identical in this example:
+To map a function over a set, you can use a
+[comprehension](syntax.md#comprehensions), or convert the set to a list with
+[`to_list`](#to_list) and then use [`List.map`](type_list.md#map):
 
 ```rcl
-let xs = {1, 2, 3};
-let a = {for x in xs: x * 2};
-let b = xs.map(x => x * 2);
-// Both a and b evaluate to:
-{2, 4, 6}
+let fruits = {"apple", "orange", "banana"};
+
+// Convert to list and then map, evaluates to [5, 6, 6].
+fruits.to_list().map(fruit => fruit.len())
+
+// List comprehension, evaluates to [5, 6, 6].
+[for fruit in fruits: fruit.len()]
+
+// Set comprehension, evaluates to {5, 6}.
+{for fruit in fruits: fruit.len()}
 ```
 
-Set comprehensions are often clearer in configuration files, especially when
-the body is large. They are also more general: set comprehensions support
-nested loops and filtering with `if`. Still, `map` can be useful, especially
-for iteratively refining a query in an [`rcl query`][query] command.
+In the past, sets had a `map` method, but it was a common source of mistakes.
+It returned a set, and the implicit deduplication was often unexpected.
+Therefore, `Set.map` was removed in <abbr>RCL</abbr> 0.12.0 in favor of more
+explicit alternatives.
 
 ## len
 
