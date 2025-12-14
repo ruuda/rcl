@@ -369,3 +369,41 @@ Return the sum of the elements in the list. For example:
 // Evaluates to 42.
 [3, 7, 11, 21].sum()
 ```
+
+## to_set_dedup
+
+```rcl
+List.to_set_dedup: (self: List[T]) -> Set[T]
+```
+
+Convert the list to a set, discarding any duplicates. This is equivalent to a
+[set comprehension](syntax.md#comprehensions):
+
+```rcl
+let xs = [42, 11, 7, 42];
+let a = xs.to_set_dedup();
+let b = {..xs};
+// Both a and b are equal to:
+{7, 11, 42}
+```
+
+## to_set_unique
+
+```rcl
+List.to_set_unique: (self: List[T]) -> Set[T]
+```
+
+Assuming that the list elements are unique, convert the list to a set. In case
+of duplicates, this method reports the duplicate value and aborts evaluation
+with an error.
+
+```rcl
+// Evaluates to {7, 11, 42}.
+[42, 11, 7].to_set_unique()
+
+// Error: duplicate value `42`.
+[42, 11, 7, 42].to_set_unique()
+```
+
+Use [`to_set_dedup`](#to_set_dedup) to silently discard duplicates instead of
+failing.

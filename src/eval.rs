@@ -451,6 +451,8 @@ impl<'a> Evaluator<'a> {
                     (Value::List(_), "sort") => Some(&stdlib::LIST_SORT),
                     (Value::List(_), "sort_by") => Some(&stdlib::LIST_SORT_BY),
                     (Value::List(_), "sum") => Some(&stdlib::LIST_SUM),
+                    (Value::List(_), "to_set_dedup") => Some(&stdlib::LIST_TO_SET_DEDUP),
+                    (Value::List(_), "to_set_unique") => Some(&stdlib::LIST_TO_SET_UNIQUE),
 
                     (Value::Set(_), "all") => Some(&stdlib::SET_ALL),
                     (Value::Set(_), "any") => Some(&stdlib::SET_ANY),
@@ -465,6 +467,7 @@ impl<'a> Evaluator<'a> {
                     (Value::Set(_), "sort") => Some(&stdlib::SET_SORT),
                     (Value::Set(_), "sort_by") => Some(&stdlib::SET_SORT_BY),
                     (Value::Set(_), "sum") => Some(&stdlib::SET_SUM),
+                    (Value::Set(_), "to_list") => Some(&stdlib::SET_TO_LIST),
                     (Value::Set(_), "transitive_closure") => Some(&stdlib::SET_TRANSITIVE_CLOSURE),
 
                     _other => None,

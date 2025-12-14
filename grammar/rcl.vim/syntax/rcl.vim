@@ -48,7 +48,7 @@ syn region  rclFormatTriple  start='f"""' end='"""' skip='\\"\|\\{' contains=rcl
 
 " See also https://vi.stackexchange.com/questions/5966/ for why the `contains`
 " needs to end in `[]`.
-syn keyword rclBuiltin all any chars contains[] ends_with enumerate except filter flat_map fold get group_by join key_by keys len map parse_int parse_number remove_prefix remove_suffix replace reverse round sort sort_by split split_lines starts_with sum to_lowercase to_uppercase transitive_closure values empty_set format_json range read_file_utf8 std
+syn keyword rclBuiltin all any chars contains[] ends_with enumerate except filter flat_map fold get group_by join key_by keys len map parse_int parse_number remove_prefix remove_suffix replace reverse round sort sort_by split split_lines starts_with sum to_list to_lowercase to_set_dedup to_set_unique to_uppercase transitive_closure values empty_set format_json range read_file_utf8 std
 syn match   rclType    '\<\(Any\|Bool\|Dict\|List\|Null\|Number\|Set\|String\|Union\|Void\)\>'
 
 syn cluster rclString contains=rclStringDouble,rclStringTriple,rclFormatDouble,rclFormatTriple

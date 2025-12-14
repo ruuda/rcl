@@ -268,6 +268,26 @@ Return the sum of the elements in the set. For example:
 {3, 7, 11, 21}.sum()
 ```
 
+## to_list
+
+```rcl
+Set.to_list: (self: Set[T]) -> List[T]
+```
+
+Convert the set to a list. This is equivalent to a [list
+comprehension](syntax.md#comprehensions):
+
+```rcl
+let set = {1, 2, 3};
+let a = [..set];
+let b = set.to_list();
+assert a == b: "Comprehension and to_list are equivalent";
+```
+
+Because sets are currently implemented as trees, the returned list is sorted.
+This may change in future versions. Such a change would be announced prominently
+in the changelog.
+
 ## transitive_closure
 
 ```rcl

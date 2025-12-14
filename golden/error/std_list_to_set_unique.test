@@ -1,0 +1,16 @@
+[0, 0].to_set_unique()
+
+# output:
+stdin:1:1
+  ╷
+1 │ [0, 0].to_set_unique()
+  ╵ ^~~~~~
+Error: Expected unique elements to convert to set, but got a duplicate: 0
+
+Help: Use 'to_set_dedup' to discard duplicates.
+
+stdin:1:21
+  ╷
+1 │ [0, 0].to_set_unique()
+  ╵                     ^
+In call to method 'List.to_set_unique'.
