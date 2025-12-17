@@ -9,4 +9,4 @@ schema_version = 1
 version = "0.12.0"
 
 [grammars]
-rcl = { commit = "a6e42ed21e23c32b76c1d8cb13ec60cdd0ed860d", repository = "https://github.com/rcl-lang/tree-sitter-rcl" }
+rcl = { commit = "9e14baa313f79d1717cf81e8e35f051c7da77073", repository = "https://github.com/rcl-lang/tree-sitter-rcl" }
