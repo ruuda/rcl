@@ -12,7 +12,7 @@ Binaries for several platforms are available from the [GitHub releases page][gh-
 Download the one appropriate one to a location on your `PATH`, and make it
 executable:
 
-    curl -Lo ~/.local/bin/rcl https://github.com/ruuda/rcl/releases/download/v0.11.0/rcl-0.11.0-x86_64-unknown-linux-gnu
+    curl -Lo ~/.local/bin/rcl https://github.com/ruuda/rcl/releases/download/v0.12.0/rcl-0.12.0-x86_64-unknown-linux-gnu
     chmod +x ~/.local/bin/rcl
     rcl --help
 
@@ -46,14 +46,14 @@ source, including cross-compilation and building static binaries.
 The repository includes a Nix flake. You can run <abbr>RCL</abbr> with a
 [flake-enabled][flakes] version of [Nix][nix], such as Nix 2.18:
 
-    nix run 'github:ruuda/rcl?ref=v0.11.0' -- --help
+    nix run 'github:ruuda/rcl?ref=v0.12.0' -- --help
 
 [flakes]: https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake
 [nix]:    https://nixos.org/download
 
 The Nix flake also includes the Python module:
 
-    PYTHONPATH=$(nix build github:ruuda/rcl?ref=v0.11.0#pyrcl --print-out-paths)/lib python3
+    PYTHONPATH=$(nix build github:ruuda/rcl?ref=v0.12.0#pyrcl --print-out-paths)/lib python3
 
 The Nix flake also includes a shell with all the tools needed for development,
 as well as the environment that is tested on <abbr>CI</abbr>.

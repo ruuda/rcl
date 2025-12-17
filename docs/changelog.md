@@ -14,9 +14,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Next
+## 0.12.0
 
-Unreleased.
+Released 2025-12-17.
 
 **Changes with compatibility impact:**
 
