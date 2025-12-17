@@ -284,9 +284,9 @@ let b = set.to_list();
 assert a == b: "Comprehension and to_list are equivalent";
 ```
 
-Because sets are currently implemented as trees, the returned list is sorted.
-This may change in future versions. Such a change would be announced prominently
-in the changelog.
+Because sets are currently implemented as trees, the returned list is sorted,
+therefore this method is currently identical to [`sort`](#sort). This may change
+in future versions. Such a change would be announced prominently in the changelog.
 
 ## transitive_closure
 
