@@ -667,32 +667,32 @@ fn builtin_list_filter(eval: &mut Evaluator, call: MethodCall) -> Result<Value> 
 }
 
 builtin_method!(
-    "Set.map",
+    "Set.map_dedup",
     // TODO: Add type variables so we can describe this more accurately.
     (map_element: (fn (element: Any) -> Any)) -> {Any},
-    const SET_MAP,
-    builtin_set_map
+    const SET_MAP_DEDUP,
+    builtin_set_map_dedup
 );
-fn builtin_set_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+fn builtin_set_map_dedup(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     let mut result = BTreeSet::new();
-    builtin_map_impl(eval, call, "Set.map", set, |v| {
+    builtin_map_impl(eval, call, "Set.map_dedup", set, |v| {
         result.insert(v);
     })?;
     Ok(Value::Set(Rc::new(result)))
 }
 
 builtin_method!(
-    "Set.flat_map",
+    "Set.flat_map_dedup",
     // TODO: Add type variables so we can describe this more accurately.
     (map_element: (fn (element: Any) -> {Any})) -> {Any},
-    const SET_FLAT_MAP,
-    builtin_set_flat_map
+    const SET_FLAT_MAP_DEDUP,
+    builtin_set_flat_map_dedup
 );
-fn builtin_set_flat_map(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
+fn builtin_set_flat_map_dedup(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let set = call.receiver.expect_set();
     let mut result = BTreeSet::new();
-    builtin_flat_map_impl(eval, call, "Set.flat_map", set, |v| {
+    builtin_flat_map_impl(eval, call, "Set.flat_map_dedup", set, |v| {
         result.insert(v);
     })?;
     Ok(Value::Set(Rc::new(result)))

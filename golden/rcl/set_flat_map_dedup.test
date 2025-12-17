@@ -1,8 +1,9 @@
 let apps = {
   { name = "sshd", ports = {22} },
   { name = "nginx", ports = {80, 443} },
+  { name = "caddy", ports = {80, 443} },
 };
-apps.flat_map(app => app.ports)
+apps.flat_map_dedup(app => app.ports)
 
 # output:
 {22, 80, 443}
