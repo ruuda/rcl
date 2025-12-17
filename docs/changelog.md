@@ -18,17 +18,36 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased.
 
+**Changes with compatibility impact:**
+
+`Set.map` and `Set.flat_map` have been renamed to
+[`map_dedup`](type_set.md#map_dedup) and [`flat_map_dedup`](type_set.md#flat_map_dedup).
+These methods return sets, and so the results do not contain duplicates. This
+was not always obvious, and unexpected deduplication was a common source of
+bugs. For example, the following snippet looked like it sums the lengths of the
+strings:
+
+```rcl
+let fruits = {"apple", "orange", "banana"};
+fruits.map(x => x.len()).sum()
+```
+
+In reality, it summed the _unique_ lengths of the strings, for a total of 11,
+instead of the expected 17. The new names will help to avoid this pitfall.
+
+**New features and bugfixes:**
+
  * Add [`Set.transitive_closure`](type_set.md#transitive_closure), which is
    useful for flattening trees.
+ * Add [`Set.to_list`](type_set.md#to_list),
+   [`List.to_set_dedup`](type_list.md#to_set_dedup),
+   and [`List.to_set_unique`](type_list.md#to_set_unique).
  * Relax the grammar for unary operators after binary operators. In particular,
    `x >= -1` is now valid. Previously this required parentheses around the `-1`.
- * Fix the `rcl format` formatting of collections that use unpack. Previously,
-   lists and sets inadvertently included a trailing space.
  * Comments are now allowed in more places, in particular right after `=>` in
    functions.
- * Add [`Set.to_list`](type_set.md#to_list) method.
- * Add [`List.to_set_dedup`](type_list.md#to_set_dedup)
-   and [`List.to_set_unique`](type_list.md#to_set_unique) methods.
+ * Fix the `rcl format` formatting of collections that use unpack. Previously,
+   lists and sets inadvertently included a trailing space.
 
 ## 0.11.0
 
@@ -190,8 +209,8 @@ Released 2024-07-13.
    [`List.map`](type_list.md#map),
    [`List.flat_map`](type_list.md#flat_map),
    [`List.filter`](type_list.md#filter),
-   [`Set.map`](type_set.md#map),
-   [`Set.flat_map`](type_set.md#flat_map), and
+   [`Set.map`](type_set.md#map_dedup),
+   [`Set.flat_map`](type_set.md#flat_map_dedup), and
    [`Set.filter`](type_set.md#filter).
  * Add a `sum` method on `List` and `Set` to sum integers. Summing was already
    possible with `fold`, but `sum` makes it a lot more ergonomic.
