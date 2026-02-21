@@ -224,8 +224,9 @@ fn fuzz_eval_json_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -
 ///
 /// Then check that the result can be parsed by the `toml` crate.
 fn fuzz_eval_toml_check(loader: &mut Loader, input: &str, cfg: pprint::Config) -> Result<()> {
+    use rcl::fmt_toml::{format_toml, TomlVersion};
     let (full_span, value) = eval(loader, input)?;
-    let toml_doc = rcl::fmt_toml::format_toml(full_span, &value)?;
+    let toml_doc = format_toml(TomlVersion::Toml10, full_span, &value)?;
     let toml_str = toml_doc.println(&cfg).to_string_no_markup();
     match toml::from_str::<toml::Value>(&toml_str[..]) {
         Ok(..) => Ok(()),
