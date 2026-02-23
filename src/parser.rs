@@ -609,15 +609,14 @@ impl<'a> Parser<'a> {
     /// until we either see a `=>` and we know it's a lambda, or until we see
     /// some violation and we know it's not a lambda.
     ///
-    /// TODO: This is getting complex. I should consider using a prefix token
-    /// to disambiguate lambdas after all.
-    ///
-    /// TODO II: A better way to handle this: when closing a matching ), write
-    /// to a side buffer the index of the token next to the opening (. That way,
-    /// when we have a (, we can jump ahead to the closing ), and peek what
-    /// comes after that closing ).
+    /// TODO: An alternative way to handle this: when closing a matching ) in
+    /// the lexer, write to a side buffer the index of the token next to the
+    /// opening (. That way, when we have a (, we can jump ahead to the closing
+    /// ), and peek what comes after it without having to do paren matching
+    /// again here.
     fn look_ahead_is_function(&mut self) -> bool {
         let mut offset = 0;
+        let mut paren_depth: u32 = 0;
         match self.peek() {
             Token::Ident => offset = 1,
             Token::LParen => {
@@ -632,10 +631,12 @@ impl<'a> Parser<'a> {
                 // trying to parse an expression and failing on the `,`.
                 for i in 1.. {
                     match self.peek_n(i) {
-                        Token::RParen => {
+                        Token::LParen => paren_depth += 1,
+                        Token::RParen if paren_depth == 0 => {
                             offset = i + 1;
                             break;
                         }
+                        Token::RParen => paren_depth -= 1,
                         Token::Eof => unreachable!("The lexer returns balanced parens."),
                         _ => continue,
                     }
