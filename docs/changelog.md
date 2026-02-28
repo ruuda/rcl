@@ -14,6 +14,14 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Next
+
+Unreleased.
+
+  * Fix a bug that prevented parsing nested functions.
+
+Thanks to matthieucx for contributing to this release.
+
 ## 0.12.0
 
 Released 2025-12-17.

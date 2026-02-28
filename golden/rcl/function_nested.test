@@ -1,0 +1,10 @@
+// This is a regression test for a parser bug:
+// the former used to be accepted but not the latter,
+// even though they should be equivalent.
+let f = x => (y => 1);
+let g = x => ((y) => 1);
+
+f(0)(0) == g(0)(0)
+
+# output:
+true

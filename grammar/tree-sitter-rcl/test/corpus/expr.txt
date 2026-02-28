@@ -368,6 +368,38 @@ Function with 0 args and comment
       (comment))
     (string (string_double))))
 
+============================================
+Nested function, inner arg not parenthesized
+============================================
+
+x => (y => 1)
+
+---
+
+(source_file
+  (expr_function
+    (function_args (ident))
+    (expr_term_parens
+      (expr_function
+        (function_args (ident))
+        (number (num_decimal))))))
+
+============================================
+Nested function with inner arg parenthesized
+============================================
+
+x => ((y) => 1)
+
+---
+
+(source_file
+  (expr_function
+    (function_args (ident))
+    (expr_term_parens
+      (expr_function
+        (function_args (ident))
+        (number (num_decimal))))))
+
 =====================================
 Not a function but parenthesized expr
 =====================================
