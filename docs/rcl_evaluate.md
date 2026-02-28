@@ -45,7 +45,19 @@ Output in the given format. The following formats are supported:
   <dd>Output pretty-printed <abbr>RCL</abbr>.</dd>
 
   <dt>toml</dt>
-  <dd>Output <abbr>TOML</abbr>.</dd>
+  <dd>Alias for <code>toml-1.0</code>.</dd>
+
+  <dt>toml-1.0</dt>
+  <dd>Output <abbr>TOML 1.0</abbr>.
+  This version is the most widely supported,
+  but can be less readable because inline tables
+  cannot span multiple lines.</dd>
+
+  <dt>toml-1.1</dt>
+  <dd>Output <abbr>TOML 1.1</abbr>.
+  This version supports multi-line tables,
+  but it was only released in December 2025,
+  so it is less widely supported.</dd>
 
   <dt>yaml-stream</dt>
   <dd>If the document is a list, output every element as a <abbr>JSON</abbr>

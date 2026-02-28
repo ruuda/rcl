@@ -126,8 +126,8 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
         case "rcl":
             cmd = ["eval", "--format=rcl"]
 
-        case "toml":
-            cmd = ["eval", "--format=toml"]
+        case "toml_10":
+            cmd = ["eval", "--format=toml-1.0"]
             # For TOML, when the test case is not an error, we additionally test
             # that Python can parse the expected output, because there have been
             # some cases where RCL outputs something that other parsers reject.
@@ -136,6 +136,9 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
                     tomllib.loads("".join(golden_lines))
                 except Exception as err:
                     raise Exception(f"Invalid TOML in {fname}") from err
+
+        case "toml_11":
+            cmd = ["eval", "--format=toml-1.1"]
 
         case "yaml_stream":
             cmd = ["eval", "--format=yaml-stream"]

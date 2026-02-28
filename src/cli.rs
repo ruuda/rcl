@@ -158,7 +158,9 @@ Output format:
                 document is a list or set of strings, output each string on its
                 own line.
   rcl           Output pretty-printed RCL.
-  toml          Output TOML.
+  toml          Alias for 'toml-1.0'.
+  toml-1.0      Output TOML 1.0, where tables are on a single line.
+  toml-1.1      Output TOML 1.1, where tables can be multi-line.
   yaml-stream   If the document is a list, output every element as a JSON
                 document, prefixed by the '---' YAML document separator.
                 Top-level values other than lists are not valid for this format.
@@ -275,7 +277,8 @@ pub enum OutputFormat {
     Raw,
     #[default]
     Rcl,
-    Toml,
+    Toml10,
+    Toml11,
     YamlStream,
 }
 
@@ -445,7 +448,11 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     "json-lines" => OutputFormat::JsonLines,
                     "raw" => OutputFormat::Raw,
                     "rcl" => OutputFormat::Rcl,
-                    "toml" => OutputFormat::Toml,
+                    // Without version, "toml" defaults to the older version,
+                    // because it has wider compatibility.
+                    "toml" => OutputFormat::Toml10,
+                    "toml-1.0" => OutputFormat::Toml10,
+                    "toml-1.1" => OutputFormat::Toml11,
                     "yaml-stream" => OutputFormat::YamlStream,
                 }
             }
@@ -803,6 +810,13 @@ mod test {
         assert_eq!(parse(&["rcl", "e", "infile", "-fraw"]), expected);
         assert_eq!(parse(&["rcl", "re", "infile"]), expected);
 
+        // TOML defaults to 1.0.
+        if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
+            eval_opts.format = OutputFormat::Toml10;
+        }
+        assert_eq!(parse(&["rcl", "e", "infile", "-ftoml"]), expected);
+        assert_eq!(parse(&["rcl", "e", "infile", "-ftoml-1.0"]), expected);
+
         // Test --sandbox.
         if let Cmd::Evaluate { eval_opts, .. } = &mut expected.1 {
             eval_opts.format = OutputFormat::Rcl;
@@ -872,7 +886,7 @@ mod test {
         );
         assert_eq!(
             fail_parse(&["rcl", "eval", "infile", "--format=yamr"]),
-            "Error: Expected --format to be followed by one of json, json-lines, raw, rcl, toml, yaml-stream. See --help for usage.\n"
+            "Error: Expected --format to be followed by one of json, json-lines, raw, rcl, toml, toml-1.0, toml-1.1, yaml-stream. See --help for usage.\n"
         );
         assert_eq!(
             fail_parse(&["rcl", "frobnicate", "infile"]),

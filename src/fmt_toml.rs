@@ -19,13 +19,20 @@ use crate::source::Span;
 use crate::string::escape_json;
 
 /// Render a value as TOML.
-pub fn format_toml(caller: Span, v: &Value) -> Result<Doc> {
-    let mut formatter = Formatter::new(caller);
+pub fn format_toml(version: TomlVersion, caller: Span, v: &Value) -> Result<Doc> {
+    let mut formatter = Formatter::new(version, caller);
 
     match v {
         Value::Dict(kv) => formatter.top_level(kv),
         _ => formatter.error("To format as TOML, the top-level value must be a dict."),
     }
+}
+
+pub enum TomlVersion {
+    /// Toml 1.0, where inline tables have to be on a single line.
+    Toml10,
+    /// Toml 1.1, where inline tables can be multi-line.
+    Toml11,
 }
 
 /// Helper for formatting values as TOML.
@@ -38,12 +45,16 @@ struct Formatter {
 
     /// Where we currently are in the value to be formatted.
     path: Vec<PathElement>,
+
+    /// Target version to output.
+    version: TomlVersion,
 }
 
 impl Formatter {
-    pub fn new(caller: Span) -> Formatter {
+    pub fn new(version: TomlVersion, caller: Span) -> Formatter {
         Formatter {
             caller,
+            version,
             path: Vec::new(),
         }
     }
@@ -132,7 +143,7 @@ impl Formatter {
 
     /// Format a dict as a TOML "inline table".
     ///
-    /// Note, the TOML spec has very particular opinions about whitespace,
+    /// Note, the TOML 1.0 spec has very particular opinions about whitespace,
     /// newlines, and trailing commas. In arrays, [anything goes][array]
     ///
     /// > Arrays are square brackets with values inside. Whitespace is ignored.
@@ -152,6 +163,8 @@ impl Formatter {
     ///
     /// [array]: https://toml.io/en/v1.0.0#array
     /// [inline-table]: https://toml.io/en/v1.0.0#inline-table
+    ///
+    /// In TOML 1.1 these restrictions have been lifted.
     pub fn inline_table<'a>(
         &mut self,
         vs: impl Iterator<Item = (&'a Value, &'a Value)>,
@@ -159,9 +172,15 @@ impl Formatter {
         let mut elements = Vec::new();
         for (k, v) in vs {
             if !elements.is_empty() {
-                // Note, we don't use Doc::Sep here because we don't allow line
-                // breaks, see the doc comment above!
-                elements.push(", ".into());
+                match self.version {
+                    // Note, we don't use Doc::Sep here because we don't allow
+                    // line breaks, see the doc comment above!
+                    TomlVersion::Toml10 => elements.push(", ".into()),
+                    TomlVersion::Toml11 => {
+                        elements.push(",".into());
+                        elements.push(Doc::Sep);
+                    }
+                }
             }
             elements.push(self.push_key(k)?);
             elements.push(" = ".into());
@@ -173,10 +192,26 @@ impl Formatter {
             // An empty collection we always format without space in between.
             "{}".into()
         } else {
-            // We intentionally don't add a trailing comma, and we intentionally
-            // use spaces instead of Doc::Sep. Line breaks and trailing commas
-            // are not allowed in inline tables!
-            concat! { "{ " Doc::Concat(elements) " }" }
+            match self.version {
+                // We intentionally don't add a trailing comma, and we
+                // intentionally use spaces instead of Doc::Sep. Line breaks
+                // and trailing commas are not allowed in inline tables!
+                TomlVersion::Toml10 => concat! {
+                    "{ " Doc::Concat(elements) " }"
+                },
+                TomlVersion::Toml11 => {
+                    // Add a trailing comma in tall mode.
+                    elements.push(Doc::tall(","));
+
+                    group! {
+                        "{"
+                        Doc::SoftBreak
+                        indent! { Doc::Concat(elements) }
+                        Doc::SoftBreak
+                        "}"
+                    }
+                }
+            }
         };
         Ok(result)
     }

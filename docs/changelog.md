@@ -18,6 +18,9 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased.
 
+ * Add support for <abbr>TOML 1.1</abbr> as an output format. The existing
+   `toml` output format is now an alias for `toml-1.0`, so there is no change
+   in behavior for existing usage.
   * Fix a bug that prevented parsing nested functions.
 
 Thanks to matthieucx for contributing to this release.

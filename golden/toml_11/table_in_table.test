@@ -1,0 +1,17 @@
+{
+  obj = {
+    // In TOML 1.0 this would go on a single line,
+    // but in 1.1 it can be multi-line.
+    very_long_name_that_would_cause = {
+      The_output_to_be = "line-wrapped",
+      over_multiple_lines = true,
+    },
+  },
+}
+
+# output:
+[obj]
+very_long_name_that_would_cause = {
+  The_output_to_be = "line-wrapped",
+  over_multiple_lines = true,
+}
