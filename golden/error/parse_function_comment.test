@@ -1,0 +1,17 @@
+(x)
+// A comment is not allowed here, but the parser does need
+// to skip over it in the lookahead.
+=> true
+
+# output:
+stdin:2:1
+  ╷
+2 │ // A comment is not allowed here, but the parser does need
+  ╵ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Error: A comment is not allowed here.
+
+stdin:1:3
+  ╷
+1 │ (x)
+  ╵   ^
+Note: Try inserting the comment above this instead.
