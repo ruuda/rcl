@@ -1,5 +1,5 @@
 {
-  "patterns": [{"include": "#expr"}],
+  "patterns": [{"include": "#expr"}, {"include": "#comment"}],
   "repository": {
     "comment": {"match": "//.*$", "name": "comment.line.double-slash.rcl"},
     "constant": {
@@ -21,14 +21,17 @@
     "stmt": {
       "patterns": [
         {
-          "begin": "\\b(let)\\s+([^=;]+)\\s+=",
-          "beginCaptures": {
-            "1": {"name": "keyword.other.let.rcl"},
-            "2": {"name": "variable.rcl"}
-          },
+          "begin": "\\blet\\b",
+          "beginCaptures": {"0": {"name": "keyword.other.let.rcl"}},
           "end": ";",
           "name": "meta.structure.let.rcl",
-          "patterns": [{"include": "#expr"}]
+          "patterns": [
+            {
+              "captures": {"1": {"name": "variable.rcl"}},
+              "match": "\\s+([a-zA-Z_][a-zA-Z0-9_-]*)\\s*="
+            },
+            {"include": "#expr"}
+          ]
         },
         {
           "begin": "\\bassert\\b",
