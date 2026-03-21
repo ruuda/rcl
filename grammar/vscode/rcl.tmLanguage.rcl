@@ -19,6 +19,7 @@
     { include = "#expr" },
     { match = ",", name = f"punctuation.separator.{name}.rcl" },
   ];
+
   let delimited = (name, begin, end, patterns) => {
     begin = begin,
     beginCaptures = {
@@ -30,6 +31,19 @@
     patterns = patterns(name),
   };
 
+  let make_term_string = (name, begin, end, patterns) => {
+      begin = begin,
+      end = end,
+      name = name,
+      patterns = [
+        {
+          name = "constant.character.escape.rcl",
+          match = "\\.",
+        },
+        ..patterns,
+      ],
+  };
+
   repository = {
     term_bracket = delimited("term_bracket", "\\[", "\\]", patterns_sep_comma),
     term_brace = delimited("term_brace", "\\{", "\\}", patterns_sep_comma),
@@ -39,6 +53,24 @@
       "\\)",
       _name => [{ include = "#expr" }],
     ),
+
+    string_hole = {
+      begin = "\\{",
+      end = "\\}",
+      // TODO: Pick the relevant scope name.
+      name = "interpolate.rcl",
+      patterns = [{ include = "#expr" }],
+    },
+
+    term_string = {
+      name = "string.quoted.rcl",
+      patterns = [
+        make_term_string("string.quoted.double.rcl", "\"", "\"", []),
+        make_term_string("string.quoted.triple.rcl", "\"\"\"", "\"\"\"", []),
+        make_term_string("string.quoted.double.rcl", "f\"", "\"", [{include = "#string_hole"}]),
+        make_term_string("string.quoted.triple.rcl", "f\"\"\"", "\"\"\"", [{include = "#string_hole"}]),
+      ],
+    },
 
     constant = {
       // ?: means a non-captured group.
@@ -82,9 +114,8 @@
         { include = "#term_brace" },
         { include = "#term_parens" },
         { include = "#constant" },
+        { include = "#term_string" },
         // TODO: To add:
-        // - fstring
-        // - string
         // - number
         // - ident
       ],
