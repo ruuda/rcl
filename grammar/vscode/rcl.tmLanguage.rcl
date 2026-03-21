@@ -82,20 +82,23 @@
     term_string = {
       name = "string.quoted.rcl",
       patterns = [
-        make_term_string("string.quoted.double.rcl", "\"", "\"", []),
-        make_term_string("string.quoted.triple.rcl", "\"\"\"", "\"\"\"", []),
-        make_term_string(
-          "string.quoted.double.rcl",
-          "f\"",
-          "\"",
-          ["#string_hole"],
-        ),
+        // The order of the patterns matters, we need to put the largest
+        // possible match first: f-strings go before normal strings, triple
+        // before double.
         make_term_string(
           "string.quoted.triple.rcl",
           "f\"\"\"",
           "\"\"\"",
           ["#string_hole"],
         ),
+        make_term_string(
+          "string.quoted.double.rcl",
+          "f\"",
+          "\"",
+          ["#string_hole"],
+        ),
+        make_term_string("string.quoted.triple.rcl", "\"\"\"", "\"\"\"", []),
+        make_term_string("string.quoted.double.rcl", "\"", "\"", []),
       ],
     },
 

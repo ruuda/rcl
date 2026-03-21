@@ -179,23 +179,7 @@
       "name": "string.quoted.rcl",
       "patterns": [
         {
-          "begin": "\"",
-          "end": "\"",
-          "name": "string.quoted.double.rcl",
-          "patterns": [
-            {
-              "match": "\\\\u\\{[0-9a-fA-F_]+\\}",
-              "name": "constant.character.escape.unibrace.rcl"
-            },
-            {
-              "match": "\\\\u[0-9a-fA-F_]{4}",
-              "name": "constant.character.escape.rcl"
-            },
-            {"match": "\\\\.", "name": "constant.character.escape.single.rcl"}
-          ]
-        },
-        {
-          "begin": "\"\"\"",
+          "begin": "f\"\"\"",
           "end": "\"\"\"",
           "name": "string.quoted.triple.rcl",
           "patterns": [
@@ -207,7 +191,8 @@
               "match": "\\\\u[0-9a-fA-F_]{4}",
               "name": "constant.character.escape.rcl"
             },
-            {"match": "\\\\.", "name": "constant.character.escape.single.rcl"}
+            {"match": "\\\\.", "name": "constant.character.escape.single.rcl"},
+            {"include": "#string_hole"}
           ]
         },
         {
@@ -228,7 +213,7 @@
           ]
         },
         {
-          "begin": "f\"\"\"",
+          "begin": "\"\"\"",
           "end": "\"\"\"",
           "name": "string.quoted.triple.rcl",
           "patterns": [
@@ -240,8 +225,23 @@
               "match": "\\\\u[0-9a-fA-F_]{4}",
               "name": "constant.character.escape.rcl"
             },
-            {"match": "\\\\.", "name": "constant.character.escape.single.rcl"},
-            {"include": "#string_hole"}
+            {"match": "\\\\.", "name": "constant.character.escape.single.rcl"}
+          ]
+        },
+        {
+          "begin": "\"",
+          "end": "\"",
+          "name": "string.quoted.double.rcl",
+          "patterns": [
+            {
+              "match": "\\\\u\\{[0-9a-fA-F_]+\\}",
+              "name": "constant.character.escape.unibrace.rcl"
+            },
+            {
+              "match": "\\\\u[0-9a-fA-F_]{4}",
+              "name": "constant.character.escape.rcl"
+            },
+            {"match": "\\\\.", "name": "constant.character.escape.single.rcl"}
           ]
         }
       ]
