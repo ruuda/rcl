@@ -1,6 +1,11 @@
 {
   "patterns": [{"include": "#expr"}],
   "repository": {
+    "comment": {
+      "begin": "//",
+      "end": "\n",
+      "name": "comment.line.double-slash.rcl"
+    },
     "constant": {
       "match": "\\b(?:true|false|null)\\b",
       "name": "constant.language.rcl"
@@ -20,7 +25,7 @@
     "string_hole": {
       "begin": "\\{",
       "end": "\\}",
-      "name": "interpolate.rcl",
+      "name": "string.interpolated.rcl",
       "patterns": [{"include": "#expr"}]
     },
     "term_brace": {

@@ -45,7 +45,17 @@ to use for highlighting, similar to scopes for Tree Sitter.
 ## Visual Studio Code
 
 The `vscode` directory contains the Visual Studio Code plugin including TextMate
-grammar.
+grammar. The TextMate documentation has [a section on scope naming
+conventions][tm-scopes]. Some helpful links:
+
+ * [TextMate language grammar documentation][tm-docs]
+ * [Helpful _lessons learned_ blog post][tm-lessons]
+ * [VSCode syntax highlighting docs][vscode-highlight]
+
+[tm-docs]:          https://macromates.com/manual/en/language_grammars
+[tm-scopes]:        https://macromates.com/manual/en/language_grammars#naming_conventions
+[tm-lessons]:       https://www.apeth.com/nonblog/stories/textmatebundle.html
+[vscode-highlight]: https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide
 
 ## Zed
 
