@@ -40,7 +40,7 @@
         {"include": "#term_string"},
         {"include": "#term_number"},
         {"include": "#term_constant"},
-        {"match": "[a-zA-Z_][a-zA-Z0-9_]*", "name": "meta.structure.ident.rcl"}
+        {"match": "[a-zA-Z_][a-zA-Z0-9_-]*", "name": "meta.structure.ident.rcl"}
       ]
     },
     "expr_unop": {"match": "\\bnot\\b", "name": "keyword.operator.unop.rcl"},
@@ -65,7 +65,7 @@
           "end": "\\bin\\b",
           "endCaptures": {"0": {"name": "keyword.control.in.rcl"}},
           "patterns": [
-            {"match": "[a-zA-Z_][a-zA-Z0-9_]*", "name": "meta.declaration.rcl"}
+            {"match": "[a-zA-Z_][a-zA-Z0-9_-]*", "name": "meta.declaration.rcl"}
           ]
         },
         {
@@ -83,7 +83,7 @@
     },
     "seq_kv": {
       "captures": {"1": {"name": "support.type.property-name.rcl"}},
-      "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s+="
+      "match": "\\b([a-zA-Z_][a-zA-Z0-9_-]*)\\s+="
     },
     "stmt": {
       "patterns": [
@@ -98,7 +98,7 @@
               "end": "[:=]",
               "patterns": [
                 {
-                  "match": "[a-zA-Z_][a-zA-Z0-9_]*",
+                  "match": "[a-zA-Z_][a-zA-Z0-9_-]*",
                   "name": "meta.declaration.rcl"
                 }
               ]
@@ -108,7 +108,7 @@
               "end": "=",
               "name": "meta.structure.annotation.rcl",
               "patterns": [
-                {"match": "[a-zA-Z_][a-zA-Z0-9_]*", "name": "storage.type.rcl"}
+                {"match": "[a-zA-Z_][a-zA-Z0-9_-]*", "name": "storage.type.rcl"}
               ]
             },
             {
