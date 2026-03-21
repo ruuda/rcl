@@ -33,15 +33,23 @@
   };
 
   let make_term_string = (name, begin, end, patterns) => {
+      name = name,
       begin = begin,
       end = end,
-      name = name,
       patterns = [
         {
-          name = "constant.character.escape.rcl",
-          match = "\\.",
+          name = "constant.character.escape.unibrace.rcl",
+          match = "\\\\u\\{[0-9a-fA-F_]+\\}",
         },
-        ..patterns,
+        {
+          name = "constant.character.escape.rcl",
+          match = "\\\\u[0-9a-fA-F_]{4}",
+        },
+        {
+          name = "constant.character.escape.single.rcl",
+          match = "\\\\.",
+        },
+        for include_pattern in patterns: { include = include_pattern }
       ],
   };
 
@@ -67,8 +75,8 @@
       patterns = [
         make_term_string("string.quoted.double.rcl", "\"", "\"", []),
         make_term_string("string.quoted.triple.rcl", "\"\"\"", "\"\"\"", []),
-        make_term_string("string.quoted.double.rcl", "f\"", "\"", [{include = "#string_hole"}]),
-        make_term_string("string.quoted.triple.rcl", "f\"\"\"", "\"\"\"", [{include = "#string_hole"}]),
+        make_term_string("string.quoted.double.rcl", "f\"", "\"", ["#string_hole"]),
+        make_term_string("string.quoted.triple.rcl", "f\"\"\"", "\"\"\"", ["#string_hole"]),
       ],
     },
 

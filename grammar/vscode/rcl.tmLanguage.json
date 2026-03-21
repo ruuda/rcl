@@ -1,11 +1,7 @@
 {
   "patterns": [{"include": "#expr"}],
   "repository": {
-    "comment": {
-      "begin": "//",
-      "end": "\n",
-      "name": "comment.line.double-slash.rcl"
-    },
+    "comment": {"match": "//.*$", "name": "comment.line.double-slash.rcl"},
     "constant": {
       "match": "\\b(?:true|false|null)\\b",
       "name": "constant.language.rcl"
@@ -78,7 +74,15 @@
           "end": "\"",
           "name": "string.quoted.double.rcl",
           "patterns": [
-            {"match": "\\.", "name": "constant.character.escape.rcl"}
+            {
+              "match": "\\\\u\\{[0-9a-fA-F_]+\\}",
+              "name": "constant.character.escape.unibrace.rcl"
+            },
+            {
+              "match": "\\\\u[0-9a-fA-F_]{4}",
+              "name": "constant.character.escape.rcl"
+            },
+            {"match": "\\\\.", "name": "constant.character.escape.single.rcl"}
           ]
         },
         {
@@ -86,7 +90,15 @@
           "end": "\"\"\"",
           "name": "string.quoted.triple.rcl",
           "patterns": [
-            {"match": "\\.", "name": "constant.character.escape.rcl"}
+            {
+              "match": "\\\\u\\{[0-9a-fA-F_]+\\}",
+              "name": "constant.character.escape.unibrace.rcl"
+            },
+            {
+              "match": "\\\\u[0-9a-fA-F_]{4}",
+              "name": "constant.character.escape.rcl"
+            },
+            {"match": "\\\\.", "name": "constant.character.escape.single.rcl"}
           ]
         },
         {
@@ -94,7 +106,15 @@
           "end": "\"",
           "name": "string.quoted.double.rcl",
           "patterns": [
-            {"match": "\\.", "name": "constant.character.escape.rcl"},
+            {
+              "match": "\\\\u\\{[0-9a-fA-F_]+\\}",
+              "name": "constant.character.escape.unibrace.rcl"
+            },
+            {
+              "match": "\\\\u[0-9a-fA-F_]{4}",
+              "name": "constant.character.escape.rcl"
+            },
+            {"match": "\\\\.", "name": "constant.character.escape.single.rcl"},
             {"include": "#string_hole"}
           ]
         },
@@ -103,7 +123,15 @@
           "end": "\"\"\"",
           "name": "string.quoted.triple.rcl",
           "patterns": [
-            {"match": "\\.", "name": "constant.character.escape.rcl"},
+            {
+              "match": "\\\\u\\{[0-9a-fA-F_]+\\}",
+              "name": "constant.character.escape.unibrace.rcl"
+            },
+            {
+              "match": "\\\\u[0-9a-fA-F_]{4}",
+              "name": "constant.character.escape.rcl"
+            },
+            {"match": "\\\\.", "name": "constant.character.escape.single.rcl"},
             {"include": "#string_hole"}
           ]
         }
