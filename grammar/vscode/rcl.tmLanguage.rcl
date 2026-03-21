@@ -83,10 +83,18 @@
       ],
     },
 
-    constant = {
+    term_constant = {
       // ?: means a non-captured group.
       match = "\\b(?:true|false|null)\\b",
       name = "constant.language.rcl",
+    },
+
+    term_number = {
+      // The regex for number is more lax than what the RCL lexer/parser allow,
+      // such that writing something invalid does not break highlighting of the
+      // entire document. ?: introduces a non-captured group.
+      match = "(?:0x|0b)?[0-9a-fA-F_]+(?:\\.[0-9a-fA-F_]*)?(?:[eE][+-]?[0-9_]+)?\\b",
+      name = "constant.numeric.rcl",
     },
 
     expr = {
@@ -121,14 +129,19 @@
 
     expr_term = {
       patterns = [
-        { include = "#term_bracket" },
         { include = "#term_brace" },
+        { include = "#term_bracket" },
         { include = "#term_parens" },
-        { include = "#constant" },
         { include = "#term_string" },
-        // TODO: To add:
-        // - number
-        // - ident
+        { include = "#term_number" },
+        { include = "#term_constant" },
+        {
+          // We don't need to highlight identifiers, so we don't really need a
+          // rule for it, but we include it for completeness and to allow other
+          // extensions to potentially do something with it.
+          name = "meta.structure.ident.rcl",
+          match = "[a-zA-Z_][a-zA-Z0-9_-]*",
+        },
       ],
     },
 
