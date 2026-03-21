@@ -20,28 +20,14 @@
   scopeName = "source.rcl",
   patterns = [
     { include = "#expr" },
-    { include = "#comment" },
   ],
 
   let identifier = "[a-zA-Z_][a-zA-Z0-9_]*";
 
-  // First we define some helpers, because all collections are very similar,
-  // and it's quite verbose to define in TextMate grammar.
-  let patterns_sep_comma = name => [
-    { include = "#expr" },
-    { match = ",", name = f"punctuation.separator.{name}.rcl" },
-  ];
-
-  let delimited = (name, begin, end, patterns) => {
-    begin = begin,
-    beginCaptures = {
-      "0": { name = f"punctuation.definition.{name}.begin.rcl" },
-    },
-    end = end,
-    endCaptures = { "0": { name = f"punctuation.definition.{name}.end.rcl" } },
-    name = f"meta.structure.{name}.rcl",
-    patterns = patterns(name),
-  };
+  // In some places, like after `let` and `for`, we can match identifiers, but
+  // we don't assign them the `variable` scope. Some themes highlight it, but in
+  // my opinion it makes the document too cluttered when everything lights up.
+  let inner_ident = { match = f"{identifier}", name = "meta.declaration.rcl" };
 
   let make_term_string = (name, begin, end, patterns) => {
       name = name,
@@ -65,14 +51,26 @@
   };
 
   repository = {
-    term_bracket = delimited("term_bracket", "\\[", "\\]", patterns_sep_comma),
-    term_brace = delimited("term_brace", "\\{", "\\}", patterns_sep_comma),
-    term_parens = delimited(
-      "term_parens",
-      "\\(",
-      "\\)",
-      _name => [{ include = "#expr" }],
-    ),
+    term_bracket = {
+      name = "meta.structure.bracket.rcl",
+      begin = "\\[",
+      end = "\\]",
+      patterns = [{ include = "#seq" }],
+    },
+
+    term_brace = {
+      name = "meta.structure.brace.rcl",
+      begin = "\\{",
+      end = "\\}",
+      patterns = [{ include = "#seq" }],
+    },
+
+    term_parens = {
+      name = "meta.structure.parens.rcl",
+      begin = "\\(",
+      end = "\\)",
+      patterns = [{ include = "#expr" }],
+    },
 
     string_hole = {
       begin = "\\{",
@@ -130,6 +128,7 @@
         { include = "#stmt" },
         { include = "#expr_if" },
         { include = "#expr_op" },
+        { include = "#comment" },
       ],
     },
 
@@ -150,10 +149,12 @@
     expr_op = {
       patterns = [
         { include = "#expr_import" },
-        // TODO: expr_function
         { include = "#expr_unop" },
         { include = "#expr_binop" },
         { include = "#expr_not_op" },
+        // In the grammar we also have function expressions, but we don't need
+        // to define anything explicitly here; we could match on the fat arrow
+        // but leaving the entire thing an `expr` scope works fine.
       ],
     },
 
@@ -170,10 +171,9 @@
     expr_not_op = {
       patterns = [
         { include = "#expr_term" },
-        // TODO: Add:
-        // - call
-        // - array index
-        // - field access
+        // In the grammar we also have function calls, array indexing, and field
+        // access, but we don't need to explicitly define them here, we just
+        // leave the punctuation tokens unmatched.
       ],
     },
 
@@ -206,27 +206,33 @@
           // more productive to match only until `=`, and let the regular `expr`
           // rule handle everything after it on both sides of the `;`.
           begin = "\\blet\\b",
-          end = "=",
+          end = ";",
           beginCaptures = { "0": { name = "keyword.other.let.rcl" } },
           name = "meta.structure.let.rcl",
           patterns = [
+            // The identifier part, the start of which we match with a
+            // lookbehind because it's already consumed by the outer rule.
+            {
+              begin = "(?<=\\blet\\b)",
+              end = "[:=]",
+              patterns = [inner_ident],
+            },
+            // Optionally, a type annotation part, which we again match using
+            // a lookbehind.
             {
               name = "meta.structure.annotation.rcl",
-              begin = ":",
-              // The end is where the `=` starts, but we can't consume it,
-              // because the end pattern of the surrounding let already needs
-              // to consume it, so we use a lookahead.
-              end = "(?=[=])",
+              begin = "(?<=:)",
+              end = "=",
               patterns = [
-                {
-                  match = f"{identifier}",
-                  name = "storage.type.rcl"
-                }
+                { match = f"{identifier}", name = "storage.type.rcl" }
               ],
             },
+            // Finally, the expression part, the end of which we need to match
+            // using a lookahead because it's again consumed by the outer rule.
             {
-              match = f"{identifier}",
-              name = "variable.let.rcl",
+              begin = "(?<=[=])",
+              end = "(?=[;])",
+              patterns = [{ include = "#expr" }],
             }
           ],
         },
@@ -247,6 +253,55 @@
           patterns = [{ include = "#expr" }],
         },
       ],
+    },
+
+    seq = {
+      name = "meta.structure.seq.rcl",
+      patterns = [
+        { include = "#stmt" },
+        { include = "#seq_for" },
+        { include = "#seq_if" },
+        { include = "#seq_kv" },
+        { include = "#expr_op" },
+        { include = "#comment" },
+      ],
+    },
+
+    seq_for = {
+      begin = "\\bfor\\b",
+      end = ":",
+      beginCaptures = { "0": { name = "keyword.control.for.rcl" } },
+      // For the two sections inside, we use lookbehind to match the start of
+      // the group, so we don't consume the match, because we can consume every
+      // match only once.
+      patterns = [
+        {
+          begin = "(?<=\\bfor\\b)",
+          end = "\\bin\\b",
+          endCaptures = { "0": { name = "keyword.control.in.rcl" } },
+          patterns = [inner_ident],
+        },
+        {
+          begin = "(?<=\\bin\\b)",
+          end = "(?=:)",
+          patterns = [{ include = "#expr" }],
+        }
+      ],
+    },
+
+    seq_if = {
+      begin = "\\bif\\b",
+      end = ":",
+      beginCaptures = { "0": { name = "keyword.control.if.rcl" } },
+      patterns = [{ include = "#expr" }],
+    },
+
+    seq_kv = {
+      match = f"\\b({identifier})\\s+=",
+      captures = {
+        // This scope is the same one as used by the json grammar for keys.
+        "1": { name = "support.type.property-name.rcl" },
+      },
     },
 
     // Comment is a magic rule in TextMate grammars, it is allowed anywhere.
