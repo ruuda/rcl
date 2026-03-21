@@ -82,7 +82,7 @@
       "patterns": [{"include": "#expr"}]
     },
     "seq_kv": {
-      "captures": {"1": {"name": "support.type.property-name.rcl"}},
+      "captures": {"1": {"name": "support.type.property-name.json.rcl"}},
       "match": "\\b([a-zA-Z_][a-zA-Z0-9_-]*)\\s+="
     },
     "stmt": {
@@ -108,7 +108,10 @@
               "end": "=",
               "name": "meta.structure.annotation.rcl",
               "patterns": [
-                {"match": "[a-zA-Z_][a-zA-Z0-9_-]*", "name": "storage.type.rcl"}
+                {
+                  "match": "[a-zA-Z_][a-zA-Z0-9_-]*",
+                  "name": "entity.name.type.rcl"
+                }
               ]
             },
             {

@@ -237,7 +237,10 @@
               begin = "(?<=:)",
               end = "=",
               patterns = [
-                { match = f"{identifier}", name = "storage.type.rcl" },
+                // We don't use `storage.type` because it's not really a type
+                // like that like it is in C. The Rust grammar uses this scope
+                // so we'll use it as well.
+                { match = f"{identifier}", name = "entity.name.type.rcl" },
               ],
             },
             // Finally, the expression part, the end of which we need to match
@@ -313,7 +316,9 @@
       match = f"\\b({identifier})\\s+=",
       captures = {
         // This scope is the same one as used by the json grammar for keys.
-        "1": { name = "support.type.property-name.rcl" },
+        // Some themes special-case json so let's include this to make it behave
+        // similarly.
+        "1": { name = "support.type.property-name.json.rcl" },
       },
     },
 
