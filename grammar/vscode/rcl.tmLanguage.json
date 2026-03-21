@@ -1,12 +1,13 @@
 {
-  "patterns": [{"include": "#expr"}, {"include": "#comment"}],
+  "patterns": [{"include": "#expr"}],
   "repository": {
     "comment": {"match": "//.*$", "name": "comment.line.double-slash.rcl"},
     "expr": {
       "patterns": [
         {"include": "#stmt"},
         {"include": "#expr_if"},
-        {"include": "#expr_op"}
+        {"include": "#expr_op"},
+        {"include": "#comment"}
       ]
     },
     "expr_binop": {
@@ -43,23 +44,78 @@
       ]
     },
     "expr_unop": {"match": "\\bnot\\b", "name": "keyword.operator.unop.rcl"},
+    "seq": {
+      "name": "meta.structure.seq.rcl",
+      "patterns": [
+        {"include": "#stmt"},
+        {"include": "#seq_for"},
+        {"include": "#seq_if"},
+        {"include": "#seq_kv"},
+        {"include": "#expr_op"},
+        {"include": "#comment"}
+      ]
+    },
+    "seq_for": {
+      "begin": "\\bfor\\b",
+      "beginCaptures": {"0": {"name": "keyword.control.for.rcl"}},
+      "end": ":",
+      "patterns": [
+        {
+          "begin": "(?<=\\bfor\\b)",
+          "end": "\\bin\\b",
+          "endCaptures": {"0": {"name": "keyword.control.in.rcl"}},
+          "patterns": [
+            {"match": "[a-zA-Z_][a-zA-Z0-9_]*", "name": "meta.declaration.rcl"}
+          ]
+        },
+        {
+          "begin": "(?<=\\bin\\b)",
+          "end": "(?=:)",
+          "patterns": [{"include": "#expr"}]
+        }
+      ]
+    },
+    "seq_if": {
+      "begin": "\\bif\\b",
+      "beginCaptures": {"0": {"name": "keyword.control.if.rcl"}},
+      "end": ":",
+      "patterns": [{"include": "#expr"}]
+    },
+    "seq_kv": {
+      "captures": {"1": {"name": "support.type.property-name.rcl"}},
+      "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s+="
+    },
     "stmt": {
       "patterns": [
         {
           "begin": "\\blet\\b",
           "beginCaptures": {"0": {"name": "keyword.other.let.rcl"}},
-          "end": "=",
+          "end": ";",
           "name": "meta.structure.let.rcl",
           "patterns": [
             {
-              "begin": ":",
-              "end": "(?=[=])",
+              "begin": "(?<=\\blet\\b)",
+              "end": "[:=]",
+              "patterns": [
+                {
+                  "match": "[a-zA-Z_][a-zA-Z0-9_]*",
+                  "name": "meta.declaration.rcl"
+                }
+              ]
+            },
+            {
+              "begin": "(?<=:)",
+              "end": "=",
               "name": "meta.structure.annotation.rcl",
               "patterns": [
                 {"match": "[a-zA-Z_][a-zA-Z0-9_]*", "name": "storage.type.rcl"}
               ]
             },
-            {"match": "[a-zA-Z_][a-zA-Z0-9_]*", "name": "variable.let.rcl"}
+            {
+              "begin": "(?<=[=])",
+              "end": "(?=[;])",
+              "patterns": [{"include": "#expr"}]
+            }
           ]
         },
         {
@@ -86,33 +142,15 @@
     },
     "term_brace": {
       "begin": "\\{",
-      "beginCaptures": {
-        "0": {"name": "punctuation.definition.term_brace.begin.rcl"}
-      },
       "end": "\\}",
-      "endCaptures": {
-        "0": {"name": "punctuation.definition.term_brace.end.rcl"}
-      },
-      "name": "meta.structure.term_brace.rcl",
-      "patterns": [
-        {"include": "#expr"},
-        {"match": ",", "name": "punctuation.separator.term_brace.rcl"}
-      ]
+      "name": "meta.structure.brace.rcl",
+      "patterns": [{"include": "#seq"}]
     },
     "term_bracket": {
       "begin": "\\[",
-      "beginCaptures": {
-        "0": {"name": "punctuation.definition.term_bracket.begin.rcl"}
-      },
       "end": "\\]",
-      "endCaptures": {
-        "0": {"name": "punctuation.definition.term_bracket.end.rcl"}
-      },
-      "name": "meta.structure.term_bracket.rcl",
-      "patterns": [
-        {"include": "#expr"},
-        {"match": ",", "name": "punctuation.separator.term_bracket.rcl"}
-      ]
+      "name": "meta.structure.bracket.rcl",
+      "patterns": [{"include": "#seq"}]
     },
     "term_constant": {
       "match": "\\b(?:true|false|null)\\b",
@@ -133,14 +171,8 @@
     },
     "term_parens": {
       "begin": "\\(",
-      "beginCaptures": {
-        "0": {"name": "punctuation.definition.term_parens.begin.rcl"}
-      },
       "end": "\\)",
-      "endCaptures": {
-        "0": {"name": "punctuation.definition.term_parens.end.rcl"}
-      },
-      "name": "meta.structure.term_parens.rcl",
+      "name": "meta.structure.parens.rcl",
       "patterns": [{"include": "#expr"}]
     },
     "term_string": {
