@@ -4,10 +4,12 @@ let root = import "//Cargo.rcl";
   name = "rcl",
   displayName = "RCL",
   description = "Support for the RCL configuration language.",
+  // TODO: Remove the preview designation once the extension is ready.
+  preview = true,
   version = root.package.version,
   license = root.package.license,
   author = { name = "Ruud van Asseldonk" },
-  publisher = "TODO",
+  publisher = "rcl-lang",
 
   engines = { vscode = "^1.100.0" },
   categories = ["Programming Languages"],
@@ -31,5 +33,11 @@ let root = import "//Cargo.rcl";
         path = "./rcl.tmLanguage.json",
       },
     ],
+    configurationDefaults = {
+      "[rcl]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+      },
+    },
   },
 }

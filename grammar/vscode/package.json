@@ -2,6 +2,9 @@
   "author": {"name": "Ruud van Asseldonk"},
   "categories": ["Programming Languages"],
   "contributes": {
+    "configurationDefaults": {
+      "[rcl]": {"editor.insertSpaces": true, "editor.tabSize": 2}
+    },
     "grammars": [
       {
         "language": "rcl",
@@ -24,7 +27,8 @@
   "homepage": "https://rcl-lang.org",
   "license": "Apache-2.0",
   "name": "rcl",
-  "publisher": "TODO",
+  "preview": true,
+  "publisher": "rcl-lang",
   "repository": {"type": "git", "url": "https://github.com/ruuda/rcl.git"},
   "version": "0.13.0"
 }
