@@ -2,9 +2,35 @@
   "patterns": [{"include": "#expr"}, {"include": "#comment"}],
   "repository": {
     "comment": {"match": "//.*$", "name": "comment.line.double-slash.rcl"},
-    "expr": {"patterns": [{"include": "#stmt"}, {"include": "#expr_op"}]},
+    "expr": {
+      "patterns": [
+        {"include": "#stmt"},
+        {"include": "#expr_if"},
+        {"include": "#expr_op"}
+      ]
+    },
+    "expr_binop": {
+      "match": "\\b(and|or)\\b",
+      "name": "keyword.operator.binop.rcl"
+    },
+    "expr_if": {
+      "begin": "\\bif\\b",
+      "beginCaptures": {"0": {"name": "keyword.control.if.rcl"}},
+      "end": "\\belse\\b",
+      "endCaptures": {"0": {"name": "keyword.control.else.rcl"}},
+      "name": "meta.structure.if.rcl",
+      "patterns": [{"include": "#expr"}]
+    },
+    "expr_import": {"match": "\\bimport\\b", "name": "keyword.other.rcl"},
     "expr_not_op": {"patterns": [{"include": "#expr_term"}]},
-    "expr_op": {"patterns": [{"include": "#expr_not_op"}]},
+    "expr_op": {
+      "patterns": [
+        {"include": "#expr_import"},
+        {"include": "#expr_unop"},
+        {"include": "#expr_binop"},
+        {"include": "#expr_not_op"}
+      ]
+    },
     "expr_term": {
       "patterns": [
         {"include": "#term_brace"},
@@ -16,6 +42,7 @@
         {"match": "[a-zA-Z_][a-zA-Z0-9_-]*", "name": "meta.structure.ident.rcl"}
       ]
     },
+    "expr_unop": {"match": "\\bnot\\b", "name": "keyword.operator.unop.rcl"},
     "stmt": {
       "patterns": [
         {
@@ -88,8 +115,17 @@
       "name": "constant.language.rcl"
     },
     "term_number": {
-      "match": "(?:0x|0b)?[0-9a-fA-F_]+(?:\\.[0-9a-fA-F_]*)?(?:[eE][+-]?[0-9_]+)?\\b",
-      "name": "constant.numeric.rcl"
+      "patterns": [
+        {
+          "match": "\\b0x[0-9a-fA-F_]*\\b",
+          "name": "constant.numeric.hexadecimal.rcl"
+        },
+        {"match": "\\b0b[01_]*\\b", "name": "constant.numeric.binary.rcl"},
+        {
+          "match": "\\b[0-9][0-9_]*(?:\\.[0-9_]*)?(?:[eE][+-]?[0-9_]*)?",
+          "name": "constant.numeric.decimal.rcl"
+        }
+      ]
     },
     "term_parens": {
       "begin": "\\(",

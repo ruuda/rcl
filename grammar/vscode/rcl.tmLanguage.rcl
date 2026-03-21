@@ -7,8 +7,14 @@
 
 // This TextMate grammar is structured to reflect the Bison grammar in
 // grammar.y, with the rules in the repository here matching the rules in the
-// Bison grammar by name and structure where possible. There are some links to
-// helpful documentation in the grammars directory's readme.
+// Bison grammar by name and structure where possible. Note that TextMate rules
+// are not production rules though! They indicate nesting, but not sequencing,
+// e.g. the expr_op and expr_binop rules here have no need to be distinct rules,
+// they match the keywords anywhere, but we still keep them distinct in order to
+// match the Bison grammar as closely as possible, to make it more obvious that
+// they are in sync.
+//
+// There are links to helpful documentation in the grammars directory's readme.
 
 {
   scopeName = "source.rcl",
@@ -92,29 +98,71 @@
     term_number = {
       // The regex for number is more lax than what the RCL lexer/parser allow,
       // such that writing something invalid does not break highlighting of the
-      // entire document. ?: introduces a non-captured group.
-      match = "(?:0x|0b)?[0-9a-fA-F_]+(?:\\.[0-9a-fA-F_]*)?(?:[eE][+-]?[0-9_]+)?\\b",
-      name = "constant.numeric.rcl",
+      // entire document. We do split out int with possible prefixes, such that
+      // e.g. `a` on its own is not considered a hex number.
+      patterns = [
+        {
+          name = "constant.numeric.hexadecimal.rcl",
+          match = "\\b0x[0-9a-fA-F_]*\\b",
+        },
+        {
+          name = "constant.numeric.binary.rcl",
+          match = "\\b0b[01_]*\\b",
+        },
+        {
+          name = "constant.numeric.decimal.rcl",
+          // The structure of this regex is chosen such that a prefix of a
+          // number still matches, even when it's not valid for the RCL lexer.
+          // For example, `42.` and `4.2e` match. This ensures that while you
+          // are typing `42.0` or `4.2e1`, the number does not become
+          // un-highlighted as soon as you type the `.` or the `e`. There is no
+          // word boundary anchor at the end because it eats the `.` if there is
+          // one.
+          match = "\\b[0-9][0-9_]*(?:\\.[0-9_]*)?(?:[eE][+-]?[0-9_]*)?",
+        },
+      ],
     },
 
     expr = {
       patterns = [
         { include = "#stmt" },
+        { include = "#expr_if" },
         { include = "#expr_op" },
-        // TODO: Add:
-        // - expr_if
       ],
+    },
+
+    expr_if = {
+      begin = "\\bif\\b",
+      end = "\\belse\\b",
+      beginCaptures = { "0": { name = "keyword.control.if.rcl" } },
+      endCaptures = { "0": { name = "keyword.control.else.rcl" } },
+      name = "meta.structure.if.rcl",
+      patterns = [{ include = "#expr" }],
+    },
+
+    expr_import = {
+      match = "\\bimport\\b",
+      name = "keyword.other.rcl",
     },
 
     expr_op = {
       patterns = [
-        // TODO: Add:
-        // - import
-        // - function
-        // - unop
-        // - binop
+        { include = "#expr_import" },
+        // TODO: expr_function
+        { include = "#expr_unop" },
+        { include = "#expr_binop" },
         { include = "#expr_not_op" },
       ],
+    },
+
+    expr_unop = {
+      match = "\\bnot\\b",
+      name = "keyword.operator.unop.rcl",
+    },
+
+    expr_binop = {
+      match = "\\b(and|or)\\b",
+      name = "keyword.operator.binop.rcl",
     },
 
     expr_not_op = {
