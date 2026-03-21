@@ -1,11 +1,14 @@
 {
-  "patterns": [{"include": "#expression"}],
+  "patterns": [{"include": "#expr"}],
   "repository": {
     "constant": {
       "match": "\\b(?:true|false|null)\\b",
       "name": "constant.language.rcl"
     },
-    "expression": {
+    "expr": {"patterns": [{"include": "#expr_op"}]},
+    "expr_not_op": {"patterns": [{"include": "#expr_term"}]},
+    "expr_op": {"patterns": [{"include": "#expr_not_op"}]},
+    "expr_term": {
       "patterns": [
         {"include": "#term_bracket"},
         {"include": "#term_brace"},
@@ -24,7 +27,7 @@
       },
       "name": "meta.structure.term_brace.rcl",
       "patterns": [
-        {"include": "#expression"},
+        {"include": "#expr"},
         {"match": ",", "name": "punctuation.separator.term_brace.rcl"}
       ]
     },
@@ -39,7 +42,7 @@
       },
       "name": "meta.structure.term_bracket.rcl",
       "patterns": [
-        {"include": "#expression"},
+        {"include": "#expr"},
         {"match": ",", "name": "punctuation.separator.term_bracket.rcl"}
       ]
     },
@@ -53,7 +56,7 @@
         "0": {"name": "punctuation.definition.term_parens.end.rcl"}
       },
       "name": "meta.structure.term_parens.rcl",
-      "patterns": [{"include": "#expression"}]
+      "patterns": [{"include": "#expr"}]
     }
   },
   "scopeName": "source.rcl"
