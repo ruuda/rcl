@@ -88,9 +88,9 @@
 
     expr = {
       patterns = [
+        { include = "#stmt" },
         { include = "#expr_op" },
         // TODO: Add:
-        // - stmt
         // - expr_if
       ],
     },
@@ -126,6 +126,41 @@
         // TODO: To add:
         // - number
         // - ident
+      ],
+    },
+
+    stmt = {
+      patterns = [
+        {
+          // The rules for what constitutes an identifier are more strict in
+          // reality, but highlighting should generally be a bit laxer so that
+          // writing an invalid identifier does not cause the document to stop
+          // being highlighted.
+          begin = "\\b(let)\\s+([^=;]+)\\s+=",
+          end = ";",
+          beginCaptures = {
+            "1": { name = "keyword.other.let.rcl" },
+            "2": { name = "variable.rcl" },
+          },
+          name = "meta.structure.let.rcl",
+          patterns = [{ include = "#expr" }],
+        },
+        {
+          // The structure is more complex than this, but we don't capture that
+          // in the grammar for highlighting.
+          begin = "\\bassert\\b",
+          end = ";",
+          beginCaptures = { "0": { name = "keyword.control.assert.rcl" } },
+          name = "meta.structure.assert.rcl",
+          patterns = [{ include = "#expr" }],
+        },
+        {
+          begin = "\\btrace\\b",
+          end = ";",
+          beginCaptures = { "0": { name = "keyword.control.trace.rcl" } },
+          name = "meta.structure.trace.rcl",
+          patterns = [{ include = "#expr" }],
+        },
       ],
     },
 

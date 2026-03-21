@@ -6,7 +6,7 @@
       "match": "\\b(?:true|false|null)\\b",
       "name": "constant.language.rcl"
     },
-    "expr": {"patterns": [{"include": "#expr_op"}]},
+    "expr": {"patterns": [{"include": "#stmt"}, {"include": "#expr_op"}]},
     "expr_not_op": {"patterns": [{"include": "#expr_term"}]},
     "expr_op": {"patterns": [{"include": "#expr_not_op"}]},
     "expr_term": {
@@ -16,6 +16,34 @@
         {"include": "#term_parens"},
         {"include": "#constant"},
         {"include": "#term_string"}
+      ]
+    },
+    "stmt": {
+      "patterns": [
+        {
+          "begin": "\\b(let)\\s+([^=;]+)\\s+=",
+          "beginCaptures": {
+            "1": {"name": "keyword.other.let.rcl"},
+            "2": {"name": "variable.rcl"}
+          },
+          "end": ";",
+          "name": "meta.structure.let.rcl",
+          "patterns": [{"include": "#expr"}]
+        },
+        {
+          "begin": "\\bassert\\b",
+          "beginCaptures": {"0": {"name": "keyword.control.assert.rcl"}},
+          "end": ";",
+          "name": "meta.structure.assert.rcl",
+          "patterns": [{"include": "#expr"}]
+        },
+        {
+          "begin": "\\btrace\\b",
+          "beginCaptures": {"0": {"name": "keyword.control.trace.rcl"}},
+          "end": ";",
+          "name": "meta.structure.trace.rcl",
+          "patterns": [{"include": "#expr"}]
+        }
       ]
     },
     "string_hole": {
