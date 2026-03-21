@@ -5,14 +5,18 @@
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
 
+// This TextMate grammar is structured to reflect the Bison grammar in
+// grammar.y, with the rules in the repository here matching the rules in the
+// Bison grammar by name and structure where possible.
+
 {
   scopeName = "source.rcl",
-  patterns = [{ include = "#expression" }],
+  patterns = [{ include = "#expr" }],
 
   // First we define some helpers, because all collections are very similar,
   // and it's quite verbose to define in TextMate grammar.
   let patterns_sep_comma = name => [
-    { include = "#expression" },
+    { include = "#expr" },
     { match = ",", name = f"punctuation.separator.{name}.rcl" },
   ];
   let delimited = (name, begin, end, patterns) => {
@@ -33,20 +37,56 @@
       "term_parens",
       "\\(",
       "\\)",
-      _name => [{ include = "#expression" }],
+      _name => [{ include = "#expr" }],
     ),
 
     constant = {
+      // ?: means a non-captured group.
       match = "\\b(?:true|false|null)\\b",
       name = "constant.language.rcl",
     },
 
-    expression = {
+    expr = {
+      patterns = [
+        { include = "#expr_op" },
+        // TODO: Add:
+        // - stmt
+        // - expr_if
+      ],
+    },
+
+    expr_op = {
+      patterns = [
+        // TODO: Add:
+        // - import
+        // - function
+        // - unop
+        // - binop
+        { include = "#expr_not_op" },
+      ],
+    },
+
+    expr_not_op = {
+      patterns = [
+        { include = "#expr_term" },
+        // TODO: Add:
+        // - call
+        // - array index
+        // - field access
+      ],
+    },
+
+    expr_term = {
       patterns = [
         { include = "#term_bracket" },
         { include = "#term_brace" },
         { include = "#term_parens" },
         { include = "#constant" },
+        // TODO: To add:
+        // - fstring
+        // - string
+        // - number
+        // - ident
       ],
     },
   },
