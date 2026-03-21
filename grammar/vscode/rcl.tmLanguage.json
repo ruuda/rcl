@@ -39,7 +39,7 @@
         {"include": "#term_string"},
         {"include": "#term_number"},
         {"include": "#term_constant"},
-        {"match": "[a-zA-Z_][a-zA-Z0-9_-]*", "name": "meta.structure.ident.rcl"}
+        {"match": "[a-zA-Z_][a-zA-Z0-9_]*", "name": "meta.structure.ident.rcl"}
       ]
     },
     "expr_unop": {"match": "\\bnot\\b", "name": "keyword.operator.unop.rcl"},
@@ -48,14 +48,18 @@
         {
           "begin": "\\blet\\b",
           "beginCaptures": {"0": {"name": "keyword.other.let.rcl"}},
-          "end": ";",
+          "end": "=",
           "name": "meta.structure.let.rcl",
           "patterns": [
             {
-              "captures": {"1": {"name": "variable.let.rcl"}},
-              "match": "\\s+([a-zA-Z_][a-zA-Z0-9_-]*)\\s*="
+              "begin": ":",
+              "end": "(?=[=])",
+              "name": "meta.structure.annotation.rcl",
+              "patterns": [
+                {"match": "[a-zA-Z_][a-zA-Z0-9_]*", "name": "storage.type.rcl"}
+              ]
             },
-            {"include": "#expr"}
+            {"match": "[a-zA-Z_][a-zA-Z0-9_]*", "name": "variable.let.rcl"}
           ]
         },
         {

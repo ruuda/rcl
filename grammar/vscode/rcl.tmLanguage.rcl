@@ -23,6 +23,8 @@
     { include = "#comment" },
   ],
 
+  let identifier = "[a-zA-Z_][a-zA-Z0-9_]*";
+
   // First we define some helpers, because all collections are very similar,
   // and it's quite verbose to define in TextMate grammar.
   let patterns_sep_comma = name => [
@@ -188,7 +190,7 @@
           // rule for it, but we include it for completeness and to allow other
           // extensions to potentially do something with it.
           name = "meta.structure.ident.rcl",
-          match = "[a-zA-Z_][a-zA-Z0-9_-]*",
+          match = f"{identifier}",
         },
       ],
     },
@@ -199,18 +201,33 @@
           // The rule for a let statement is more complex than this, with the
           // identifier and `=`, but we don't make them part of the `begin`
           // match so that `let` can be highlighted immediately after you type
-          // it.
+          // it. Initially we had the rule run until the closing `;`, but that
+          // makes it difficult match the inner structure before the `=`; it's
+          // more productive to match only until `=`, and let the regular `expr`
+          // rule handle everything after it on both sides of the `;`.
           begin = "\\blet\\b",
-          end = ";",
+          end = "=",
           beginCaptures = { "0": { name = "keyword.other.let.rcl" } },
           name = "meta.structure.let.rcl",
           patterns = [
-            // Between the opening `let` and `=`, we get the variable name.
             {
-              match = "\\s+([a-zA-Z_][a-zA-Z0-9_-]*)\\s*=",
-              captures = { "1": { name = "variable.let.rcl" } },
+              name = "meta.structure.annotation.rcl",
+              begin = ":",
+              // The end is where the `=` starts, but we can't consume it,
+              // because the end pattern of the surrounding let already needs
+              // to consume it, so we use a lookahead.
+              end = "(?=[=])",
+              patterns = [
+                {
+                  match = f"{identifier}",
+                  name = "storage.type.rcl"
+                }
+              ],
             },
-            { include = "#expr" },
+            {
+              match = f"{identifier}",
+              name = "variable.let.rcl",
+            }
           ],
         },
         {
