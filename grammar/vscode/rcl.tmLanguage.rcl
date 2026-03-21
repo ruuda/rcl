@@ -30,24 +30,24 @@
   let inner_ident = { match = f"{identifier}", name = "meta.declaration.rcl" };
 
   let make_term_string = (name, begin, end, patterns) => {
-      name = name,
-      begin = begin,
-      end = end,
-      patterns = [
-        {
-          name = "constant.character.escape.unibrace.rcl",
-          match = "\\\\u\\{[0-9a-fA-F_]+\\}",
-        },
-        {
-          name = "constant.character.escape.rcl",
-          match = "\\\\u[0-9a-fA-F_]{4}",
-        },
-        {
-          name = "constant.character.escape.single.rcl",
-          match = "\\\\.",
-        },
-        for include_pattern in patterns: { include = include_pattern }
-      ],
+    name = name,
+    begin = begin,
+    end = end,
+    patterns = [
+      {
+        name = "constant.character.escape.unibrace.rcl",
+        match = "\\\\u\\{[0-9a-fA-F_]+\\}",
+      },
+      {
+        name = "constant.character.escape.rcl",
+        match = "\\\\u[0-9a-fA-F_]{4}",
+      },
+      {
+        name = "constant.character.escape.single.rcl",
+        match = "\\\\.",
+      },
+      for include_pattern in patterns: { include = include_pattern },
+    ],
   };
 
   repository = {
@@ -84,8 +84,18 @@
       patterns = [
         make_term_string("string.quoted.double.rcl", "\"", "\"", []),
         make_term_string("string.quoted.triple.rcl", "\"\"\"", "\"\"\"", []),
-        make_term_string("string.quoted.double.rcl", "f\"", "\"", ["#string_hole"]),
-        make_term_string("string.quoted.triple.rcl", "f\"\"\"", "\"\"\"", ["#string_hole"]),
+        make_term_string(
+          "string.quoted.double.rcl",
+          "f\"",
+          "\"",
+          ["#string_hole"],
+        ),
+        make_term_string(
+          "string.quoted.triple.rcl",
+          "f\"\"\"",
+          "\"\"\"",
+          ["#string_hole"],
+        ),
       ],
     },
 
@@ -224,7 +234,7 @@
               begin = "(?<=:)",
               end = "=",
               patterns = [
-                { match = f"{identifier}", name = "storage.type.rcl" }
+                { match = f"{identifier}", name = "storage.type.rcl" },
               ],
             },
             // Finally, the expression part, the end of which we need to match
@@ -233,7 +243,7 @@
               begin = "(?<=[=])",
               end = "(?=[;])",
               patterns = [{ include = "#expr" }],
-            }
+            },
           ],
         },
         {
@@ -285,7 +295,7 @@
           begin = "(?<=\\bin\\b)",
           end = "(?=:)",
           patterns = [{ include = "#expr" }],
-        }
+        },
       ],
     },
 
