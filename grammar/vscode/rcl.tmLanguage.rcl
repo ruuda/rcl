@@ -7,7 +7,8 @@
 
 // This TextMate grammar is structured to reflect the Bison grammar in
 // grammar.y, with the rules in the repository here matching the rules in the
-// Bison grammar by name and structure where possible.
+// Bison grammar by name and structure where possible. There are some links to
+// helpful documentation in the grammars directory's readme.
 
 {
   scopeName = "source.rcl",
@@ -57,8 +58,7 @@
     string_hole = {
       begin = "\\{",
       end = "\\}",
-      // TODO: Pick the relevant scope name.
-      name = "interpolate.rcl",
+      name = "string.interpolated.rcl",
       patterns = [{ include = "#expr" }],
     },
 
@@ -119,6 +119,12 @@
         // - number
         // - ident
       ],
+    },
+
+    // Comment is a magic rule in TextMate grammars, it is allowed anywhere.
+    comment = {
+      name = "comment.line.double-slash.rcl",
+      match = "//.*$",
     },
   },
 }
