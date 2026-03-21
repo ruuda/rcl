@@ -105,4 +105,6 @@ directory.
 ## External
 
 Aside from editor support, [`rcl highlight`](rcl_highlight.md) will highlight an
-expression using its internal parser.
+expression using its internal lexer, and [`rcl format`](rcl_format.md) formats
+and highlights a document. The latter produces more advanced highlighting,
+because it uses the richer syntax tree, rather than the more basic token stream.
