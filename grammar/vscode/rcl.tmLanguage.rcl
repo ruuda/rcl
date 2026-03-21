@@ -12,7 +12,10 @@
 
 {
   scopeName = "source.rcl",
-  patterns = [{ include = "#expr" }],
+  patterns = [
+    { include = "#expr" },
+    { include = "#comment" },
+  ],
 
   // First we define some helpers, because all collections are very similar,
   // and it's quite verbose to define in TextMate grammar.
@@ -132,18 +135,22 @@
     stmt = {
       patterns = [
         {
-          // The rules for what constitutes an identifier are more strict in
-          // reality, but highlighting should generally be a bit laxer so that
-          // writing an invalid identifier does not cause the document to stop
-          // being highlighted.
-          begin = "\\b(let)\\s+([^=;]+)\\s+=",
+          // The rule for a let statement is more complex than this, with the
+          // identifier and `=`, but we don't make them part of the `begin`
+          // match so that `let` can be highlighted immediately after you type
+          // it.
+          begin = "\\blet\\b",
           end = ";",
-          beginCaptures = {
-            "1": { name = "keyword.other.let.rcl" },
-            "2": { name = "variable.rcl" },
-          },
+          beginCaptures = { "0": { name = "keyword.other.let.rcl" } },
           name = "meta.structure.let.rcl",
-          patterns = [{ include = "#expr" }],
+          patterns = [
+            // Between the opening `let` and `=`, we get the variable name.
+            {
+              match = "\\s+([a-zA-Z_][a-zA-Z0-9_-]*)\\s*=",
+              captures = { "1": { name = "variable.let.rcl" } },
+            },
+            { include = "#expr" },
+          ],
         },
         {
           // The structure is more complex than this, but we don't capture that
