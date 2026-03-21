@@ -22,7 +22,7 @@
     { include = "#expr" },
   ],
 
-  let identifier = "[a-zA-Z_][a-zA-Z0-9_]*";
+  let identifier = "[a-zA-Z_][a-zA-Z0-9_-]*";
 
   // In some places, like after `let` and `for`, we can match identifiers, but
   // we don't assign them the `variable` scope. Some themes highlight it, but in
