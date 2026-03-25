@@ -14,6 +14,12 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Next
+
+Unreleased.
+
+ * Improved error messages for unmatched brackets.
+
 ## 0.13.0
 
 Released 2026-02-28.

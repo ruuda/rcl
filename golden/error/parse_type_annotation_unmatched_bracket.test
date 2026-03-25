@@ -6,7 +6,7 @@ stdin:1:21
   ╷
 1 │ let xs: List[Number + String] = [];
   ╵                     ^
-Error: Expected ']'.
+Error: Expected ',' or ']'.
 
 stdin:1:13
   ╷

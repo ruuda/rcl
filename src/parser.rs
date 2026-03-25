@@ -189,7 +189,13 @@ impl<'a> Parser<'a> {
     /// Pop a closing bracket while verifying that it is the right one.
     ///
     /// Consumes the token under the cursor.
-    fn pop_bracket(&mut self) -> Result<Span> {
+    #[inline]
+    fn pop_bracket_generic(
+        &mut self,
+        err_paren: &'static str,
+        err_brace: &'static str,
+        err_bracket: &'static str,
+    ) -> Result<Span> {
         self.decrease_depth();
         let actual_end_token = self.tokens.get(self.cursor).map(|t| t.0);
         let top = self
@@ -212,17 +218,31 @@ impl<'a> Parser<'a> {
         // parser expects a closing bracket. E.g. in `{1 1}`.
         let err = match expected_end_token {
             Token::RParen => self
-                .error("Expected ')'.")
+                .error(err_paren)
                 .with_note(top.1, "Unmatched '(' opened here."),
             Token::RBrace => self
-                .error("Expected '}'.")
+                .error(err_brace)
                 .with_note(top.1, "Unmatched '{' opened here."),
             Token::RBracket => self
-                .error("Expected ']'.")
+                .error(err_bracket)
                 .with_note(top.1, "Unmatched '[' opened here."),
             _ => unreachable!("End token is one of the above three."),
         };
         err.err()
+    }
+
+    /// Pop a closing bracket in a context where a comma is not allowed.
+    fn pop_bracket_only(&mut self) -> Result<Span> {
+        self.pop_bracket_generic("Expected ')'.", "Expected '}'.", "Expected ']'.")
+    }
+
+    /// Pop a closing bracket, but suggest that comma was also allowed.
+    fn pop_bracket_delimited(&mut self) -> Result<Span> {
+        self.pop_bracket_generic(
+            "Expected ',' or ')'.",
+            "Expected ',' or '}'.",
+            "Expected ',' or ']'.",
+        )
     }
 
     /// Eat comments and whitespace.
@@ -673,7 +693,7 @@ impl<'a> Parser<'a> {
             Token::LParen => {
                 self.push_bracket()?;
                 let args = self.parse_function_args()?;
-                self.pop_bracket()?;
+                self.pop_bracket_delimited()?;
                 args
             }
             _ => panic!("Should only call `parse_expr_function` on a lambda."),
@@ -815,7 +835,7 @@ impl<'a> Parser<'a> {
                     self.skip_non_code()?;
                     let open = self.push_bracket()?;
                     let args = self.parse_call_args()?;
-                    let close = self.pop_bracket()?;
+                    let close = self.pop_bracket_delimited()?;
                     let chain_expr = Chain::Call { open, close, args };
                     chain.push((inner_span, chain_expr));
                 }
@@ -823,7 +843,7 @@ impl<'a> Parser<'a> {
                     self.skip_non_code()?;
                     let open = self.push_bracket()?;
                     let (index_span, index) = self.parse_expr()?;
-                    let close = self.pop_bracket()?;
+                    let close = self.pop_bracket_only()?;
                     let chain_expr = Chain::Index {
                         open,
                         close,
@@ -863,7 +883,7 @@ impl<'a> Parser<'a> {
             Token::LBrace => {
                 let open = self.push_bracket()?;
                 let elements = self.parse_seqs()?;
-                let close = self.pop_bracket()?;
+                let close = self.pop_bracket_delimited()?;
                 let result = Expr::BraceLit {
                     open,
                     close,
@@ -874,7 +894,7 @@ impl<'a> Parser<'a> {
             Token::LBracket => {
                 let open = self.push_bracket()?;
                 let elements = self.parse_seqs()?;
-                let close = self.pop_bracket()?;
+                let close = self.pop_bracket_delimited()?;
                 let result = Expr::BracketLit {
                     open,
                     close,
@@ -885,7 +905,7 @@ impl<'a> Parser<'a> {
             Token::LParen => {
                 let open = self.push_bracket()?;
                 let (body_span, body) = self.parse_expr()?;
-                let close = self.pop_bracket()?;
+                let close = self.pop_bracket_only()?;
                 let result = Expr::Parens {
                     open,
                     close,
@@ -1050,7 +1070,7 @@ impl<'a> Parser<'a> {
                     // If we don't find a separator, nor the end of the args,
                     // that's an error. We can report an unmatched bracket
                     // as the problem, because it is.
-                    self.pop_bracket()?;
+                    self.pop_bracket_delimited()?;
                     unreachable!("pop_bracket should have failed.");
                 }
             }
@@ -1088,7 +1108,7 @@ impl<'a> Parser<'a> {
                     // If we don't find a separator, nor the end of the args,
                     // that's an error. We can report an unmatched bracket
                     // as the problem, because it is.
-                    self.pop_bracket()?;
+                    self.pop_bracket_delimited()?;
                     unreachable!("pop_bracket should have failed.");
                 }
             }
@@ -1154,7 +1174,7 @@ impl<'a> Parser<'a> {
                 }
                 Token::KwElse => {
                     return self
-                        .pop_bracket()
+                        .pop_bracket_delimited()
                         .expect_err("We are in a seq.")
                         .with_help(concat! {
                             "Inside a comprehension, '"
@@ -1173,7 +1193,7 @@ impl<'a> Parser<'a> {
                 // we can report a better error.
                 Token::Eq1 => {
                     return self
-                        .pop_bracket()
+                        .pop_bracket_delimited()
                         .expect_err("We are in a seq.")
                         .with_help(concat! {
                             "To use '"
@@ -1187,7 +1207,7 @@ impl<'a> Parser<'a> {
                         .err();
                 }
                 _ => {
-                    self.pop_bracket()?;
+                    self.pop_bracket_delimited()?;
                     unreachable!("pop_bracket should have failed.");
                 }
             }
@@ -1393,7 +1413,7 @@ impl<'a> Parser<'a> {
         if let (Type::Term(name), Token::LBracket) = (&term, self.peek()) {
             self.push_bracket()?;
             let args = self.parse_types()?;
-            self.pop_bracket()?;
+            self.pop_bracket_delimited()?;
 
             let type_apply = Type::Apply {
                 span: self.span_from(begin),
@@ -1412,7 +1432,7 @@ impl<'a> Parser<'a> {
         let begin = self.peek_span();
         self.push_bracket()?;
         let args = self.parse_types()?;
-        self.pop_bracket()?;
+        self.pop_bracket_delimited()?;
         self.skip_non_code()?;
         self.parse_token(Token::ThinArrow, "Expected '->' here in function type.")?;
         let result_type = self.parse_type_expr()?;
@@ -1460,7 +1480,7 @@ impl<'a> Parser<'a> {
                     // If we don't find a separator, nor the end of the list,
                     // that's an error. We can report an unmatched bracket
                     // as the problem, because it is.
-                    self.pop_bracket()?;
+                    self.pop_bracket_delimited()?;
                     unreachable!("pop_bracket should have failed.");
                 }
             }

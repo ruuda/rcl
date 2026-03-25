@@ -7,7 +7,7 @@ stdin:2:19
   ╷
 2 │   if true: "true" else "false"
   ╵                   ^~~~
-Error: Expected ']'.
+Error: Expected ',' or ']'.
 
 stdin:1:1
   ╷
