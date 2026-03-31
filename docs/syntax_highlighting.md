@@ -91,6 +91,19 @@ The directory `grammar/rcl.vim` contains support for highlighting in Vim.
 You can symlink the contents into your `~/.vim`, or use a plugin manager like
 Pathogen and symlink the directory into `~/.vim/bundle`.
 
+## Visual Studio Code
+
+The [Visual Studio Code extension][vscode-ext] is available from the Visual
+Studio marketplace.
+
+If you want to install a development version of the extension, the extension
+is developed in the main repository. See [the section in the grammars
+chapter][grammars-vscode] for how to build it, then install the extension using
+_Extensions: Install from <abbr>VSIX</abbr>…_ from the command panel.
+
+[vscode-ext]: https://marketplace.visualstudio.com/items?itemName=rcl-lang.rcl
+[grammars-vscode]: grammars.md#visual-studio-code
+
 ## Zed
 
 The [Zed extension](https://github.com/rcl-lang/zed-rcl) is available from the
