@@ -20,7 +20,7 @@ pub fn format_value(format: OutputFormat, value_span: Span, value: &Value) -> Re
         OutputFormat::JsonLines => crate::fmt_json_lines::format_json_lines(value_span, value)?,
         OutputFormat::Raw => crate::fmt_raw::format_raw(value_span, value)?,
         OutputFormat::Rcl => crate::fmt_rcl::format_rcl(value),
-        OutputFormat::Systemd => todo!("Implement systemd output."),
+        OutputFormat::Systemd => crate::fmt_systemd::format_systemd(value_span, value)?,
         OutputFormat::Toml10 => {
             crate::fmt_toml::format_toml(TomlVersion::Toml10, value_span, value)?
         }

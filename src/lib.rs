@@ -97,6 +97,7 @@ pub mod fmt_json;
 pub mod fmt_json_lines;
 pub mod fmt_raw;
 pub mod fmt_rcl;
+pub mod fmt_systemd;
 pub mod fmt_toml;
 pub mod fmt_type;
 pub mod fmt_yaml_stream;

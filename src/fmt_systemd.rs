@@ -1,0 +1,223 @@
+// RCL -- A reasonable configuration language.
+// Copyright 2026 Ruud van Asseldonk
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// A copy of the License has been included in the root of the repository.
+
+//! Formatter that prints values as systemd units.
+//!
+//! This formatter is similar to the one in [`crate::fmt_toml`].
+
+use std::collections::BTreeMap;
+
+use crate::error::{IntoError, PathElement, Result};
+use crate::markup::Markup;
+use crate::pprint::{concat, Doc};
+use crate::runtime::Value;
+use crate::source::Span;
+use crate::string::escape_json;
+
+/// Render a value as systemd unit.
+pub fn format_systemd(caller: Span, v: &Value) -> Result<Doc> {
+    let mut formatter = Formatter::new(caller);
+
+    match v {
+        Value::Dict(kv) => formatter.top_level(kv),
+        _ => formatter.error("To format as systemd unit, the top-level value must be a dict."),
+    }
+}
+
+/// Helper for formatting values as systemd unit.
+///
+/// The formatter tracks the path in the value that we are formatting from, such
+/// that we can report the location of an error, in case an error occurs.
+struct Formatter {
+    /// The source location where formatting was triggered from.
+    caller: Span,
+
+    /// Where we currently are in the value to be formatted.
+    path: Vec<PathElement>,
+}
+
+impl Formatter {
+    pub fn new(caller: Span) -> Formatter {
+        Formatter {
+            caller,
+            path: Vec::new(),
+        }
+    }
+
+    /// Report an error at the current value path.
+    fn error<T>(&mut self, message: &'static str) -> Result<T> {
+        // Steal the path from the formatter and move it into the error. We have
+        // to leave an empty path in its place. This is fine, because returning
+        // the error prevents further formatting.
+        let mut path = Vec::new();
+        std::mem::swap(&mut self.path, &mut path);
+        self.caller.error(message).with_path(path).err()
+    }
+
+    /// Format a string.
+    fn string<'a>(&self, s: &str) -> Doc<'a> {
+        let mut into = String::with_capacity(s.len());
+        // Note, json escaping works unmodified for TOML too, the characters that
+        // need escaping are identical and with the same escape sequences (which
+        // TOML probably did on purpose). <https://toml.io/en/v1.0.0#string>
+        escape_json(s, &mut into);
+        concat! { "\"" into "\"" }
+    }
+
+    /// Format as a key in a key-value pair, or table header (without brackets).
+    fn key<'a>(&self, ident: &'a str) -> Doc<'a> {
+        let bytes = ident.as_bytes();
+
+        if bytes.is_empty() {
+            return "\"\"".into();
+        }
+
+        // If the key is ASCII alphanumeric, underscores, or dashes, then we can
+        // use it unquoted. <https://toml.io/en/v1.0.0#keys> Even if it starts
+        // with a digit.
+        if bytes
+            .iter()
+            .all(|b| b.is_ascii_alphanumeric() || *b == b'_' || *b == b'-')
+        {
+            ident.into()
+        } else {
+            self.string(ident)
+        }
+    }
+
+    /// Format a key, and push it to as path, or return an error on non-strings.
+    fn push_key<'a>(&mut self, key: &'a Value) -> Result<Doc<'a>> {
+        self.path.push(PathElement::Key(key.clone()));
+        match key {
+            Value::String(k_str) => Ok(self.key(k_str).with_markup(Markup::Field)),
+            _ => self.error("To export as TOML, keys must be strings."),
+        }
+    }
+
+    /// Format a key-value pair inside a section.
+    ///
+    /// If the value is a list or set, we repeat the key.
+    fn key_value<'a>(&mut self, key: &'a Value, value: &'a Value) -> Result<Doc<'a>> {
+        match value {
+            Value::List(vs) => self.key_values(key, vs.iter()),
+            Value::Set(vs) => self.key_values(key, vs.iter()),
+            v => {
+                let result = concat! {
+                    self.push_key(key)? "=" self.value(v)? Doc::HardBreak
+                };
+                self.path.pop().expect("We pushed the key before.");
+                Ok(result)
+            }
+        }
+    }
+
+    /// Format a repeated key-value pair inside a section.
+    fn key_values<'a>(
+        &mut self,
+        key: &'a Value,
+        values: impl Iterator<Item = &'a Value>,
+    ) -> Result<Doc<'a>> {
+        let mut parts: Vec<Doc<'a>> = Vec::new();
+        for v in values {
+            parts.push(self.push_key(key)?);
+            parts.push("=".into());
+            parts.push(self.value(v)?);
+            parts.push(Doc::HardBreak);
+            self.path.pop().expect("We pushed the key before.");
+        }
+        Ok(Doc::Concat(parts))
+    }
+
+    /// Format a space-separated list of values.
+    fn space_separated<'a>(&mut self, values: impl Iterator<Item = &'a Value>) -> Result<Doc<'a>> {
+        let mut parts: Vec<Doc<'a>> = Vec::new();
+        for (i, v) in values.enumerate() {
+            if i > 0 {
+                // The separator is always a space, we don't allow line breaks.
+                // TODO: We might allow tall with \.
+                parts.push(" ".into());
+            }
+            parts.push(self.value(v)?);
+        }
+        Ok(Doc::Concat(parts))
+    }
+
+    fn value<'a>(&mut self, v: &'a Value) -> Result<Doc<'a>> {
+        let result = match v {
+            Value::Null => Doc::Empty,
+            Value::Bool(true) => Doc::from("true").with_markup(Markup::Keyword),
+            Value::Bool(false) => Doc::from("false").with_markup(Markup::Keyword),
+            Value::Number(d) => Doc::from(d.format()).with_markup(Markup::Number),
+            // TODO: Quote only if needed.
+            Value::String(s) => self.string(s).with_markup(Markup::String),
+
+            // For collections, the outer formatter already formats them by
+            // repeating the key. If we still get here, that's a collection
+            // inside a collection, and then we format them space-separated.
+            Value::List(vs) => self.space_separated(vs.iter())?,
+            Value::Set(vs) => self.space_separated(vs.iter())?,
+
+            // If we get a dict at this level, we can't really decide for the
+            // user how to format that. E.g. BindPaths= takes colon-separated
+            // "key-values", Environment= takes fully quoted 'key=value' pairs
+            // separated by spaces. Probably the latter makes sense. But for
+            // now we just ban dicts and let the user make strings.
+            Value::Dict(..) => self
+                .error("Dicts cannot be exported in systemd units.")
+                .map_err(|err| {
+                    err.with_help(
+                        "Format key-values as strings first, for example with a comprehension.",
+                    )
+                })?,
+            Value::Function(..) => self.error("Functions cannot be exported in systemd units.")?,
+            Value::BuiltinFunction(..) => {
+                self.error("Functions cannot be exported in systemd units.")?
+            }
+            Value::BuiltinMethod { .. } => {
+                self.error("Methods cannot be exported in systemd units.")?
+            }
+        };
+        Ok(result)
+    }
+
+    fn top_level<'a>(&mut self, kv: &'a BTreeMap<Value, Value>) -> Result<Doc<'a>> {
+        let mut result: Vec<Doc> = Vec::new();
+
+        for (k, v) in kv {
+            match v {
+                // Top-level dicts get formatted as sections.
+                Value::Dict(section_inner) => {
+                    let section_header = self.push_key(k)?;
+
+                    // Separate sections by a blank line.
+                    if !result.is_empty() {
+                        result.push(Doc::HardBreak);
+                    }
+
+                    result.push(concat! { "[" section_header "]" });
+                    result.push(Doc::HardBreak);
+
+                    for (inner_k, inner_v) in section_inner.iter() {
+                        result.push(self.key_value(inner_k, inner_v)?);
+                    }
+
+                    self.path.pop().expect("We pushed the key before.");
+                }
+
+                // TODO: It may be a list or set as well, sections can be repeated.
+
+                // Anything else is invalid at this level.
+                _ => {
+                    self.push_key(k)?;
+                    self.error("Expected a dict, e.g. { WantedBy = \"multi-user.target\" }.")?;
+                }
+            }
+        }
+
+        Ok(Doc::Concat(result))
+    }
+}
