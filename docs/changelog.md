@@ -19,6 +19,8 @@ compatibility impact will be clearly marked as such in the changelog.
 Unreleased.
 
  * Improved error messages for unmatched brackets.
+ * Highlighters based on Tree-sitter (e.g. those in Helix and Zed) now highlight
+   function calls.
 
 ## 0.13.0
 
