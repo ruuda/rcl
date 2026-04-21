@@ -42,6 +42,26 @@ to use for highlighting, similar to scopes for Tree Sitter.
 
 [vim-groups]: https://vimhelp.org/syntax.txt.html#group-name
 
+## Visual Studio Code
+
+The `vscode` directory contains the Visual Studio Code plugin including TextMate
+grammar. The json version of the grammar is generated with <abbr>RCL</abbr>. The
+TextMate documentation has [a section on scope naming conventions][tm-scopes].
+Some helpful links:
+
+ * [TextMate language grammar documentation][tm-docs]
+ * [Helpful _lessons learned_ blog post][tm-lessons]
+ * [VSCode syntax highlighting docs][vscode-highlight]
+
+[tm-docs]:          https://macromates.com/manual/en/language_grammars
+[tm-scopes]:        https://macromates.com/manual/en/language_grammars#naming_conventions
+[tm-lessons]:       https://www.apeth.com/nonblog/stories/textmatebundle.html
+[vscode-highlight]: https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide
+
+The Nix flake includes a <abbr>VSIX</abbr> extension package. To build it:
+
+    nix build .#vscode-extension
+
 ## Zed
 
 The `zed` directory contains the Zed plugin. This directory is the source of

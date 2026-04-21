@@ -158,7 +158,7 @@
 
           pythonSources = pkgs.lib.sourceFilesBySuffices ./. [ ".py" ".pyi" ];
 
-          rclTomlSources = pkgs.lib.sourceFilesBySuffices ./. [ ".rcl" ".toml" ];
+          rclGeneratedSources = pkgs.lib.sourceFilesBySuffices ./. [ ".rcl" ".toml" ".json" ];
 
           goldenSources = ./golden;
 
@@ -412,6 +412,29 @@
             RUSTFLAGS = "-C instrument-coverage -C link-dead-code -C debug-assertions";
           });
 
+          vscode-extension = pkgs.stdenv.mkDerivation {
+            pname = "rcl-vscode";
+            inherit version;
+            src = ./grammar/vscode;
+            nativeBuildInputs = [ pkgs.vsce ];
+            doCheck = false;
+            buildPhase =
+              ''
+              # We want only the json files, not the RCL sources. Also, the
+              # `vsce` tool complains if there is no LICENSE file, so copy it
+              # in.
+              rm *.rcl
+              cp ${./LICENSE} LICENSE
+
+              # TODO: The VSIX file is just a zip file of the directory, with
+              # two additional XML files in it. One of them may be kind of a
+              # pain to generate, but on the other hand, we could skip nodejs
+              # if we build the zip file ourselves.
+              mkdir -p $out
+              vsce package --no-dependencies --out $out/rcl-${version}.vsix
+              '';
+          };
+
         in
           rec {
             devShells.default = pkgs.mkShell {
@@ -503,14 +526,14 @@
                 "check-fmt-rcl"
                 { buildInputs = [ debugBuild ]; }
                 ''
-                rcl format --check ${rclTomlSources}/**.rcl | tee $out
+                rcl format --check ${rclGeneratedSources}/**.rcl | tee $out
                 '';
 
               buildRcl = pkgs.runCommand
                 "check-rcl-build"
                 { buildInputs = [ debugBuild ]; }
                 ''
-                rcl build --check --directory ${rclTomlSources} | tee $out
+                rcl build --check --directory ${rclGeneratedSources} | tee $out
                 '';
 
               # Build documentation with warnings denied, so the check fails if
@@ -545,7 +568,7 @@
             };
 
             packages = {
-              inherit fuzzers-coverage rcl pyrcl pyrcl-wheel treeSitterRcl website;
+              inherit fuzzers-coverage rcl pyrcl pyrcl-wheel treeSitterRcl vscode-extension website;
 
               default = rcl;
               binaries = rcl-binaries;
@@ -561,7 +584,7 @@
                 RCL_BIN=${coverageBuild}/bin/rcl python3 ${goldenSources}/run.py
 
                 # Also run `rcl build` to make sure we cover that part of the application.
-                ${coverageBuild}/bin/rcl build --check --directory ${rclTomlSources}
+                ${coverageBuild}/bin/rcl build --check --directory ${rclGeneratedSources}
 
                 # Copy in the .profraw files from the tests.
                 cp ${coverageBuild}/prof/*.profraw .

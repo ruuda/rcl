@@ -1,0 +1,331 @@
+// RCL -- A reasonable configuration language.
+// Copyright 2025 Ruud van Asseldonk
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// A copy of the License has been included in the root of the repository.
+
+// This TextMate grammar is structured to reflect the Bison grammar in
+// grammar.y, with the rules in the repository here matching the rules in the
+// Bison grammar by name and structure where possible. Note that TextMate rules
+// are not production rules though! They indicate nesting, but not sequencing,
+// e.g. the expr_op and expr_binop rules here have no need to be distinct rules,
+// they match the keywords anywhere, but we still keep them distinct in order to
+// match the Bison grammar as closely as possible, to make it more obvious that
+// they are in sync.
+//
+// There are links to helpful documentation in the grammars directory's readme.
+
+{
+  scopeName = "source.rcl",
+  patterns = [
+    { include = "#expr" },
+  ],
+
+  let identifier = "[a-zA-Z_][a-zA-Z0-9_-]*";
+
+  // In some places, like after `let` and `for`, we can match identifiers, but
+  // we don't assign them the `variable` scope. Some themes highlight it, but in
+  // my opinion it makes the document too cluttered when everything lights up.
+  let inner_ident = { match = f"{identifier}", name = "meta.declaration.rcl" };
+
+  let make_term_string = (name, begin, end, patterns) => {
+    name = name,
+    begin = begin,
+    end = end,
+    patterns = [
+      {
+        name = "constant.character.escape.unibrace.rcl",
+        match = "\\\\u\\{[0-9a-fA-F_]+\\}",
+      },
+      {
+        name = "constant.character.escape.rcl",
+        match = "\\\\u[0-9a-fA-F_]{4}",
+      },
+      {
+        name = "constant.character.escape.single.rcl",
+        match = "\\\\.",
+      },
+      for include_pattern in patterns: { include = include_pattern },
+    ],
+  };
+
+  repository = {
+    term_bracket = {
+      name = "meta.structure.bracket.rcl",
+      begin = "\\[",
+      end = "\\]",
+      patterns = [{ include = "#seq" }],
+    },
+
+    term_brace = {
+      name = "meta.structure.brace.rcl",
+      begin = "\\{",
+      end = "\\}",
+      patterns = [{ include = "#seq" }],
+    },
+
+    term_parens = {
+      name = "meta.structure.parens.rcl",
+      begin = "\\(",
+      end = "\\)",
+      patterns = [{ include = "#expr" }],
+    },
+
+    string_hole = {
+      begin = "\\{",
+      end = "\\}",
+      name = "string.interpolated.rcl",
+      patterns = [{ include = "#expr" }],
+    },
+
+    term_string = {
+      name = "string.quoted.rcl",
+      patterns = [
+        // The order of the patterns matters, we need to put the largest
+        // possible match first: f-strings go before normal strings, triple
+        // before double.
+        make_term_string(
+          "string.quoted.triple.rcl",
+          "f\"\"\"",
+          "\"\"\"",
+          ["#string_hole"],
+        ),
+        make_term_string(
+          "string.quoted.double.rcl",
+          "f\"",
+          "\"",
+          ["#string_hole"],
+        ),
+        make_term_string("string.quoted.triple.rcl", "\"\"\"", "\"\"\"", []),
+        make_term_string("string.quoted.double.rcl", "\"", "\"", []),
+      ],
+    },
+
+    term_constant = {
+      // ?: means a non-captured group.
+      match = "\\b(?:true|false|null)\\b",
+      name = "constant.language.rcl",
+    },
+
+    term_number = {
+      // The regex for number is more lax than what the RCL lexer/parser allow,
+      // such that writing something invalid does not break highlighting of the
+      // entire document. We do split out int with possible prefixes, such that
+      // e.g. `a` on its own is not considered a hex number.
+      patterns = [
+        {
+          name = "constant.numeric.hexadecimal.rcl",
+          match = "\\b0x[0-9a-fA-F_]*\\b",
+        },
+        {
+          name = "constant.numeric.binary.rcl",
+          match = "\\b0b[01_]*\\b",
+        },
+        {
+          name = "constant.numeric.decimal.rcl",
+          // The structure of this regex is chosen such that a prefix of a
+          // number still matches, even when it's not valid for the RCL lexer.
+          // For example, `42.` and `4.2e` match. This ensures that while you
+          // are typing `42.0` or `4.2e1`, the number does not become
+          // un-highlighted as soon as you type the `.` or the `e`. There is no
+          // word boundary anchor at the end because it eats the `.` if there is
+          // one.
+          match = "\\b[0-9][0-9_]*(?:\\.[0-9_]*)?(?:[eE][+-]?[0-9_]*)?",
+        },
+      ],
+    },
+
+    expr = {
+      patterns = [
+        { include = "#stmt" },
+        { include = "#expr_if" },
+        { include = "#expr_op" },
+        { include = "#comment" },
+      ],
+    },
+
+    expr_if = {
+      begin = "\\bif\\b",
+      end = "\\belse\\b",
+      beginCaptures = { "0": { name = "keyword.control.if.rcl" } },
+      endCaptures = { "0": { name = "keyword.control.else.rcl" } },
+      name = "meta.structure.if.rcl",
+      patterns = [{ include = "#expr" }],
+    },
+
+    expr_import = {
+      match = "\\bimport\\b",
+      name = "keyword.other.rcl",
+    },
+
+    expr_op = {
+      patterns = [
+        { include = "#expr_import" },
+        { include = "#expr_unop" },
+        { include = "#expr_binop" },
+        { include = "#expr_not_op" },
+        // In the grammar we also have function expressions, but we don't need
+        // to define anything explicitly here; we could match on the fat arrow
+        // but leaving the entire thing an `expr` scope works fine.
+      ],
+    },
+
+    expr_unop = {
+      match = "\\bnot\\b",
+      name = "keyword.operator.unop.rcl",
+    },
+
+    expr_binop = {
+      match = "\\b(and|or)\\b",
+      name = "keyword.operator.binop.rcl",
+    },
+
+    expr_not_op = {
+      patterns = [
+        { include = "#expr_term" },
+        // In the grammar we also have function calls, array indexing, and field
+        // access, but we don't need to explicitly define them here, we just
+        // leave the punctuation tokens unmatched.
+      ],
+    },
+
+    expr_term = {
+      patterns = [
+        { include = "#term_brace" },
+        { include = "#term_bracket" },
+        { include = "#term_parens" },
+        { include = "#term_string" },
+        { include = "#term_number" },
+        { include = "#term_constant" },
+        {
+          // We don't need to highlight identifiers, so we don't really need a
+          // rule for it, but we include it for completeness and to allow other
+          // extensions to potentially do something with it.
+          name = "meta.structure.ident.rcl",
+          match = f"{identifier}",
+        },
+      ],
+    },
+
+    stmt = {
+      patterns = [
+        {
+          // The rule for a let statement is more complex than this, with the
+          // identifier and `=`, but we don't make them part of the `begin`
+          // match so that `let` can be highlighted immediately after you type
+          // it. Initially we had the rule run until the closing `;`, but that
+          // makes it difficult match the inner structure before the `=`; it's
+          // more productive to match only until `=`, and let the regular `expr`
+          // rule handle everything after it on both sides of the `;`.
+          begin = "\\blet\\b",
+          end = ";",
+          beginCaptures = { "0": { name = "keyword.other.let.rcl" } },
+          name = "meta.structure.let.rcl",
+          patterns = [
+            // The identifier part, the start of which we match with a
+            // lookbehind because it's already consumed by the outer rule.
+            {
+              begin = "(?<=\\blet\\b)",
+              end = "[:=]",
+              patterns = [inner_ident],
+            },
+            // Optionally, a type annotation part, which we again match using
+            // a lookbehind.
+            {
+              name = "meta.structure.annotation.rcl",
+              begin = "(?<=:)",
+              end = "=",
+              patterns = [
+                // We don't use `storage.type` because it's not really a type
+                // like that like it is in C. The Rust grammar uses this scope
+                // so we'll use it as well.
+                { match = f"{identifier}", name = "entity.name.type.rcl" },
+              ],
+            },
+            // Finally, the expression part, the end of which we need to match
+            // using a lookahead because it's again consumed by the outer rule.
+            {
+              begin = "(?<=[=])",
+              end = "(?=[;])",
+              patterns = [{ include = "#expr" }],
+            },
+          ],
+        },
+        {
+          // The structure is more complex than this, but we don't capture that
+          // in the grammar for highlighting.
+          begin = "\\bassert\\b",
+          end = ";",
+          beginCaptures = { "0": { name = "keyword.control.assert.rcl" } },
+          name = "meta.structure.assert.rcl",
+          patterns = [{ include = "#expr" }],
+        },
+        {
+          begin = "\\btrace\\b",
+          end = ";",
+          beginCaptures = { "0": { name = "keyword.control.trace.rcl" } },
+          name = "meta.structure.trace.rcl",
+          patterns = [{ include = "#expr" }],
+        },
+      ],
+    },
+
+    seq = {
+      name = "meta.structure.seq.rcl",
+      patterns = [
+        { include = "#stmt" },
+        { include = "#seq_for" },
+        { include = "#seq_if" },
+        { include = "#seq_kv" },
+        { include = "#expr_op" },
+        { include = "#comment" },
+      ],
+    },
+
+    seq_for = {
+      begin = "\\bfor\\b",
+      end = ":",
+      beginCaptures = { "0": { name = "keyword.control.for.rcl" } },
+      // For the two sections inside, we use lookbehind to match the start of
+      // the group, so we don't consume the match, because we can consume every
+      // match only once.
+      patterns = [
+        {
+          begin = "(?<=\\bfor\\b)",
+          end = "\\bin\\b",
+          endCaptures = { "0": { name = "keyword.control.in.rcl" } },
+          patterns = [inner_ident],
+        },
+        {
+          begin = "(?<=\\bin\\b)",
+          end = "(?=:)",
+          patterns = [{ include = "#expr" }],
+        },
+      ],
+    },
+
+    seq_if = {
+      begin = "\\bif\\b",
+      end = ":",
+      beginCaptures = { "0": { name = "keyword.control.if.rcl" } },
+      patterns = [{ include = "#expr" }],
+    },
+
+    seq_kv = {
+      match = f"\\b({identifier})\\s+=",
+      captures = {
+        // This scope is the same one as used by the json grammar for keys.
+        // Some themes special-case json so let's include this to make it behave
+        // similarly.
+        "1": { name = "support.type.property-name.json.rcl" },
+      },
+    },
+
+    // Comment is a magic rule in TextMate grammars, it is allowed anywhere.
+    comment = {
+      name = "comment.line.double-slash.rcl",
+      match = "//.*$",
+    },
+  },
+}
