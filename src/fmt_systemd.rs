@@ -16,7 +16,6 @@ use crate::markup::Markup;
 use crate::pprint::{concat, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
-use crate::string::escape_json;
 
 /// Render a value as systemd unit.
 pub fn format_systemd(caller: Span, v: &Value) -> Result<Doc> {
@@ -58,14 +57,57 @@ impl Formatter {
         self.caller.error(message).with_path(path).err()
     }
 
-    /// Format a string.
-    fn string<'a>(&self, s: &str) -> Doc<'a> {
-        let mut into = String::with_capacity(s.len());
-        // Note, json escaping works unmodified for TOML too, the characters that
-        // need escaping are identical and with the same escape sequences (which
-        // TOML probably did on purpose). <https://toml.io/en/v1.0.0#string>
-        escape_json(s, &mut into);
-        concat! { "\"" into "\"" }
+    /// Format a string, quoted when needed.
+    ///
+    /// Similar to [`crate::string::escape_json`], but specialized for systemd.
+    /// See also <https://www.freedesktop.org/software/systemd/man/latest/systemd.syntax.html#Quoting>.
+    fn string<'a>(&self, str: &str) -> Doc<'a> {
+        use std::fmt::Write;
+
+        let mut into = String::with_capacity(str.len());
+        let mut needs_quotes = false;
+
+        for ch in str.chars() {
+            let mut escaped = true;
+            match ch {
+                '\x07' => into.push_str(r#"\a"#),
+                '\x08' => into.push_str(r#"\b"#),
+                '\x0c' => into.push_str(r#"\f"#),
+                '\n' => into.push_str(r#"\n"#),
+                '\r' => into.push_str(r#"\r"#),
+                '\t' => into.push_str(r#"\t"#),
+                '\x0b' => into.push_str(r#"\v"#),
+                '\\' => into.push_str(r#"\\"#),
+                '\'' => into.push_str(r#"\'"#),
+                '\"' => into.push_str(r#"\""#),
+                ch if ch.is_ascii_control() => write!(into, "\\x{:02x}", ch as u32)
+                    .expect("Writing into &mut String does not fail."),
+                ch => {
+                    escaped = false;
+                    into.push(ch);
+                }
+            }
+            needs_quotes |= escaped;
+        }
+
+        // If the string starts or ends in whitespace, also quote it, otherwise
+        // the `Key = value` syntax eats it (at the start), or it's not obvious
+        // that the space is there (at the end).
+        needs_quotes |= str
+            .chars()
+            .next()
+            .map(|ch| ch.is_ascii_whitespace())
+            .unwrap_or(true);
+        needs_quotes |= str
+            .chars()
+            .last()
+            .map(|ch| ch.is_ascii_whitespace())
+            .unwrap_or(true);
+
+        match needs_quotes {
+            true => concat! { "\"" into "\"" },
+            false => into.into(),
+        }
     }
 
     /// Format as a key in a key-value pair, or table header (without brackets).
@@ -152,7 +194,6 @@ impl Formatter {
             Value::Bool(true) => Doc::from("true").with_markup(Markup::Keyword),
             Value::Bool(false) => Doc::from("false").with_markup(Markup::Keyword),
             Value::Number(d) => Doc::from(d.format()).with_markup(Markup::Number),
-            // TODO: Quote only if needed.
             Value::String(s) => self.string(s).with_markup(Markup::String),
 
             // For collections, the outer formatter already formats them by
