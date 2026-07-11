@@ -67,7 +67,7 @@ impl Formatter {
         use std::fmt::Write;
 
         let mut into = String::with_capacity(str.len());
-        let mut needs_quotes = false;
+        let mut needs_quotes = str.is_empty();
 
         for ch in str.chars() {
             let mut escaped = true;

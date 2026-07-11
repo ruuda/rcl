@@ -6,6 +6,7 @@
       ["/usr/bin/hello", "--check-config"],
       ["/usr/bin/hello", "--init"],
       ["/usr/bin/hello", "--daemon", "--config", "/etc/hello/hello.cfg"],
+      ["/usr/bin/hello", "-P", ""],
     ],
 
     // Even if the key is not repeated, a nested list triggers space-separation.
@@ -38,6 +39,7 @@ Environment=HOME=/home/user LANG=en_US.UTF-8
 ExecStart=/usr/bin/hello --check-config
 ExecStart=/usr/bin/hello --init
 ExecStart=/usr/bin/hello --daemon --config /etc/hello/hello.cfg
+ExecStart=/usr/bin/hello -P ""
 
 [WireGuardPeer]
 AllowedIPs=10.0.0.1/32
