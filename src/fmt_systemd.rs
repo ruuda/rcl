@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 
 use crate::error::{IntoError, PathElement, Result};
 use crate::markup::Markup;
-use crate::pprint::{concat, Doc};
+use crate::pprint::{concat, group, indent, Doc};
 use crate::runtime::Value;
 use crate::source::Span;
 
@@ -173,17 +173,28 @@ impl Formatter {
     }
 
     /// Format a space-separated list of values.
+    ///
+    /// In wide mode, the separator is just spaces. In tall mode, the spaces
+    /// turn into line breaks preceded by a backslash, which in systemd are
+    /// equivalent to a space.
     fn space_separated<'a>(&mut self, values: impl Iterator<Item = &'a Value>) -> Result<Doc<'a>> {
-        let mut parts: Vec<Doc<'a>> = Vec::new();
+        let mut head = None;
+        let mut tail: Vec<Doc<'a>> = Vec::new();
         for (i, v) in values.enumerate() {
-            if i > 0 {
-                // The separator is always a space, we don't allow line breaks.
-                // TODO: We might allow tall with \.
-                parts.push(" ".into());
+            match i {
+                0 => head = Some(self.value(v)?),
+                _ => {
+                    tail.push(Doc::tall("\\"));
+                    tail.push(Doc::Sep);
+                    tail.push(self.value(v)?);
+                }
             }
-            parts.push(self.value(v)?);
         }
-        Ok(Doc::Concat(parts))
+        let result = group! {
+            head
+            indent! { Doc::Concat(tail) }
+        };
+        Ok(result)
     }
 
     fn value<'a>(&mut self, v: &'a Value) -> Result<Doc<'a>> {

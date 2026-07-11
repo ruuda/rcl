@@ -1,0 +1,20 @@
+{
+  Service = {
+    // A long space-separated list gets broken over multiple lines
+    // with \ for continuation.
+    let cmd = [
+      "/usr/bin/frobnicate",
+      "--add-widget=d8c981b7-e7a6-40e9-aaae-f812f756459a",
+      "--add-widget=a11579cd-12cf-4f56-87b3-265823a40b6b",
+      "--add-widget=acb6e064-68a2-4d00-9946-8dc160e6c02c",
+    ];
+    ExecStart = [cmd],
+  }
+}
+
+# output:
+[Service]
+ExecStart=/usr/bin/frobnicate\
+  --add-widget=d8c981b7-e7a6-40e9-aaae-f812f756459a\
+  --add-widget=a11579cd-12cf-4f56-87b3-265823a40b6b\
+  --add-widget=acb6e064-68a2-4d00-9946-8dc160e6c02c
