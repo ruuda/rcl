@@ -78,7 +78,10 @@ impl Formatter {
                 '\t' => into.push_str(r#"\t"#),
                 '\x0b' => into.push_str(r#"\v"#),
                 '\\' => into.push_str(r#"\\"#),
-                '\'' => into.push_str(r#"\'"#),
+                // Single quotes do trigger surrounding quotes, but because we
+                // always quote in double quotes, the single quote does not need
+                // to be escaped.
+                '\'' => into.push('\''),
                 '\"' => into.push_str(r#"\""#),
                 ch if ch.is_ascii_control() => write!(into, "\\x{:02x}", ch as u32)
                     .expect("Writing into &mut String does not fail."),
@@ -87,22 +90,17 @@ impl Formatter {
                     into.push(ch);
                 }
             }
-            needs_quotes |= escaped;
-        }
 
-        // If the string starts or ends in whitespace, also quote it, otherwise
-        // the `Key = value` syntax eats it (at the start), or it's not obvious
-        // that the space is there (at the end).
-        needs_quotes |= str
-            .chars()
-            .next()
-            .map(|ch| ch.is_ascii_whitespace())
-            .unwrap_or(true);
-        needs_quotes |= str
-            .chars()
-            .last()
-            .map(|ch| ch.is_ascii_whitespace())
-            .unwrap_or(true);
+            // If the value contains whitespace, we quote it. Without this, it
+            // would not be possible to e.g. have whitespace at the start of
+            // values. It does mean we err on the side of quoting, for example
+            // in Description=, the spaces don't really matter, and it would
+            // read easier if the description were not quoted. But for
+            // ExecStart=, being able to specify the exact argv matters: `"a b"`
+            // is not the same as `a b`. We're not going to make the behavior
+            // dependent on the key, so quote conservatively.
+            needs_quotes |= escaped || ch.is_ascii_whitespace();
+        }
 
         match needs_quotes {
             true => concat! { "\"" into "\"" },

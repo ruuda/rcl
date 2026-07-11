@@ -20,4 +20,4 @@ ExecStart=/usr/bin/hello
 Type=simple
 
 [Unit]
-Description=Simple test unit
+Description="Simple test unit"

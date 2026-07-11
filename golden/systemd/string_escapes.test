@@ -1,0 +1,36 @@
+{
+  Service = {
+    ExecStart = [
+      [
+        "/usr/bin/sh",
+        "-c",
+        """
+        echo 'hello' "$USER"
+        """
+      ],
+      [
+        "/usr/bin/sed",
+        "--in-place",
+        "s/\t/    /g",
+        "src.rs",
+      ],
+      [
+        "/usr/bin/grep",
+        "\u{06}\u{07}\u{08}\u{0b}\u{0c}\r",
+      ],
+      [
+        "/usr/bin/echo",
+        " space before",
+        "space inside",
+        "space after ",
+      ],
+    ],
+  }
+}
+
+# output:
+[Service]
+ExecStart=/usr/bin/sh -c "echo 'hello' \"$USER\"\n"
+ExecStart=/usr/bin/sed --in-place "s/\t/    /g" src.rs
+ExecStart=/usr/bin/grep "\x06\a\b\v\f\r"
+ExecStart=/usr/bin/echo " space before" "space inside" "space after "

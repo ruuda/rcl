@@ -4,6 +4,7 @@
   },
   Service = {
     RemainAfterExit = true,
+    NonBlocking = false,
     RestartSec = 1.5,
     RestartSteps = 5,
     Environment = [
@@ -19,6 +20,7 @@
 [Service]
 Environment=
 Environment=FOO=bar
+NonBlocking=false
 RemainAfterExit=true
 RestartSec=1.5
 RestartSteps=5

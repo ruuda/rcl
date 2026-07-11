@@ -1,11 +1,10 @@
 {
   Service = {
     // A list at the key level repeats the key in the output.
+    // A second level of nesting creates a space-separated list of values.
     ExecStart = [
-      "/usr/bin/hello --check-config",
-      "/usr/bin/hello --init",
-
-      // A second level of nesting creates a space-separated list of values.
+      ["/usr/bin/hello", "--check-config"],
+      ["/usr/bin/hello", "--init"],
       ["/usr/bin/hello", "--daemon", "--config", "/etc/hello/hello.cfg"],
     ],
 
