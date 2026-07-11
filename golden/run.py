@@ -102,6 +102,7 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
         case "error" | "types":
             cmd = ["eval"]
 
+        # TODO: Move into the regular json and raw directories?
         case "error_json":
             cmd = ["eval", "--format=json"]
 
@@ -125,6 +126,9 @@ def test_one(fname: str, fname_friendly: str, *, rewrite_output: bool) -> Option
 
         case "rcl":
             cmd = ["eval", "--format=rcl"]
+
+        case "systemd":
+            cmd = ["eval", "--format=systemd"]
 
         case "toml_10":
             cmd = ["eval", "--format=toml-1.0"]

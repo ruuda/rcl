@@ -1,0 +1,23 @@
+{
+  Unit = {
+    Description = "Simple test unit",
+  },
+  Service = {
+    Type = "simple",
+    ExecStart = "/usr/bin/hello",
+  },
+  Install = {
+    WantedBy = "multi-user.target",
+  },
+}
+
+# output:
+[Install]
+WantedBy="multi-user.target"
+
+[Service]
+ExecStart="/usr/bin/hello"
+Type="simple"
+
+[Unit]
+Description="Simple test unit"
