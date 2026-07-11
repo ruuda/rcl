@@ -1,0 +1,15 @@
+{
+  Service = {
+    ExecStart = arg => ["/usr/bin/env", arg],
+  }
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "Service"
+at key "ExecStart"
+Error: Functions cannot be exported in systemd units.

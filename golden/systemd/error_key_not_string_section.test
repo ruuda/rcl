@@ -1,0 +1,16 @@
+{
+  Unit = {
+    Description = "This is still fine.",
+    1: "But this is not.",
+  },
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "Unit"
+at key 1
+Error: To export as systemd, keys must be strings.

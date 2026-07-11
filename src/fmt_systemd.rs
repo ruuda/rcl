@@ -134,7 +134,7 @@ impl Formatter {
         self.path.push(PathElement::Key(key.clone()));
         match key {
             Value::String(k_str) => Ok(self.key(k_str).with_markup(Markup::Field)),
-            _ => self.error("To export as TOML, keys must be strings."),
+            _ => self.error("To export as systemd, keys must be strings."),
         }
     }
 
@@ -223,8 +223,7 @@ impl Formatter {
                         "Format key-values as strings first, for example with a comprehension.",
                     )
                 })?,
-            Value::Function(..) => self.error("Functions cannot be exported in systemd units.")?,
-            Value::BuiltinFunction(..) => {
+            Value::Function(..) | Value::BuiltinFunction(..) => {
                 self.error("Functions cannot be exported in systemd units.")?
             }
             Value::BuiltinMethod { .. } => {

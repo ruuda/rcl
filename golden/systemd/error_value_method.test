@@ -1,0 +1,15 @@
+{
+  Service = {
+    ExecStart = "abc".len
+  }
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "Service"
+at key "ExecStart"
+Error: Methods cannot be exported in systemd units.

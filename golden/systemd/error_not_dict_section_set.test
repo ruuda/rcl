@@ -1,0 +1,13 @@
+{
+  Service = {true},
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at index 0
+at key "Service"
+Error: Expected a dict, e.g. { WantedBy = "multi-user.target" }.
