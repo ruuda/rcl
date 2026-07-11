@@ -27,46 +27,17 @@ a line break between the banner and the output.
 
 Output in the given format. The following formats are supported:
 
-<dl>
-  <dt>json</dt>
-  <dd>Output pretty-printed <abbr>JSON</abbr>.</dd>
-
-  <dt>json-lines</dt>
-  <dd>If the document is a list, output every element as a <abbr>JSON</abbr>
-  value on its own line, consistent with the
-  <a href="https://jsonlines.org/"><abbr>JSON</abbr> lines</a> format.
-  Top-level values other than lists are not valid for this format.</dd>
-
-  <dt>raw</dt>
-  <dd>If the document is a string, output the string itself. If the document is
-  a list or set of strings, output each string on its own line.</dd>
-
-  <dt>rcl</dt>
-  <dd>Output pretty-printed <abbr>RCL</abbr>.</dd>
-
-  <dt>toml</dt>
-  <dd>Alias for <code>toml-1.0</code>.</dd>
-
-  <dt>toml-1.0</dt>
-  <dd>Output <abbr>TOML 1.0</abbr>.
-  This version is the most widely supported,
-  but can be less readable because inline tables
-  cannot span multiple lines.</dd>
-
-  <dt>toml-1.1</dt>
-  <dd>Output <abbr>TOML 1.1</abbr>.
-  This version supports multi-line tables,
-  but it was only released in December 2025,
-  so it is less widely supported.</dd>
-
-  <dt>yaml-stream</dt>
-  <dd>If the document is a list, output every element as a <abbr>JSON</abbr>
-  document, prefixed by the <code>---</code> <abbr>YAML</abbr> document
-  separator. Top-level values other than lists are not valid for this format.</dd>
-</dl>
+ * [json](output_formats.md#json)
+ * [json-lines](output_formats.md#json-lines)
+ * [raw](output_formats.md#raw)
+ * [rcl](output_formats.md#rcl)
+ * [toml](output_formats.md#toml), alias for `toml-1.0`
+ * [toml-1.0](output_formats.md#toml-10)
+ * [toml-1.1](output_formats.md#toml-11)
+ * [yaml-stream](output_formats.md#yaml-stream)
 
 The default output format is `rcl`. For the `je` command shorthand, the default
-output format is `json`.
+output format is `json`, and for `re`, the output format is `raw`.
 
 ### `--output-depfile <depfile>`
 
