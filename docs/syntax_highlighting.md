@@ -34,6 +34,18 @@ your Helix configuation directory at `runtime/queries/rcl/highlights.scm`.
 
 [helix-lang]: https://docs.helix-editor.com/guides/adding_languages.html
 
+## JetBrains
+
+JetBrains <abbr>IDE</abbr>s can,
+through the integrated [TextMate plugin][jb-tm],
+use the [Visual Studio Code extension](#visual-studio-code).
+First clone the <abbr>RCL</abbr> repository. Then in the <abbr>IDE</abbr>, go to
+_Settings_ &gt; _Editor_ &gt; _TextMate Bundles_, click the `+` button, and
+select the `grammar/vscode` directory in the repository. That’s it, everything
+is configured automatically!
+
+[jb-tm]: https://www.jetbrains.com/help/idea/textmate.html
+
 ## Neovim
 
 Neovim can use [the Tree-sitter grammar](#tree-sitter) through the
