@@ -31,6 +31,7 @@ Output in the given format. The following formats are supported:
  * [json-lines](output_formats.md#json-lines)
  * [raw](output_formats.md#raw)
  * [rcl](output_formats.md#rcl)
+ * [systemd](output_formats.md#systemd)
  * [toml](output_formats.md#toml), alias for `toml-1.0`
  * [toml-1.0](output_formats.md#toml-10)
  * [toml-1.1](output_formats.md#toml-11)

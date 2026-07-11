@@ -86,6 +86,114 @@ Formats as:
 }
 ```
 
+## systemd
+
+Output as a [systemd unit][sd-syntax]. The format is superficially similar to
+<abbr>TOML</abbr>, but handles nested data differently. The top-level value must
+always be a dict. Its keys become sections. Its values must be dicts as well,
+which become the section contents:
+
+```rcl
+{
+  Unit = {
+    Description = "Example systemd unit.",
+    After = "network-online.target",
+  },
+}
+```
+```systemd
+[Unit]
+After=network-online.target
+Description="Example systemd unit."
+```
+
+Systemd allows repeating keys. To emit those, use a list or set value in
+<abbr>RCL</abbr>:
+
+```rcl
+{
+  Service = {
+    BindReadOnlyPaths = ["/etc/resolv.conf", "/var/www"],
+  },
+}
+```
+```systemd
+[Service]
+BindReadOnlyPaths=/etc/resolv.conf
+BindReadOnlyPaths=/var/www
+```
+
+Some settings allow space-separated values. To emit those, use a nested list
+or set:
+
+```rcl
+{
+  Service = {
+    ExecStart = [["/usr/bin/nsd", "-P", "", "-c", "/etc/nsd.conf"]],
+  },
+},
+```
+```systemd
+[Service]
+ExecStart=/usr/bin/nsd -P "" -c /etc/nsd/nsd.conf
+```
+
+For some settings, systemd accepts the empty string to clear previous
+assignments. While `""` works, using `null` avoids printing the quotes.
+The difference between `""` and `null` is purely cosmetic.
+
+```rcl
+{
+  Service = {
+    Environment = [
+      null,
+      ["LOG_LEVEL=debug", "PORT=8000"],
+      "ENVIRONMENT=prod",
+    ],
+  },
+}
+```
+```systemd
+[Service]
+Environment=
+Environment=LOG_LEVEL=debug PORT=8000
+Environment=ENVIRONMENT=prod
+```
+
+Finally, some units support repeated sections. To emit those, wrap the sections
+in a list or set:
+
+```rcl
+{
+  Route = [
+    { Gateway = "0.0.0.0", Table = 1 },
+    { Gateway = "::", Table = 2 },
+  ],
+}
+```
+```systemd
+[Route]
+Gateway=0.0.0.0
+Table=1
+
+[Route]
+Gateway=::
+Table=2
+```
+
+RCL will use escape sequences and quote strings when needed to keep the unit
+file valid, and to preserve values exactly. For some settings, such as
+[`ExecStart=`][sd-start], systemd performs
+[environment variable substitution][sd-var] and
+[specifier substitution][sd-spec], which means that `$` and `%` have special
+meaning for those settings. RCL does not apply any special handling for these
+characters.
+
+[sd-syntax]: https://www.freedesktop.org/software/systemd/man/latest/systemd.syntax.html
+[sd-start]:  https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#ExecStart=
+[sd-var]:    https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#Command%20lines
+[sd-spec]:   https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Specifiers
+
 ## toml
 
 Alias for [`toml-1.0`](#toml-10), for maximum compatibility.
