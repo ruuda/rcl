@@ -11,6 +11,6 @@ stdin:1:1
 1 │ {
   ╵ ^
 in value
-at key "out.txt"
 at key "unknown_field"
+at key "out.txt"
 Error: Unknown build target field: 'unknown_field'.

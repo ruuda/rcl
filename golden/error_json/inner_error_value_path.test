@@ -28,9 +28,9 @@ stdin:1:1
 1 │ {
   ╵ ^
 in value
-at key "len_getter"
-at key "properties"
-at index 2
-at key "widgets"
 at key "top_level"
+at key "widgets"
+at index 2
+at key "properties"
+at key "len_getter"
 Error: Methods cannot be exported as json.

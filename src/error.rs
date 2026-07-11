@@ -204,7 +204,7 @@ impl Error {
             return Doc::Empty;
         }
         let mut path_doc = vec![Doc::from("in value"), Doc::HardBreak];
-        for elem in self.path.iter().rev() {
+        for elem in self.path.iter() {
             match elem {
                 PathElement::Key(k) => {
                     path_doc.push("at key ".into());

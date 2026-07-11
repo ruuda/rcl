@@ -11,8 +11,8 @@ stdin:1:1
 1 │ {
   ╵ ^
 in value
-at key "out.txt"
 at key "format"
+at key "out.txt"
 Error: Invalid output format: "invalid-format".
 
 Help: See 'rcl evaluate --help' for supported output formats.

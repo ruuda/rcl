@@ -11,6 +11,6 @@ stdin:1:1
 1 │ {
   ╵ ^
 in value
-at key "out.txt"
 at key "banner"
+at key "out.txt"
 Error: Banner must be a string or null.
