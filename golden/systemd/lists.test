@@ -1,0 +1,23 @@
+{
+  Service = {
+    // A list at the key level repeats the key in the output.
+    ExecStart = [
+      "/usr/bin/hello --check-config",
+      "/usr/bin/hello --init",
+
+      // A second level of nesting creates a space-separated list of values.
+      ["/usr/bin/hello", "--daemon", "--config", "/etc/hello/hello.cfg"],
+    ],
+
+    // Even if the key is not repeated, a nested list triggers space-separation.
+    // This applies to sets as well.
+    Environment = [{"LANG=en_US.UTF-8", "HOME=/home/user"}],
+  },
+}
+
+# output:
+[Service]
+Environment=HOME=/home/user LANG=en_US.UTF-8
+ExecStart=/usr/bin/hello --check-config
+ExecStart=/usr/bin/hello --init
+ExecStart=/usr/bin/hello --daemon --config /etc/hello/hello.cfg
