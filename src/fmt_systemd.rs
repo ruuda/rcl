@@ -221,10 +221,10 @@ impl Formatter {
             // separated by spaces. Probably the latter makes sense. But for
             // now we just ban dicts and let the user make strings.
             Value::Dict(..) => self
-                .error("Dicts cannot be exported in systemd units.")
+                .error("Dict values cannot be exported in systemd units.")
                 .map_err(|err| {
                     err.with_help(
-                        "Format key-values as strings first, for example with a comprehension.",
+                        "Format key-values as strings first, for example with a list comprehension.",
                     )
                 })?,
             Value::Function(..) | Value::BuiltinFunction(..) => {

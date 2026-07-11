@@ -17,10 +17,22 @@
   WireGuardPeer = [
     { AllowedIPs = "10.0.0.1/32", PublicKey = "ceenqsWnNs7cH29WMopAnNPqqkRb9M5R/5DrnSY6Swk=" },
     { AllowedIPs = "10.0.0.2/32", PublicKey = "YiBg9Q5aUlRx5h2D24xJom7+EQzIQazin5LTuKIKtxY=" },
-  ]
+  ],
+
+  // Set behaves like a list there too.
+  Match = {
+    { Name = "wlan0" },
+    { Name = "enp5s0u2u4" },
+  },
 }
 
 # output:
+[Match]
+Name=enp5s0u2u4
+
+[Match]
+Name=wlan0
+
 [Service]
 Environment=HOME=/home/user LANG=en_US.UTF-8
 ExecStart=/usr/bin/hello --check-config
