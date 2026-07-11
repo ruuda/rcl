@@ -36,6 +36,7 @@
 "json-lines"
 "none"
 "rcl"
+"systemd"
 "toml"
 "unrestricted"
 "workdir"
