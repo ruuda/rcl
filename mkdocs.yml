@@ -22,6 +22,7 @@ nav:
       - "Syntax highlighting": "syntax_highlighting.md"
       - "Generating files": "generating_files.md"
       - "Using Ninja": "using_ninja.md"
+      - "Output formats": "output_formats.md"
       - "Changelog": "changelog.md"
   - "Language guide":
       - "Syntax": "syntax.md"
