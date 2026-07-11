@@ -225,37 +225,63 @@ impl Formatter {
         Ok(result)
     }
 
+    fn section<'a>(
+        &mut self,
+        section_header: &'a Value,
+        inner: &'a Value,
+        result: &mut Vec<Doc<'a>>,
+    ) -> Result<()> {
+        let section_header = self.push_key(section_header)?;
+
+        // Separate sections by a blank line.
+        if !result.is_empty() {
+            result.push(Doc::HardBreak);
+        }
+
+        result.push(concat! { "[" section_header "]" });
+        result.push(Doc::HardBreak);
+
+        match inner {
+            // When we format a section, the value must be a dict of `Key=value` pairs.
+            Value::Dict(kv) => {
+                for (inner_k, inner_v) in kv.iter() {
+                    result.push(self.key_value(inner_k, inner_v)?);
+                }
+            }
+
+            // Anything else is invalid at this level.
+            _ => self.error("Expected a dict, e.g. { WantedBy = \"multi-user.target\" }.")?,
+        }
+
+        self.path.pop().expect("We pushed the key before.");
+
+        Ok(())
+    }
+
     fn top_level<'a>(&mut self, kv: &'a BTreeMap<Value, Value>) -> Result<Doc<'a>> {
         let mut result: Vec<Doc> = Vec::new();
 
         for (k, v) in kv {
             match v {
-                // Top-level dicts get formatted as sections.
-                Value::Dict(section_inner) => {
-                    let section_header = self.push_key(k)?;
-
-                    // Separate sections by a blank line.
-                    if !result.is_empty() {
-                        result.push(Doc::HardBreak);
+                // For a list or set, we repeat the entire section.
+                Value::List(kvs) => {
+                    for (i, kv) in kvs.iter().enumerate() {
+                        self.path.push(PathElement::Index(i));
+                        self.section(k, kv, &mut result)?;
+                        self.path.pop();
                     }
-
-                    result.push(concat! { "[" section_header "]" });
-                    result.push(Doc::HardBreak);
-
-                    for (inner_k, inner_v) in section_inner.iter() {
-                        result.push(self.key_value(inner_k, inner_v)?);
+                }
+                Value::Set(kvs) => {
+                    for (i, kv) in kvs.iter().enumerate() {
+                        self.path.push(PathElement::Index(i));
+                        self.section(k, kv, &mut result)?;
+                        self.path.pop();
                     }
-
-                    self.path.pop().expect("We pushed the key before.");
                 }
 
-                // TODO: It may be a list or set as well, sections can be repeated.
-
-                // Anything else is invalid at this level.
-                _ => {
-                    self.push_key(k)?;
-                    self.error("Expected a dict, e.g. { WantedBy = \"multi-user.target\" }.")?;
-                }
+                // Anything else must be a dict, but we match that inside the
+                // `section` method.
+                _ => self.section(k, v, &mut result)?,
             }
         }
 
