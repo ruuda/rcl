@@ -5,7 +5,7 @@
         "/usr/bin/sh",
         "-c",
         """
-        echo 'hello' "$USER"
+        echo 'hello' "$USER" 'Backslash: \\'
         """
       ],
       [
@@ -30,7 +30,7 @@
 
 # output:
 [Service]
-ExecStart=/usr/bin/sh -c "echo 'hello' \"$USER\"\n"
+ExecStart=/usr/bin/sh -c "echo 'hello' \"$USER\" 'Backslash: \\'\n"
 ExecStart=/usr/bin/sed --in-place "s/\t/    /g" src.rs
 ExecStart=/usr/bin/grep "\x06\a\b\v\f\r"
 ExecStart=/usr/bin/echo " space before" "space inside" "space after "

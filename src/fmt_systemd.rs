@@ -7,7 +7,9 @@
 
 //! Formatter that prints values as systemd units.
 //!
-//! This formatter is similar to the one in [`crate::fmt_toml`].
+//! This formatter is originally based on the one in [`crate::fmt_toml`], but
+//! although the formats are superficially similar, both ini-like, the systemd
+//! format is far less regular, so the formatter ended up quite differently.
 
 use std::collections::BTreeMap;
 
@@ -108,32 +110,34 @@ impl Formatter {
         }
     }
 
-    /// Format as a key in a key-value pair, or table header (without brackets).
-    fn key<'a>(&self, ident: &'a str) -> Doc<'a> {
-        let bytes = ident.as_bytes();
-
-        if bytes.is_empty() {
-            return "\"\"".into();
+    /// Validate a key or section header.
+    fn key<'a>(&mut self, ident: &'a str) -> Result<Doc<'a>> {
+        if ident.is_empty() {
+            return self.error("To export as systemd, keys cannot be empty.");
         }
 
-        // If the key is ASCII alphanumeric, underscores, or dashes, then we can
-        // use it unquoted. <https://toml.io/en/v1.0.0#keys> Even if it starts
-        // with a digit.
-        if bytes
-            .iter()
-            .all(|b| b.is_ascii_alphanumeric() || *b == b'_' || *b == b'-')
-        {
-            ident.into()
-        } else {
-            self.string(ident)
+        // Systemd syntax ignores space between the key and the `=`. I'm not
+        // actually sure about what it does for leading whitespace, and inside
+        // section headings, but let's just ban this to be sure.
+        if ident != ident.trim() {
+            return self
+                .error("To export as systemd, keys must not contain surrounding whitespace.");
         }
+
+        if ident.starts_with('#') || ident.starts_with(';') {
+            return self.error(
+                "To export as systemd, keys cannot start with the comment characters '#' and ';'.",
+            );
+        }
+
+        Ok(ident.into())
     }
 
     /// Format a key, and push it to as path, or return an error on non-strings.
     fn push_key<'a>(&mut self, key: &'a Value) -> Result<Doc<'a>> {
         self.path.push(PathElement::Key(key.clone()));
         match key {
-            Value::String(k_str) => Ok(self.key(k_str).with_markup(Markup::Field)),
+            Value::String(k_str) => Ok(self.key(k_str)?.with_markup(Markup::Field)),
             _ => self.error("To export as systemd, keys must be strings."),
         }
     }

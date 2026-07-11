@@ -1,0 +1,15 @@
+{
+  Unit = {
+    "; Would be comment": "Therefore disallowed.",
+  },
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "Unit"
+at key "; Would be comment"
+Error: To export as systemd, keys cannot start with the comment characters '#' and ';'.

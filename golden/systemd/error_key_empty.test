@@ -1,0 +1,16 @@
+{
+  Unit = {
+    "Description": "Empty keys are invalid!",
+    "": "This is not allowed.",
+  },
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "Unit"
+at key ""
+Error: To export as systemd, keys cannot be empty.
