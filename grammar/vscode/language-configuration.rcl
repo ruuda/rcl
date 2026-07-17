@@ -18,7 +18,7 @@ let brackets = [
     for b in brackets: { open = b[0], close = b[1] },
     { open = "\"", close = "\"", notIn = ["string"] },
   ],
-  autoCloseBefore = ":.,",
+  autoCloseBefore = ":.,;",
   surroundingPairs = {
     for b in brackets: b,
     ["\"", "\""],

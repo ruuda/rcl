@@ -1,5 +1,5 @@
 {
-  "autoCloseBefore": ":.,",
+  "autoCloseBefore": ":.,;",
   "autoClosingPairs": [
     {"close": "}", "open": "{"},
     {"close": "]", "open": "["},
