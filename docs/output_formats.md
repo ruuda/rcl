@@ -139,8 +139,9 @@ ExecStart=/usr/bin/nsd -P "" -c /etc/nsd/nsd.conf
 ```
 
 For some settings, systemd accepts the empty string to clear previous
-assignments. While `""` works, using `null` avoids printing the quotes.
-The difference between `""` and `null` is purely cosmetic.
+assignments. While `Value=""` and `Value=` mean the same thing to systemd,
+the latter is more common, and therefore might communicate the intent more
+clearly. To emit an empty value from <abbr>RCL</abbr>, use `null`:
 
 ```rcl
 {
@@ -196,7 +197,7 @@ characters.
 
 ## toml
 
-Alias for [`toml-1.0`](#toml-10), for maximum compatibility.
+Alias for [`toml-1.0`](#toml-10).
 
 ## toml-1.0
 
@@ -224,7 +225,8 @@ release = { lto = "thin", panic = "abort", strip = "true" }
 
 Output <abbr>TOML 1.1</abbr>. This version supports multi-line tables, but it
 was only released in December 2025, so it is less widely supported. The same
-example as before outputs as follows:
+example as before outputs as follows for a 50-column
+[target line width](rcl_evaluate.md#-w-width-width):
 
 ```toml
 [profile]
@@ -237,9 +239,10 @@ release = {
 
 ## yaml-stream
 
-If the document is a list, output every element as a <abbr>JSON</abbr> document,
-prefixed by the <code>---</code> <abbr>YAML</abbr> document separator. Top-level
-values other than lists are not valid for this format.
+If the document is a list, output every element as a <abbr>JSON</abbr> document
+(which is also a valid <abbr>YAML</abbr> document), prefixed by the <code>---</code>
+<abbr>YAML</abbr> document separator. Top-level values other than lists are not
+valid for this format.
 
 ```rcl
 [
@@ -250,7 +253,13 @@ values other than lists are not valid for this format.
 Formats as:
 ```yaml
 ---
-{"name": "Roy Batty", "serial": "N6MAA10816"}
+{
+  "name": "Roy Batty",
+  "serial": "N6MAA10816"
+}
 ---
-{"name": "Leon Kowalski", "serial": "N6MAC41717"}
+{
+  "name": "Leon Kowalski",
+  "serial": "N6MAC41717"
+}
 ```

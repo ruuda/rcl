@@ -79,4 +79,5 @@ The default sandboxing mode is _workdir_.
 
 ### `-w` `--width <width>`
 
-Target width for pretty-printing, in columns. Must be an integer. Defaults to 80.
+Target line width for pretty-printing, in columns. Must be an integer. Defaults
+to 80. Note that the formatter is not always able to stay within the desired limit.
