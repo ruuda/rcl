@@ -305,7 +305,7 @@ fn fuzz_eval_json_lines(loader: &mut Loader, input: &str) -> Result<()> {
     Ok(())
 }
 
-/// Run the formatter twice and check for idempotency.
+/// Run the same patch twice and check for idempotency.
 fn fuzz_patch_idempotent(
     loader: &mut Loader,
     input: &str,
