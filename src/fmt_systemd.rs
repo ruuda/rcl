@@ -166,11 +166,13 @@ impl Formatter {
         values: impl Iterator<Item = &'a Value>,
     ) -> Result<Doc<'a>> {
         let mut parts: Vec<Doc<'a>> = Vec::new();
-        for v in values {
+        for (i, v) in values.enumerate() {
             parts.push(self.push_key(key)?);
+            self.path.push(PathElement::Index(i));
             parts.push("=".into());
             parts.push(self.value(v)?);
             parts.push(Doc::HardBreak);
+            self.path.pop().expect("We pushed the index before.");
             self.path.pop().expect("We pushed the key before.");
         }
         Ok(Doc::Concat(parts))
@@ -239,12 +241,10 @@ impl Formatter {
 
     fn section<'a>(
         &mut self,
-        section_header: &'a Value,
+        section_header: Doc<'a>,
         inner: &'a Value,
         result: &mut Vec<Doc<'a>>,
     ) -> Result<()> {
-        let section_header = self.push_key(section_header)?;
-
         // Separate sections by a blank line.
         if !result.is_empty() {
             result.push(Doc::HardBreak);
@@ -265,8 +265,6 @@ impl Formatter {
             _ => self.error("Expected a dict, e.g. { WantedBy = \"multi-user.target\" }.")?,
         }
 
-        self.path.pop().expect("We pushed the key before.");
-
         Ok(())
     }
 
@@ -274,27 +272,35 @@ impl Formatter {
         let mut result: Vec<Doc> = Vec::new();
 
         for (k, v) in kv {
+            // We push the header here, rather than inside `section()`, so that
+            // the path stack used for error reporting matches the shape of the
+            // value. In the case of `k = [index0, index1, <error>]`, we need
+            // to blame "key 'k', index 2", not "index 2, key 'k'"!
+            let section_header = self.push_key(k)?;
             match v {
                 // For a list or set, we repeat the entire section.
                 Value::List(kvs) => {
                     for (i, kv) in kvs.iter().enumerate() {
                         self.path.push(PathElement::Index(i));
-                        self.section(k, kv, &mut result)?;
+                        self.section(section_header.clone(), kv, &mut result)?;
                         self.path.pop();
                     }
                 }
                 Value::Set(kvs) => {
                     for (i, kv) in kvs.iter().enumerate() {
                         self.path.push(PathElement::Index(i));
-                        self.section(k, kv, &mut result)?;
+                        self.section(section_header.clone(), kv, &mut result)?;
                         self.path.pop();
                     }
                 }
 
                 // Anything else must be a dict, but we match that inside the
                 // `section` method.
-                _ => self.section(k, v, &mut result)?,
+                _ => self.section(section_header, v, &mut result)?,
             }
+            self.path
+                .pop()
+                .expect("We pushed the section header before.");
         }
 
         Ok(Doc::Concat(result))

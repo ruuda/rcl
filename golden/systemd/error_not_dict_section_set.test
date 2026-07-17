@@ -8,6 +8,6 @@ stdin:1:1
 1 │ {
   ╵ ^
 in value
-at index 0
 at key "Service"
+at index 0
 Error: Expected a dict, e.g. { WantedBy = "multi-user.target" }.

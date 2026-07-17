@@ -1,6 +1,6 @@
 {
   Service = {
-    ExecStart = "abc".len
+    ExecStart = ["valid", "invalid".len]
   }
 }
 
@@ -12,4 +12,5 @@ stdin:1:1
 in value
 at key "Service"
 at key "ExecStart"
+at index 1
 Error: Methods cannot be exported in systemd units.
