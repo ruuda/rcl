@@ -14,6 +14,9 @@ superset of <abbr>JSON</abbr>, so this format is appropriate for generating
 configuration for tools that accept <abbr>YAML</abbr>, such as Kubernetes and
 GitHub Actions.
 
+> **Tip:** You can quickly select <abbr>JSON</abbr> output on the command line
+> with the [`je`](rcl_evaluate.md) and [`jq`](rcl_query.md) shorthands.
+
 ```rcl
 {
   series = "Nexus-6",
@@ -27,9 +30,6 @@ Formats as:
   "series": "Nexus-6"
 }
 ```
-
-> **Tip:** You can quickly select <abbr>JSON</abbr> output on the command line
-> with the [`je`](rcl_evaluate.md) and [`jq`](rcl_query.md) shorthands.
 
 ## json-lines
 
@@ -55,6 +55,9 @@ Formats as:
 If the document is a string, output the string itself. If the document is a list
 or set of strings, output each string on its own line.
 
+> **Tip:** You can quickly select raw output on the command line with the
+> [`re`](rcl_evaluate.md) and [`rq`](rcl_query.md) shorthands.
+
 ```rcl
 ["First line", "Second line\nThird line"]
 ```
@@ -64,9 +67,6 @@ First line
 Second line
 Third line
 ```
-
-> **Tip:** You can quickly select raw output on the command line with the
-> [`re`](rcl_evaluate.md) and [`rq`](rcl_query.md) shorthands.
 
 ## rcl
 
