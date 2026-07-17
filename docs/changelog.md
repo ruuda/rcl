@@ -21,6 +21,8 @@ Unreleased.
  * Improved error messages for unmatched brackets.
  * Highlighters based on Tree-sitter (e.g. those in Helix and Zed) now highlight
    function calls.
+ * Add the [`systemd` output format](output_formats.md#systemd) for generating
+   systemd units from <abbr>RCL</abbr>.
 
 ## 0.13.0
 

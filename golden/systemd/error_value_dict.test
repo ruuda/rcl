@@ -1,0 +1,20 @@
+{
+  Service = {
+    Environment = {
+      PORT = "9001",
+      LOG_LEVEL = "debug",
+    }
+  }
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "Service"
+at key "Environment"
+Error: Dict values cannot be exported in systemd units.
+
+Help: Format key-values as strings first, for example with a list comprehension.

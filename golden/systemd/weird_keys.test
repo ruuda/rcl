@@ -1,0 +1,9 @@
+{
+  "Section With Spaces": {
+    "Key With Spaces": "Is allowed.",
+  },
+}
+
+# output:
+[Section With Spaces]
+Key With Spaces="Is allowed."

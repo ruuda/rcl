@@ -1,0 +1,50 @@
+{
+  Service = {
+    // A list at the key level repeats the key in the output.
+    // A second level of nesting creates a space-separated list of values.
+    ExecStart = [
+      ["/usr/bin/hello", "--check-config"],
+      ["/usr/bin/hello", "--init"],
+      ["/usr/bin/hello", "--daemon", "--config", "/etc/hello/hello.cfg"],
+      ["/usr/bin/hello", "-P", ""],
+    ],
+
+    // Even if the key is not repeated, a nested list triggers space-separation.
+    // This applies to sets as well.
+    Environment = [{"LANG=en_US.UTF-8", "HOME=/home/user"}],
+  },
+
+  // A top-level section may be repeated as well.
+  WireGuardPeer = [
+    { AllowedIPs = "10.0.0.1/32", PublicKey = "ceenqsWnNs7cH29WMopAnNPqqkRb9M5R/5DrnSY6Swk=" },
+    { AllowedIPs = "10.0.0.2/32", PublicKey = "YiBg9Q5aUlRx5h2D24xJom7+EQzIQazin5LTuKIKtxY=" },
+  ],
+
+  // Set behaves like a list there too.
+  Match = {
+    { Name = "wlan0" },
+    { Name = "enp5s0u2u4" },
+  },
+}
+
+# output:
+[Match]
+Name=enp5s0u2u4
+
+[Match]
+Name=wlan0
+
+[Service]
+Environment=HOME=/home/user LANG=en_US.UTF-8
+ExecStart=/usr/bin/hello --check-config
+ExecStart=/usr/bin/hello --init
+ExecStart=/usr/bin/hello --daemon --config /etc/hello/hello.cfg
+ExecStart=/usr/bin/hello -P ""
+
+[WireGuardPeer]
+AllowedIPs=10.0.0.1/32
+PublicKey=ceenqsWnNs7cH29WMopAnNPqqkRb9M5R/5DrnSY6Swk=
+
+[WireGuardPeer]
+AllowedIPs=10.0.0.2/32
+PublicKey=YiBg9Q5aUlRx5h2D24xJom7+EQzIQazin5LTuKIKtxY=

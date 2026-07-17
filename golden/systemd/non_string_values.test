@@ -1,0 +1,30 @@
+{
+  Unit = {
+    After = {"network-online.target", "postgresql.service"},
+  },
+  Service = {
+    RemainAfterExit = true,
+    NonBlocking = false,
+    RestartSec = 1.5,
+    RestartSteps = 5,
+    Environment = [
+      // Null turns into an empty assignment, which is important for overrides
+      // where empty assignments clear the previous value, instead of appending.
+      null,
+      "FOO=bar",
+    ],
+  },
+}
+
+# output:
+[Service]
+Environment=
+Environment=FOO=bar
+NonBlocking=false
+RemainAfterExit=true
+RestartSec=1.5
+RestartSteps=5
+
+[Unit]
+After=network-online.target
+After=postgresql.service

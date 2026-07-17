@@ -1,0 +1,27 @@
+{
+  Test = {
+    // Null formats as nothing (raw empty string),
+    // empty string formats as a quoted empty string.
+    Null = null,
+    Empty = "",
+
+    // A single quote turns the string quoted, even without whitespace.
+    Quoted = "whomst'd've",
+
+    // A nested list becomes space-separated, and we can even nest arbitrarily.
+    Spaced = [
+      ["{", "}"],
+      ["{", ["{", "}"], "}"],
+      ["{", ["{", ["{", "}"], "}"], "}"],
+    ],
+  }
+}
+
+# output:
+[Test]
+Empty=""
+Null=
+Quoted="whomst'd've"
+Spaced={ }
+Spaced={ { } }
+Spaced={ { { } } }

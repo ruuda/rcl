@@ -1,0 +1,8 @@
+null
+
+# output:
+stdin:1:1
+  ╷
+1 │ null
+  ╵ ^~~~
+Error: To format as systemd unit, the top-level value must be a dict.

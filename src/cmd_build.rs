@@ -75,6 +75,7 @@ fn parse_format(format: &str) -> Option<OutputFormat> {
         "json-lines" => OutputFormat::JsonLines,
         "raw" => OutputFormat::Raw,
         "rcl" => OutputFormat::Rcl,
+        "systemd" => OutputFormat::Systemd,
         "toml" => OutputFormat::Toml10,
         "toml-1.0" => OutputFormat::Toml10,
         "toml-1.1" => OutputFormat::Toml11,

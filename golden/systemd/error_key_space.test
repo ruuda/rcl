@@ -1,0 +1,17 @@
+{
+  Unit = {
+    "Description": "Leading whitespace is invalid",
+    "Inner is OK": "This is fine actually",
+    " Leading is not": "But this is not.",
+  },
+}
+
+# output:
+stdin:1:1
+  ╷
+1 │ {
+  ╵ ^
+in value
+at key "Unit"
+at key " Leading is not"
+Error: To export as systemd, keys must not contain surrounding whitespace.

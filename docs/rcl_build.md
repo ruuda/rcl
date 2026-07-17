@@ -77,7 +77,8 @@ The value to write to the file in the desired format.
 ### format
 
 The output format (`json`, `toml`, etc.). This must be one of the formats
-supported by [`--format`](rcl_evaluate.md#-f-format-format).
+supported by [`--format`](rcl_evaluate.md#-f-format-format), see also the
+[output formats chapter](output_formats.md).
 
 ### width
 

@@ -158,6 +158,7 @@ Output format:
                 document is a list or set of strings, output each string on its
                 own line.
   rcl           Output pretty-printed RCL.
+  systemd       Output as systemd unit. The document must be a 2-level dict.
   toml          Alias for 'toml-1.0'.
   toml-1.0      Output TOML 1.0, where tables are on a single line.
   toml-1.1      Output TOML 1.1, where tables can be multi-line.
@@ -277,6 +278,7 @@ pub enum OutputFormat {
     Raw,
     #[default]
     Rcl,
+    Systemd,
     Toml10,
     Toml11,
     YamlStream,
@@ -448,6 +450,7 @@ pub fn parse(args: Vec<String>) -> Result<(GlobalOptions, Cmd)> {
                     "json-lines" => OutputFormat::JsonLines,
                     "raw" => OutputFormat::Raw,
                     "rcl" => OutputFormat::Rcl,
+                    "systemd" => OutputFormat::Systemd,
                     // Without version, "toml" defaults to the older version,
                     // because it has wider compatibility.
                     "toml" => OutputFormat::Toml10,
@@ -886,7 +889,7 @@ mod test {
         );
         assert_eq!(
             fail_parse(&["rcl", "eval", "infile", "--format=yamr"]),
-            "Error: Expected --format to be followed by one of json, json-lines, raw, rcl, toml, toml-1.0, toml-1.1, yaml-stream. See --help for usage.\n"
+            "Error: Expected --format to be followed by one of json, json-lines, raw, rcl, systemd, toml, toml-1.0, toml-1.1, yaml-stream. See --help for usage.\n"
         );
         assert_eq!(
             fail_parse(&["rcl", "frobnicate", "infile"]),
