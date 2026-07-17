@@ -133,7 +133,7 @@ impl Formatter {
         Ok(ident.into())
     }
 
-    /// Format a key, and push it to as path, or return an error on non-strings.
+    /// Format a key, and push to `self.path`, or return an error on non-strings.
     fn push_key<'a>(&mut self, key: &'a Value) -> Result<Doc<'a>> {
         self.path.push(PathElement::Key(key.clone()));
         match key {
