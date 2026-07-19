@@ -47,7 +47,7 @@ It does that as follows:
 
 [cmd]:       https://docs.ruuda.nl/rcl/rcl/
 [cmd-build]: https://docs.ruuda.nl/rcl/rcl_build/#
-[output]:    https://docs.ruuda.nl/rcl/rcl_evaluate/#-o-output-format
+[output]:    https://docs.ruuda.nl/rcl/output_formats/
 
 ## Example
 
