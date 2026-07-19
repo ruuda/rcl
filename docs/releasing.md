@@ -107,8 +107,11 @@ For releases that have impact on the grammars or extensions:
  * Update external repositories: `tools/update_repos.py`.
  * Push to GitHub and Codeberg.
  * Make a pull request to update [zed-industries/extensions][zed-ext].
+ * For VSCode: `nix build .#vscode-extension`, upload the <abbr>VSIX</abbr> file
+   to [the marketplace][vs-marketplace].
 
 [zed-ext]: https://github.com/zed-industries/extensions
+[vs-marketplace]: https://marketplace.visualstudio.com/manage/publishers/rcl-lang
 
 ### Arch User Repository
 
