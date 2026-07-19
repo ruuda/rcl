@@ -23,6 +23,9 @@ Unreleased.
    function calls.
  * Add the [`systemd` output format](output_formats.md#systemd) for generating
    systemd units from <abbr>RCL</abbr>.
+ * Add a [Visual Studio Code extension](syntax_highlighting.md#visual-studio-code),
+   which also brings syntax highlighting to
+   [JetBrains <abbr>IDE</abbr>s](syntax_highlighting.md#jetbrains).
 
 ## 0.13.0
 
