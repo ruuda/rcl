@@ -412,8 +412,12 @@
             RUSTFLAGS = "-C instrument-coverage -C link-dead-code -C debug-assertions";
           });
 
+          iconPng = pkgs.runCommand "rcl-icon.png"
+            { buildInputs = [ pkgs.resvg ]; }
+            "resvg --width 256 --height 256 ${./website/favicon.svg} $out";
+
           vscode-extension = pkgs.stdenv.mkDerivation {
-            pname = "rcl-vscode";
+            name = "rcl-vscode";
             inherit version;
             src = ./grammar/vscode;
             nativeBuildInputs = [ pkgs.vsce ];
@@ -425,6 +429,7 @@
               # in.
               rm *.rcl
               cp ${./LICENSE} LICENSE
+              cp ${iconPng} icon.png;
 
               # TODO: The VSIX file is just a zip file of the directory, with
               # two additional XML files in it. One of them may be kind of a
@@ -449,6 +454,7 @@
                 pkgs.esbuild
                 pkgs.grcov
                 pkgs.nodejs  # Required for tree-sitter.
+                pkgs.resvg
                 pkgs.rustup
                 pkgs.tree-sitter
                 pkgs.wasm-bindgen-cli

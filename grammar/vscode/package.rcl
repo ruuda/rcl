@@ -4,12 +4,19 @@ let root = import "//Cargo.rcl";
   name = "rcl",
   displayName = "RCL",
   description = "Support for the RCL configuration language.",
-  // TODO: Remove the preview designation once the extension is ready.
+  // TODO: Remove the preview designation once the extension is ready,
+  // make the version match upstream again.
   preview = true,
   version = root.package.version,
+  version = "0.13.1",
+
   license = root.package.license,
   author = { name = "Ruud van Asseldonk" },
   publisher = "rcl-lang",
+
+  // The png is rendered from the svg favicon automatically,
+  // see `iconPng` in `flake.nix`.
+  icon = "icon.png",
 
   engines = { vscode = "^1.100.0" },
   categories = ["Programming Languages"],

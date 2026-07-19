@@ -25,10 +25,11 @@
   "displayName": "RCL",
   "engines": {"vscode": "^1.100.0"},
   "homepage": "https://rcl-lang.org",
+  "icon": "icon.png",
   "license": "Apache-2.0",
   "name": "rcl",
   "preview": true,
   "publisher": "rcl-lang",
   "repository": {"type": "git", "url": "https://github.com/ruuda/rcl.git"},
-  "version": "0.13.0"
+  "version": "0.13.1"
 }
