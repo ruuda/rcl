@@ -14,7 +14,7 @@ let brackets = [
 let quotes = [
   for f in ["f", ""]:
   for q in ["\"\"\"", "\""]:
-  [f"{f}{q}", q],
+  [f"{f}{q}", q]
 ];
 
 {

@@ -75,7 +75,16 @@
     string_hole = {
       begin = "\\{",
       end = "\\}",
-      name = "string.interpolated.rcl",
+      // Note, the name `meta.embedded` is magic, it makes VSCode ignore the
+      // parent scope for coloring, so that bare identifiers show up like
+      // they do elsewhere in the document; not colored like a string.
+      name = "meta.embedded.expression.rcl",
+      beginCaptures = {
+        "0": { name = "punctuation.definition.template-expression.begin.rcl" },
+      },
+      endCaptures = {
+        "0": { name = "punctuation.definition.template-expression.end.rcl" },
+      },
       patterns = [{ include = "#expr" }],
     },
 

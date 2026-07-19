@@ -139,8 +139,14 @@
     },
     "string_hole": {
       "begin": "\\{",
+      "beginCaptures": {
+        "0": {"name": "punctuation.definition.template-expression.begin.rcl"}
+      },
       "end": "\\}",
-      "name": "string.interpolated.rcl",
+      "endCaptures": {
+        "0": {"name": "punctuation.definition.template-expression.end.rcl"}
+      },
+      "name": "meta.embedded.expression.rcl",
       "patterns": [{"include": "#expr"}]
     },
     "term_brace": {
