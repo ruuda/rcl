@@ -30,9 +30,9 @@
   "keywords": ["rcl", "json", "yaml", "toml", "configuration", "devops"],
   "license": "Apache-2.0",
   "name": "rcl",
-  "preview": true,
+  "preview": false,
   "pricing": "Free",
   "publisher": "rcl-lang",
   "repository": {"type": "git", "url": "https://github.com/ruuda/rcl.git"},
-  "version": "0.13.1"
+  "version": "0.13.0"
 }

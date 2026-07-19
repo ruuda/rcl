@@ -4,11 +4,8 @@ let root = import "//Cargo.rcl";
   name = "rcl",
   displayName = "RCL",
   description = "Support for the RCL configuration language.",
-  // TODO: Remove the preview designation once the extension is ready,
-  // make the version match upstream again.
-  preview = true,
+  preview = false,
   version = root.package.version,
-  version = "0.13.1",
   engines = { vscode = "^1.100.0" },
 
   author = { name = "Ruud van Asseldonk" },
