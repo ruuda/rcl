@@ -17,6 +17,7 @@ let root = import "//Cargo.rcl";
   // The png is rendered from the svg favicon automatically,
   // see `iconPng` in `flake.nix`.
   icon = "icon.png",
+  galleryBanner = { color = "#000f29", theme = "dark" },
 
   engines = { vscode = "^1.100.0" },
   categories = ["Programming Languages"],

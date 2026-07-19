@@ -24,6 +24,7 @@
   "description": "Support for the RCL configuration language.",
   "displayName": "RCL",
   "engines": {"vscode": "^1.100.0"},
+  "galleryBanner": {"color": "#000f29", "theme": "dark"},
   "homepage": "https://rcl-lang.org",
   "icon": "icon.png",
   "license": "Apache-2.0",
