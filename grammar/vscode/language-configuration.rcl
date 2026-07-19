@@ -11,19 +11,55 @@ let brackets = [
   ["(", ")"],
 ];
 
+let quotes = [
+  for f in ["f", ""]:
+  for q in ["\"\"\"", "\""]:
+  [f"{f}{q}", q],
+];
+
 {
   comments = { lineComment = "//" },
   brackets = brackets,
   autoClosingPairs = [
     for b in brackets: { open = b[0], close = b[1] },
-    { open = "\"", close = "\"", notIn = ["string"] },
+    for q in quotes: { open = q[0], close = q[1], notIn = ["string"] },
   ],
-  autoCloseBefore = ":.,;",
-  surroundingPairs = {
-    for b in brackets: b,
+  autoCloseBefore = ":.,;}])",
+
+  // If you insert the opener before selected text, it adds the closer at the
+  // end. I think it only works for single-character surrounders?
+  // <https://code.visualstudio.com/api/language-extensions/language-configuration-guide#autosurrounding>
+  surroundingPairs = [
+    ..brackets,
     ["\"", "\""],
+  ],
+
+  // VSCode itself does not really need the indentation rules, the defaults work,
+  // but when imported by JetBrains' TextMate plugin, these rules are useful.
+  indentationRules = {
+    // An opening bracket, not followed by a closing bracket of the same kind.
+    // Simplified from the default in the VSCode docs at
+    // <https://code.visualstudio.com/api/language-extensions/language-configuration-guide#indentation-rules>.
+    // Clearer docs are at <https://macromates.com/manual/en/appendix>.
+    // We don't handle comments or strings, that gets complex quickly, an
+    // editor would be better off using the Tree-sitter grammar ...
+    increaseIndentPattern = "^.*(\\[[^\\]]*|\\{[^\\}]*|\\([^\\)]*)$",
+
+    // When we type and the line matches this pattern -- for example when we
+    // type a closing paren, the entire line gets dedented. I suppose that's
+    // useful when the closing brace did not autocomplete, and you type it
+    // yourself, but VSCode already handles that anyway. Still, we put this
+    // here to satisfy the schema. Match only if there is nothing else on the
+    // line, you dont want a dedent when you type the `)` after `f(` on the
+    // same line.
+    decreaseIndentPattern = "^\\s*[\\]\\}\\)][,;]?$",
   },
-  // TODO: Add `folding`?
-  // TODO: Add `wordPattern`?
-  // TODO: Add `indentationRules`? I can't make sense of the example regex.
+
+  // Putting the closing bracket on the next line when you press enter inside
+  // auto-completed brackets should be fixable with onEnterRules indentOutdent,
+  // but JetBrains does not respect it, and VSCode works fine without a specific
+  // declaration, so skip it.
+  onEnterRules = [],
+
+  // We might set `wordPattern`, but VSCode's default is good enough for now.
 }
