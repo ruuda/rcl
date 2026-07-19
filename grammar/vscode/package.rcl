@@ -9,18 +9,21 @@ let root = import "//Cargo.rcl";
   preview = true,
   version = root.package.version,
   version = "0.13.1",
+  engines = { vscode = "^1.100.0" },
 
-  license = root.package.license,
   author = { name = "Ruud van Asseldonk" },
   publisher = "rcl-lang",
+  license = root.package.license,
+  pricing = "Free",
 
   // The png is rendered from the svg favicon automatically,
   // see `iconPng` in `flake.nix`.
   icon = "icon.png",
   galleryBanner = { color = "#000f29", theme = "dark" },
 
-  engines = { vscode = "^1.100.0" },
+  // TODO: Extend with "Linters" and "Formatters" once we have a language server.
   categories = ["Programming Languages"],
+  keywords = ["rcl", "json", "yaml", "toml", "configuration", "devops"],
 
   repository = { type = "git", url = "https://github.com/ruuda/rcl.git" },
   homepage = "https://rcl-lang.org",

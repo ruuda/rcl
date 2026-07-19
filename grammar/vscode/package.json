@@ -27,9 +27,11 @@
   "galleryBanner": {"color": "#000f29", "theme": "dark"},
   "homepage": "https://rcl-lang.org",
   "icon": "icon.png",
+  "keywords": ["rcl", "json", "yaml", "toml", "configuration", "devops"],
   "license": "Apache-2.0",
   "name": "rcl",
   "preview": true,
+  "pricing": "Free",
   "publisher": "rcl-lang",
   "repository": {"type": "git", "url": "https://github.com/ruuda/rcl.git"},
   "version": "0.13.1"
