@@ -34,6 +34,18 @@ your Helix configuation directory at `runtime/queries/rcl/highlights.scm`.
 
 [helix-lang]: https://docs.helix-editor.com/guides/adding_languages.html
 
+## JetBrains
+
+JetBrains <abbr>IDE</abbr>s can,
+through the integrated [TextMate plugin][jb-tm],
+use the [Visual Studio Code extension](#visual-studio-code).
+First clone the <abbr>RCL</abbr> repository. Then in the <abbr>IDE</abbr>, go to
+_Settings_ &gt; _Editor_ &gt; _TextMate Bundles_, click the `+` button, and
+select the `grammar/vscode` directory in the repository. That’s it, everything
+is configured automatically!
+
+[jb-tm]: https://www.jetbrains.com/help/idea/textmate.html
+
 ## Neovim
 
 Neovim can use [the Tree-sitter grammar](#tree-sitter) through the
@@ -90,6 +102,19 @@ For hacking on the grammar, see also [the Tree-sitter chapter](tree_sitter.md).
 The directory `grammar/rcl.vim` contains support for highlighting in Vim.
 You can symlink the contents into your `~/.vim`, or use a plugin manager like
 Pathogen and symlink the directory into `~/.vim/bundle`.
+
+## Visual Studio Code
+
+The [Visual Studio Code extension][vscode-ext] is available from the Visual
+Studio marketplace.
+
+If you want to install a development version of the extension, the extension
+is developed in the main repository. See [the section in the grammars
+chapter][grammars-vscode] for how to build it, then install the extension using
+_Extensions: Install from <abbr>VSIX</abbr>…_ from the command panel.
+
+[vscode-ext]: https://marketplace.visualstudio.com/items?itemName=rcl-lang.rcl
+[grammars-vscode]: grammars.md#visual-studio-code
 
 ## Zed
 

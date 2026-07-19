@@ -1,0 +1,20 @@
+{
+  "autoCloseBefore": ":.,;}])",
+  "autoClosingPairs": [
+    {"close": "}", "open": "{"},
+    {"close": "]", "open": "["},
+    {"close": ")", "open": "("},
+    {"close": "\"\"\"", "notIn": ["string"], "open": "f\"\"\""},
+    {"close": "\"", "notIn": ["string"], "open": "f\""},
+    {"close": "\"\"\"", "notIn": ["string"], "open": "\"\"\""},
+    {"close": "\"", "notIn": ["string"], "open": "\""}
+  ],
+  "brackets": [["{", "}"], ["[", "]"], ["(", ")"]],
+  "comments": {"lineComment": "//"},
+  "indentationRules": {
+    "decreaseIndentPattern": "^\\s*[\\]\\}\\)][,;]?$",
+    "increaseIndentPattern": "^.*(\\[[^\\]]*|\\{[^\\}]*|\\([^\\)]*)$"
+  },
+  "onEnterRules": [],
+  "surroundingPairs": [["{", "}"], ["[", "]"], ["(", ")"], ["\"", "\""]]
+}

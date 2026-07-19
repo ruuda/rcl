@@ -1,0 +1,51 @@
+let root = import "//Cargo.rcl";
+
+{
+  name = "rcl",
+  displayName = "RCL",
+  description = "Support for the RCL configuration language.",
+  preview = false,
+  version = root.package.version,
+  engines = { vscode = "^1.100.0" },
+
+  author = { name = "Ruud van Asseldonk" },
+  publisher = "rcl-lang",
+  license = root.package.license,
+  pricing = "Free",
+
+  // The png is rendered from the svg favicon automatically,
+  // see `iconPng` in `flake.nix`.
+  icon = "icon.png",
+  galleryBanner = { color = "#000f29", theme = "dark" },
+
+  // TODO: Extend with "Linters" and "Formatters" once we have a language server.
+  categories = ["Programming Languages"],
+  keywords = ["rcl", "json", "yaml", "toml", "configuration", "devops"],
+
+  repository = { type = "git", url = "https://github.com/ruuda/rcl.git" },
+  homepage = "https://rcl-lang.org",
+
+  contributes = {
+    languages = [
+      {
+        id = "rcl",
+        aliases = ["RCL"],
+        extensions = [".rcl"],
+        configuration = "./language-configuration.json",
+      },
+    ],
+    grammars = [
+      {
+        language = "rcl",
+        scopeName = "source.rcl",
+        path = "./rcl.tmLanguage.json",
+      },
+    ],
+    configurationDefaults = {
+      "[rcl]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+      },
+    },
+  },
+}

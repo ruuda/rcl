@@ -17,11 +17,27 @@ let target_toml = contents => {
   contents = contents,
 };
 
+let target_json = contents => {
+  format = "json",
+  contents = contents,
+};
+
 {
   "Cargo.toml": target_toml(import "//Cargo.rcl"),
   "fuzz/Cargo.toml": target_toml(import "//fuzz/Cargo.rcl"),
   "grammar/tree-sitter-rcl/Cargo.toml": target_toml(
     import "//grammar/tree-sitter-rcl/Cargo.rcl",
+  ),
+  "grammar/vscode/language-configuration.json": target_json(
+    import "//grammar/vscode/language-configuration.rcl",
+  ),
+  // TODO: Maybe instead of checking these generated json files
+  // in to the repository, we can just generate them at package build time.
+  "grammar/vscode/package.json": target_json(
+    import "//grammar/vscode/package.rcl",
+  ),
+  "grammar/vscode/rcl.tmLanguage.json": target_json(
+    import "//grammar/vscode/rcl.tmLanguage.rcl",
   ),
   "grammar/zed/extension.toml": target_toml(
     import "//grammar/zed/extension.rcl",
