@@ -1,8 +1,8 @@
 {
   package = {
     name = "rcl",
-    version = "0.13.0",
-    authors = ["Ruud van Asseldonk <dev@veniogames.com>"],
+    version = "0.14.0",
+    authors = ["Ruud van Asseldonk <dev@ruuda.nl>"],
     edition = "2021",
     license = "Apache-2.0",
     description = "A reasonable configuration language.",

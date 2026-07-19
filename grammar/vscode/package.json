@@ -34,5 +34,5 @@
   "pricing": "Free",
   "publisher": "rcl-lang",
   "repository": {"type": "git", "url": "https://github.com/ruuda/rcl.git"},
-  "version": "0.13.0"
+  "version": "0.14.0"
 }

@@ -15,9 +15,9 @@ doc = false
 name = "rcl"
 
 [package]
-authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
+authors = ["Ruud van Asseldonk <dev@ruuda.nl>"]
 description = "Python bindings to the RCL configuration language."
 edition = "2021"
 license = "Apache-2.0"
 name = "pyrcl"
-version = "0.13.0"
+version = "0.14.0"

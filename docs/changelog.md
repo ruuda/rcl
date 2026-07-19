@@ -14,18 +14,21 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
-## Next
+## 0.14.0
 
-Unreleased.
+Released 2026-07-19.
 
- * Improved error messages for unmatched brackets.
- * Highlighters based on Tree-sitter (e.g. those in Helix and Zed) now highlight
-   function calls.
  * Add the [`systemd` output format](output_formats.md#systemd) for generating
    systemd units from <abbr>RCL</abbr>.
- * Add a [Visual Studio Code extension](syntax_highlighting.md#visual-studio-code),
-   which also brings syntax highlighting to
-   [JetBrains <abbr>IDE</abbr>s](syntax_highlighting.md#jetbrains).
+ * Add a [Visual Studio Code extension](syntax_highlighting.md#visual-studio-code).
+ * Add support for syntax highlighting in
+   [JetBrains <abbr>IDE</abbr>s](syntax_highlighting.md#jetbrains)
+   through the TextMate plugin.
+ * Improve error messages for unmatched brackets.
+ * Highlighters based on Tree-sitter (e.g. those in Helix and Zed) now highlight
+   function calls.
+
+Thanks to matthieucx for contributing to this release.
 
 ## 0.13.0
 

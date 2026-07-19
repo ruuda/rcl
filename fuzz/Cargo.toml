@@ -11,14 +11,14 @@ tree-sitter = "0.20.10"
 tree-sitter-rcl = { path = "../grammar/tree-sitter-rcl" }
 
 [package]
-authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
+authors = ["Ruud van Asseldonk <dev@ruuda.nl>"]
 description = "Fuzz targets and helpers for testing RCL."
 edition = "2021"
 license = "Apache-2.0"
 metadata = { cargo-fuzz = true }
 name = "rcl-fuzz"
 publish = false
-version = "0.13.0"
+version = "0.14.0"
 
 [[bin]]
 name = "smithctl"
