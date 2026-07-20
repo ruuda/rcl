@@ -288,22 +288,6 @@ impl<'a> Abstractor<'a> {
                 body: Box::new(self.expr(body)?),
             },
 
-            CExpr::BinOp {
-                op_span,
-                op,
-                lhs_span,
-                lhs,
-                rhs_span,
-                rhs,
-            } => AExpr::BinOp {
-                op_span: *op_span,
-                op: *op,
-                lhs_span: *lhs_span,
-                lhs: Box::new(self.expr(lhs)?),
-                rhs_span: *rhs_span,
-                rhs: Box::new(self.expr(rhs)?),
-            },
-
             CExpr::BinOps {
                 op,
                 head_span,

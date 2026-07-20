@@ -484,20 +484,6 @@ impl<'a> Formatter<'a> {
                 },
             },
 
-            Expr::BinOp {
-                op_span, lhs, rhs, ..
-            } => {
-                group! {
-                    flush_indent! {
-                        self.expr(lhs)
-                        Doc::Sep
-                        self.span(*op_span)
-                        " "
-                        self.expr(rhs)
-                    }
-                }
-            }
-
             Expr::BinOps { head, tail, .. } => {
                 let mut tail_parts = Vec::new();
                 for elem in tail.iter() {

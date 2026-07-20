@@ -273,34 +273,6 @@ pub enum Expr {
         body: Box<Expr>,
     },
 
-    /// A binary operator.
-    // TODO: We might also break up the binop into a true binary operator with
-    // two sides, e.g. `<=` and `==`, and into n-ary operators that can be
-    // repeated such as `+` and `*`. The latter would have a vec of args while
-    // the former would have just the two sides.
-    // TODO: If we have binops, do we still need a dedicated BinOp?
-    BinOp {
-        // TODO: How to handle noncode in binops? It is somewhat reasonable to
-        // expect people to write
-        //     let x = foo +
-        //       // Add trailing newline.
-        //       "\n";
-        // But also to write
-        //     let x = foo
-        //       // Add trailing newline.
-        //       + "\n";
-        // Personally I prefer the second form, but maybe we should support the
-        // first form and reformat it to the second. We could store one NonCode
-        // with the operator, but then we need to concatenate the noncode from
-        // before and after, strip duplicate blanks, etc ... it would be messy.
-        op_span: Span,
-        op: BinOp,
-        lhs_span: Span,
-        lhs: Box<Expr>,
-        rhs_span: Span,
-        rhs: Box<Expr>,
-    },
-
     /// A repeated binary operator.
     ///
     /// Repeated binary operators are associative operators such as `+`, `*`,
@@ -310,7 +282,6 @@ pub enum Expr {
     /// We parse them into a separate node type, so that we can format the
     /// entire chain wide or tall.
     BinOps {
-        // TODO: Split the BinOp enum.
         op: BinOp,
         head_span: Span,
         head: Box<Expr>,
