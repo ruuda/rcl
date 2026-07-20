@@ -114,7 +114,7 @@ pub struct SpanPrefixedOp {
     pub rhs_span: Span,
 
     /// The expression after the operator (right-hand side).
-    pub rhs: Box<Expr>,
+    pub rhs: Expr,
 }
 
 /// A collection of `T`s separated by commas, with an optional trailing comma and non-code suffix.

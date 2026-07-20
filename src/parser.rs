@@ -8,8 +8,8 @@
 //! The parser converts a sequence of tokens into a Concrete Syntax Tree.
 
 use crate::cst::{
-    BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, SeqControl, Stmt, StringPart, Type, UnOp,
-    Yield,
+    BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, SeqControl, SpanPrefixedOp, Stmt, StringPart,
+    Type, UnOp, Yield,
 };
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
@@ -53,6 +53,33 @@ fn to_binop(token: Token) -> Option<BinOp> {
         Token::Eq2 => Some(BinOp::Eq),
         Token::Neq => Some(BinOp::Neq),
         _ => None,
+    }
+}
+
+/// Concatenate two non-codes.
+///
+/// This is needed in rare cases where we allow non-code in multiple places
+/// during parsing, but then normalize it to a single place in the CST and when
+/// formatting. For example, around binops we allow non-code on either side of
+/// the operator, but we normalize to before.
+fn concat_non_code(prefix: Box<[NonCode]>, suffix: Box<[NonCode]>) -> Box<[NonCode]> {
+    match (prefix.len(), suffix.len()) {
+        (_, 0) => prefix,
+        (0, _) => suffix,
+        (_, _) => {
+            let mut result = prefix.into_vec();
+            // When we concatenate two non-codes, we should not create two
+            // consecutive blanks, as that would create an idempotency issue in
+            // the formatter.
+            if matches!(
+                (result.last(), suffix.first()),
+                (Some(NonCode::Blank(..)), Some(NonCode::Blank(..))),
+            ) {
+                result.pop();
+            }
+            result.extend(suffix.into_vec());
+            result.into_boxed_slice()
+        }
     }
 }
 
@@ -728,7 +755,7 @@ impl<'a> Parser<'a> {
             return self.parse_expr_import();
         }
 
-        let (mut lhs_span, mut result) = self.parse_expr_not_op()?;
+        let (head_span, head) = self.parse_expr_not_op()?;
 
         // We might have binary operators following. If we find one, then
         // all the other ones must be of the same type, to avoid unclear
@@ -736,11 +763,14 @@ impl<'a> Parser<'a> {
         // or "a and (b or c)".
         let mut allowed_op = None;
         let mut allowed_span = None;
+        let mut chain_span = head_span;
+        let mut tail = Vec::new();
         loop {
             match to_binop(self.peek_past_non_code()) {
                 Some(op) if allowed_op.is_none() || allowed_op == Some(op) => {
-                    self.skip_non_code()?;
+                    let prefix = self.parse_non_code();
                     let span = self.consume();
+                    let suffix = self.parse_non_code();
                     self.skip_non_code()?;
                     self.check_bad_unop()?;
 
@@ -755,17 +785,16 @@ impl<'a> Parser<'a> {
                         None => self.parse_expr_not_op()?,
                     };
 
+                    let rhs_node = SpanPrefixedOp {
+                        prefix: concat_non_code(prefix, suffix),
+                        op_span: span,
+                        rhs_span,
+                        rhs,
+                    };
+                    tail.push(rhs_node);
                     allowed_span = Some(span);
                     allowed_op = Some(op);
-                    result = Expr::BinOp {
-                        op,
-                        op_span: span,
-                        lhs_span,
-                        lhs: Box::new(result),
-                        rhs_span,
-                        rhs: Box::new(rhs),
-                    };
-                    lhs_span = lhs_span.union(rhs_span);
+                    chain_span = chain_span.union(rhs_span);
                 }
                 Some(_op) => {
                     return self.error(
@@ -775,7 +804,16 @@ impl<'a> Parser<'a> {
                         "Without parentheses, it is not clear whether this operator should take precedence.",
                     ).err();
                 }
-                _ => return Ok((lhs_span, result)),
+                None if tail.is_empty() => return Ok((head_span, head)),
+                None => {
+                    let result = Expr::BinOps {
+                        op: allowed_op.expect("If we have a tail, we have an op."),
+                        head_span,
+                        head: Box::new(head),
+                        tail,
+                    };
+                    return Ok((chain_span, result));
+                }
             }
         }
     }
@@ -1150,20 +1188,7 @@ impl<'a> Parser<'a> {
                     // between the previous seq and the comma. We shouldn't
                     // really allow that, but since we parsed it, it's too late
                     // to fail, so we'll move it over the comma instead.
-                    if prefix.is_empty() {
-                        prefix = self.parse_non_code();
-                    } else {
-                        let mut pfx = prefix.into_vec();
-                        // When we concatenate two non-codes, we should not
-                        // create two consecutive blanks, as that would create
-                        // an idempotency issue in the formatter. We drop all
-                        // blanks just before the comma.
-                        while let Some(NonCode::Blank(..)) = pfx.last() {
-                            pfx.pop();
-                        }
-                        pfx.extend(self.parse_non_code().into_vec());
-                        prefix = pfx.into_boxed_slice();
-                    }
+                    prefix = concat_non_code(prefix, self.parse_non_code());
 
                     continue;
                 }

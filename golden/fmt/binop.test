@@ -1,15 +1,99 @@
 let wide = "a" + "b";
+
+// A tall binop chain can hang with a flush indent.
 let tall = "supercalifragilisticexpialidocious umbrella " +
            "supercalifragilisticexpialidocious umbrella " +
            "supercalifragilisticexpialidocious umbrella " ;
+
+// Parens prevent that hang:
+let tall = ("supercalifragilisticexpialidocious umbrella " +
+  "supercalifragilisticexpialidocious umbrella " +
+  "supercalifragilisticexpialidocious umbrella ");
+
+// The entire chain is wide or tall, it doesn't break in the middle.
+let medium = foo(medium_1 + medium_2 + medium_3 + medium_4 + medium_5 + medium_6 +
+  medium_7 + medium_8 + medium_9 + medium_10,
+  short_1 * short_2
+  * short_3);
+
+// This matters especially for mixed operator chains.
+let mm = (a + b + c + d) * (e + f + g + h) * (longer_identifier_that_is_going_to_force_this_tall +
+  another_long_identifier_that_does_not_fit_the_same_line);
+
+let condition = true and (case_1 or case_2 or case_3) and
+  (case_2 or case_8 or not case_9) and
+  not widget.is_frobnicated;
+
+// Comments in a binop chain are allowed on either side,
+// but merge to before the operator.
+let z = lhs
+  // Before
+  +
+  // After
+  rhs;
+
+// Consecutive blanks get merged into a single blank.
+let z = before
+
+  +
+
+  after;
 
 wide + tall + null
 
 # output:
 let wide = "a" + "b";
-let tall =
-  "supercalifragilisticexpialidocious umbrella "
+
+// A tall binop chain can hang with a flush indent.
+let tall = "supercalifragilisticexpialidocious umbrella "
   + "supercalifragilisticexpialidocious umbrella "
   + "supercalifragilisticexpialidocious umbrella ";
+
+// Parens prevent that hang:
+let tall = (
+  "supercalifragilisticexpialidocious umbrella "
+    + "supercalifragilisticexpialidocious umbrella "
+    + "supercalifragilisticexpialidocious umbrella "
+);
+
+// The entire chain is wide or tall, it doesn't break in the middle.
+let medium = foo(
+  medium_1
+    + medium_2
+    + medium_3
+    + medium_4
+    + medium_5
+    + medium_6
+    + medium_7
+    + medium_8
+    + medium_9
+    + medium_10,
+  short_1 * short_2 * short_3,
+);
+
+// This matters especially for mixed operator chains.
+let mm = (a + b + c + d)
+  * (e + f + g + h)
+  * (
+    longer_identifier_that_is_going_to_force_this_tall
+      + another_long_identifier_that_does_not_fit_the_same_line
+  );
+
+let condition = true
+  and (case_1 or case_2 or case_3)
+  and (case_2 or case_8 or not case_9)
+  and not widget.is_frobnicated;
+
+// Comments in a binop chain are allowed on either side,
+// but merge to before the operator.
+let z = lhs
+  // Before
+  // After
+  + rhs;
+
+// Consecutive blanks get merged into a single blank.
+let z = before
+
+  + after;
 
 wide + tall + null

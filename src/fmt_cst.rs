@@ -510,6 +510,38 @@ impl<'a> Formatter<'a> {
                     tail_parts.push(" ".into());
                     tail_parts.push(self.expr(&elem.rhs));
                 }
+                // We have a bit of a choice here. We can do the more minimal
+                // doc as implemented now, or we could wrap the inside of this
+                // group! in a flush_indent!, which creates a line break and
+                // additional indent for the tail in tall mode. Without the
+                // flush indent, we format more tightly, and we allow the ops
+                // to hang under the preceding line:
+                //
+                // let foobar = true
+                //   and cond1
+                //   and cond2;
+                // let widget = frobnicate(
+                //   arg1a
+                //     + arg1b,
+                //   arg2a,
+                // );
+                //
+                // With an additional flush, the function call does not change
+                // because the binops chain is already on its own line, but the
+                // let case goes under, it no longer hangs:
+                //
+                // let foobar =
+                //   true
+                //     and cond1
+                //     and cond2;
+                //
+                // There is something to say for both, and possibly also for
+                // having the flush indent without an inner indent, so the
+                // continuation lines are at the same indent level as the head,
+                // but in the end I think the tight formatting fits RCL better,
+                // making an entire chain wide or tall already makes RCL quite
+                // tall on average, this balances that out a bit. If you want
+                // the second form, you can also wrap parens around the expr.
                 group! {
                     self.expr(head)
                     indent! { Doc::Concat(tail_parts) }
