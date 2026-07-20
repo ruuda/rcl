@@ -484,8 +484,6 @@ impl<'a> Formatter<'a> {
                 },
             },
 
-            // TODO: Make this a collection in the parser, so we can toggle
-            // operator chains into all-wide or all-tall but not mixed.
             Expr::BinOp {
                 op_span, lhs, rhs, ..
             } => {
@@ -497,6 +495,24 @@ impl<'a> Formatter<'a> {
                         " "
                         self.expr(rhs)
                     }
+                }
+            }
+
+            Expr::BinOps { head, tail, .. } => {
+                let mut tail_parts = Vec::new();
+                for elem in tail.iter() {
+                    tail_parts.push(Doc::Sep);
+                    // We put the operator at the start of the line, and all the
+                    // non-code goes before that line.
+                    tail_parts.push(self.non_code(&elem.prefix));
+                    // TODO: Apply markup for operators that are words.
+                    tail_parts.push(self.span(elem.op_span));
+                    tail_parts.push(" ".into());
+                    tail_parts.push(self.expr(&elem.rhs));
+                }
+                group! {
+                    self.expr(head)
+                    indent! { Doc::Concat(tail_parts) }
                 }
             }
 

@@ -100,6 +100,23 @@ pub struct Prefixed<T> {
 /// A prefixed statement, and the span of the inner statement.
 pub type SpanPrefixedStmt = (Span, Prefixed<Stmt>);
 
+/// An operator and its right-hand side in a binary operator chain.
+#[derive(Debug)]
+pub struct SpanPrefixedOp {
+    /// Non-code surrounding the operator, either before or after.
+    /// Upon formatting, we move everything before the operator.
+    pub prefix: Box<[NonCode]>,
+
+    /// The span of the operator.
+    pub op_span: Span,
+
+    /// The span of the expression after the operator.
+    pub rhs_span: Span,
+
+    /// The expression after the operator (right-hand side).
+    pub rhs: Box<Expr>,
+}
+
 /// A collection of `T`s separated by commas, with an optional trailing comma and non-code suffix.
 ///
 /// This is a list in the sense of a sequence of elements, it is not a list
@@ -261,6 +278,7 @@ pub enum Expr {
     // two sides, e.g. `<=` and `==`, and into n-ary operators that can be
     // repeated such as `+` and `*`. The latter would have a vec of args while
     // the former would have just the two sides.
+    // TODO: If we have binops, do we still need a dedicated BinOp?
     BinOp {
         // TODO: How to handle noncode in binops? It is somewhat reasonable to
         // expect people to write
@@ -281,6 +299,22 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs_span: Span,
         rhs: Box<Expr>,
+    },
+
+    /// A repeated binary operator.
+    ///
+    /// Repeated binary operators are associative operators such as `+`, `*`,
+    /// `and`, and `or`. In most cases RCL requires parens to disambiguate
+    /// associativity, but for a repeated associative operator, this is not
+    /// needed: `a + b + c` is not ambiguous because both readings are equal.
+    /// We parse them into a separate node type, so that we can format the
+    /// entire chain wide or tall.
+    BinOps {
+        // TODO: Split the BinOp enum.
+        op: BinOp,
+        head_span: Span,
+        head: Box<Expr>,
+        tail: Vec<SpanPrefixedOp>,
     },
 
     /// A chained expression (field lookup, calls, indexes).
