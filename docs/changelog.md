@@ -14,6 +14,13 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## Next
+
+Unreleased
+
+ * Improve coloring in the TextMate grammar used by Visual Studio Code and
+   JetBrains <abbr>IDE</abbr>s.
+
 ## 0.14.0
 
 Released 2026-07-19.

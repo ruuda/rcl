@@ -12,7 +12,7 @@
     },
     "expr_binop": {
       "match": "\\b(and|or)\\b",
-      "name": "keyword.operator.binop.rcl"
+      "name": "keyword.operator.logical.rcl"
     },
     "expr_if": {
       "begin": "\\bif\\b",
@@ -43,7 +43,7 @@
         {"match": "[a-zA-Z_][a-zA-Z0-9_-]*", "name": "meta.structure.ident.rcl"}
       ]
     },
-    "expr_unop": {"match": "\\bnot\\b", "name": "keyword.operator.unop.rcl"},
+    "expr_unop": {"match": "\\bnot\\b", "name": "keyword.operator.logical.rcl"},
     "seq": {
       "name": "meta.structure.seq.rcl",
       "patterns": [

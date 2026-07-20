@@ -182,12 +182,14 @@
 
     expr_unop = {
       match = "\\bnot\\b",
-      name = "keyword.operator.unop.rcl",
+      // Match the scopes to what the Python grammar uses here.
+      // Themes color `logical`, but not `keyword.operator.{unop,binop}`.
+      name = "keyword.operator.logical.rcl",
     },
 
     expr_binop = {
       match = "\\b(and|or)\\b",
-      name = "keyword.operator.binop.rcl",
+      name = "keyword.operator.logical.rcl",
     },
 
     expr_not_op = {
