@@ -102,7 +102,7 @@ pub type SpanPrefixedStmt = (Span, Prefixed<Stmt>);
 
 /// An operator and its right-hand side in a binary operator chain.
 #[derive(Debug)]
-pub struct SpanPrefixedOp {
+pub struct BinOpRhs {
     /// Non-code surrounding the operator, either before or after.
     /// Upon formatting, we move everything before the operator.
     pub prefix: Box<[NonCode]>,
@@ -273,19 +273,23 @@ pub enum Expr {
         body: Box<Expr>,
     },
 
-    /// A repeated binary operator.
+    /// A binary operator, repeated one or more times.
     ///
-    /// Repeated binary operators are associative operators such as `+`, `*`,
-    /// `and`, and `or`. In most cases RCL requires parens to disambiguate
-    /// associativity, but for a repeated associative operator, this is not
-    /// needed: `a + b + c` is not ambiguous because both readings are equal.
-    /// We parse them into a separate node type, so that we can format the
-    /// entire chain wide or tall.
+    /// In most cases RCL requires parens to disambiguate associativity, but for
+    /// a repeated associative operator, this is not needed: `a + b + c` is not
+    /// ambiguous because both readings are equal. We parse repeated operators
+    /// into a single CST node, so that we can format the entire chain wide or
+    /// tall.
+    ///
+    /// We parse every binary operator into a chain, regardless of whether the
+    /// operator is associative and can be n-ary (`+`, `*`, `and`, `or`, etc.).
+    /// True binary operators (`==`, `!=`) also get a chain at the CST level,
+    /// if it causes a type error, the typechecker or runtime will discover it.
     BinOps {
         op: BinOp,
         head_span: Span,
         head: Box<Expr>,
-        tail: Vec<SpanPrefixedOp>,
+        tail: Vec<BinOpRhs>,
     },
 
     /// A chained expression (field lookup, calls, indexes).

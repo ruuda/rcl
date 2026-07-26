@@ -8,8 +8,8 @@
 //! The parser converts a sequence of tokens into a Concrete Syntax Tree.
 
 use crate::cst::{
-    BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, SeqControl, SpanPrefixedOp, Stmt, StringPart,
-    Type, UnOp, Yield,
+    BinOp, BinOpRhs, Chain, Expr, List, NonCode, Prefixed, Seq, SeqControl, Stmt, StringPart, Type,
+    UnOp, Yield,
 };
 use crate::error::{Error, IntoError, Result};
 use crate::lexer::{Lexeme, QuoteStyle, StringPrefix, Token};
@@ -785,7 +785,7 @@ impl<'a> Parser<'a> {
                         None => self.parse_expr_not_op()?,
                     };
 
-                    let rhs_node = SpanPrefixedOp {
+                    let rhs_node = BinOpRhs {
                         prefix: concat_non_code(prefix, suffix),
                         op_span: span,
                         rhs_span,
