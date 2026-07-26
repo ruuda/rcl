@@ -18,6 +18,14 @@ compatibility impact will be clearly marked as such in the changelog.
 
 Unreleased
 
+**Changes with compatibility impact:**
+
+ * The formatter now formats chains of repeated associative binary operators
+   such as `a + b + c` either wide or tall in its entirety. This may cause the
+   canonical formatting to change for some documents.
+
+Other changes:
+
  * Improve coloring in the TextMate grammar used by Visual Studio Code and
    JetBrains <abbr>IDE</abbr>s.
 
