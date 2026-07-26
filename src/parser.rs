@@ -1185,9 +1185,8 @@ impl<'a> Parser<'a> {
 
                     // Any non-code after the comma is the prefix of the next
                     // seq. If we already had a prefix, then there is non-code
-                    // between the previous seq and the comma. We shouldn't
-                    // really allow that, but since we parsed it, it's too late
-                    // to fail, so we'll move it over the comma instead.
+                    // between the previous seq and the comma. We'll move that
+                    // over the comma for the purpose of the CST and formatting.
                     prefix = concat_non_code(prefix, self.parse_non_code());
 
                     continue;
