@@ -12,7 +12,7 @@
 
 use crate::ast::UnOp;
 use crate::cst::{
-    Chain, Expr, List, NonCode, Prefixed, Seq, SeqControl, Stmt, StringPart, Type, Yield,
+    BinOp, Chain, Expr, List, NonCode, Prefixed, Seq, SeqControl, Stmt, StringPart, Type, Yield,
 };
 use crate::lexer::{QuoteStyle, StringPrefix};
 use crate::markup::Markup;
@@ -484,18 +484,35 @@ impl<'a> Formatter<'a> {
                 },
             },
 
-            Expr::BinOps { head, tail, .. } => {
+            Expr::BinOps { head, op, tail, .. } => {
                 let mut tail_parts = Vec::new();
+                let is_textual = matches!(op, BinOp::And | BinOp::Or);
+
                 for elem in tail.iter() {
+                    // For efficiency we match on the operator instead of the
+                    // text, but we still want to verify that the match is in
+                    // sync with the keywords.
+                    debug_assert_eq!(
+                        is_textual,
+                        elem.op_span
+                            .resolve(self.inputs)
+                            .chars()
+                            .all(|ch| ch.is_ascii_alphabetic()),
+                    );
+                    let op_doc = match is_textual {
+                        false => self.span(elem.op_span),
+                        true => self.span(elem.op_span).with_markup(Markup::Keyword),
+                    };
+
                     tail_parts.push(Doc::Sep);
                     // We put the operator at the start of the line, and all the
                     // non-code goes before that line.
                     tail_parts.push(self.non_code(&elem.prefix));
-                    // TODO: Apply markup for operators that are words.
-                    tail_parts.push(self.span(elem.op_span));
+                    tail_parts.push(op_doc);
                     tail_parts.push(" ".into());
                     tail_parts.push(self.expr(&elem.rhs));
                 }
+
                 // We have a bit of a choice here. We can do the more minimal
                 // doc as implemented now, or we could wrap the inside of this
                 // group! in a flush_indent!, which creates a line break and
