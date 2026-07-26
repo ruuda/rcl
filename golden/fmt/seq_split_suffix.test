@@ -12,14 +12,40 @@ let b = [
 ];
 
 let c = [
-  // Blanks before the comma get dropped.
+  // Comments and blanks before the comma, move after it.
   42
 
   ,
 ];
 
+let c = [
+  // If there is a blank on both sides of the comma, they fuse.
+  [
+    42
+    // Before
+
+    ,
+
+    // After
+  ],
+  [
+    42
+    // Before
+
+    ,
+    // After
+  ],
+  [
+    42
+    // Before
+    ,
+
+    // After
+  ],
+];
+
 let d = [
-  // But blanks before the closing bracket do not.
+  // Blanks before the closing bracket remain, even without comma.
   42
 
 ];
@@ -39,12 +65,35 @@ let b = [
 ];
 
 let c = [
-  // Blanks before the comma get dropped.
+  // Comments and blanks before the comma, move after it.
   42,
+
+];
+
+let c = [
+  // If there is a blank on both sides of the comma, they fuse.
+  [
+    42,
+    // Before
+
+    // After
+  ],
+  [
+    42,
+    // Before
+
+    // After
+  ],
+  [
+    42,
+    // Before
+
+    // After
+  ],
 ];
 
 let d = [
-  // But blanks before the closing bracket do not.
+  // Blanks before the closing bracket remain, even without comma.
   42,
 
 ];

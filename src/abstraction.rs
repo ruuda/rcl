@@ -288,21 +288,29 @@ impl<'a> Abstractor<'a> {
                 body: Box::new(self.expr(body)?),
             },
 
-            CExpr::BinOp {
-                op_span,
+            CExpr::BinOps {
                 op,
-                lhs_span,
-                lhs,
-                rhs_span,
-                rhs,
-            } => AExpr::BinOp {
-                op_span: *op_span,
-                op: *op,
-                lhs_span: *lhs_span,
-                lhs: Box::new(self.expr(lhs)?),
-                rhs_span: *rhs_span,
-                rhs: Box::new(self.expr(rhs)?),
-            },
+                head_span,
+                head,
+                tail,
+            } => {
+                // We unfold the chain left-associative:
+                // a + b + c => (a + b) + c.
+                let mut expr = self.expr(head)?;
+                let mut span = *head_span;
+                for rhs in tail.iter() {
+                    expr = AExpr::BinOp {
+                        op_span: rhs.op_span,
+                        op: *op,
+                        lhs_span: span,
+                        lhs: Box::new(expr),
+                        rhs_span: rhs.rhs_span,
+                        rhs: Box::new(self.expr(&rhs.rhs)?),
+                    };
+                    span = span.union(rhs.rhs_span);
+                }
+                expr
+            }
 
             CExpr::Chain { base_expr, chain } => {
                 let mut inner_expr = self.expr(base_expr)?;
