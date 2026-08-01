@@ -72,7 +72,8 @@ See [the chapter on strings](strings.md) for the full details.
 
 Names of variables, and dict fields that use record syntax, are _identifiers_.
 Identifiers must start with an underscore or <abbr>ASCII</abbr> letter, and can
-furthermore contain <abbr>ASCII</abbr> digits, and `-`, a hyphen.
+furthermore contain <abbr>ASCII</abbr> digits, and `-`, a hyphen. Hyphens are
+not allowed at the end of an identifier, only in the middle.
 
 Allowing the hyphen in identifiers makes some types of configuration dicts
 cleaner to write, but the downside is that it can cause confusion with the `-`
