@@ -4,6 +4,10 @@ let xs = [
   // Binops with `-` operator. Dashes are not allowed at the start or end.
   a- b,
   a -b,
+  // An identifier may not end with a dash. This is not `x-` minus `x`,
+  // it's `x` minus negated `x`. Without space it's a single ident though.
+  x-- x,
+  x--x,
 ];
 xs
 
@@ -14,5 +18,9 @@ let xs = [
   // Binops with `-` operator. Dashes are not allowed at the start or end.
   a - b,
   a - b,
+  // An identifier may not end with a dash. This is not `x-` minus `x`,
+  // it's `x` minus negated `x`. Without space it's a single ident though.
+  x - -x,
+  x--x,
 ];
 xs
