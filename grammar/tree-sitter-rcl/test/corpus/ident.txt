@@ -1,0 +1,38 @@
+=========================
+Dashes inside are allowed
+=========================
+
+foo-bar
+
+---
+
+(source_file
+  (ident))
+
+======================================
+A dash at the start is the minus binop
+======================================
+
+foo -bar
+
+---
+
+(source_file
+  (expr_binop
+    (ident)
+    (binop)
+    (ident)))
+
+====================================
+A dash at the end is the minus binop
+====================================
+
+foo- bar
+
+---
+
+(source_file
+  (expr_binop
+    (ident)
+    (binop)
+    (ident)))

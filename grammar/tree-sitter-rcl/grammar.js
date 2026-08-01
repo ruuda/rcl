@@ -29,7 +29,7 @@ module.exports = grammar({
     comment: $ => /\/\/[^\n]*\n/,
     shebang: $ => /#![^\n]*\n/,
 
-    ident: $ => /[_A-Za-z][-_A-Za-z0-9]*/,
+    ident: $ => /[_A-Za-z]([-_A-Za-z0-9]*[_A-Za-z0-9])?/,
 
     string: $ => choice(
       $.fstring_double,
