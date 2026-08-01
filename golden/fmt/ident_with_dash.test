@@ -1,0 +1,18 @@
+let xs = [
+  // A single identifier, dashes are allowed in the middle.
+  a-b,
+  // Binops with `-` operator. Dashes are not allowed at the start or end.
+  a- b,
+  a -b,
+];
+xs
+
+# output:
+let xs = [
+  // A single identifier, dashes are allowed in the middle.
+  a-b,
+  // Binops with `-` operator. Dashes are not allowed at the start or end.
+  a - b,
+  a - b,
+];
+xs
