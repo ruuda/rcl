@@ -1,0 +1,26 @@
+let xs = [
+  // A single identifier, dashes are allowed in the middle.
+  a-b,
+  // Binops with `-` operator. Dashes are not allowed at the start or end.
+  a- b,
+  a -b,
+  // An identifier may not end with a dash. This is not `x-` minus `x`,
+  // it's `x` minus negated `x`. Without space it's a single ident though.
+  x-- x,
+  x--x,
+];
+xs
+
+# output:
+let xs = [
+  // A single identifier, dashes are allowed in the middle.
+  a-b,
+  // Binops with `-` operator. Dashes are not allowed at the start or end.
+  a - b,
+  a - b,
+  // An identifier may not end with a dash. This is not `x-` minus `x`,
+  // it's `x` minus negated `x`. Without space it's a single ident though.
+  x - -x,
+  x--x,
+];
+xs

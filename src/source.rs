@@ -145,6 +145,12 @@ impl Span {
         Span::new(self.doc(), self.start() + n_trim, self.end())
     }
 
+    /// Delete n bytes from the end of the span.
+    pub fn trim_end(&self, n: usize) -> Span {
+        let n_trim = self.len().min(n);
+        Span::new(self.doc(), self.start(), self.end() - n_trim)
+    }
+
     /// Return a span that runs from self up to but not including `other`.
     pub fn until(&self, other: Span) -> Span {
         debug_assert_eq!(self.doc(), other.doc());

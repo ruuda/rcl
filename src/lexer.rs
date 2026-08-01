@@ -527,7 +527,20 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_in_ident(&mut self) -> Lexeme {
-        let span = self.take_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'-');
+        let mut span = self.take_while(|ch| ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'-');
+
+        // An identifier may not end with `-`, unconsume it if we got one.
+        // This is to ensure that in a case like `Number->String`, this parses
+        // as two idents with a thin arrow in between, instead of `Number-`
+        // greater than `String`. Note, the rule really is that an identifier
+        // may not end with `-`, it's not that `->` takes precedence! For the
+        // latter a single `if` would be enough, but then `x-->y` would parse
+        // as ident `x-`, which would be invalid everywhere else.
+        while self.input.as_bytes()[self.start - 1] == b'-' {
+            self.start -= 1;
+            span = span.trim_end(1);
+        }
+
         let ident = span.resolve(self.input);
         let token = Lexer::get_keyword_or_ident(ident);
         (token, span)

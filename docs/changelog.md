@@ -20,8 +20,19 @@ Unreleased
 
 **Changes with compatibility impact:**
 
+ * Hyphens are no longer allowed at the end of identifiers. They remain allowed
+   in the middle of identifier. This means that e.g. `wid-get--32` now parses as
+   `wid-get - (-32)`, rather than `wid-get- - 32`. This enables better error
+   messages for common mistakes, in particular for code like `f: Bool->Bool`,
+   which now contains a `->` rather than a greater-than operator. There exist
+   pathological documents that are valid under both the old and new grammar,
+   but which evaluate differently. Reformatting with `rcl format` will make the
+   culprits clearly visible. It remains possible to have dict keys end in `-`,
+   but they can no longer use field and record notation; use indexing and
+   <abbr>JSON</abbr> notation instead. For example, `{ a- = 0 }.a-` becomes
+   `{"a-": 0}["a-"]`.
  * The formatter now formats chains of repeated associative binary operators
-   such as `a + b + c` either wide or tall in its entirety. This may cause the
+   such as `a + b + c` either wide or tall in its entirety. This can cause the
    canonical formatting to change for some documents.
 
 Other changes:

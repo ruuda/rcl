@@ -126,7 +126,7 @@ _root_base = [
         words(TYPES, suffix=r"\b"),
         token.Keyword.Type,
     ),
-    (r"[_a-z][_a-z0-9-]*", token.Name),
+    (r"[_A-Za-z]([-_A-Za-z0-9]*[_A-Za-z0-9])?", token.Name),
     # There is a dedicated whitespace token, but if we use it, the html output
     # (and console output too) gets very polluted, so make whitespace a regular
     # unclassified token.
