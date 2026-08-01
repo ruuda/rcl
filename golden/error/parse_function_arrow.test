@@ -1,0 +1,13 @@
+// This tests a grammar change introduced in 0.15.0.
+// Previously, this would parse as `Number-` `>` `String` which generates a
+// confusing parse error, saying it expects `=` after the type annotation. Now
+// it parses as `Number` `->` `String` so we can explain the need for parens.
+let f: Number->String = x => f"{x}";
+f
+
+# output:
+stdin:5:15
+  ╷
+5 │ let f: Number->String = x => f"{x}";
+  ╵               ^
+Error: Expected '=' after type annotation.
