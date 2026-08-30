@@ -6,6 +6,14 @@ Definitions for syntax coloring are available for the applications below.
 
 See <https://github.com/qezz/rcl-mode>.
 
+## Gram
+
+The [Zed extension](https://github.com/rcl-lang/zed-rcl) is compatible with
+Gram. Clone the repository. Then in Gram’s extension menu, select _Install
+Local_ and select the checkout directory. Alternatively (and also for
+development), you can install from the `grammar/zed` directory in a checkout of
+the main repository.
+
 ## Helix
 
 Helix can use [the Tree-sitter grammar](#tree-sitter). In your configuration
