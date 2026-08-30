@@ -40,6 +40,7 @@ nav:
       - "Set": "type_set.md"
       - "String": "type_string.md"
       - "Python bindings": "python_bindings.md"
+      - "Output formats": "output_formats.md"
   - "Command reference":
       - "rcl": "rcl.md"
       - "rcl build": "rcl_build.md"
@@ -48,7 +49,6 @@ nav:
       - "rcl highlight": "rcl_highlight.md"
       - "rcl patch": "rcl_patch.md"
       - "rcl query": "rcl_query.md"
-      - "Output formats": "output_formats.md"
   - "Development":
       - "Overview": "development.md"
       - "Building": "building.md"

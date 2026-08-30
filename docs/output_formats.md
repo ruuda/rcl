@@ -1,6 +1,6 @@
 # Output formats
 
-RCL can print output in the formats below. The format can be selected with
+RCL can generate output in the formats below. The format can be selected with
 [`--format`](rcl_evaluate.md#-f-format-format) on the command line, and with
 [`format`](rcl_build.md#format) in build files.
 The format names are written lowercase.
