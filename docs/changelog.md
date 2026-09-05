@@ -21,8 +21,8 @@ Unreleased
 **Changes with compatibility impact:**
 
  * Hyphens are no longer allowed at the end of identifiers. They remain allowed
-   in the middle of identifier. This means that e.g. `wid-get--32` now parses as
-   `wid-get - (-32)`, rather than `wid-get- - 32`. This enables better error
+   in the middle of identifiers. This means that e.g. `wid-get- - 32` now parses
+   as `wid-get - (-32)`, rather than `(wid-get-) - 32`. This enables better error
    messages for common mistakes, in particular for code like `f: Bool->Bool`,
    which now contains a `->` rather than a greater-than operator. There exist
    pathological documents that are valid under both the old and new grammar,
