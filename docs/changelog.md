@@ -14,6 +14,19 @@ compatibility impact will be clearly marked as such in the changelog.
 
 [semver]: https://semver.org/
 
+## 0.14.1
+
+Released 2026-09-08.
+
+ * Fix a crates.io rate limiting issue in the Nix flake by backporting the
+   [upstream Nixpkgs fix][nixpkgs-524985].
+
+This version contains no changes to <abbr>RCL</abbr> itself. If you are
+installing <abbr>RCL</abbr> through a different means than the Nix flake, you
+do not need to update, therefore no binaries are attached to this release.
+
+[nixpkgs-524985]: https://github.com/NixOS/nixpkgs/pull/524985
+
 ## 0.14.0
 
 Released 2026-07-19.
