@@ -201,10 +201,19 @@
             cp -r ${rustSources}/* $out
             '';
 
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+            # Override the Cargo registry so we download crates from
+            # static.crates.io which is not rate limited as hard.
+            # See also upstream <https://github.com/NixOS/nixpkgs/pull/524985>.
+            extraRegistries = {
+              "https://github.com/rust-lang/crates.io-index" = "https://static.crates.io/crates";
+            };
+          };
+
           rcl = pkgs.rustPlatform.buildRustPackage rec {
-            inherit name version;
+            inherit name version cargoLock;
             src = rustSources;
-            cargoLock.lockFile = ./Cargo.lock;
           };
 
           coverageBuild = rcl.overrideAttrs (old: {
@@ -232,9 +241,8 @@
 
           # Shared parameters for the Nix package and the wheel.
           pyrcl-common = {
-            inherit version;
+            inherit version cargoLock;
             src = rustPythonSources;
-            cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "pyrcl";
           };
 
@@ -296,10 +304,9 @@
           # build reproducible. We don't use Nix' cross-compilation here, because
           # the resulting binary is not suitable for the Nix store, it's portable.
           rcl-binaries = pkgs.rustPlatform.buildRustPackage rec {
-            inherit version;
+            inherit version cargoLock;
             name = "rcl-binaries";
             src = rustSources;
-            cargoLock.lockFile = ./Cargo.lock;
 
             doCheck = false; # We already test the normal builds.
             auditable = false; # See also the comment above in pyrcl-wheel.
@@ -331,10 +338,9 @@
           };
 
           rcl-wasm = pkgs.rustPlatform.buildRustPackage rec {
-            inherit version;
+            inherit version cargoLock;
             name = "rcl-wasm";
             src = rustSources;
-            cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "wasm";
             doCheck = false; # We already test the non-wasm build.
             nativeBuildInputs = [
@@ -400,9 +406,8 @@
 
           fuzzers = pkgs.rustPlatform.buildRustPackage rec {
             name = "rcl-fuzzers";
-            inherit version;
+            inherit version cargoLock;
             src = rustSourcesAll;
-            cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "fuzz";
           };
 
