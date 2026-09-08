@@ -5,7 +5,8 @@
   # We also use oxalica/rust-overlay for nightly binaries, but for various use
   # cases, such as generating coverage reports, we rely on tools from Nixkpgs,
   # so the version needs to match.
-  inputs.nixpkgs.url = "nixpkgs/9a9dae8f6319600fa9aebde37f340975cab4b8c0";
+  # NB: The pinned commit includes a backport to fix a crates.io rate limit issue.
+  inputs.nixpkgs.url = "nixpkgs/5fa24be28b7e6600b720a7ad2c8560bdd6956b4c";
   inputs.rust-overlay.url = "github:oxalica/rust-overlay?rev=10faa81b4c0135a04716cbd1649260d82b2890cd";
   inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -203,12 +204,6 @@
 
           cargoLock = {
             lockFile = ./Cargo.lock;
-            # Override the Cargo registry so we download crates from
-            # static.crates.io which is not rate limited as hard.
-            # See also upstream <https://github.com/NixOS/nixpkgs/pull/524985>.
-            extraRegistries = {
-              "https://github.com/rust-lang/crates.io-index" = "https://static.crates.io/crates";
-            };
           };
 
           rcl = pkgs.rustPlatform.buildRustPackage rec {
