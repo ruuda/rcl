@@ -7,12 +7,14 @@
   "null": 3,
   "": 0,
   "-does-not-start-with-safe-char": 42,
+  "does-not-end-with-safe-char-": 17,
 }
 
 # output:
 {
   "": 0,
   "-does-not-start-with-safe-char": 42,
+  "does-not-end-with-safe-char-": 17,
   "null": 3,
   safe-ident = 1,
   safe_ident = 0,

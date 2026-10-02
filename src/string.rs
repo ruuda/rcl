@@ -103,6 +103,10 @@ pub fn is_identifier(s: &str) -> bool {
         return false;
     }
 
+    if bytes[bytes.len() - 1] == b'-' {
+        return false;
+    }
+
     for &b in bytes.iter().skip(1) {
         if !b.is_ascii_alphanumeric() && b != b'_' && b != b'-' {
             return false;

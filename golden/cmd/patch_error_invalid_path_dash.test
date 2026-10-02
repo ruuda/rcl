@@ -1,0 +1,11 @@
+# command: ["patch", "-", "server.port-", "1"]
+{ server = { port = 0 } }
+
+# output:
+path:1:8
+  ╷
+1 │ server.port-
+  ╵        ^~~~~
+Error: This path segment is not a valid identifier.
+
+Help: A document path can only contain identifiers, not list indexes or arbitrary keys.
