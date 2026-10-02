@@ -1269,8 +1269,7 @@ impl<'a> Parser<'a> {
                 Token::KwAssert | Token::KwLet | Token::KwTrace => self.parse_seq_stmt()?,
                 Token::KwFor => self.parse_seq_for()?,
                 Token::KwIf => self.parse_seq_if()?,
-                Token::DotDot => break self.parse_seq_unpack_elems()?,
-                Token::DotDotDot => break self.parse_seq_unpack_assocs()?,
+                Token::DotDot | Token::DotDotDot => break self.parse_seq_unpack()?,
                 Token::Ident if is_followed_by_eq1() => break self.parse_seq_assoc_ident()?,
                 _ => break self.parse_seq_assoc_expr()?,
             };
@@ -1294,32 +1293,26 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    /// Parse `..xs` inside a `Seq`.
-    fn parse_seq_unpack_elems(&mut self) -> Result<Yield> {
-        let dotdot = self.consume();
+    /// Parse `..xs` or `...xs` inside a `Seq`.
+    fn parse_seq_unpack(&mut self) -> Result<Yield> {
+        let dots = self.peek();
+        let dots_span = self.consume();
 
         self.skip_non_code()?;
         let (collection_span, collection) = self.parse_expr()?;
 
-        let result = Yield::UnpackElems {
-            unpack_span: dotdot,
-            collection_span,
-            collection: Box::new(collection),
-        };
-        Ok(result)
-    }
-
-    /// Parse `...xs` inside a `Seq`.
-    fn parse_seq_unpack_assocs(&mut self) -> Result<Yield> {
-        let dotdotdot = self.consume();
-
-        self.skip_non_code()?;
-        let (collection_span, collection) = self.parse_expr()?;
-
-        let result = Yield::UnpackAssocs {
-            unpack_span: dotdotdot,
-            collection_span,
-            collection: Box::new(collection),
+        let result = match dots {
+            Token::DotDot => Yield::UnpackElems {
+                unpack_span: dots_span,
+                collection_span,
+                collection: Box::new(collection),
+            },
+            Token::DotDotDot => Yield::UnpackAssocs {
+                unpack_span: dots_span,
+                collection_span,
+                collection: Box::new(collection),
+            },
+            _ => unreachable!("Called only on DotDot and DotDotDot tokens."),
         };
         Ok(result)
     }
