@@ -1,0 +1,19 @@
+// This case reports a bit tricky, but is correct: we parse the collection as
+// a set, the annotation information comes first, so the ... is at fault here.
+let xs: Set[Any] = {...{}};
+xs
+
+# output:
+stdin:3:21
+  ╷
+3 │ let xs: Set[Any] = {...{}};
+  ╵                     ^~~~~
+Error: Invalid dict unpack in set.
+
+stdin:3:9
+  ╷
+3 │ let xs: Set[Any] = {...{}};
+  ╵         ^~~~~~~~
+Note: Found Set because of this annotation.
+
+Help: '...' unpacks dicts, use '..' to unpack lists and sets.
