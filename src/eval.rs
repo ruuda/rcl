@@ -414,26 +414,12 @@ impl<'a> Evaluator<'a> {
                     (Value::Dict(_), "keys") => Some(&stdlib::DICT_KEYS),
                     (Value::Dict(_), "len") => Some(&stdlib::DICT_LEN),
                     (Value::Dict(_), "values") => Some(&stdlib::DICT_VALUES),
-                    (Value::Dict(fields), _field_name) => {
-                        // If it wasn't a builtin, look for a key in the dict.
-                        return match fields.get(&field_name_value) {
-                            Some(v) => Ok(v.clone()),
-                            None => {
-                                return field_span
-                                    .error("Unknown field.")
-                                    .with_note(
-                                        *inner_span,
-                                        concat! {
-                                            // TODO: Printing the full value may be overkill,
-                                            // the full value could be very large. We
-                                            // could print the dict keys here.
-                                            "On value: " format_rcl(&inner).into_owned()
-                                        },
-                                    )
-                                    .err();
-                            }
-                        };
-                    }
+
+                    // If it wasn't a builtin, look for a key in the dict.
+                    (Value::Dict(fields), _field_name) => match fields.get(&field_name_value) {
+                        Some(v) => return Ok(v.clone()),
+                        None => None,
+                    },
 
                     (Value::List(_), "all") => Some(&stdlib::LIST_ALL),
                     (Value::List(_), "any") => Some(&stdlib::LIST_ANY),
@@ -489,7 +475,8 @@ impl<'a> Evaluator<'a> {
                                 *inner_span,
                                 concat! {
                                     // TODO: Printing the full value may be overkill,
-                                    // the full value could be very large.
+                                    // the full value could be very large. For a dict,
+                                    // we could print the keys instead.
                                     "On value: " format_rcl(&inner).into_owned()
                                 },
                             )
