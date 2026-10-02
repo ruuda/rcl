@@ -1,0 +1,22 @@
+// This is a regression test; previous versions of the parser would fail at the `=` with "Expected ',' or '}'."
+{
+  x
+  // Comment in disallowed location.
+  = 1,
+}
+
+# output:
+stdin:5:3
+  ╷
+5 │   = 1,
+  ╵   ^
+Error: Expected ',' or '}'.
+
+stdin:2:1
+  ╷
+2 │ {
+  ╵ ^
+Note: Unmatched '{' opened here.
+
+Help: To use 'key = value' record notation, the left-hand side must be an identifier.
+When that is not possible, use json-style '"key": value' instead.
