@@ -6,17 +6,14 @@
 }
 
 # output:
-stdin:5:3
+stdin:4:3
   ╷
-5 │   = 1,
+4 │   // Comment in disallowed location.
+  ╵   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Error: A comment is not allowed here.
+
+stdin:3:3
+  ╷
+3 │   x
   ╵   ^
-Error: Expected ',' or '}'.
-
-stdin:2:1
-  ╷
-2 │ {
-  ╵ ^
-Note: Unmatched '{' opened here.
-
-Help: To use 'key = value' record notation, the left-hand side must be an identifier.
-When that is not possible, use json-style '"key": value' instead.
+Note: Try inserting the comment above this instead.

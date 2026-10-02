@@ -1249,16 +1249,29 @@ impl<'a> Parser<'a> {
             // Here we have a lookahead of two tokens ... not great if we want to
             // keep the grammar simple, but for making the syntax prettier it is
             // worth some complications to allow { a = b; p = q } notation.
-            let next1 = self.peek();
-            let next2 = self.peek_n(1);
+            let next = self.peek();
 
-            let control = match (next1, next2) {
-                (Token::KwAssert | Token::KwLet | Token::KwTrace, _) => self.parse_seq_stmt()?,
-                (Token::KwFor, _) => self.parse_seq_for()?,
-                (Token::KwIf, _) => self.parse_seq_if()?,
-                (Token::DotDot, _) => break self.parse_seq_unpack_elems()?,
-                (Token::DotDotDot, _) => break self.parse_seq_unpack_assocs()?,
-                (Token::Ident, Token::Eq1) => break self.parse_seq_assoc_ident()?,
+            // If there are no non-code tokens then the lookahead is indeed two,
+            // but if there are comments or blanks, we skip over those.
+            let is_followed_by_eq1 = || {
+                let mut i = 1;
+                loop {
+                    match self.peek_n(i) {
+                        Token::Blank => i += 1,
+                        Token::LineComment => i += 1,
+                        Token::Eq1 => break true,
+                        _ => break false,
+                    }
+                }
+            };
+
+            let control = match next {
+                Token::KwAssert | Token::KwLet | Token::KwTrace => self.parse_seq_stmt()?,
+                Token::KwFor => self.parse_seq_for()?,
+                Token::KwIf => self.parse_seq_if()?,
+                Token::DotDot => break self.parse_seq_unpack_elems()?,
+                Token::DotDotDot => break self.parse_seq_unpack_assocs()?,
+                Token::Ident if is_followed_by_eq1() => break self.parse_seq_assoc_ident()?,
                 _ => break self.parse_seq_assoc_expr()?,
             };
 
