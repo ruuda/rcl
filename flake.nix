@@ -5,7 +5,8 @@
   # We also use oxalica/rust-overlay for nightly binaries, but for various use
   # cases, such as generating coverage reports, we rely on tools from Nixkpgs,
   # so the version needs to match.
-  inputs.nixpkgs.url = "nixpkgs/9a9dae8f6319600fa9aebde37f340975cab4b8c0";
+  # NB: The pinned commit includes a backport to fix a crates.io rate limit issue.
+  inputs.nixpkgs.url = "nixpkgs/5fa24be28b7e6600b720a7ad2c8560bdd6956b4c";
   inputs.rust-overlay.url = "github:oxalica/rust-overlay?rev=10faa81b4c0135a04716cbd1649260d82b2890cd";
   inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -201,10 +202,13 @@
             cp -r ${rustSources}/* $out
             '';
 
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+          };
+
           rcl = pkgs.rustPlatform.buildRustPackage rec {
-            inherit name version;
+            inherit name version cargoLock;
             src = rustSources;
-            cargoLock.lockFile = ./Cargo.lock;
           };
 
           coverageBuild = rcl.overrideAttrs (old: {
@@ -232,9 +236,8 @@
 
           # Shared parameters for the Nix package and the wheel.
           pyrcl-common = {
-            inherit version;
+            inherit version cargoLock;
             src = rustPythonSources;
-            cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "pyrcl";
           };
 
@@ -296,10 +299,9 @@
           # build reproducible. We don't use Nix' cross-compilation here, because
           # the resulting binary is not suitable for the Nix store, it's portable.
           rcl-binaries = pkgs.rustPlatform.buildRustPackage rec {
-            inherit version;
+            inherit version cargoLock;
             name = "rcl-binaries";
             src = rustSources;
-            cargoLock.lockFile = ./Cargo.lock;
 
             doCheck = false; # We already test the normal builds.
             auditable = false; # See also the comment above in pyrcl-wheel.
@@ -331,10 +333,9 @@
           };
 
           rcl-wasm = pkgs.rustPlatform.buildRustPackage rec {
-            inherit version;
+            inherit version cargoLock;
             name = "rcl-wasm";
             src = rustSources;
-            cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "wasm";
             doCheck = false; # We already test the non-wasm build.
             nativeBuildInputs = [
@@ -400,9 +401,8 @@
 
           fuzzers = pkgs.rustPlatform.buildRustPackage rec {
             name = "rcl-fuzzers";
-            inherit version;
+            inherit version cargoLock;
             src = rustSourcesAll;
-            cargoLock.lockFile = ./Cargo.lock;
             buildAndTestSubdir = "fuzz";
           };
 
