@@ -1,0 +1,17 @@
+{ ..defaults = 1 }
+
+# output:
+stdin:1:14
+  ╷
+1 │ { ..defaults = 1 }
+  ╵              ^
+Error: Expected ',' or '}'.
+
+stdin:1:1
+  ╷
+1 │ { ..defaults = 1 }
+  ╵ ^
+Note: Unmatched '{' opened here.
+
+Help: To use 'key = value' record notation, the left-hand side must be an identifier.
+When that is not possible, use json-style '"key": value' instead.

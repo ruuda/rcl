@@ -83,6 +83,18 @@ fn concat_non_code(prefix: Box<[NonCode]>, suffix: Box<[NonCode]>) -> Box<[NonCo
     }
 }
 
+fn help_record_key() -> Doc<'static> {
+    concat! {
+        "To use '"
+        Doc::highlight("key = value")
+        "' record notation, the left-hand side must be an identifier."
+        Doc::Sep
+        "When that is not possible, use json-style '"
+        Doc::highlight("\"key\": value")
+        "' instead."
+    }
+}
+
 struct Parser<'a> {
     doc: DocId,
     input: &'a str,
@@ -1218,15 +1230,7 @@ impl<'a> Parser<'a> {
                     return self
                         .pop_bracket_delimited()
                         .expect_err("We are in a seq.")
-                        .with_help(concat! {
-                            "To use '"
-                            Doc::highlight("key = value")
-                            "' record notation, the left-hand side must be an identifier."
-                            Doc::Sep
-                            "When that is not possible, use json-style '"
-                            Doc::highlight("\"key\": value")
-                            "' instead."
-                        })
+                        .with_help(help_record_key())
                         .err();
                 }
                 _ => {
@@ -1340,6 +1344,15 @@ impl<'a> Parser<'a> {
                     value_span,
                     value: Box::new(value),
                 }
+            }
+            // `parse_seq` looks ahead for `=`, so if we get here, this is not
+            // the case of an identifier followed by `=`, and we report a
+            // friendly error instead.
+            Token::Eq1 => {
+                return expr_span
+                    .error("Expected an identifier here as field name before '='.")
+                    .with_help(help_record_key())
+                    .err()
             }
             _ => Yield::Elem {
                 span: expr_span,

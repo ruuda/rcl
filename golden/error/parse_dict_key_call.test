@@ -1,13 +1,10 @@
-{
-  ident = "valid",
-  "not ident" = "invalid",
-}
+{ std.range(0, 1) = 1 }
 
 # output:
-stdin:3:3
+stdin:1:3
   ╷
-3 │   "not ident" = "invalid",
-  ╵   ^~~~~~~~~~~
+1 │ { std.range(0, 1) = 1 }
+  ╵   ^~~~~~~~~~~~~~~
 Error: Expected an identifier here as field name before '='.
 
 Help: To use 'key = value' record notation, the left-hand side must be an identifier.
