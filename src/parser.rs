@@ -123,12 +123,19 @@ impl<'a> Parser<'a> {
 
     /// Return the next code token, ignoring whitespace and non-code.
     fn peek_past_non_code(&self) -> Token {
-        self.tokens[self.cursor..]
-            .iter()
-            .filter(|t| !matches!(t.0, Token::Blank | Token::LineComment))
-            .map(|t| t.0)
-            .next()
-            .unwrap_or(Token::Eof)
+        self.peek_code(0)
+    }
+
+    /// Return the next code token at or after `offset`, and its offset.
+    ///
+    /// This is used for lookahead, which needs to skip past non-code tokens.
+    fn peek_code(&self, mut offset: usize) -> Token {
+        loop {
+            match self.peek_n(offset) {
+                Token::Blank | Token::LineComment => offset += 1,
+                token => return token,
+            }
+        }
     }
 
     /// Return the token `offset` tokens after the cursor, if there is one.
@@ -691,15 +698,7 @@ impl<'a> Parser<'a> {
             }
             _ => return false,
         };
-        for i in offset.. {
-            match self.peek_n(i) {
-                Token::LineComment => continue,
-                Token::Blank => continue,
-                Token::FatArrow => return true,
-                _ => return false,
-            }
-        }
-        unreachable!("We'd run out of input before the loop ends.")
+        self.peek_code(offset) == Token::FatArrow
     }
 
     /// Try parsing a lambda function expression.
@@ -1246,31 +1245,17 @@ impl<'a> Parser<'a> {
         let mut control_items = Vec::new();
 
         let body = loop {
-            // Here we have a lookahead of two tokens ... not great if we want to
-            // keep the grammar simple, but for making the syntax prettier it is
-            // worth some complications to allow { a = b; p = q } notation.
-            let next = self.peek();
-
-            // If there are no non-code tokens then the lookahead is indeed two,
-            // but if there are comments or blanks, we skip over those.
-            let is_followed_by_eq1 = || {
-                let mut i = 1;
-                loop {
-                    match self.peek_n(i) {
-                        Token::Blank => i += 1,
-                        Token::LineComment => i += 1,
-                        Token::Eq1 => break true,
-                        _ => break false,
-                    }
-                }
-            };
-
-            let control = match next {
+            // Here we have a lookahead of up to two tokens, exluding non-code
+            // tokens. This complication enables us to allow { a = b; p = q }
+            // notation, by looking ahead for the `=`.
+            let control = match self.peek() {
                 Token::KwAssert | Token::KwLet | Token::KwTrace => self.parse_seq_stmt()?,
                 Token::KwFor => self.parse_seq_for()?,
                 Token::KwIf => self.parse_seq_if()?,
                 Token::DotDot | Token::DotDotDot => break self.parse_seq_unpack()?,
-                Token::Ident if is_followed_by_eq1() => break self.parse_seq_assoc_ident()?,
+                Token::Ident if self.peek_code(1) == Token::Eq1 => {
+                    break self.parse_seq_assoc_ident()?
+                }
                 _ => break self.parse_seq_assoc_expr()?,
             };
 
@@ -1318,17 +1303,19 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `ident = expr` inside a `Seq`.
+    ///
+    /// The caller should have looked ahead to confirm that the `=` is present.
     fn parse_seq_assoc_ident(&mut self) -> Result<Yield> {
         let ident = self.consume();
 
         self.skip_non_code()?;
-        let op = self.parse_token(Token::Eq1, "Expected '=' here.")?;
+        let span_eq = self.consume();
 
         self.skip_non_code()?;
         let (value_span, value) = self.parse_expr()?;
 
         let result = Yield::AssocIdent {
-            op_span: op,
+            op_span: span_eq,
             field: ident,
             value_span,
             value: Box::new(value),
