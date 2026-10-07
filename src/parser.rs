@@ -134,14 +134,14 @@ impl<'a> Parser<'a> {
     }
 
     /// Return the next code token, ignoring whitespace and non-code.
-    fn peek_past_non_code(&self) -> Token {
-        self.peek_code(0)
+    fn peek_code(&self) -> Token {
+        self.peek_code_n(0)
     }
 
-    /// Return the next code token at or after `offset`, and its offset.
+    /// Return the next code token at or after `offset`.
     ///
-    /// This is used for lookahead, which needs to skip past non-code tokens.
-    fn peek_code(&self, mut offset: usize) -> Token {
+    /// This ignores whitespace and non-code.
+    fn peek_code_n(&self, mut offset: usize) -> Token {
         loop {
             match self.peek_n(offset) {
                 Token::Blank | Token::LineComment => offset += 1,
@@ -710,7 +710,7 @@ impl<'a> Parser<'a> {
             }
             _ => return false,
         };
-        self.peek_code(offset) == Token::FatArrow
+        self.peek_code_n(offset) == Token::FatArrow
     }
 
     /// Try parsing a lambda function expression.
@@ -777,7 +777,7 @@ impl<'a> Parser<'a> {
         let mut chain_span = head_span;
         let mut tail = Vec::new();
         loop {
-            match to_binop(self.peek_past_non_code()) {
+            match to_binop(self.peek_code()) {
                 Some(op) if allowed_op.is_none() || allowed_op == Some(op) => {
                     let prefix = self.parse_non_code();
                     let span = self.consume();
@@ -879,7 +879,7 @@ impl<'a> Parser<'a> {
 
         loop {
             inner_span = self.span_from(begin);
-            match self.peek_past_non_code() {
+            match self.peek_code() {
                 Token::LParen => {
                     self.skip_non_code()?;
                     let open = self.push_bracket()?;
@@ -1132,7 +1132,7 @@ impl<'a> Parser<'a> {
         let mut trailing_comma = false;
 
         loop {
-            if self.peek_past_non_code() == Token::RParen {
+            if self.peek_code() == Token::RParen {
                 let suffix = self.parse_non_code();
                 let final_result = List {
                     elements: result.into_boxed_slice(),
@@ -1257,7 +1257,7 @@ impl<'a> Parser<'a> {
                 Token::KwFor => self.parse_seq_for()?,
                 Token::KwIf => self.parse_seq_if()?,
                 Token::DotDot | Token::DotDotDot => break self.parse_seq_unpack()?,
-                Token::Ident if self.peek_code(1) == Token::Eq1 => {
+                Token::Ident if self.peek_code_n(1) == Token::Eq1 => {
                     break self.parse_seq_assoc_ident()?
                 }
                 _ => break self.parse_seq_assoc_expr()?,
@@ -1331,7 +1331,7 @@ impl<'a> Parser<'a> {
     /// Parse `expr` or `expr: expr` inside a `Seq`.
     fn parse_seq_assoc_expr(&mut self) -> Result<Yield> {
         let (expr_span, expr) = self.parse_expr_op()?;
-        let result = match self.peek_past_non_code() {
+        let result = match self.peek_code() {
             Token::Colon => {
                 self.skip_non_code()?;
                 let op = self.consume();
