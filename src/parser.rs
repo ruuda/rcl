@@ -1331,9 +1331,15 @@ impl<'a> Parser<'a> {
         let head = self.consume();
         let mut tail = Vec::new();
 
-        // Optionally a tail of more fields for the path.
+        let depth = self.depth;
+
+        // Optionally a tail of more fields for the path. We limit the depth
+        // here in the same way as with nested parens, even though it's a loop
+        // that does not overflow the stack. This is because the typechecker
+        // and evaluator *are* recursive, and they overflow on deep paths.
         self.skip_non_code()?;
         while self.peek() == Token::Dot {
+            self.increase_depth()?;
             self.consume();
             self.skip_non_code()?;
             tail.push(self.consume());
@@ -1345,6 +1351,11 @@ impl<'a> Parser<'a> {
         self.skip_non_code()?;
 
         let (value_span, value) = self.parse_expr()?;
+
+        // Restore the depth only after parsing the inner expr, so you can't
+        // sidestep the limit by nesting a few dicts with long field paths.
+        self.depth = depth;
+
         let result = Yield::AssocIdent {
             op_span: op_eq,
             path_head: head,

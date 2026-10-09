@@ -1,0 +1,16 @@
+// During initial development of nested assignment, it did not bump the nesting
+// depth, and it could cause stack overflow.
+{
+  hold_my_beer
+  .a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a
+  .a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a
+  .a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a
+  = 42
+}
+
+# output:
+stdin:7:41
+  ╷
+7 │   .a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a
+  ╵                                         ^
+Error: Parser recursion limit reached, please reduce nesting.
