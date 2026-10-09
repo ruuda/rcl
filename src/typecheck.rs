@@ -334,6 +334,7 @@ impl<'a> TypeChecker<'a> {
                             key_infer: SourcedType::void(expr_span),
                             value_super: kv.value.clone(),
                             value_infer: SourcedType::void(expr_span),
+                            defer: false,
                         }
                     }
                     // If we are expecting something other than a dict or list,
@@ -353,6 +354,7 @@ impl<'a> TypeChecker<'a> {
                     seq_type = self.check_seq(seq, seq_type)?;
                 }
 
+                let defer = matches!(seq_type, SeqType::TypedDict { defer: true, .. });
                 let seq_type = seq_type.into_type(expr_span);
 
                 // Replace the BraceLit node where we don't know if it's a dict
@@ -368,6 +370,8 @@ impl<'a> TypeChecker<'a> {
 
                 if is_error {
                     seq_type.is_subtype_of(expected).check(expr_span)?
+                } else if defer {
+                    Typed::Defer(seq_type)
                 } else {
                     Typed::Type(seq_type)
                 }
@@ -762,24 +766,60 @@ impl<'a> TypeChecker<'a> {
     ///
     /// When `path_tail` is empty, this is a normal `k = v` assoc, and we check
     /// `v` against the expected value type. When `path_tail` is not empty, this
-    /// is a nested assignment of the form `a.b = v`, so we peel off one layer
-    /// of dicts and then check `v` inside.
+    /// is a nested assignment of the form `a.b = v`, and we check it as if it
+    /// had been written `a = { b = v }`: peel off one layer of dicts from the
+    /// expected type per key, check `v` against the inner value, and wrap the
+    /// inferred type back in a dict.
     ///
-    /// Returns the inferred type of the outer value.
+    /// Returns the inferred type of the outer value. When an implicit
+    /// intermediate dict needs a runtime check, there is no expression node
+    /// to attach it to, so we set `defer`, and the caller needs to defer the
+    /// check of the outer dict.
     fn check_assoc_value(
         &mut self,
         value_super: &SourcedType,
         path_tail: &[(Span, Rc<str>)],
         value_span: Span,
         value: &mut Expr,
+        defer: &mut bool,
     ) -> Result<SourcedType> {
-        if path_tail.is_empty() {
-            return self.check_expr(value_super, value_span, value);
-        }
+        let ((key_span, _key), path_tail) = match path_tail.split_first() {
+            None => return self.check_expr(value_super, value_span, value),
+            Some(split) => split,
+        };
+        let (key_super, inner_super) = match &value_super.type_ {
+            Type::Dict(kv) => (&kv.key, &kv.value),
+            _ => (type_any(), type_any()),
+        };
 
-        // TODO: Actually typecheck nested assignments, for now we just pass.
-        self.check_expr(type_any(), value_span, value)?;
-        Ok(type_any().clone())
+        // The key is an identifier, so its type is String.
+        let key_type = type_literal(*key_span, Type::String);
+        let k = match key_type.is_subtype_of(key_super).check(*key_span)? {
+            Typed::Type(k) => k,
+            Typed::Defer(_) => unreachable!("String.is_subtype_of is statically resolvable."),
+        };
+
+        let v = self.check_assoc_value(inner_super, path_tail, value_span, value, defer)?;
+
+        // To report an error, we have to point at something, but the dict type
+        // is implicit here, and it arises partially from the ident left of the
+        // `=` (the key type), and partially from the value right of the `=`. So
+        // we take the span across both of them. That looks a bit weird, but
+        // after thinking about it for some time, I think it is the most
+        // accurate span.
+        let inner_span = key_span.union(value_span);
+        let inner_type = SourcedType {
+            type_: Type::Dict(Rc::new(Dict { key: k, value: v })),
+            source: Source::Literal(inner_span),
+        };
+
+        match inner_type.is_subtype_of(value_super).check(inner_span)? {
+            Typed::Type(t) => Ok(t),
+            Typed::Defer(t) => {
+                *defer = true;
+                Ok(t)
+            }
+        }
     }
 
     fn check_seq(&mut self, seq: &mut Seq, seq_type: SeqType) -> Result<SeqType> {
@@ -910,12 +950,14 @@ impl<'a> TypeChecker<'a> {
                         }
                         other => other,
                     }?;
-                    let v = self.check_assoc_value(type_any(), path_tail, *value_span, value)?;
+                    let mut defer = false;
+                    let v = self.check_assoc_value(type_any(), path_tail, *value_span, value, &mut defer)?;
+                    debug_assert!(!defer, "Check against Any cannot cause defer.");
                     Ok(SeqType::UntypedDict(SeqSourceDict::Assoc(*op_span), k, v))
                 }
-                SeqType::TypedDict { key_super, key_infer, value_super, value_infer, .. } => {
+                SeqType::TypedDict { key_super, key_infer, value_super, value_infer, defer, .. } => {
                     let k = self.check_expr(key_super, *key_span, key)?;
-                    let v = self.check_assoc_value(value_super, path_tail, *value_span, value)?;
+                    let v = self.check_assoc_value(value_super, path_tail, *value_span, value, defer)?;
                     *key_infer = key_infer.meet(&k);
                     *value_infer = value_infer.meet(&v);
                     Ok(seq_type)
@@ -936,8 +978,10 @@ impl<'a> TypeChecker<'a> {
                     op_span.error("Expected single element, not key-value.")
                 ).err(),
                 SeqType::UntypedDict(_first, key_meet, value_meet) => {
+                    let mut defer = false;
                     let k = self.check_expr(type_any(), *key_span, key)?;
-                    let v = self.check_assoc_value(type_any(), path_tail, *value_span, value)?;
+                    let v = self.check_assoc_value(type_any(), path_tail, *value_span, value, &mut defer)?;
+                    debug_assert!(!defer, "Check against Any cannot cause defer.");
                     *key_meet = key_meet.meet(&k);
                     *value_meet = value_meet.meet(&v);
                     Ok(seq_type)
@@ -1286,6 +1330,12 @@ enum SeqType {
         value_super: SourcedType,
         /// The inferred value type.
         value_infer: SourcedType,
+        /// Whether the dict needs a runtime check against `dict_source`.
+        ///
+        /// A nested assignment `a.b = v` creates an implicit dict at `a`, so
+        /// there is no expression node to wrap in `CheckType` at that level.
+        /// Instead, the runtime check has to happen on the outer dict.
+        defer: bool,
     },
 
     /// We found a list, and the meet of the elements is as follows.

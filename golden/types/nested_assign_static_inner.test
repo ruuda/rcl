@@ -1,0 +1,17 @@
+// With nested assignment, we should still unwrap the layers of dict,
+// and report the type error on the inner value.
+let x: Dict[String, Dict[String, Number]] = { a.b = null };
+x
+
+# output:
+stdin:3:53
+  ╷
+3 │ let x: Dict[String, Dict[String, Number]] = { a.b = null };
+  ╵                                                     ^~~~
+Error: Type mismatch. Expected Number but found Null.
+
+stdin:3:34
+  ╷
+3 │ let x: Dict[String, Dict[String, Number]] = { a.b = null };
+  ╵                                  ^~~~~~
+Note: Expected Number because of this annotation.
