@@ -89,7 +89,7 @@
     },
     "seq_kv": {
       "captures": {"1": {"name": "support.type.property-name.json.rcl"}},
-      "match": "\\b([_A-Za-z]([-_A-Za-z0-9]*[_A-Za-z0-9])?)\\s+="
+      "match": "\\b([_A-Za-z]([-_A-Za-z0-9]*[_A-Za-z0-9])?(?:\\s*\\.\\s*[_A-Za-z]([-_A-Za-z0-9]*[_A-Za-z0-9])?)*)\\s*=(?![=>])"
     },
     "stmt": {
       "patterns": [
