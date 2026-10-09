@@ -1,0 +1,23 @@
+let defaults = {
+  retries = 3,
+  timeout = { connect_secs = 1, read_secs = 5 },
+};
+
+{
+  // This overwrites a dict that is shared, so it clones `timeout`.
+  a = { ...defaults, timeout.read_secs = 10 },
+
+  // Same here, we overwrite a shared dict, so it causes a clone.
+  b = defaults,
+  b.timeout.connect_secs = 15,
+
+  // Confirm that the defaults haven't been mutated.
+  defaults = defaults,
+}
+
+# output:
+{
+  a = { retries = 3, timeout = { connect_secs = 1, read_secs = 10 } },
+  b = { retries = 3, timeout = { connect_secs = 15, read_secs = 5 } },
+  defaults = { retries = 3, timeout = { connect_secs = 1, read_secs = 5 } },
+}

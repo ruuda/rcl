@@ -758,6 +758,30 @@ impl<'a> TypeChecker<'a> {
             })
     }
 
+    /// Typecheck the value of a possibly nested assignment.
+    ///
+    /// When `path_tail` is empty, this is a normal `k = v` assoc, and we check
+    /// `v` against the expected value type. When `path_tail` is not empty, this
+    /// is a nested assignment of the form `a.b = v`, so we peel off one layer
+    /// of dicts and then check `v` inside.
+    ///
+    /// Returns the inferred type of the outer value.
+    fn check_assoc_value(
+        &mut self,
+        value_super: &SourcedType,
+        path_tail: &[(Span, Rc<str>)],
+        value_span: Span,
+        value: &mut Expr,
+    ) -> Result<SourcedType> {
+        if path_tail.is_empty() {
+            return self.check_expr(value_super, value_span, value);
+        }
+
+        // TODO: Actually typecheck nested assignments, for now we just pass.
+        self.check_expr(type_any(), value_span, value)?;
+        Ok(type_any().clone())
+    }
+
     fn check_seq(&mut self, seq: &mut Seq, seq_type: SeqType) -> Result<SeqType> {
         match seq {
             Seq::Yield(yield_) => self.check_yield(yield_, seq_type),
@@ -872,7 +896,7 @@ impl<'a> TypeChecker<'a> {
                     src.add_note(span.error("Expected key-value, not a single element.")).err()
                 }
             }
-            Yield::Assoc { op_span, key_span, key, value_span, value } => match &mut seq_type {
+            Yield::Assoc { op_span, key_span, key, path_tail, value_span, value } => match &mut seq_type {
                 SeqType::SetOrDict => {
                     let k = match self.check_expr(type_any(), *key_span, key) {
                         Err(err) if matches!(key.as_ref(), Expr::Var { .. }) => {
@@ -886,12 +910,12 @@ impl<'a> TypeChecker<'a> {
                         }
                         other => other,
                     }?;
-                    let v = self.check_expr(type_any(), *value_span, value)?;
+                    let v = self.check_assoc_value(type_any(), path_tail, *value_span, value)?;
                     Ok(SeqType::UntypedDict(SeqSourceDict::Assoc(*op_span), k, v))
                 }
                 SeqType::TypedDict { key_super, key_infer, value_super, value_infer, .. } => {
                     let k = self.check_expr(key_super, *key_span, key)?;
-                    let v = self.check_expr(value_super, *value_span, value)?;
+                    let v = self.check_assoc_value(value_super, path_tail, *value_span, value)?;
                     *key_infer = key_infer.meet(&k);
                     *value_infer = value_infer.meet(&v);
                     Ok(seq_type)
@@ -913,7 +937,7 @@ impl<'a> TypeChecker<'a> {
                 ).err(),
                 SeqType::UntypedDict(_first, key_meet, value_meet) => {
                     let k = self.check_expr(type_any(), *key_span, key)?;
-                    let v = self.check_expr(type_any(), *value_span, value)?;
+                    let v = self.check_assoc_value(type_any(), path_tail, *value_span, value)?;
                     *key_meet = key_meet.meet(&k);
                     *value_meet = value_meet.meet(&v);
                     Ok(seq_type)

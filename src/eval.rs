@@ -307,7 +307,7 @@ impl<'a> Evaluator<'a> {
                 let mut out = Vec::with_capacity(elements.len());
                 self.inc_eval_depth(*open)?;
                 for seq in elements {
-                    self.eval_seq(env, seq, &mut |v| out.push(v), &mut |_, _| {
+                    self.eval_seq(env, seq, &mut |v| out.push(v), &mut |_, _, _| {
                         unreachable!("Typechecker ensures scalar elements.")
                     })?;
                 }
@@ -319,7 +319,7 @@ impl<'a> Evaluator<'a> {
                 let mut out = BTreeSet::new();
                 self.inc_eval_depth(*open)?;
                 for seq in elements {
-                    self.eval_seq(env, seq, &mut |v| _ = out.insert(v), &mut |_, _| {
+                    self.eval_seq(env, seq, &mut |v| _ = out.insert(v), &mut |_, _, _| {
                         unreachable!("Typechecker ensures scalar elements.")
                     })?;
                 }
@@ -335,7 +335,7 @@ impl<'a> Evaluator<'a> {
                         env,
                         seq,
                         &mut |_| unreachable!("Typechecker ensures assoc elements."),
-                        &mut |k, v| _ = out.insert(k, v),
+                        &mut |k, tail, v| eval_assign(&mut out, k, tail, v),
                     )?;
                 }
                 self.dec_eval_depth();
@@ -985,7 +985,7 @@ impl<'a> Evaluator<'a> {
     ) -> Result<()>
     where
         OnScalar: FnMut(Value),
-        OnAssoc: FnMut(Value, Value),
+        OnAssoc: FnMut(Value, &[(Span, Rc<str>)], Value),
     {
         match seq {
             Seq::Yield(Yield::Elem {
@@ -997,12 +997,13 @@ impl<'a> Evaluator<'a> {
             }
             Seq::Yield(Yield::Assoc {
                 key: key_expr,
+                path_tail,
                 value: value_expr,
                 ..
             }) => {
                 let key = self.eval_expr(env, key_expr)?;
                 let value = self.eval_expr(env, value_expr)?;
-                on_assoc(key, value);
+                on_assoc(key, path_tail, value);
                 Ok(())
             }
             Seq::Yield(Yield::UnpackElems {
@@ -1057,7 +1058,7 @@ impl<'a> Evaluator<'a> {
                 match self.eval_expr(env, collection)? {
                     Value::Dict(xs) => {
                         for (key, value) in xs.iter() {
-                            on_assoc(key.clone(), value.clone());
+                            on_assoc(key.clone(), &[], value.clone());
                         }
                     }
                     Value::List(..) => {
@@ -1158,4 +1159,47 @@ impl<'a> Evaluator<'a> {
             }
         }
     }
+}
+
+/// Handle a possibly nested assignment into a dict.
+///
+/// Dicts look like declarative data, but really, the way we evaluate them,
+/// we build up a dict imperatively, and we treat each entry in a Seq as
+/// an assignment statement. This way:
+///
+/// * Later writes overwrite earlier writes for repeated keys.
+/// * We can handle nested assignment, where `path_tail` is not empty.
+///
+/// `key` and `path_tail` together are the path to assign at, they are split
+/// here to match the AST.
+fn eval_assign(
+    dict: &mut BTreeMap<Value, Value>,
+    key: Value,
+    path_tail: &[(Span, Rc<str>)],
+    value: Value,
+) {
+    let (head, tail) = match path_tail.split_first() {
+        // If there is no tail (the common case), just insert into the
+        // dict, overwriting what was there in case of duplicate keys.
+        None => {
+            dict.insert(key, value);
+            return;
+        }
+        // Otherwise, prepare for the recursive call by peeling one layer.
+        Some(((_span, head), tail)) => (head, tail),
+    };
+
+    // If the key already exists, and it holds a dict, then we try to reuse
+    // that rather than cloning it, which we can do if we are the only thing
+    // that references it.
+    let mut v = match dict.remove(&key) {
+        Some(Value::Dict(inner)) => match Rc::try_unwrap(inner) {
+            Ok(d) => d,
+            Err(rc) => rc.as_ref().clone(),
+        },
+        _ => BTreeMap::new(),
+    };
+
+    eval_assign(&mut v, Value::String(head.clone()), tail, value);
+    dict.insert(key, Value::Dict(Rc::new(v)));
 }
