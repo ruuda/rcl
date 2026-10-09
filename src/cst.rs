@@ -331,11 +331,17 @@ pub enum Yield {
         value: Box<Expr>,
     },
 
-    /// A `key = value` mapping, where the key is an identifier.
+    /// A `key = value` mapping, where the key is a path of identifiers.
+    ///
+    /// A path can be a single identifier, or multiple separated by `.`, e.g.
+    /// `{ a.b = value }` is equivalent to `{ a = { b = value } }`.
     AssocIdent {
         /// The `=` span.
         op_span: Span,
-        field: Span,
+        /// The first (and usually only) identifier left of the `=`.
+        path_head: Span,
+        /// The remaining identifiers between `path_head` and the `=`.
+        path_tail: Box<[Span]>,
         value_span: Span,
         value: Box<Expr>,
     },

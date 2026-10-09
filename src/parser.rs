@@ -87,8 +87,12 @@ fn help_record_key() -> Doc<'static> {
     concat! {
         "To use '"
         Doc::highlight("key = value")
-        "' record notation, the left-hand side must be an identifier."
-        Doc::Sep
+        "' record notation, the left-hand side must be one of:"
+        Doc::HardBreak Doc::HardBreak
+        " - An identifier, such as '" Doc::highlight("field") "'."
+        Doc::HardBreak
+        " - A path of nested identifiers, such as '" Doc::highlight("outer.inner") "'."
+        Doc::HardBreak Doc::HardBreak
         "When that is not possible, use json-style '"
         Doc::highlight("\"key\": value")
         "' instead."
@@ -135,17 +139,17 @@ impl<'a> Parser<'a> {
 
     /// Return the next code token, ignoring whitespace and non-code.
     fn peek_code(&self) -> Token {
-        self.peek_code_n(0)
+        self.peek_code_n(0).0
     }
 
-    /// Return the next code token at or after `offset`.
+    /// Return the next code token at or after `offset`, and its offset.
     ///
     /// This ignores whitespace and non-code.
-    fn peek_code_n(&self, mut offset: usize) -> Token {
+    fn peek_code_n(&self, mut offset: usize) -> (Token, usize) {
         loop {
             match self.peek_n(offset) {
                 Token::Blank | Token::LineComment => offset += 1,
-                token => return token,
+                token => return (token, offset),
             }
         }
     }
@@ -710,7 +714,7 @@ impl<'a> Parser<'a> {
             }
             _ => return false,
         };
-        self.peek_code_n(offset) == Token::FatArrow
+        self.peek_code_n(offset).0 == Token::FatArrow
     }
 
     /// Try parsing a lambda function expression.
@@ -1249,17 +1253,12 @@ impl<'a> Parser<'a> {
         let mut control_items = Vec::new();
 
         let body = loop {
-            // Here we have a lookahead of up to two tokens, exluding non-code
-            // tokens. This complication enables us to allow { a = b; p = q }
-            // notation, by looking ahead for the `=`.
             let control = match self.peek() {
                 Token::KwAssert | Token::KwLet | Token::KwTrace => self.parse_seq_stmt()?,
                 Token::KwFor => self.parse_seq_for()?,
                 Token::KwIf => self.parse_seq_if()?,
                 Token::DotDot | Token::DotDotDot => break self.parse_seq_unpack()?,
-                Token::Ident if self.peek_code_n(1) == Token::Eq1 => {
-                    break self.parse_seq_assoc_ident()?
-                }
+                Token::Ident if self.look_ahead_is_path() => break self.parse_seq_assoc_ident()?,
                 _ => break self.parse_seq_assoc_expr()?,
             };
 
@@ -1306,25 +1305,53 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    /// Parse `ident = expr` inside a `Seq`.
+    /// Peek if there is an ident path under the cursor, e.g. `a.b.c =`.
     ///
-    /// The caller should have looked ahead to confirm that the `=` is present.
+    /// We do this bit of lookahead when parsing a dict to distinguish a path
+    /// in record notation (`x = y`, `a.b = c`) from an expression (`a.b: c`).
+    fn look_ahead_is_path(&self) -> bool {
+        let mut i = 0;
+        loop {
+            let (token, off_ident) = self.peek_code_n(i);
+            if token != Token::Ident {
+                return false;
+            }
+            match self.peek_code_n(off_ident + 1) {
+                (Token::Dot, off_dot) => i = off_dot + 1,
+                (Token::Eq1, _) => return true,
+                _ => return false,
+            }
+        }
+    }
+
+    /// Parse `path = expr` inside a `Seq`.
+    ///
+    /// This should only be called after `look_ahead_is_path` returns true.
     fn parse_seq_assoc_ident(&mut self) -> Result<Yield> {
-        let ident = self.consume();
+        let head = self.consume();
+        let mut tail = Vec::new();
 
+        // Optionally a tail of more fields for the path.
         self.skip_non_code()?;
-        let span_eq = self.consume();
+        while self.peek() == Token::Dot {
+            self.consume();
+            self.skip_non_code()?;
+            tail.push(self.consume());
+            self.skip_non_code()?;
+        }
 
+        debug_assert_eq!(self.peek(), Token::Eq1, "Should have looked ahead for `=`.");
+        let op_eq = self.consume();
         self.skip_non_code()?;
+
         let (value_span, value) = self.parse_expr()?;
-
         let result = Yield::AssocIdent {
-            op_span: span_eq,
-            field: ident,
+            op_span: op_eq,
+            path_head: head,
+            path_tail: tail.into_boxed_slice(),
             value_span,
             value: Box::new(value),
         };
-
         Ok(result)
     }
 
@@ -1345,12 +1372,11 @@ impl<'a> Parser<'a> {
                     value: Box::new(value),
                 }
             }
-            // `parse_seq` looks ahead for `=`, so if we get here, this is not
-            // the case of an identifier followed by `=`, and we report a
-            // friendly error instead.
+            // A key path would have been caught by `look_ahead_is_path`,
+            // so this is an expression that cannot be a record key.
             Token::Eq1 => {
                 return expr_span
-                    .error("Expected an identifier here as field name before '='.")
+                    .error("Expected an identifier path before '='.")
                     .with_help(help_record_key())
                     .err()
             }

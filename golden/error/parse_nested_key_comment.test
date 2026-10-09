@@ -1,0 +1,18 @@
+{
+  server.port
+    // Port 8080 rather than 80, we don't run as root.
+    = 8080,
+}
+
+# output:
+stdin:3:5
+  ╷
+3 │     // Port 8080 rather than 80, we don't run as root.
+  ╵     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Error: A comment is not allowed here.
+
+stdin:2:3
+  ╷
+2 │   server.port
+  ╵   ^
+Note: Try inserting the comment above this instead.

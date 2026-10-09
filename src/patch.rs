@@ -192,23 +192,36 @@ fn patch_seq(
         }
     }
 
-    let (target, suffix) = path
-        .split_first()
-        .expect("Should not call `patch_seq` with empty path.");
-
     // If there is no match yet, we try to match the yield itself, if it has
-    // record form (`ident = expr`).
+    // record form (`ident = expr`, or nested, `a.b = expr`). The key path of
+    // the entry must be a prefix of the path we are looking for.
     match &mut source.body.inner {
         Yield::AssocIdent {
-            field,
+            path_head,
+            path_tail,
             value,
             value_span,
             ..
-        } if field.resolve(input) == *target => {
-            // We matched one segment of the path, now it's up to the inner
-            // expression to match. If that fails and returns Err, we do *not*
-            // continue the search to see if anything else might match, we
-            // greedily follow the path by first matches only.
+        } => {
+            // If the path does not match the target, this is not the right node.
+            if path_head.resolve(input) != path[0] {
+                return None;
+            }
+
+            // Match the entire tail, returning `None` also when the target is
+            // shorter than the path we have.
+            for (i, ident) in path_tail.iter().enumerate() {
+                if ident.resolve(input) != *path[1..].get(i)? {
+                    return None;
+                }
+            }
+
+            // We matched the segments of the key path, now it's up to the
+            // inner expression to match the remainder. If that fails and
+            // returns Err, we do *not* continue the search to see if anything
+            // else might match, we greedily follow the path by first matches
+            // only.
+            let suffix = &path[1 + path_tail.len()..];
             Some(patch_expr(input, suffix, value, *value_span, replacement))
         }
         _ => None,

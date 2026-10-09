@@ -347,17 +347,22 @@ impl<'a> Abstractor<'a> {
 
             CYield::AssocIdent {
                 op_span,
-                field,
+                path_head,
+                path_tail,
                 value_span,
                 value,
             } => {
+                assert!(
+                    path_tail.is_empty(),
+                    "Nested assignment is not yet implemented."
+                );
                 // We convert the `key = value` as if it had been written
                 // `"key": value` so we can treat them uniformly from here on.
-                let key_str = field.resolve(self.input);
+                let key_str = path_head.resolve(self.input);
                 let key_expr = AExpr::StringLit(key_str.into());
                 AYield::Assoc {
                     op_span: *op_span,
-                    key_span: *field,
+                    key_span: *path_head,
                     value_span: *value_span,
                     key: Box::new(key_expr),
                     value: Box::new(self.expr(value)?),
