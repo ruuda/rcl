@@ -5,7 +5,7 @@
 /grammar.xml
 
 # Rust
-/target
+target/
 
 # Nix
 /result*
@@ -18,3 +18,6 @@
 
 # `rcl build` output for the examples
 /examples/out
+
+# Gram/Zed extension.
+/grammar/zed/extension.wasm
