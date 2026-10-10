@@ -132,6 +132,46 @@ above.
 
 Note, without type annotations, the empty collection `{}` is a dict, not a set.
 
+## Nested assign
+
+Within record notation for dictionaries, _nested assign_ enables describing
+nested data succinctly:
+
+```rcl
+// Regular nested dict:
+{ release = { opt_level = 3 } }
+
+// Equivalent with nested assign:
+{ release.opt_level = 3 }
+```
+
+Left of the `=` is a path of [identifiers](#identifiers) separated by dots.
+Each one defines a key in the resulting dict, creating the dict if needed.
+Entries are evaluated in order, later ones overwrite earlier ones:
+
+```rcl
+{
+  release = "-O3 -g",
+  // Overwrite the former value of `release` with a dict.
+  release.opt_level = 3,
+  // Add an additional keys to that dict.
+  release.debug_symbols = true,
+  release.link.lto = "thin",
+}
+
+// Evaluates to:
+{
+  release = {
+    debug_symbols = true,
+    link = { lto = "thin" },
+    opt_level = 3,
+  },
+}
+```
+
+Nested assignment combines well with [unpack](#unpack) to override nested fields
+of a default value; see also the example in that section.
+
 ## Sets
 
 Sets are enclosed by `{}` and work otherwise the same as lists. The following
@@ -351,6 +391,17 @@ let defaults = { kind = "fruit", tasty = true };
 { name = "grapefruit", tasty = false, ...defaults }
 // The defaults overwrite earlier keys, the above evaluates to:
 { kind = "fruit", name = "grapefruit", tasty = true }
+```
+
+Unpack combines well with [nested assign](#nested-assign) to override nested
+fields of default values:
+
+```rcl
+let defaults = { firewall = { enabled = true, allowed_ports = [] } };
+{
+  ...defaults,
+  firewall.allowed_ports = [22, 443],
+}
 ```
 
 Unpack is equivalent to a [comprehension](#comprehensions):
