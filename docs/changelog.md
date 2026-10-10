@@ -35,6 +35,13 @@ Unreleased
    such as `a + b + c` either wide or tall in its entirety. This can cause the
    canonical formatting to change for some documents.
 
+New features:
+
+ * RCL now supports [nested assign](syntax.md#nested-assign), so you can write
+   `{ a.b = c }` rather than having to spell out `{ a = { b = c } }`. This is
+   especially useful in combination with unpack to override nested default
+   values.
+
 Other changes:
 
  * Improve coloring in the TextMate grammar used by Visual Studio Code and
