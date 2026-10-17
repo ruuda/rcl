@@ -88,37 +88,38 @@ of [identifiers][ident] separated by dots. Every identifier can match either:
 [ident]: syntax.md#identifiers
 [dict]: syntax.md#dictionaries
 
-Matching is greedy: when an identifier matches, we try to match the remainder
-of the path inside the matching expression. If that fails, that’s an error, even
-if the path could still match later in the document.
+In order for a patch to apply, the path must match exactly one location in the
+document. If the patch matches in multiple places, that’s an error.
 
 Let’s look at an artificial example:
 
 ```rcl
-let alpha = {
+let alfa = {
   let bravo = {
     charlie = 1,
     "delta": 2,
   };
   echo = 3,
+  golf.hotel = 4,
+  golf = { hotel = 4 },
 };
 {
-  alpha = { bravo = { foxtrot = 4 } },
-  zulu = alpha,
+  alfa = { bravo = { foxtrot = 5 } },
+  zulu = alfa,
 }
 ```
 
 In this document, we can match the following paths:
 
-`alpha.bravo.charlie` matches `1`: `alpha` and `bravo` match the first two
+`alfa.bravo.charlie` matches `1`: `alfa` and `bravo` match the first two
 let-bindings, while `charlie` matches the dict key.
 
-`alpha.bravo.delta` does not match: we can only match dict keys that use record
+`alfa.bravo.delta` does not match: we can only match dict keys that use record
 notation, but `"delta"` is using json form.
 
-`alpha.bravo.foxtrot` does not match: matching is greedy, so `alpha` and `bravo`
-match the first two let-bindings, and inside the matching dict, there is no key
-`foxtrot`.
+`alfa.bravo.foxtrot` matches 5, inside the final dict.
+
+`alfa.golf.hotel` is ambiguous, it matches the two locations marked 4.
 
 `zulu` matches the final dict entry.
 

@@ -7,4 +7,4 @@ stdin:2:1
   ╷
 2 │ null
   ╵ ^~~~
-Error: Could not find 'b' in this expression.
+Error: The path 'b' does not match. Could not find 'b' in this expression.

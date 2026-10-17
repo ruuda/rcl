@@ -1,0 +1,15 @@
+# command: ["patch", "-", "a.b", "null"]
+// In a previous version of RCL, patch was greedy, and this would fail to
+// apply, but now it works as expected.
+{
+  a = { c = 0 },
+  a.b = 1,
+}
+
+# output:
+// In a previous version of RCL, patch was greedy, and this would fail to
+// apply, but now it works as expected.
+{
+  a = { c = 0 },
+  a.b = null,
+}

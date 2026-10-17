@@ -1,0 +1,27 @@
+# command: ["patch", "-", "a.b", "1"]
+let a = { b = 0 };
+{
+  a = { b = 0 },
+  a.b = 0,
+}
+
+# output:
+Error: The path 'a.b' is ambiguous, it matches in multiple places.
+
+stdin:1:15
+  ╷
+1 │ let a = { b = 0 };
+  ╵               ^
+Note: Path matches here.
+
+stdin:3:13
+  ╷
+3 │   a = { b = 0 },
+  ╵             ^
+Note: Path matches here.
+
+stdin:4:9
+  ╷
+4 │   a.b = 0,
+  ╵         ^
+Note: Path matches here.
