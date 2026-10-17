@@ -172,6 +172,91 @@ pub enum TraceEvent<'a> {
     TakeU64 { len: u8, result: u64 },
 }
 
+/// The effect of instructions on a stack: pop `n_pops` items, push `n_pushes`.
+///
+/// The effect of a run of instructions is their effects composed with `then`.
+/// Stack effects form a bicyclic monoid with generators push and pop.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+struct StackEffect {
+    n_pops: u32,
+    n_pushes: u32,
+}
+
+impl StackEffect {
+    // `NONE` is the same as `default()`, but `default()` is not const.
+    const NONE: StackEffect = StackEffect::new(0, 0);
+    const PUSH: StackEffect = StackEffect::new(0, 1);
+    const POP: StackEffect = StackEffect::new(1, 0);
+
+    const fn new(n_pops: u32, n_pushes: u32) -> StackEffect {
+        StackEffect { n_pops, n_pushes }
+    }
+
+    /// The effect of `self` followed by `next`.
+    fn then(self, next: StackEffect) -> StackEffect {
+        // The pops of `next` take the items that `self` pushed first.
+        let common = self.n_pushes.min(next.n_pops);
+        StackEffect {
+            n_pops: self.n_pops + next.n_pops - common,
+            n_pushes: self.n_pushes + next.n_pushes - common,
+        }
+    }
+}
+
+/// The effect of instructions on the type stack and the expression stack.
+///
+/// This is the product of two stack effects, so it is a monoid too.
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct Effect {
+    types: StackEffect,
+    exprs: StackEffect,
+}
+
+impl Effect {
+    const NONE: Effect = Effect::new(StackEffect::NONE, StackEffect::NONE);
+    const PUSH_TYPE: Effect = Effect::new(StackEffect::PUSH, StackEffect::NONE);
+    const PUSH_EXPR: Effect = Effect::new(StackEffect::NONE, StackEffect::PUSH);
+
+    const fn new(types: StackEffect, exprs: StackEffect) -> Effect {
+        Effect { types, exprs }
+    }
+
+    /// The effect of `self` followed by `next`.
+    fn then(self, next: Effect) -> Effect {
+        Effect {
+            types: self.types.then(next.types),
+            exprs: self.exprs.then(next.exprs),
+        }
+    }
+
+    /// Whether the effect pops an item from either stack.
+    fn has_pops(self) -> bool {
+        self.types.n_pops > 0 || self.exprs.n_pops > 0
+    }
+}
+
+/// A stack of terms that tracks its effect.
+#[derive(Default)]
+struct Stack {
+    items: Vec<String>,
+
+    /// The effect of the pushes and pops of the current instruction.
+    effect: StackEffect,
+}
+
+impl Stack {
+    fn push(&mut self, item: String) {
+        self.items.push(item);
+        self.effect = self.effect.then(StackEffect::PUSH);
+    }
+
+    fn pop(&mut self) -> Option<String> {
+        let item = self.items.pop()?;
+        self.effect = self.effect.then(StackEffect::POP);
+        Some(item)
+    }
+}
+
 /// The program builder holds the intermediate state for executing the Smith program.
 ///
 /// We have two stacks, one for types and one for expressions. In the past we
@@ -184,10 +269,10 @@ pub enum TraceEvent<'a> {
 /// See the commit history for details.
 struct ProgramBuilder<'a> {
     /// The stack of type expressions.
-    type_stack: Vec<String>,
+    type_stack: Stack,
 
     /// The stack of expressions.
-    expr_stack: Vec<String>,
+    expr_stack: Stack,
 
     /// Fuzz mode to use for the final program.
     mode: Mode,
@@ -210,8 +295,8 @@ struct ProgramBuilder<'a> {
 impl<'a> ProgramBuilder<'a> {
     pub fn new(input: &'a [u8]) -> ProgramBuilder<'a> {
         ProgramBuilder {
-            type_stack: Vec::new(),
-            expr_stack: Vec::new(),
+            type_stack: Stack::default(),
+            expr_stack: Stack::default(),
             mode: Mode::Eval,
             trace: Vec::with_capacity(input.len() / 2),
             input,
@@ -220,29 +305,38 @@ impl<'a> ProgramBuilder<'a> {
         }
     }
 
+    /// Consume `n` bytes of auxiliary data, fail if there aren't enough left.
+    ///
+    /// Failing rather than taking fewer bytes ensures that an instruction takes
+    /// the same bytes wherever it is in a program. This makes fewer byte
+    /// sequences valid Smith programs, but it makes it easier to combine two
+    /// Smith programs which we do for crossover.
+    fn take(&mut self, n: usize) -> Option<&'a [u8]> {
+        if self.tail - self.head < n {
+            return None;
+        }
+        self.tail -= n;
+        Some(&self.input[self.tail..self.tail + n])
+    }
+
     /// Consume a string from the end of the input.
-    fn take_str(&mut self, len: u8) -> &str {
-        let n = (self.tail - self.head).min(len as usize);
-        let start = self.tail - n;
-        let bytes = &self.input[start..self.tail];
-        self.tail = start;
+    fn take_str(&mut self, len: u8) -> Option<&'a str> {
+        let bytes = self.take(len as usize)?;
         let result = std::str::from_utf8(bytes).ok().unwrap_or("");
         let event = TraceEvent::TakeString { len, result };
         self.trace.push(event);
-        result
+        Some(result)
     }
 
-    /// Consume `len` bytes (or fewer if we run out, and at most 8) for a `u64`.
-    fn take_u64(&mut self, len: u8) -> u64 {
-        let n = (self.tail - self.head).min(len as usize).min(8);
-        let start = self.tail - n;
+    /// Consume `len` bytes (at most 8) as `u64` from the end of the input.
+    fn take_u64(&mut self, len: u8) -> Option<u64> {
+        let n = (len as usize).min(8);
         let mut out = [0u8; 8];
-        out[..n].copy_from_slice(&self.input[start..self.tail]);
-        self.tail = start;
+        out[..n].copy_from_slice(self.take(n)?);
         let result = u64::from_le_bytes(out);
         let event = TraceEvent::TakeU64 { len, result };
         self.trace.push(event);
-        result
+        Some(result)
     }
 
     /// Join elements from a stack with separators and surround them with open/close tokens.
@@ -250,7 +344,7 @@ impl<'a> ProgramBuilder<'a> {
     /// This is used to build lists and dicts, function calls, etc.
     ///
     /// The 4 characters are open, sep_even, sep_odd, close.
-    fn join(n: u8, from: &mut Vec<String>, mut into: String, chars: &[u8; 4]) -> Option<String> {
+    fn join(n: u8, from: &mut Stack, mut into: String, chars: &[u8; 4]) -> Option<String> {
         into.push(chars[0] as char);
         let mut sep = None;
         for i in 0..n {
@@ -268,14 +362,14 @@ impl<'a> ProgramBuilder<'a> {
     /// Return whether there is an instruction next that we can execute.
     pub fn has_next(&self) -> bool {
         // We need at least one opcode and one argument.
-        self.head + 2 < self.tail
+        self.head + 2 <= self.tail
     }
 
     /// Execute a single instruction if possible.
     ///
-    /// Returns `Some` when the instruction was successful, or `None` when
-    /// something failed, e.g. a stack underflow, or an invalid opcode.
-    pub fn execute_instruction(&mut self) -> Option<()> {
+    /// Returns the effect of the instruction, or `None` when something failed,
+    /// e.g. a stack underflow, or an invalid opcode.
+    pub fn execute_instruction(&mut self) -> Option<Effect> {
         let op_byte = self.input[self.head];
         let n = self.input[self.head + 1];
         self.head += 2;
@@ -288,10 +382,13 @@ impl<'a> ProgramBuilder<'a> {
         };
         self.trace.push(event);
 
+        self.type_stack.effect = StackEffect::NONE;
+        self.expr_stack.effect = StackEffect::NONE;
+
         match op {
             Op::TypePushInput => {
                 // See also the note in `ExprPushInput`.
-                let arg: String = self.take_str(n.min(6)).into();
+                let arg: String = self.take_str(n.min(6))?.into();
                 self.type_stack.push(arg);
             }
             Op::TypePushBuiltin => {
@@ -335,16 +432,16 @@ impl<'a> ProgramBuilder<'a> {
                     // exercise overflows.
                     0x10 => 0x07ff_ffff_ffff_ffff,
                     0x11 => 0x7fff_ffff_ffff_ffff,
-                    _ => self.take_u64(n - 0x11),
+                    _ => self.take_u64(n - 0x11)?,
                 };
                 self.expr_stack.push(k.to_string());
             }
             Op::ExprPushHexadecimal => {
-                let k = self.take_u64(n.max(1));
+                let k = self.take_u64(n.max(1))?;
                 self.expr_stack.push(format!("0x{k:x}"));
             }
             Op::ExprPushBinary => {
-                let k = self.take_u64(n.max(1));
+                let k = self.take_u64(n.max(1))?;
                 self.expr_stack.push(format!("0b{k:b}"));
             }
             Op::ExprPushLiteral => {
@@ -360,14 +457,13 @@ impl<'a> ProgramBuilder<'a> {
                 // then it has to spend time on the relatively inefficient direct
                 // source manipulation instead of exploring smith programs. So
                 // limit the length to 6 bytes, so it can't rely on this too much.
-                let arg: String = self.take_str(n.min(6)).into();
+                let arg: String = self.take_str(n.min(6))?.into();
                 self.expr_stack.push(arg);
             }
 
             Op::ExprWrapParens => {
-                let t = self.expr_stack.last_mut()?;
-                t.insert(0, '(');
-                t.push(')');
+                let t = self.expr_stack.pop()?;
+                self.expr_stack.push(format!("({t})"));
             }
             Op::ExprList => {
                 let result = ProgramBuilder::join(n, &mut self.expr_stack, String::new(), b"[,,]")?;
@@ -555,7 +651,10 @@ impl<'a> ProgramBuilder<'a> {
             }
         }
 
-        Some(())
+        Some(Effect {
+            types: self.type_stack.effect,
+            exprs: self.expr_stack.effect,
+        })
     }
 }
 
@@ -577,24 +676,24 @@ impl<'a> SynthesizedProgram<'a> {
     pub fn new(bytecode: &'a [u8]) -> SynthesizedProgram<'a> {
         let mut builder = ProgramBuilder::new(bytecode);
         let mut is_ok = true;
+        let mut effect = Effect::NONE;
 
         while builder.has_next() {
             // If any of the instructions failed to execute, then we still get
             // some result, but we no longer call that result "OK" or "minimal",
             // because a different sequence of instructions could produce the
             // same RCL expression with fewer Smith instructions.
-            let instr_ok = builder.execute_instruction().is_some();
-            is_ok = is_ok && instr_ok;
+            match builder.execute_instruction() {
+                Some(instr_effect) => effect = effect.then(instr_effect),
+                None => is_ok = false,
+            }
         }
 
-        is_ok = is_ok && !builder.expr_stack.is_empty();
+        // The program should push one expression. If it leaves anything else
+        // on the stacks, that's wasteful, a smaller Smith program would not
+        // have put it there in the first place.
+        is_ok = is_ok && effect == Effect::PUSH_EXPR;
         let program = builder.expr_stack.pop().unwrap_or("".into());
-
-        // If anything is left on the stacks at this point, that's wasteful, a
-        // smaller Smith program would not have put them there in the first
-        // place.
-        is_ok = is_ok && builder.expr_stack.is_empty();
-        is_ok = is_ok && builder.type_stack.is_empty();
 
         SynthesizedProgram {
             program,
@@ -605,23 +704,12 @@ impl<'a> SynthesizedProgram<'a> {
     }
 }
 
-/// The stack that an instruction operates on.
-#[derive(PartialEq, Eq)]
-enum Stack {
-    Expr,
-    Type,
-}
-
-/// A run of instructions that together push one item onto a stack.
+/// A run of instructions that together push exactly one item onto a stack.
 ///
 /// Because Smith programs are postfix, a run builds a subterm (a type or an
 /// expression), and we can swap such subterms between Smith programs to
 /// construct other Smith programs. If the inputs are minimal Smith programs,
 /// then so is the result.
-///
-/// A run can also modify items on the stack, e.g. wrap the top of the stack in
-/// parens. If we swap out the run that does that, that modification is gone,
-/// but size of the stacks remains the same.
 struct Subterm {
     /// Byte offsets of the instructions.
     instructions: Range<usize>,
@@ -629,47 +717,49 @@ struct Subterm {
     /// Byte offsets of the auxiliary data that the instructions consume.
     data: Range<usize>,
 
-    /// The stack this run operates on.
-    stack: Stack,
+    /// The effect of the run, either `PUSH_EXPR` or `PUSH_TYPE`.
+    effect: Effect,
 }
 
 /// Return the subterms of a program, or `None` if an instruction fails.
+///
+/// A program is minimal when its effect is to push one expression. A subterm is
+/// a run that pops nothing and pushes one item, so replacing it by another
+/// subterm for the same stack preserves the effect of the program. The net
+/// change in stack depth is not enough to tell: a run could pop an item before
+/// pushing one.
 fn subterms(bytecode: &[u8]) -> Option<Vec<Subterm>> {
-    // Record the stack depths and the start of the unconsumed data between
-    // every instruction.
+    // Record for every instruction its effect, and the auxiliary data it read.
     let mut builder = ProgramBuilder::new(bytecode);
-    let mut states = Vec::new();
-    loop {
-        let state = (
-            builder.type_stack.len(),
-            builder.expr_stack.len(),
-            builder.tail,
-        );
-        states.push(state);
-        if !builder.has_next() {
-            break;
-        }
-        builder.execute_instruction()?;
+    let mut steps = Vec::new();
+    while builder.has_next() {
+        let tail = builder.tail;
+        let effect = builder.execute_instruction()?;
+        steps.push((effect, builder.tail..tail));
     }
 
     let mut result = Vec::new();
-    for (i, &(types_begin, exprs_begin, tail_begin)) in states.iter().enumerate() {
-        for (j, &(types_end, exprs_end, tail_end)) in states.iter().enumerate().skip(i + 1) {
-            // A run that pops more than than it pushed it not self-contained,
-            // so it can't be a prefix of a self-contained run either.
-            if types_end < types_begin || exprs_end < exprs_begin {
+    for begin in 0..steps.len() {
+        let mut effect = Effect::NONE;
+        for end in begin + 1..=steps.len() {
+            let (step_effect, step_data) = &steps[end - 1];
+            effect = effect.then(*step_effect);
+            // Composing never undoes pops, so we can stop here, inspecting
+            // longer suffixes is not going to make it pop less.
+            if effect.has_pops() {
                 break;
             }
-            let stack = match (types_end - types_begin, exprs_end - exprs_begin) {
-                (0, 1) => Stack::Expr,
-                (1, 0) => Stack::Type,
-                _ => continue,
-            };
+            // We are only interested in runs that have the effect of doing
+            // exactly one push.
+            if !matches!(effect, Effect::PUSH_EXPR | Effect::PUSH_TYPE) {
+                continue;
+            }
             result.push(Subterm {
-                instructions: 2 * i..2 * j,
-                // Instructions consume data from the end, so the range looks inverted.
-                data: tail_end..tail_begin,
-                stack,
+                instructions: 2 * begin..2 * end,
+                // Instructions read data from the end, so the data of the run
+                // starts at that of its last instruction.
+                data: step_data.start..steps[begin].1.end,
+                effect,
             });
         }
     }
@@ -688,9 +778,9 @@ pub fn crossover(data1: &[u8], data2: &[u8], out: &mut [u8], rng: &mut WyRand) -
     }
     let t1 = &terms1[rng.next_range_usize(0..terms1.len())];
 
-    // Pick a random term from `data2` that mutates the same stack.
+    // Pick a random term from `data2` that has the same effect.
     let mut terms2 = subterms(data2).unwrap_or_else(Vec::new);
-    terms2.retain(|t| t.stack == t1.stack);
+    terms2.retain(|t| t.effect == t1.effect);
     if terms2.is_empty() {
         return 0;
     }
