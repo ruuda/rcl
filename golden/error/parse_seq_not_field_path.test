@@ -1,0 +1,12 @@
+// This exercises the lookahead when deciding between record and json notation.
+// In the end, after the '.' there is no ident, so it's not a field path, so we
+// try to parse as expr, and fail expecting an identifier, which happens to be
+// the correct error message for both situations.
+{ a.- = 10 }
+
+# output:
+stdin:5:5
+  ╷
+5 │ { a.- = 10 }
+  ╵     ^
+Error: Expected an identifier here.

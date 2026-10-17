@@ -1,0 +1,9 @@
+{
+  // Nested assignment inside a loop is just repeated assignment,
+  // it doesn't magically create a list or anything.
+  for i in [1, 2, 3]:
+  counter.n = i,
+}
+
+# output:
+{ counter = { n = 3 } }

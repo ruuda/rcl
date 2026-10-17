@@ -324,7 +324,9 @@
     },
 
     seq_kv = {
-      match = f"\\b({identifier})\\s+=",
+      // The key can be a path of identifiers, `a.b = v`. After the `=` at the
+      // end, we have to be careful to not match binary operators.
+      match = f"\\b({identifier}(?:\\s*\\.\\s*{identifier})*)\\s*=(?![=>])",
       captures = {
         // This scope is the same one as used by the json grammar for keys.
         // Some themes special-case json so let's include this to make it behave

@@ -165,6 +165,25 @@ tool that expects <abbr>JSON</abbr> or <abbr>YAML</abbr>, we can just run:
 
     rcl evaluate buckets.rcl
 
+## Nested assign
+
+To express nested dicts concisely with less line noise,
+<abbr>RCL</abbr> supports [nested assign](syntax.md#nested-assign):
+
+```rcl
+{
+  buckets = [
+    {
+      name = "alpha-hourly",
+      region = "eu-west",
+      // This now goes on one line, without curly brackets:
+      lifecycle_policy.delete_after_seconds = 345_600,
+    },
+    // Other buckets omitted for brevity.
+  ],
+}
+```
+
 ## Variables
 
 Next, let’s try to extract some duplicated values. Our document is an expression,
@@ -226,12 +245,12 @@ the number of hours in a day. We might write:
     {
       name = "alpha-hourly",
       region = region,
-      lifecycle_policy = { delete_after_seconds = 4 * seconds_per_day },
+      lifecycle_policy.delete_after_seconds = 4 * seconds_per_day,
     },
     {
       name = "alpha-daily",
       region = region,
-      lifecycle_policy = { delete_after_seconds = 30 * seconds_per_day },
+      lifecycle_policy.delete_after_seconds = 30 * seconds_per_day,
     },
   ],
 }
@@ -257,12 +276,12 @@ We can improve that with a [_list comprehension_](syntax.md#comprehensions) and
     for period, days in retention_days: {
       name = f"alpha-{period}",
       region = region,
-      lifecycle_policy = { delete_after_seconds = days * seconds_per_day },
+      lifecycle_policy.delete_after_seconds = days * seconds_per_day,
     },
     for period, days in retention_days: {
       name = f"bravo-{period}",
       region = region,
-      lifecycle_policy = { delete_after_seconds = days * seconds_per_day },
+      lifecycle_policy.delete_after_seconds = days * seconds_per_day,
     },
   ],
 }
@@ -285,7 +304,7 @@ become single-use, so we can inline them again:
     for period, days in retention_days: {
       name = f"{database}-{period}",
       region = "eu-west",
-      lifecycle_policy = { delete_after_seconds = days * 24 * 3600 },
+      lifecycle_policy.delete_after_seconds = days * 24 * 3600,
     }
   ],
 }

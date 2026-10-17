@@ -249,13 +249,27 @@ pub enum Yield {
     /// A single element.
     Elem { span: Span, value: Box<Expr> },
 
-    /// A `key: value` mapping.
+    /// A `key: value` mapping, or a nested assignment like `a.b = value`.
     Assoc {
         /// The span of the `=` or `:`.
         op_span: Span,
+
         key_span: Span,
-        value_span: Span,
+
+        /// The key in `key: value`; the first ident in a field path.
         key: Box<Expr>,
+
+        /// The remaining idents in a field path, in the case of a nested
+        /// assignment. We store those separately, rather than a single
+        /// `Box<[(Span, Expr)]>`, for two reasons:
+        ///
+        /// - It matches the CST (which splits them a.o. to avoid the allocation
+        ///   in the common case where the field path has length 1).
+        /// - We measured it, and it was about 10% faster on documents that
+        ///   heavily use nested assignment, because it uses less memory.
+        path_tail: Box<[(Span, Rc<str>)]>,
+
+        value_span: Span,
         value: Box<Expr>,
     },
 

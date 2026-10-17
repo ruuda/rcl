@@ -1,0 +1,6 @@
+// This exercises the lookahead in the parser. Up to the '(',
+// it could be either record notation or json notation.
+{ std.range(0, 1): 42 }
+
+# output:
+{ [0]: 42 }

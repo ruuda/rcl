@@ -671,8 +671,30 @@ impl<'a> Formatter<'a> {
                 concat! { self.expr(field).with_markup(Markup::Field) ": " self.expr(value) }
             }
 
-            Yield::AssocIdent { field, value, .. } => {
-                concat! { self.span(*field).with_markup(Markup::Field) " = " self.expr(value) }
+            Yield::AssocIdent {
+                path_head,
+                path_tail,
+                value,
+                ..
+            } => {
+                let mut path = self.span(*path_head).with_markup(Markup::Field);
+
+                // If this is a nested assignment, we give it its own group,
+                // so that we can format the entire path tall when needed.
+                if !path_tail.is_empty() {
+                    let mut tail = Vec::new();
+                    for ident in path_tail.iter() {
+                        tail.push(Doc::SoftBreak);
+                        tail.push(".".into());
+                        tail.push(self.span(*ident).with_markup(Markup::Field));
+                    }
+                    path = group! {
+                        path
+                        indent! { Doc::Concat(tail) }
+                    };
+                }
+
+                concat! { path " = " self.expr(value) }
             }
 
             Yield::UnpackElems { collection, .. } => concat! {

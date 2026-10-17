@@ -121,10 +121,21 @@ seqs
 
 // Note, here we use expr_op instead of expr to avoid a conflict with the let
 // and for from the comprehension.
+//
+// For the record form `expr_op '=' expr`, that's a bit of a shortcut in the
+// Bison grammar here. Only a path of identifiers is allowed there:
+//
+//     path: IDENT | path '.' IDENT
+//
+// however, that makes Bison reject the grammar. We could then modify expr_op to
+// also use `path` there, but that's not how we want to express the grammar in
+// Rust, and the Rust parser should be close to this one. Benchmarking showed
+// that parsing paths as part of `expr` is slower, so instead we do a lookahead
+// in the Rust parser, and we accept the inaccuracy here.
 seq
   : expr_op
   | expr_op ':' expr
-  | IDENT '=' expr ',' seq
+  | expr_op '=' expr
   | ".." expr
   | "..." expr
   | stmt seq

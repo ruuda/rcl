@@ -21,6 +21,10 @@ module.exports = grammar({
 
   conflicts: $ => [
     [ $.function_args, $._expr_term ],
+    // A record key `a.b = v` and a field access `a.b: v` start with the same
+    // tokens, it's only the `=` or `:` after that that distinguishes them. In
+    // the Rust parser, we solve this with a lookahead.
+    [ $.seq_assoc_ident, $._expr_term ],
   ],
 
   rules: {
@@ -263,6 +267,7 @@ module.exports = grammar({
     ),
     seq_assoc_ident: $ => seq(
       field("field", $.ident),
+      repeat(seq(".", field("field", $.ident))),
       "=",
       field("value", $._expr),
     ),

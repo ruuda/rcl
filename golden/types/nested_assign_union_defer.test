@@ -1,0 +1,41 @@
+let forget_type: (Any) -> Any = x => x;
+
+let x: Dict[
+  String,
+  // A union in key position here is fine: String is allowed, and we have
+  // a string key. If we would change the union to e.g. [Null, Number], it
+  // would fail.
+  Dict[Union[String, Number], Number],
+] = { a.b = 1 };
+
+let x: Dict[
+  String,
+  // In this case, the nested assignment `.b = ...` creates an implicit dict
+  // of type `Dict[String, Any]`, which could be a `Dict[String, Number]` at
+  // runtime, so it's not an error, we defer. But the defer then has to be
+  // hoisted to the outer dict, because there is no inner node to wrap in a check.
+  Union[Dict[String, Number], Null],
+] = { a.b = forget_type(null) };
+
+x
+
+# output:
+stdin:18:5
+   ╷
+18 │ ] = { a.b = forget_type(null) };
+   ╵     ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+in value
+at key "a"
+Error: Type mismatch. Expected a value that fits this type:
+
+  Union[Dict[String, Number], Null]
+
+But got this value:
+
+  { b = null }
+
+stdin:17:3
+   ╷
+17 │   Union[Dict[String, Number], Null],
+   ╵   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Note: Expected Union because of this annotation.

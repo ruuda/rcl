@@ -1,0 +1,21 @@
+{
+  a.b=1,
+  a . c = 2,
+  a
+  .
+  d = 3,
+
+  long_paths.can_be_broken_across_multiple_lines.but_as_a_single_group
+  .so_the_entire_thing_becomes_tall = [42, "array is wide, it fits"]}
+
+# output:
+{
+  a.b = 1,
+  a.c = 2,
+  a.d = 3,
+
+  long_paths
+    .can_be_broken_across_multiple_lines
+    .but_as_a_single_group
+    .so_the_entire_thing_becomes_tall = [42, "array is wide, it fits"],
+}

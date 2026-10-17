@@ -63,7 +63,7 @@ Given this input:
     {
       name = f"{database}-{period}",
       region = "eu-west",
-      lifecycle_policy = { delete_after_seconds = days * 24 * 3600 },
+      lifecycle_policy.delete_after_seconds = days * 24 * 3600,
     }
   ],
 }

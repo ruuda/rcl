@@ -1,0 +1,5 @@
+# command: ["patch", "-", "a.b", "1"]
+{ a.b = 0 }
+
+# output:
+{ a.b = 1 }

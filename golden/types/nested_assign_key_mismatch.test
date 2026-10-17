@@ -1,0 +1,15 @@
+let x: Dict[String, Dict[Number, Number]] = { a.b = 1 };
+x
+
+# output:
+stdin:1:49
+  ╷
+1 │ let x: Dict[String, Dict[Number, Number]] = { a.b = 1 };
+  ╵                                                 ^
+Error: Type mismatch. Expected Number but found String.
+
+stdin:1:26
+  ╷
+1 │ let x: Dict[String, Dict[Number, Number]] = { a.b = 1 };
+  ╵                          ^~~~~~
+Note: Expected Number because of this annotation.

@@ -1,0 +1,16 @@
+// A dict literal is just a sequence of assignments,
+// later ones overwrite earlier ones.
+[
+  { outer = 1, outer.inner = true },
+  { outer.inner = true, outer = 1 },
+  { "outer": 1, outer.inner = true },
+  { outer.inner.core = null, outer.inner = true },
+]
+
+# output:
+[
+  { outer = { inner = true } },
+  { outer = 1 },
+  { outer = { inner = true } },
+  { outer = { inner = true } },
+]

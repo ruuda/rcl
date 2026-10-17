@@ -1,0 +1,17 @@
+{
+  // The first reference creates the outer key as a dict,
+  // the following ones mutate that dict.
+  server.host = "localhost",
+  server.port = 8080,
+  server.tls.enabled = true,
+  server.tls.cert = "/etc/cert.pem",
+}
+
+# output:
+{
+  server = {
+    host = "localhost",
+    port = 8080,
+    tls = { cert = "/etc/cert.pem", enabled = true },
+  },
+}

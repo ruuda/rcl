@@ -93,3 +93,34 @@ Unpack (assocs)
   (expr_term_braces
     (seq_unpack_assocs
       (ident))))
+
+==========
+Record key
+==========
+
+{ x = 1 }
+
+---
+
+(source_file
+  (expr_term_braces
+    (seq_assoc_ident
+      (ident)
+      (number
+        (num_decimal)))))
+
+=================
+Nested record key
+=================
+
+{ x.y.z = null }
+
+---
+
+(source_file
+  (expr_term_braces
+    (seq_assoc_ident
+      (ident)
+      (ident)
+      (ident)
+      (null))))

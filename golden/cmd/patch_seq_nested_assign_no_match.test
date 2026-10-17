@@ -1,0 +1,31 @@
+# command: ["patch", "-", "a.c", "1"]
+{
+  // No match. We don't descend into it, so we continue.
+  a.b = 0,
+
+  // Not a Yield::AssocIdent, so we skip over it.
+  ..{ a = { c = 0 } },
+
+  // The path is longer than the target path,
+  // so it can never be a match, even though it is a prefix.
+  a.c.d = 0,
+
+  // And then we do match here.
+  a.c = 0,
+}
+
+# output:
+{
+  // No match. We don't descend into it, so we continue.
+  a.b = 0,
+
+  // Not a Yield::AssocIdent, so we skip over it.
+  ..{ a = { c = 0 } },
+
+  // The path is longer than the target path,
+  // so it can never be a match, even though it is a prefix.
+  a.c.d = 0,
+
+  // And then we do match here.
+  a.c = 1,
+}
