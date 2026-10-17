@@ -8,7 +8,7 @@
 //! Representations of values and scopes at runtime.
 
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::rc::Rc;
 
 use crate::ast::{CallArg, Expr};
@@ -338,23 +338,46 @@ impl Value {
     /// is to prevent very deep values where the `Ord` implementation is very
     /// expensive.
     pub fn depth(&self) -> u32 {
-        match self {
-            Value::Null => 0,
-            Value::Bool(..) => 0,
-            Value::Number(..) => 0,
-            Value::String(..) => 0,
-            Value::List(xs) => 1 + xs.iter().map(Value::depth).max().unwrap_or(0),
-            Value::Set(xs) => 1 + xs.iter().map(Value::depth).max().unwrap_or(0),
-            Value::Dict(kv) => {
-                1 + u32::max(
-                    kv.keys().map(Value::depth).max().unwrap_or(0),
-                    kv.values().map(Value::depth).max().unwrap_or(0),
-                )
-            }
-            Value::Function(f) => 1 + f.env.map_fold_max(Value::depth),
-            Value::BuiltinFunction(..) => 0,
-            Value::BuiltinMethod(m) => 1 + m.receiver.depth(),
+        self.depth_memoized(&mut HashMap::new())
+    }
+
+    /// Compute `depth` while visiting nodes inside an `Rc` at most once.
+    ///
+    /// Values can share nodes, and then a value can be exponentially larger as
+    /// a tree than it is in memory. If we were to traverse it naively, that
+    /// makes traversal extremely slow. These kind of pathological inputs don't
+    /// occur in real code, but the fuzzer does discover them, and we need to
+    /// keep the fuzzer fast. So we memoize the depth keyed by `Rc` address.
+    fn depth_memoized(&self, memo: &mut HashMap<*const (), u32>) -> u32 {
+        let node: *const () = match self {
+            Value::Null => return 0,
+            Value::Bool(..) => return 0,
+            Value::Number(..) => return 0,
+            Value::String(..) => return 0,
+            Value::BuiltinFunction(..) => return 0,
+            Value::List(xs) => Rc::as_ptr(xs).cast(),
+            Value::Set(xs) => Rc::as_ptr(xs).cast(),
+            Value::Dict(kv) => Rc::as_ptr(kv).cast(),
+            Value::Function(f) => Rc::as_ptr(f).cast(),
+            Value::BuiltinMethod(m) => Rc::as_ptr(m).cast(),
+        };
+        if let Some(depth) = memo.get(&node) {
+            return *depth;
         }
+        let mut depth_of = |v: &Value| v.depth_memoized(memo);
+        let depth = 1 + match self {
+            Value::List(xs) => xs.iter().map(&mut depth_of).max().unwrap_or(0),
+            Value::Set(xs) => xs.iter().map(&mut depth_of).max().unwrap_or(0),
+            Value::Dict(kv) => u32::max(
+                kv.keys().map(&mut depth_of).max().unwrap_or(0),
+                kv.values().map(&mut depth_of).max().unwrap_or(0),
+            ),
+            Value::Function(f) => f.env.map_fold_max(&mut depth_of),
+            Value::BuiltinMethod(m) => depth_of(&m.receiver),
+            _ => unreachable!("Primitive values handled above already."),
+        };
+        memo.insert(node, depth);
+        depth
     }
 }
 
