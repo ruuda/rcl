@@ -1,0 +1,14 @@
+# command: ["patch", "-", "a.b.c", "1"]
+// In case of a partial match, we return the the deepest match,
+// and if there are multiple at that depth, the furthest one.
+let a = { b = { d = 0 } };
+let a = { q = 0 };
+let a = { b = { e = 0 } };
+null
+
+# output:
+stdin:5:15
+  ╷
+5 │ let a = { b = { e = 0 } };
+  ╵               ^~~~~~~~~
+Error: Could not find 'c' in this expression.
