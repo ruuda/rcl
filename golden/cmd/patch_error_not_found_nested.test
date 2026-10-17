@@ -11,4 +11,4 @@ stdin:5:15
   ╷
 5 │ let a = { b = { e = 0 } };
   ╵               ^~~~~~~~~
-Error: Could not find 'c' in this expression.
+Error: The path 'a.b.c' does not match. Could not find 'c' in this expression.

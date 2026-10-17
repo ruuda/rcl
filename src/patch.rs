@@ -82,6 +82,18 @@ fn parse_path_expr(path: &str, doc_id: DocId) -> Result<Vec<&str>> {
     }
 }
 
+/// Display a patch path for use in an error message.
+fn view_path(path: &[&str]) -> Doc<'static> {
+    let mut parts = Vec::new();
+    for (i, ident) in path.iter().enumerate() {
+        if i > 0 {
+            parts.push(".".into());
+        }
+        parts.push(Doc::highlight(ident).into_owned());
+    }
+    Doc::Concat(parts)
+}
+
 struct PatcherImpl<'a> {
     input: &'a str,
 
@@ -125,7 +137,7 @@ impl<'a> PatcherImpl<'a> {
 
         let target = path[path.len() - depth];
         let msg = concat! {
-            "Could not find '"
+            "The path '" view_path(path) "' does not match. Could not find '"
             Doc::highlight(target).into_owned()
             "' in this expression."
         };
@@ -133,21 +145,12 @@ impl<'a> PatcherImpl<'a> {
     }
 
     pub fn report_error_no_unique_match(&self, path: &[&str]) -> Error {
-        let mut parts = Vec::new();
-        parts.push("The path '".into());
-        for (i, ident) in path.iter().enumerate() {
-            if i > 0 {
-                parts.push(".".into());
-            }
-            parts.push(Doc::highlight(ident).into_owned());
-        }
-        parts.push("' is ambiguous, it matches in multiple places.".into());
-        let mut error = Error::new(Doc::Concat(parts));
-
+        let mut error = Error::new(concat! {
+            "The path '" view_path(path) "' is ambiguous, it matches in multiple places."
+        });
         for site in &self.sites_matched {
             error = error.with_note(*site, "Path matches here.");
         }
-
         error
     }
 
