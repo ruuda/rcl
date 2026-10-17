@@ -183,6 +183,7 @@ pub enum TraceEvent<'a> {
 struct ProgramBuilder<'a> {
     /// The stack of type expressions.
     type_stack: Vec<String>,
+
     /// The stack of expressions.
     expr_stack: Vec<String>,
 
@@ -193,7 +194,14 @@ struct ProgramBuilder<'a> {
     trace: Vec<TraceEvent<'a>>,
 
     input: &'a [u8],
+
+    /// We read the next instruction from the front of `input[head..]`.
     head: usize,
+
+    /// We read the next auxiliary data from the back of `input[head..tail]`.
+    ///
+    /// This data is left at the end so the instruction stream is easier to
+    /// mutate.
     tail: usize,
 }
 
@@ -212,7 +220,7 @@ impl<'a> ProgramBuilder<'a> {
 
     /// Consume a string from the end of the input.
     fn take_str(&mut self, len: u8) -> &str {
-        let n = self.tail.min(len as usize);
+        let n = (self.tail - self.head).min(len as usize);
         let start = self.tail - n;
         let bytes = &self.input[start..self.tail];
         self.tail = start;
@@ -224,7 +232,7 @@ impl<'a> ProgramBuilder<'a> {
 
     /// Consume `len` bytes (or fewer if we run out, and at most 8) for a `u64`.
     fn take_u64(&mut self, len: u8) -> u64 {
-        let n = self.tail.min(len as usize).min(8);
+        let n = (self.tail - self.head).min(len as usize).min(8);
         let start = self.tail - n;
         let mut out = [0u8; 8];
         out[..n].copy_from_slice(&self.input[start..self.tail]);
