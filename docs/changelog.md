@@ -34,8 +34,10 @@ Unreleased
  * The formatter now formats chains of repeated associative binary operators
    such as `a + b + c` either wide or tall in its entirety. This can cause the
    canonical formatting to change for some documents.
+ * [`rcl patch`](rcl_patch.md) now reports an error when the patch path matches
+   in multiple places. Previously `patch` would patch the first greedy match.
 
-New features:
+**New features:**
 
  * RCL now supports [nested assign](syntax.md#nested-assign), so you can write
    `{ a.b = c }` rather than having to spell out `{ a = { b = c } }`. This is
@@ -44,6 +46,10 @@ New features:
 
 Other changes:
 
+ * [`rcl patch`](rcl_patch.md) now finds all possible places where the patch
+   path can match, rather than matching the path greedily, which could result
+   in match failures even for unambiguous paths. `rcl patch` fully supports the
+   new nested assignment syntax as well.
  * Improve coloring in the TextMate grammar used by Visual Studio Code and
    JetBrains <abbr>IDE</abbr>s.
 
