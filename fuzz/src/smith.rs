@@ -81,6 +81,8 @@ define_ops! {
     0x13 => TypeApply,
     /// Make the top of the stack a function type, with _n_ elements as arguments.
     0x14 => TypeFunction,
+    /// Union the top of the stack with the `Null` type.
+    0x15 => TypeUnionNull,
 
     /// Push an identifier chosen from a limited set.
     0x20 => ExprPushIdent,
@@ -297,6 +299,13 @@ impl<'a> ProgramBuilder<'a> {
                 args.push_str(" -> ");
                 args.push_str(&result_type);
                 self.type_stack.push(args);
+            }
+            Op::TypeUnionNull => {
+                let inner_type = self.type_stack.pop()?;
+                let mut result = "Union[".to_string();
+                result.push_str(&inner_type);
+                result.push_str(", Null]");
+                self.type_stack.push(result);
             }
 
             Op::ExprPushIdent => {
