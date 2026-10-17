@@ -19,10 +19,12 @@
 //! I don't know if the implementation resembles theirs.
 
 use std::fmt::Formatter;
+use std::ops::Range;
 
 use arbitrary::{Arbitrary, Unstructured};
 
 use crate::builtins::{BUILTINS, BUILTIN_TYPES};
+use crate::random::WyRand;
 use crate::uber::Mode;
 
 const LITERALS: &[&str] = &["true", "false", "null"];
@@ -601,6 +603,112 @@ impl<'a> SynthesizedProgram<'a> {
             is_minimal: is_ok,
         }
     }
+}
+
+/// The stack that an instruction operates on.
+#[derive(PartialEq, Eq)]
+enum Stack {
+    Expr,
+    Type,
+}
+
+/// A run of instructions that together push one item onto a stack.
+///
+/// Because Smith programs are postfix, a run builds a subterm (a type or an
+/// expression), and we can swap such subterms between Smith programs to
+/// construct other Smith programs. If the inputs are minimal Smith programs,
+/// then so is the result.
+///
+/// A run can also modify items on the stack, e.g. wrap the top of the stack in
+/// parens. If we swap out the run that does that, that modification is gone,
+/// but size of the stacks remains the same.
+struct Subterm {
+    /// Byte offsets of the instructions.
+    instructions: Range<usize>,
+
+    /// Byte offsets of the auxiliary data that the instructions consume.
+    data: Range<usize>,
+
+    /// The stack this run operates on.
+    stack: Stack,
+}
+
+/// Return the subterms of a program, or `None` if an instruction fails.
+fn subterms(bytecode: &[u8]) -> Option<Vec<Subterm>> {
+    // Record the stack depths and the start of the unconsumed data between
+    // every instruction.
+    let mut builder = ProgramBuilder::new(bytecode);
+    let mut states = Vec::new();
+    loop {
+        let state = (
+            builder.type_stack.len(),
+            builder.expr_stack.len(),
+            builder.tail,
+        );
+        states.push(state);
+        if !builder.has_next() {
+            break;
+        }
+        builder.execute_instruction()?;
+    }
+
+    let mut result = Vec::new();
+    for (i, &(types_begin, exprs_begin, tail_begin)) in states.iter().enumerate() {
+        for (j, &(types_end, exprs_end, tail_end)) in states.iter().enumerate().skip(i + 1) {
+            // A run that pops more than than it pushed it not self-contained,
+            // so it can't be a prefix of a self-contained run either.
+            if types_end < types_begin || exprs_end < exprs_begin {
+                break;
+            }
+            let stack = match (types_end - types_begin, exprs_end - exprs_begin) {
+                (0, 1) => Stack::Expr,
+                (1, 0) => Stack::Type,
+                _ => continue,
+            };
+            result.push(Subterm {
+                instructions: 2 * i..2 * j,
+                // Instructions consume data from the end, so the range looks inverted.
+                data: tail_end..tail_begin,
+                stack,
+            });
+        }
+    }
+    Some(result)
+}
+
+/// Replace a random subterm of `data1` with a random subterm of `data2`.
+///
+/// Puts the result in `out`, and returns the length of `out`, or 0 when the
+/// crossover failed.
+pub fn crossover(data1: &[u8], data2: &[u8], out: &mut [u8], rng: &mut WyRand) -> usize {
+    // Pick a random term produced by instructions in `data1`.
+    let terms1 = subterms(data1).unwrap_or_else(Vec::new);
+    if terms1.is_empty() {
+        return 0;
+    }
+    let t1 = &terms1[rng.next_range_usize(0..terms1.len())];
+
+    // Pick a random term from `data2` that mutates the same stack.
+    let mut terms2 = subterms(data2).unwrap_or_else(Vec::new);
+    terms2.retain(|t| t.stack == t1.stack);
+    if terms2.is_empty() {
+        return 0;
+    }
+    let t2 = &terms2[rng.next_range_usize(0..terms2.len())];
+
+    let result = [
+        &data1[..t1.instructions.start],
+        &data2[t2.instructions.clone()],
+        &data1[t1.instructions.end..t1.data.start],
+        &data2[t2.data.clone()],
+        &data1[t1.data.end..],
+    ]
+    .concat();
+    if result.len() > out.len() {
+        return 0;
+    }
+    out[..result.len()].copy_from_slice(&result);
+    result.len()
 }
 
 // To control the `Debug` output in the libfuzzer_sys crate,

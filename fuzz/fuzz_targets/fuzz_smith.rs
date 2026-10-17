@@ -13,7 +13,7 @@
 // Used by fuzz_mutator.
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-use libfuzzer_sys::{fuzz_mutator, fuzz_target};
+use libfuzzer_sys::{fuzz_crossover, fuzz_mutator, fuzz_target};
 use rcl_fuzz::random::WyRand;
 use rcl_fuzz::smith::SynthesizedProgram;
 use rcl_fuzz::uber::fuzz_main;
@@ -247,4 +247,10 @@ fuzz_mutator!(|data: &mut [u8], size: usize, max_size: usize, seed: u32| {
     };
     mutator.mutate();
     mutator.size
+});
+
+// Aside from the custom mutator, libFuzzer picks crossover half of the time.
+fuzz_crossover!(|data1: &[u8], data2: &[u8], out: &mut [u8], seed: u32| {
+    let mut rng = WyRand::new(seed as u64);
+    rcl_fuzz::smith::crossover(data1, data2, out, &mut rng)
 });
