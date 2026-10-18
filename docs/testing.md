@@ -72,8 +72,14 @@ pretty-printer. They verify the following properties:
 To run the fuzzers you need [`cargo-fuzz`][cargo-fuzz] and a nightly toolchain.
 Then start e.g. the smith fuzzer or source-based fuzzer:
 
-    cargo +nightly-2023-11-09 fuzz run fuzz_smith -- -timeout=3
+    cargo +nightly-2023-11-09 fuzz run fuzz_smith --no-trace-compares -- -timeout=3 -entropic=0 -use_counters=0
     cargo +nightly-2023-11-09 fuzz run fuzz_source -- -dict=fuzz/dictionary.txt -timeout=3
+
+The `--no-trace-compares` and `-use_counters=0` flags disable expensive
+libFuzzer bookkeeping. It turns out that the Smith fuzzer benefits more from
+more iteration, than from smarter feature selection. These flags result in
+40–70% more iterations per second, and faster coverage growth. The `-entropic=0`
+schedule also suits this fuzzer better than the default schedule.
 
 Unlike the other fuzzers, the inputs to the smith fuzzer are not human-readable.
 To see what kind of inputs the fuzzer is exploring, you can use the `smithctl`
