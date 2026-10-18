@@ -332,28 +332,30 @@ impl Value {
         error.err()
     }
 
-    /// Return the depth of the most deeply nested primitive value.
+    /// Return the depth of the most deeply nested primitive value plus size penalty.
     ///
     /// This is expensive to compute as it traverses the entire value. Its goal
     /// is to prevent very deep values where the `Ord` implementation is very
-    /// expensive.
-    pub fn depth(&self) -> u32 {
-        self.depth_memoized(&mut HashMap::new())
-    }
-
-    /// Compute `depth` while visiting nodes inside an `Rc` at most once.
+    /// expensive, or values that are small in memory but large to traverse.
     ///
     /// Values can share nodes, and then a value can be exponentially larger as
     /// a tree than it is in memory. If we were to traverse it naively, that
     /// makes traversal extremely slow. These kind of pathological inputs don't
     /// occur in real code, but the fuzzer does discover them, and we need to
     /// keep the fuzzer fast. So we memoize the depth keyed by `Rc` address.
-    fn depth_memoized(&self, memo: &mut HashMap<*const (), u32>) -> u32 {
+    /// See also `stdlib::DepthChecker`.
+    ///
+    /// That is still not enough, because even if you build a with a fanout of
+    /// say 16, it doesn't need to be that deep to explode in size. So we add a
+    /// penalty for list and string length too.
+    pub fn size_memoized(&self, memo: &mut HashMap<*const (), u32>) -> u32 {
         let node: *const () = match self {
             Value::Null => return 0,
             Value::Bool(..) => return 0,
             Value::Number(..) => return 0,
-            Value::String(..) => return 0,
+            // String size penalty only starts counting from a certain size,
+            // otherwise you can't do anything useful anymore.
+            Value::String(s) => return s.len().saturating_sub(64).max(1).ilog2(),
             Value::BuiltinFunction(..) => return 0,
             Value::List(xs) => Rc::as_ptr(xs).cast(),
             Value::Set(xs) => Rc::as_ptr(xs).cast(),
@@ -364,20 +366,33 @@ impl Value {
         if let Some(depth) = memo.get(&node) {
             return *depth;
         }
-        let mut depth_of = |v: &Value| v.depth_memoized(memo);
-        let depth = 1 + match self {
-            Value::List(xs) => xs.iter().map(&mut depth_of).max().unwrap_or(0),
-            Value::Set(xs) => xs.iter().map(&mut depth_of).max().unwrap_or(0),
-            Value::Dict(kv) => u32::max(
-                kv.keys().map(&mut depth_of).max().unwrap_or(0),
-                kv.values().map(&mut depth_of).max().unwrap_or(0),
-            ),
-            Value::Function(f) => f.env.map_fold_max(&mut depth_of),
-            Value::BuiltinMethod(m) => depth_of(&m.receiver),
+        let mut size_of = |v: &Value| v.size_memoized(memo);
+
+        // We add the ilog2 penalty on all values that can grow due to user
+        // input. A closure environment does not need it, because the number of
+        // bound variables is bounded by the size of the input document.
+        let size = 1 + match self {
+            Value::List(xs) => {
+                xs.len().checked_ilog2().unwrap_or(0)
+                    + xs.iter().map(&mut size_of).max().unwrap_or(0)
+            }
+            Value::Set(xs) => {
+                xs.len().checked_ilog2().unwrap_or(0)
+                    + xs.iter().map(&mut size_of).max().unwrap_or(0)
+            }
+            Value::Dict(kv) => {
+                kv.len().checked_ilog2().unwrap_or(0)
+                    + u32::max(
+                        kv.keys().map(&mut size_of).max().unwrap_or(0),
+                        kv.values().map(&mut size_of).max().unwrap_or(0),
+                    )
+            }
+            Value::Function(f) => f.env.map_fold_max(&mut size_of),
+            Value::BuiltinMethod(m) => size_of(&m.receiver),
             _ => unreachable!("Primitive values handled above already."),
         };
-        memo.insert(node, depth);
-        depth
+        memo.insert(node, size);
+        size
     }
 }
 

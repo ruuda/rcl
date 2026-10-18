@@ -8,10 +8,7 @@ stdin:4:20
   ╷
 4 │ std.range(0, 1000).fold([], (x, _) => {x, 1})
   ╵                    ^~~~
-Error: Accumulator exceeds the maximum nesting depth: {
-  1,
-  {1, {1, {1, {1, {1, {1, {1, {1, []}}}}}}}},
-}
+Error: Accumulator exceeds the maximum size or nesting depth.
 
 stdin:4:24
   ╷

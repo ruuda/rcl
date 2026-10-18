@@ -1,0 +1,15 @@
+// Exponential growth should cause an error rather than a hang.
+std.range(0, 1000).fold("a", (x, _) => f"{x}{x}{x}{x}")
+
+# output:
+stdin:2:20
+  ╷
+2 │ std.range(0, 1000).fold("a", (x, _) => f"{x}{x}{x}{x}")
+  ╵                    ^~~~
+Error: Accumulator exceeds the maximum size or nesting depth.
+
+stdin:2:24
+  ╷
+2 │ std.range(0, 1000).fold("a", (x, _) => f"{x}{x}{x}{x}")
+  ╵                        ^
+In call to method 'List.fold'.

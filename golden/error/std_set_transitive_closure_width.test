@@ -1,0 +1,16 @@
+// This is a regression test, previously this would hang,
+// as discovered by the fuzzer.
+{0}.transitive_closure(b => [{for x in std.range(0, 0xf1): () => x}])
+
+# output:
+stdin:3:5
+  ╷
+3 │ {0}.transitive_closure(b => [{for x in std.range(0, 0xf1): () => x}])
+  ╵     ^~~~~~~~~~~~~~~~~~
+Error: A value in the transitive closure exceeds the maximum size or nesting depth.
+
+stdin:3:23
+  ╷
+3 │ {0}.transitive_closure(b => [{for x in std.range(0, 0xf1): () => x}])
+  ╵                       ^
+In call to method 'Set.transitive_closure'.

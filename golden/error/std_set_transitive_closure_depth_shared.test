@@ -9,7 +9,7 @@ stdin:5:6
   ╷
 5 │ {[]}.transitive_closure(b => let xs = [for _ in std.range(0, 64): b]; [() => xs])
   ╵      ^~~~~~~~~~~~~~~~~~
-Error: A value in the transitive closure exceeds the maximum nesting depth: «function 0:345..353»
+Error: A value in the transitive closure exceeds the maximum size or nesting depth.
 
 stdin:5:24
   ╷

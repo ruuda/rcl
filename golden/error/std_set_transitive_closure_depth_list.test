@@ -11,9 +11,7 @@ stdin:7:5
   ╷
 7 │ {0}.transitive_closure(x => [[x]])
   ╵     ^~~~~~~~~~~~~~~~~~
-Error: A value in the transitive closure exceeds the maximum nesting depth: [
-  [[[[[[[[[0]]]]]]]]],
-]
+Error: A value in the transitive closure exceeds the maximum size or nesting depth.
 
 stdin:7:23
   ╷

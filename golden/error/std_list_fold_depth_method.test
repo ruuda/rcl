@@ -6,11 +6,7 @@ stdin:2:18
   ╷
 2 │ std.range(0, 50).fold([], (acc, x) => [null, true, acc.len])
   ╵                  ^~~~
-Error: Accumulator exceeds the maximum nesting depth: [
-  null,
-  true,
-  «method List.len»,
-]
+Error: Accumulator exceeds the maximum size or nesting depth.
 
 stdin:2:22
   ╷
