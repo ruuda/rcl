@@ -337,18 +337,28 @@ impl Value {
     /// This is expensive to compute as it traverses the entire value. Its goal
     /// is to prevent very deep values where the `Ord` implementation is very
     /// expensive, or values that are small in memory but large to traverse.
+    pub fn size(&self) -> u32 {
+        self.size_memoized(&mut HashMap::new())
+    }
+
+    /// Memoized version of `Self::size()`.
     ///
     /// Values can share nodes, and then a value can be exponentially larger as
     /// a tree than it is in memory. If we were to traverse it naively, that
     /// makes traversal extremely slow. These kind of pathological inputs don't
     /// occur in real code, but the fuzzer does discover them, and we need to
     /// keep the fuzzer fast. So we memoize the depth keyed by `Rc` address.
-    /// See also `stdlib::DepthChecker`.
     ///
     /// That is still not enough, because even if you build a with a fanout of
     /// say 16, it doesn't need to be that deep to explode in size. So we add a
     /// penalty for list and string length too.
-    pub fn size_memoized(&self, memo: &mut HashMap<*const (), u32>) -> u32 {
+    ///
+    /// # Soundness
+    ///
+    /// The same `memo` map must not be reused between places that may
+    /// deallocate and allocate `Rc`s, because then an address can be reused,
+    /// which invalidates the data in the map.
+    fn size_memoized(&self, memo: &mut HashMap<*const (), u32>) -> u32 {
         let node: *const () = match self {
             Value::Null => return 0,
             Value::Bool(..) => return 0,
@@ -368,9 +378,7 @@ impl Value {
         }
         let mut size_of = |v: &Value| v.size_memoized(memo);
 
-        // We add the ilog2 penalty on all values that can grow due to user
-        // input. A closure environment does not need it, because the number of
-        // bound variables is bounded by the size of the input document.
+        // We add the ilog2 penalty on all values that can grow due to user input.
         let size = 1 + match self {
             Value::List(xs) => {
                 xs.len().checked_ilog2().unwrap_or(0)
@@ -387,7 +395,9 @@ impl Value {
                         kv.values().map(&mut size_of).max().unwrap_or(0),
                     )
             }
-            Value::Function(f) => f.env.map_fold_max(&mut size_of),
+            Value::Function(f) => {
+                f.env.len().checked_ilog2().unwrap_or(0) + f.env.map_fold_max(&mut size_of)
+            }
             Value::BuiltinMethod(m) => size_of(&m.receiver),
             _ => unreachable!("Primitive values handled above already."),
         };

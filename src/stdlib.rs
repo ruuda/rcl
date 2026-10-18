@@ -7,7 +7,7 @@
 
 //! Implementation of the standard library.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::ast::CallArg;
@@ -771,7 +771,7 @@ fn builtin_list_to_set_dedup(_eval: &mut Evaluator, call: MethodCall) -> Result<
     Ok(Value::Set(Rc::new(result)))
 }
 
-/// Helper to check that a value is not too large or deeply nested.
+/// Check that a value is not too large or deeply nested.
 ///
 /// Functions that can recursively build values, such as fold and transitive
 /// closure, can generate values that have a "size" that grows at runtime,
@@ -785,39 +785,24 @@ fn builtin_list_to_set_dedup(_eval: &mut Evaluator, call: MethodCall) -> Result<
 /// Checking for depth can be expensive itself, because you can reuse a value,
 /// e.g. `x => [[x, x, x, x]]`, memory-wise grows linearly at every iteration,
 /// but the number of tree nodes grows exponentially. So we memoize the depth
-/// computation for values inside an `Rc`.
-///
-/// The `SizeChecker` stores the memoization data, it can be reused across
-/// internal calls of e.g. `transitive_closure` and `fold`.
-#[derive(Default)]
-struct SizeChecker {
-    memo: HashMap<*const (), u32>,
-}
+/// computation for values inside an `Rc`, see [`Value::size_memoized`].
+fn check_value_size(error_span: Span, description: &'static str, value: &Value) -> Result<()> {
+    #[cfg(any(fuzzing, debug_assertions))]
+    let max_depth = 10;
 
-impl SizeChecker {
-    fn check_value_size(
-        &mut self,
-        error_span: Span,
-        description: &'static str,
-        value: &Value,
-    ) -> Result<()> {
-        #[cfg(any(fuzzing, debug_assertions))]
-        let max_depth = 10;
+    #[cfg(all(not(fuzzing), not(debug_assertions)))]
+    let max_depth = 250;
 
-        #[cfg(all(not(fuzzing), not(debug_assertions)))]
-        let max_depth = 250;
-
-        if value.size_memoized(&mut self.memo) < max_depth {
-            Ok(())
-        } else {
-            // Previously we also included the formatted value itself as the
-            // error body, but since the value is large, especially in the
-            // release configuration, that is kind of pointless. Printing
-            // megabytes of output is hardly going to be insightful, and it does
-            // create a new DoS vector in the pretty-printer.
-            let msg = concat! { description " exceeds the maximum size or nesting depth." };
-            error_span.error(msg).err()
-        }
+    if value.size() < max_depth {
+        Ok(())
+    } else {
+        // Previously we also included the formatted value itself as the
+        // error body, but since the value is large, especially in the
+        // release configuration, that is kind of pointless. Printing
+        // megabytes of output is hardly going to be insightful, and it does
+        // create a new DoS vector in the pretty-printer.
+        let msg = concat! { description " exceeds the maximum size or nesting depth." };
+        error_span.error(msg).err()
     }
 }
 
@@ -828,7 +813,6 @@ builtin_method!(
     builtin_set_transitive_closure
 );
 fn builtin_set_transitive_closure(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
-    let mut size_checker = SizeChecker::default();
     let mut closed = BTreeSet::new();
     let mut frontier = call.receiver.expect_set().clone();
 
@@ -839,7 +823,7 @@ fn builtin_set_transitive_closure(eval: &mut Evaluator, call: MethodCall) -> Res
     while let Some(elem) = frontier.pop_first() {
         // Prevent hangs from deeply nested values that are expensive to put in
         // the BTreeSet.
-        size_checker.check_value_size(method_span, "A value in the transitive closure", &elem)?;
+        check_value_size(method_span, "A value in the transitive closure", &elem)?;
 
         // See also the comments in `builtin_generic_map_impl` for how we handle
         // spans of internal calls.
@@ -1457,7 +1441,6 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
     let reduce = &call.call.args[1];
     let method_span = call.method_span;
 
-    let mut size_checker = SizeChecker::default();
     let mut acc = seed.value.clone();
 
     for element in list.iter() {
@@ -1491,7 +1474,7 @@ fn builtin_list_fold(eval: &mut Evaluator, call: MethodCall) -> Result<Value> {
         })?;
 
         // Avoid hangs from very deeply nested values.
-        size_checker.check_value_size(method_span, "Accumulator", &acc)?;
+        check_value_size(method_span, "Accumulator", &acc)?;
     }
 
     Ok(acc)
