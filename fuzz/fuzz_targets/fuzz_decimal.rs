@@ -132,7 +132,7 @@ fuzz_target!(|input: Input| -> Corpus {
                 "Decimal::parse after Decimal::format should be identity modulo equality.",
             );
             assert_eq!(
-                b.mantissa, b.mantissa,
+                a.mantissa, b.mantissa,
                 "Decimal::parse after Decimal::format should be identity.",
             );
             assert_eq!(
