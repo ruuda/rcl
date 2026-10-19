@@ -1,0 +1,17 @@
+// Loops count towards the evaluation budget.
+let xs = std.range(0, 100);
+
+// 9900 is still below the the 10k limit.
+let ys = [for i in std.range(0, 99): for x in xs: null];
+
+// But 10k is too much.
+let ys = [for i in std.range(0, 100): for x in xs: null];
+
+null
+
+# output:
+stdin:8:43
+  ╷
+8 │ let ys = [for i in std.range(0, 100): for x in xs: null];
+  ╵                                           ^
+Error: Evaluation budget exceeded. This expression exceeds the maximum of 10000 steps.

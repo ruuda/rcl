@@ -51,7 +51,7 @@ pub struct EvalCount {
     /// The maximum visited location.
     pub span: Span,
     /// The number of times the evaluation depth was incremented at that location.
-    pub count: u32,
+    pub count: usize,
 }
 
 impl EvalCount {
@@ -65,6 +65,17 @@ impl EvalCount {
     /// Increment the count, return an error if the budget is exceeded.
     #[inline]
     pub fn inc(&mut self, at: Span) -> Result<()> {
+        self.inc_by(at, 1)
+    }
+
+    /// Increment the count by `n`, return an error if the budget is exceeded.
+    ///
+    /// A single syntactic expression can do work proportional to the size of
+    /// a collection (e.g. unpack, or a builtin that builds a list). Those
+    /// must increment by the size of the collection for proper accounting.
+    /// Without it, the fuzzers keep finding inputs that take ages to evaluate,
+    /// which prevents effective fuzzing.
+    pub fn inc_by(&mut self, at: Span, n: usize) -> Result<()> {
         if at > self.span {
             self.span = at;
             self.count = 0;
@@ -92,7 +103,7 @@ impl EvalCount {
         #[cfg(all(not(fuzzing), not(debug_assertions)))]
         let max_steps = 10_000_000;
 
-        self.count += 1;
+        self.count = self.count.saturating_add(n);
 
         if self.count >= max_steps {
             return at
@@ -621,26 +632,28 @@ impl<'a> Evaluator<'a> {
                     receiver: &instance.receiver,
                 };
 
-                (method.f)(self, method_call).map_err(|err| {
+                let result = (method.f)(self, method_call).map_err(|err| {
                     err.with_call_frame(
                         call_open,
                         concat! { "In call to method '" Doc::highlight(method.name) "'." },
                     )
                     .into()
-                })
+                });
+                self.account_collection(call_open, result)
             }
             Value::BuiltinFunction(f) => {
                 let fn_type = self.get_builtin_function_type(f);
                 fn_type.check_arity(Some(f.name), call.args, call.call_close)?;
                 // TODO: Also check the type, while we're at it!
 
-                (f.f)(self, call).map_err(|err| {
+                let result = (f.f)(self, call).map_err(|err| {
                     err.with_call_frame(
                         call_open,
                         concat! { "In call to function '" Doc::highlight(f.name) "'." },
                     )
                     .into()
-                })
+                });
+                self.account_collection(call_open, result)
             }
             Value::Function(fun) => {
                 fun.type_.check_arity(None, call.args, call.call_close)?;
@@ -658,6 +671,24 @@ impl<'a> Evaluator<'a> {
 
         self.dec_eval_depth();
 
+        result
+    }
+
+    /// Account for elements of a collection constructed through a builtin.
+    ///
+    /// When we build a new collection (Rc strong count of 1, as opposed to >1
+    /// where it refers to a previously built collection), that took work
+    /// proportional to the size of the collection. We need to account for that
+    /// to prevent documents that can hang the evaluator (even when they would
+    /// terminate eventually).
+    fn account_collection(&mut self, at: Span, result: Result<Value>) -> Result<Value> {
+        let n = match &result {
+            Ok(Value::List(xs)) if Rc::strong_count(xs) == 1 => xs.len(),
+            Ok(Value::Set(xs)) if Rc::strong_count(xs) == 1 => xs.len(),
+            Ok(Value::Dict(xs)) if Rc::strong_count(xs) == 1 => xs.len(),
+            _ => return result,
+        };
+        self.eval_count.inc_by(at, n)?;
         result
     }
 
@@ -1002,9 +1033,23 @@ impl<'a> Evaluator<'a> {
                 collection,
                 collection_span,
                 check_elem_type,
-                ..
+                unpack_span,
             }) => {
-                match (self.eval_expr(env, collection)?, check_elem_type) {
+                let collection_value = self.eval_expr(env, collection)?;
+
+                // Unpack performs work proportional to the collection size, so
+                // we should account for it in the same way as we would for the
+                // equivalent `for ... in ...` loop, to prevent hangs.
+                let n = match &collection_value {
+                    Value::List(xs) => xs.len(),
+                    Value::Set(xs) => xs.len(),
+                    _ => 0,
+                };
+                // Blame the error on the full `..collection`.
+                let full_unpack_span = unpack_span.union(*collection_span);
+                self.eval_count.inc_by(full_unpack_span, n)?;
+
+                match (collection_value, check_elem_type) {
                     (Value::List(xs), None) => xs.iter().cloned().for_each(on_scalar),
                     (Value::Set(xs), None) => xs.iter().cloned().for_each(on_scalar),
                     (Value::List(xs), Some(elem_type)) => {
@@ -1049,6 +1094,7 @@ impl<'a> Evaluator<'a> {
             }) => {
                 match self.eval_expr(env, collection)? {
                     Value::Dict(xs) => {
+                        self.eval_count.inc_by(*collection_span, xs.len())?;
                         for (key, value) in xs.iter() {
                             on_assoc(key.clone(), &[], value.clone());
                         }
@@ -1081,6 +1127,7 @@ impl<'a> Evaluator<'a> {
                 let collection_value = self.eval_expr(env, collection)?;
                 match (&idents[..], collection_value) {
                     ([name], Value::List(xs)) => {
+                        self.eval_count.inc_by(*idents_span, xs.len())?;
                         for x in xs.iter() {
                             let ck = env.push(name.clone(), x.clone());
                             self.eval_seq(env, body, on_scalar, on_assoc)?;
@@ -1096,6 +1143,7 @@ impl<'a> Evaluator<'a> {
                         Err(err.into())
                     }
                     ([name], Value::Set(xs)) => {
+                        self.eval_count.inc_by(*idents_span, xs.len())?;
                         for x in xs.iter() {
                             let ck = env.push(name.clone(), x.clone());
                             self.eval_seq(env, body, on_scalar, on_assoc)?;
@@ -1111,6 +1159,7 @@ impl<'a> Evaluator<'a> {
                         Err(err.into())
                     }
                     ([k_name, v_name], Value::Dict(xs)) => {
+                        self.eval_count.inc_by(*idents_span, xs.len())?;
                         for (k, v) in xs.iter() {
                             let ck = env.checkpoint();
                             env.push(k_name.clone(), k.clone());

@@ -1,0 +1,16 @@
+// This is to contrast with budget_builtin_collection_err.test. That test goes
+// over the limit, this one stays just below it. We can't combine them into one
+// test because later closures capture more environment, and that blows up the
+// size of the closure, triggering the wrong error. (Yes this is not strictly
+// a failing case, but it belongs with the other test that tests the error.)
+
+// 96 * 96 is still fine, just below the 10k-step limit.
+let still_ok = {
+    for x in std.range(0, 3):
+    for y in std.range(0, 32):
+    () => null
+};
+{0}.transitive_closure(still_ok.except).len()
+
+# output:
+97

@@ -1,0 +1,17 @@
+// Performs 1k steps, this is okay.
+let xs = std.range(0, 1000);
+
+// Performs 9 × 1k steps, still below the 10k limit.
+let ys = [for i in std.range(0, 9): ..xs];
+
+// Performs 10k steps, this exceeds the evaluation budget.
+let zs = [for i in std.range(0, 10): ..xs];
+
+null
+
+# output:
+stdin:8:38
+  ╷
+8 │ let zs = [for i in std.range(0, 10): ..xs];
+  ╵                                      ^~~~
+Error: Evaluation budget exceeded. This expression exceeds the maximum of 10000 steps.

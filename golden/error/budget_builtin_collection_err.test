@@ -1,0 +1,20 @@
+// This is a regression test for a slow input discovered by the fuzzer. In a
+// release build it took a few seconds to evaluate, in debug mode it hung for
+// longer, because `transitive_closure` internally builds up a large collection
+// of lambdas per iteration, and it performs work quadratic in that size. Now
+// we limit the size of the collection.
+
+// 99 * 99 is too much, that hits the 10k-step limit.
+let too_many = {
+    for x in std.range(0, 3):
+    for y in std.range(0, 33):
+    () => null
+};
+{0}.transitive_closure(too_many.except).len()
+
+# output:
+stdin:13:23
+   ╷
+13 │ {0}.transitive_closure(too_many.except).len()
+   ╵                       ^
+Error: Evaluation budget exceeded. This expression exceeds the maximum of 10000 steps.
