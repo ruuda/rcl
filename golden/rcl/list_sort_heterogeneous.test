@@ -1,0 +1,30 @@
+[
+  "widget",
+  "widget".len,
+  "widget".contains,
+  42,
+  [],
+  null,
+  std.format_json,
+  std.range,
+  true,
+  x => false,
+  {null},
+  {},
+].sort()
+
+# output:
+[
+  null,
+  true,
+  42,
+  "widget",
+  [],
+  {null},
+  {},
+  «function 0:113..123»,
+  std.format_json,
+  std.range,
+  «method String.len»,
+  «method String.contains»,
+]

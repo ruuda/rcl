@@ -148,7 +148,7 @@ impl Ord for Function {
 }
 
 /// A value.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
     Null,
 
@@ -173,7 +173,63 @@ pub enum Value {
     BuiltinMethod(Rc<MethodInstance>),
 }
 
+/// Order values by variant, then by value.
+///
+/// This is similar to the derived Ord impl, except we short-circuit for `Rc`s
+/// that point to the same value without descending into that value. This
+/// matters for some pathological values that the fuzzers discover ways of
+/// constructing, where it builds a tree where all the nodes at one level are
+/// duplicates, so in memory its size is linear in its depth, but as a value,
+/// its size is exponential in its depth, traversing that for `Ord` then makes
+/// things very slow.
+impl Ord for Value {
+    fn cmp(&self, other: &Value) -> Ordering {
+        fn cmp_rc<T: Ord + ?Sized>(a: &Rc<T>, b: &Rc<T>) -> Ordering {
+            if Rc::ptr_eq(a, b) {
+                Ordering::Equal
+            } else {
+                a.cmp(b)
+            }
+        }
+        match (self, other) {
+            (Value::Null, Value::Null) => Ordering::Equal,
+            (Value::Bool(a), Value::Bool(b)) => a.cmp(b),
+            (Value::Number(a), Value::Number(b)) => a.cmp(b),
+            (Value::String(a), Value::String(b)) => cmp_rc(a, b),
+            (Value::List(a), Value::List(b)) => cmp_rc(a, b),
+            (Value::Set(a), Value::Set(b)) => cmp_rc(a, b),
+            (Value::Dict(a), Value::Dict(b)) => cmp_rc(a, b),
+            (Value::Function(a), Value::Function(b)) => cmp_rc(a, b),
+            (Value::BuiltinFunction(a), Value::BuiltinFunction(b)) => a.cmp(b),
+            (Value::BuiltinMethod(a), Value::BuiltinMethod(b)) => cmp_rc(a, b),
+            _ => self.sort_order().cmp(&other.sort_order()),
+        }
+    }
+}
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl Value {
+    /// The sort order between values of different kinds.
+    fn sort_order(&self) -> u8 {
+        match self {
+            Value::Null => 0,
+            Value::Bool(..) => 1,
+            Value::Number(..) => 2,
+            Value::String(..) => 3,
+            Value::List(..) => 4,
+            Value::Set(..) => 5,
+            Value::Dict(..) => 6,
+            Value::Function(..) => 7,
+            Value::BuiltinFunction(..) => 8,
+            Value::BuiltinMethod(..) => 9,
+        }
+    }
+
     /// Wrap an integer greater than `i64::MIN` in `Value::Number`.
     pub fn int(i: i64) -> Value {
         Value::Number(Decimal::from(i))

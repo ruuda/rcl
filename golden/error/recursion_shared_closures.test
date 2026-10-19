@@ -1,0 +1,46 @@
+// This is a regression test for a hang discovered by the fuzzer. Previously
+// this took minutes even in release mode, because it builds up closures whose
+// captured environments grow exponentially. But because they all reference the
+// same Rc, a comparison that short-circuits on pointer equality completes much
+// faster, so now this case no longer hangs.
+let f = (f, x) => f(f, {for k, v in std: () => x});
+f(f, 2)
+
+# output:
+stdin:6:24
+  ╷
+6 │ let f = (f, x) => f(f, {for k, v in std: () => x});
+  ╵                        ^
+Error: Evaluation budget exceeded. This expression exceeds the maximum evaluation depth of 150.
+
+stdin:6:20
+  ╷
+6 │ let f = (f, x) => f(f, {for k, v in std: () => x});
+  ╵                    ^
+In call to function.
+
+stdin:6:20
+  ╷
+6 │ let f = (f, x) => f(f, {for k, v in std: () => x});
+  ╵                    ^
+In call to function.
+
+stdin:6:20
+  ╷
+6 │ let f = (f, x) => f(f, {for k, v in std: () => x});
+  ╵                    ^
+In call to function.
+
+stdin:6:20
+  ╷
+6 │ let f = (f, x) => f(f, {for k, v in std: () => x});
+  ╵                    ^
+In call to function.
+
+stdin:6:20
+  ╷
+6 │ let f = (f, x) => f(f, {for k, v in std: () => x});
+  ╵                    ^
+In call to function.
+
+Note: The call stack is too deep to display in full. Only the innermost calls are shown above.
