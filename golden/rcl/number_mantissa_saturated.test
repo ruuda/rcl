@@ -1,0 +1,8 @@
+// Up to the _, it fits in an i64 mantissa. Then the next digit causes a loss of
+// precision, which is not an immediate error, it would only be if this was an
+// integer. But due to the .0 at the end, that is fine. And then the next digit
+// just increments the exponent once more.
+9223372036854775807_1_2.0
+
+# output:
+9223372036854775807e2

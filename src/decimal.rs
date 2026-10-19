@@ -470,11 +470,7 @@ impl std::ops::Neg for Decimal {
     type Output = Decimal;
 
     fn neg(self) -> Decimal {
-        debug_assert_ne!(
-            self.mantissa,
-            i64::MIN,
-            "i64::MIN is not allowed as mantissa."
-        );
+        debug_assert_ne!(self.mantissa, i64::MIN, "i64::MIN is not a valid mantissa.");
         Decimal {
             // Does not overflow because `mantissa != i64::MIN`.
             mantissa: -self.mantissa,
@@ -498,11 +494,13 @@ impl Ord for Decimal {
     }
 }
 
+// coverage:off -- It defers to `Decimal::cmp` either way.
 impl PartialOrd for Decimal {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
+// coverage:on
 
 #[cfg(test)]
 mod test {
