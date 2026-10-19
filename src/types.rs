@@ -508,7 +508,22 @@ impl SourcedType {
     /// both! But in this case, reporting an error if the element types mismatch
     /// is helpful, so we won't make `[]` an exception that causes a runtime
     /// check.
+    #[cfg_attr(fuzzing, track_caller)]
     pub fn is_subtype_of(&self, other: &SourcedType) -> TypeDiff<SourcedType> {
+        let result = self.is_subtype_of_impl(other);
+
+        // When fuzzing, perform some mutations that depend on the types, and
+        // where this is called from, so the fuzzer records distinct calls as
+        // distinct features, and it doesn't discard fuzz inputs that differ
+        // only by the type. See also the module doc comment.
+        #[cfg(fuzzing)]
+        fuzz_features::record(std::panic::Location::caller(), self, other, &result);
+
+        result
+    }
+
+    #[cfg_attr(fuzzing, track_caller)]
+    fn is_subtype_of_impl(&self, other: &SourcedType) -> TypeDiff<SourcedType> {
         match (&self.type_, &other.type_) {
             // Void is a subtype of everything, Any a supertype of everything,
             // they are the top and bottom of the lattice.
@@ -797,6 +812,55 @@ macro_rules! make_function {
     };
 }
 pub(crate) use make_function;
+
+/// Coverage features read by libFuzzer.
+///
+/// We mutate counters here that libFuzzer uses to determine whether an input
+/// covers novel features. Without it, calls to `is_subtype_of` collapse in
+/// terms of features, and that makes it difficult for the fuzzer to explore
+/// complex types. The inputs differ, but the control flow edges that libFuzzer
+/// looks at do not, so a new input gets discarded. Complex types require
+/// multiple mutations to build, and it's unlikely that libFuzzer one-shots a
+/// program that correctly uses a complex type. So we need a way for libFuzzer
+/// to keep intermediate steps around. We can do that by defining custom
+/// counters. We set those counters differently depending on what the inputs to
+/// `is_subtype_of` were, and that makes libFuzzer retain inputs that have the
+/// same call graph but exercise different types.
+#[cfg(fuzzing)]
+mod fuzz_features {
+    use super::{SourcedType, TypeDiff};
+    use std::hash::{Hash, Hasher};
+    use std::mem::discriminant;
+    use std::sync::atomic::{AtomicU8, Ordering};
+
+    const ZERO: AtomicU8 = AtomicU8::new(0);
+
+    /// Bytes to mark interesting fuzz inputs to libFuzzer.
+    ///
+    /// A smaller array here keeps the fuzzer faster (libFuzzer scans all
+    /// counters after every iteration), but it makes more inputs collide.
+    #[used]
+    #[link_section = "__libfuzzer_extra_counters"]
+    static FEATURES: [AtomicU8; 1 << 14] = [ZERO; 1 << 14];
+
+    pub fn record<T>(
+        at: &std::panic::Location,
+        sub: &SourcedType,
+        sup: &SourcedType,
+        result: &TypeDiff<T>,
+    ) {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let feature = (
+            at,
+            discriminant(&sub.type_),
+            discriminant(&sup.type_),
+            discriminant(result),
+        );
+        feature.hash(&mut hasher);
+        let i = hasher.finish() as usize % FEATURES.len();
+        FEATURES[i].store(1, Ordering::Relaxed);
+    }
+}
 
 #[cfg(test)]
 mod test {
