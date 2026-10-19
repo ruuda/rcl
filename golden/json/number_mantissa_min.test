@@ -1,0 +1,13 @@
+// This is a regression test for a non-idempotency issue found by the fuzzer.
+// Previously this constructed a number with a mantissa of i64::MIN, whose
+// absolute value is 1 larger than i64::MAX, so we emitted it with a - sign and
+// exponent -1. But when parsing, - is an operator and we next parse a positive
+// decimal number that does not fit i64, but which has an exponent, for which we
+// allow dropping the least significant digits ... and so we did.
+[
+  (0 - 1 - 9223372036854775807) / 1e1,
+  -9223372036854775808e-1,
+]
+
+# output:
+[-9223372036854775808e-1, -922337203685477581]
