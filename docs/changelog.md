@@ -20,6 +20,8 @@ Unreleased
 
 **Changes with compatibility impact:**
 
+ * [`rcl patch`](rcl_patch.md) now reports an error when the patch path matches
+   in multiple places. Previously `patch` would patch the first greedy match.
  * Hyphens are no longer allowed at the end of identifiers. They remain allowed
    in the middle of identifiers. This means that e.g. `wid-get- - 32` now parses
    as `wid-get - (-32)`, rather than `(wid-get-) - 32`. This enables better error
@@ -34,8 +36,6 @@ Unreleased
  * The formatter now formats chains of repeated associative binary operators
    such as `a + b + c` either wide or tall in its entirety. This can cause the
    canonical formatting to change for some documents.
- * [`rcl patch`](rcl_patch.md) now reports an error when the patch path matches
-   in multiple places. Previously `patch` would patch the first greedy match.
 
 **New features:**
 
@@ -47,11 +47,25 @@ Unreleased
 Other changes:
 
  * [`rcl patch`](rcl_patch.md) now finds all possible places where the patch
-   path can match, rather than matching the path greedily, which could result
-   in match failures even for unambiguous paths. `rcl patch` fully supports the
-   new nested assignment syntax as well.
+   path can match, rather than matching the path greedily, which could fail to
+   match even for unambiguous paths. `rcl patch` fully supports the new nested
+   assignment syntax as well.
  * Improve coloring in the TextMate grammar used by Visual Studio Code and
    JetBrains <abbr>IDE</abbr>s.
+ * Internally, the speed and breadth of the smith fuzzer has been greatly
+   improved. It now achieves full coverage of the <abbr>RCL</abbr> typechecker
+   and evaluator in minutes.
+
+ Bugfixes:
+
+ * Fix two idempotency issues related to very large decimal values, where
+   <abbr>RCL</abbr> could output a value that it would not be able to read back.
+   These pathological values were discovered through fuzzing, they do not occur
+   in real-world documents.
+ * Improve the evaluation budget accounting to prevent hangs on pathological
+   inputs that build very large values. These pathological inputs were
+   discovered through fuzzing: they do not occur in real-world documents, but
+   they did prevent the fuzzers from exploring effectively.
 
 ## 0.14.1
 
