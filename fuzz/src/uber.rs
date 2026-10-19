@@ -182,7 +182,9 @@ fn fuzz_eval_json_idempotent(loader: &mut Loader, input: &str, cfg: pprint::Conf
 
     let out_1 = json.println(&cfg).to_string_no_markup();
     let doc_2 = loader.load_string("out_1", out_1);
-    let val_2 = loader.evaluate(&mut type_env, &mut value_env, doc_2, &mut tracer)?;
+    let val_2 = loader
+        .evaluate(&mut type_env, &mut value_env, doc_2, &mut tracer)
+        .expect("RCL is able to evaluate its own json output.");
 
     let body_span = loader.get_span(doc_2);
     let json = rcl::fmt_json::format_json(body_span, &val_2)?;
