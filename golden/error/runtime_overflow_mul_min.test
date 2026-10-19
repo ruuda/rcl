@@ -1,0 +1,9 @@
+// -2^32 * 2^31 = -2^63 would have mantissa i64::MIN, which is not allowed.
+(-0x1_0000_0000) * 0x8000_0000
+
+# output:
+stdin:2:18
+  ╷
+2 │ (-0x1_0000_0000) * 0x8000_0000
+  ╵                  ^
+Error: Multiplication -4294967296 * 2147483648 would overflow.

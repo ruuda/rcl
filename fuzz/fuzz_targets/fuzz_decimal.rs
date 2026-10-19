@@ -115,10 +115,9 @@ fuzz_target!(|input: Input| -> Corpus {
             exponent,
             decimals,
         } => {
-            let a = Decimal {
-                mantissa,
-                exponent,
-                decimals,
+            let a = match Decimal::new(mantissa, decimals, exponent) {
+                Some(a) => a,
+                None => return Corpus::Reject,
             };
 
             let a_str = a.format();

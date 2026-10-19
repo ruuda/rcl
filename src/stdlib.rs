@@ -1150,9 +1150,12 @@ fn builtin_string_parse_int(_eval: &mut Evaluator, call: MethodCall) -> Result<V
 
     let string = call.receiver.expect_string();
 
-    match i64::from_str(string) {
-        Ok(i) => Ok(Value::int(i)),
-        Err(..) => call
+    match i64::from_str(string)
+        .ok()
+        .and_then(|i| Decimal::new(i, 0, 0))
+    {
+        Some(d) => Ok(Value::Number(d)),
+        None => call
             .receiver_span
             .error("Failed to parse as integer:")
             .with_body(format_rcl(call.receiver).into_owned())
@@ -1232,8 +1235,7 @@ fn builtin_string_parse_number(_eval: &mut Evaluator, call: MethodCall) -> Resul
         };
 
         // If there was a leading `-`, flip the sign. This does not overflow,
-        // because abs(i64::MIN) > abs(i64::MAX). It does mean that we can't
-        // parse i64::MIN itself, but I think that's acceptable for now.
+        // because the mantissa is never `i64::MIN`, see `Decimal::mantissa`.
         result.mantissa *= sign;
 
         return Ok(Value::Number(result));

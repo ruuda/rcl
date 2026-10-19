@@ -174,6 +174,7 @@ pub enum Value {
 }
 
 impl Value {
+    /// Wrap an integer greater than `i64::MIN` in `Value::Number`.
     pub fn int(i: i64) -> Value {
         Value::Number(Decimal::from(i))
     }

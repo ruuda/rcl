@@ -1,0 +1,15 @@
+// This is i64::MIN, which is not a valid mantissa; parse_number rejects it too.
+"-9223372036854775808".parse_int()
+
+# output:
+stdin:2:1
+  ╷
+2 │ "-9223372036854775808".parse_int()
+  ╵ ^~~~~~~~~~~~~~~~~~~~~~
+Error: Failed to parse as integer: "-9223372036854775808"
+
+stdin:2:33
+  ╷
+2 │ "-9223372036854775808".parse_int()
+  ╵                                 ^
+In call to method 'String.parse_int'.

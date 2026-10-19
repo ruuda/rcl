@@ -565,7 +565,7 @@ impl<'a> Evaluator<'a> {
             } => {
                 self.inc_eval_depth(*op_span)?;
                 let value = self.eval_expr(env, value_expr)?;
-                let result = self.eval_unop(*op, *op_span, value)?;
+                let result = self.eval_unop(*op, value);
                 self.dec_eval_depth();
                 Ok(result)
             }
@@ -816,18 +816,10 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    fn eval_unop(&mut self, op: UnOp, op_span: Span, v: Value) -> Result<Value> {
+    fn eval_unop(&mut self, op: UnOp, v: Value) -> Value {
         match (op, v) {
-            (UnOp::Not, Value::Bool(x)) => Ok(Value::Bool(!x)),
-            (UnOp::Neg, Value::Number(d)) => match d.checked_neg() {
-                Some(nd) => Ok(Value::Number(nd)),
-                None => {
-                    let err = concat! {
-                        "Negation of " d.format() " would overflow."
-                    };
-                    op_span.error(err).err()
-                }
-            },
+            (UnOp::Not, Value::Bool(x)) => Value::Bool(!x),
+            (UnOp::Neg, Value::Number(d)) => Value::Number(-d),
             _ => unreachable!("Invalid cases are prevented by the typechecker."),
         }
     }

@@ -13,15 +13,26 @@ use std::cmp::Ordering;
 #[derive(Copy, Clone, Debug)]
 pub struct Decimal {
     /// The value `m`.
+    ///
+    /// A value of `i64::MIN` is not valid, to keep the representable range of
+    /// decimals symmetric around 0. That means that the negation operator can
+    /// never fail. (If i64::MIN would be allowed, negating it would overflow.)
+    /// Because `-` in RCL is an operator, and not part of number literals, it
+    /// is important for idempotency (RCL output evaluates to itself) that we
+    /// don't emit numbers that we can't read back unchanged.
     pub mantissa: i64,
+
     /// The exponent `n`.
     pub exponent: i16,
+
     /// The exponent `d`, which is also the number of decimal digits.
     pub decimals: u8,
 }
 
 impl From<i64> for Decimal {
+    /// Convert an integer that we assume is not `i64::MIN`.
     fn from(x: i64) -> Decimal {
+        debug_assert_ne!(x, i64::MIN, "Mantissa must not be i64::MIN.");
         Decimal {
             mantissa: x,
             decimals: 0,
@@ -46,6 +57,18 @@ impl From<ParseResult> for Decimal {
 }
 
 impl Decimal {
+    /// Construct a decimal, or `None` if the mantissa is `i64::MIN`.
+    pub fn new(mantissa: i64, decimals: u8, exponent: i16) -> Option<Decimal> {
+        match mantissa {
+            i64::MIN => None,
+            _ => Some(Decimal {
+                mantissa,
+                decimals,
+                exponent,
+            }),
+        }
+    }
+
     /// Parse a json number into either a decimal or an integer.
     ///
     /// Assumes the string is already validated (by the lexer), panics on
@@ -97,9 +120,12 @@ impl Decimal {
                     exponent_offset += if is_int { 1 } else { 0 };
                 }
                 b'0'..=b'9' => {
+                    // Unlike the exponent, we accumulate the absolute value
+                    // and apply the sign at the end, so the mantissa is never
+                    // `i64::MIN`.
                     match n
                         .checked_mul(10)
-                        .and_then(|n10| n10.checked_add((ch - b'0') as i64 * mantissa_sign))
+                        .and_then(|n10| n10.checked_add((ch - b'0') as i64))
                     {
                         // We added one digit to the mantissa and it still fits.
                         Some(m) => {
@@ -134,6 +160,7 @@ impl Decimal {
         }
 
         exponent = exponent.checked_add(exponent_offset)?;
+        n *= mantissa_sign;
 
         // If we parsed something that was not an integer, but due to precision
         // limits we ended up having no decimals and exponent, then if we would
@@ -194,15 +221,6 @@ impl Decimal {
         result
     }
 
-    pub fn checked_neg(&self) -> Option<Decimal> {
-        let result = Decimal {
-            mantissa: self.mantissa.checked_neg()?,
-            decimals: self.decimals,
-            exponent: self.exponent,
-        };
-        Some(result)
-    }
-
     pub fn checked_add(&self, other: &Decimal) -> Option<Decimal> {
         let (mut d1, mut d2) = (*self, *other);
 
@@ -234,16 +252,15 @@ impl Decimal {
             d2.exponent = d1.exponent;
         }
 
-        let result = Decimal {
-            mantissa: d1.mantissa.checked_add(d2.mantissa)?,
-            decimals: d1.decimals,
-            exponent: d1.exponent,
-        };
-        Some(result)
+        Decimal::new(
+            d1.mantissa.checked_add(d2.mantissa)?,
+            d1.decimals,
+            d1.exponent,
+        )
     }
 
     pub fn checked_sub(&self, other: &Decimal) -> Option<Decimal> {
-        self.checked_add(&other.checked_neg()?)
+        self.checked_add(&-*other)
     }
 
     pub fn checked_mul(&self, other: &Decimal) -> Option<Decimal> {
@@ -252,12 +269,11 @@ impl Decimal {
         // turns "1.0 * 1.0" into "1.00", but we could just return "1.0". We
         // should try to eliminate powers of 10 until the result has as many
         // decimals as one of the inputs.
-        let result = Decimal {
-            mantissa: self.mantissa.checked_mul(other.mantissa)?,
-            decimals: self.decimals.checked_add(other.decimals)?,
-            exponent: self.exponent.checked_add(other.exponent)?,
-        };
-        Some(result)
+        Decimal::new(
+            self.mantissa.checked_mul(other.mantissa)?,
+            self.decimals.checked_add(other.decimals)?,
+            self.exponent.checked_add(other.exponent)?,
+        )
     }
 
     /// Divide two numbers, but only if `self` is an exact multiple of `other`.
@@ -270,6 +286,9 @@ impl Decimal {
         let f = 10_i64.checked_pow(other.decimals as u32)?;
         let mut x = self.mantissa.checked_mul(f)?;
 
+        // `x` is a mantissa times a power of 10, and `i64::MIN` (-2^63) is
+        // neither a valid mantissa, nor a multiple of 10, so `x / y` does not
+        // overflow, and the quotient is not `i64::MIN`, because |q| <= |x|.
         let mut q = x / y;
         let mut d = self.decimals;
 
@@ -451,6 +470,24 @@ impl Decimal {
                     None => Ordering::Greater,
                 }
             }
+        }
+    }
+}
+
+impl std::ops::Neg for Decimal {
+    type Output = Decimal;
+
+    fn neg(self) -> Decimal {
+        debug_assert_ne!(
+            self.mantissa,
+            i64::MIN,
+            "i64::MIN is not allowed as mantissa."
+        );
+        Decimal {
+            // Does not overflow because `mantissa != i64::MIN`.
+            mantissa: -self.mantissa,
+            decimals: self.decimals,
+            exponent: self.exponent,
         }
     }
 }
