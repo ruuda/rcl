@@ -80,16 +80,6 @@ impl Decimal {
     /// can appear anywhere, which is not valid syntax, but we don't care about
     /// that here!
     pub fn parse_str(dec: &str) -> Option<ParseResult> {
-        // When we count the number of decimals, and the exponent, we may
-        // increment those counts for every digit we parse, so after 255
-        // decimals we may overflow the `decimals` counter, and after 16 KiB of
-        // zeros we may overflow the `exponent_offset` counter. We could do a
-        // checked add for that, but if you have a 256-byte number literal, then
-        // what are you even doing? We just disallow that.
-        if dec.len() > 255 {
-            return None;
-        }
-
         let mut n: i64 = 0;
         let mut decimals: u8 = 0;
         let mut exponent: i16 = 0;
@@ -114,10 +104,10 @@ impl Decimal {
                 b'0'..=b'9' if !is_precise => {
                     // If the mantissa is already saturated, but we keep getting
                     // more digits, we just drop them, but we do need to adjust
-                    // the exponent if we are still parsing an int. This does
-                    // not overflow because we validated the length of the input
-                    // string.
-                    exponent_offset += if is_int { 1 } else { 0 };
+                    // the exponent if we are still parsing an int.
+                    if is_int {
+                        exponent_offset = exponent_offset.checked_add(1)?;
+                    }
                 }
                 b'0'..=b'9' => {
                     // Unlike the exponent, we accumulate the absolute value
@@ -130,9 +120,9 @@ impl Decimal {
                         // We added one digit to the mantissa and it still fits.
                         Some(m) => {
                             n = m;
-                            // This add does not overflow because the input is
-                            // at most 255 bytes long.
-                            decimals += if is_int { 0 } else { 1 };
+                            if !is_int {
+                                decimals = decimals.checked_add(1)?;
+                            }
                         }
                         // The mantissa is saturated, we switch to dropping
                         // digits. If appropriate and when possible, round up
@@ -140,7 +130,9 @@ impl Decimal {
                         None => {
                             let round_up = *ch >= b'5';
                             n = n.saturating_add(if round_up { 1 } else { 0 });
-                            exponent_offset += if is_int { 1 } else { 0 };
+                            if is_int {
+                                exponent_offset = exponent_offset.checked_add(1)?;
+                            }
                             is_precise = false;
                         }
                     }
