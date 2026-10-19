@@ -154,7 +154,7 @@ Entries are evaluated in order, later ones overwrite earlier ones:
   release = "-O3 -g",
   // Overwrite the former value of `release` with a dict.
   release.opt_level = 3,
-  // Add an additional keys to that dict.
+  // Add additional keys to that dict.
   release.debug_symbols = true,
   release.link.lto = "thin",
 }
