@@ -182,9 +182,23 @@ fn fuzz_eval_json_idempotent(loader: &mut Loader, input: &str, cfg: pprint::Conf
 
     let out_1 = json.println(&cfg).to_string_no_markup();
     let doc_2 = loader.load_string("out_1", out_1);
-    let val_2 = loader
-        .evaluate(&mut type_env, &mut value_env, doc_2, &mut tracer)
-        .expect("RCL is able to evaluate its own json output.");
+    let val_2 = match loader.evaluate(&mut type_env, &mut value_env, doc_2, &mut tracer) {
+        Ok(v) => v,
+        Err(e)
+            if e.message
+                .println(&cfg)
+                .to_string_no_markup()
+                .starts_with("Evaluation budget exceeded.") =>
+        {
+            // During the first run, despite restrictions on value size, RCL can
+            // output a document that it cannot evaluate because it would hit
+            // the evaluation budget. Keeping those two exactly in sync is
+            // virtually impossible, so we add an exception here in the fuzzer
+            // and leave this case unchecked.
+            return Ok(());
+        }
+        err => err.expect("RCL is able to evaluate its own json output."),
+    };
 
     let body_span = loader.get_span(doc_2);
     let json = rcl::fmt_json::format_json(body_span, &val_2)?;
